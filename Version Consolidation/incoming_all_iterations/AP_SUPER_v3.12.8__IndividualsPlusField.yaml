@@ -1,0 +1,116 @@
+# AP Super v3.12.8 — Individuals + Field Overlay
+# Generated: 2025-09-02 22:14:00Z
+# Chris + Remy as active voices, Composite only as mythic overlay commentary.
+
+meta:
+  bundle: "2025-09-02"
+  tz_default: "America/New_York"
+  versions:
+    ap_super: "3.12.8"
+    text_interface: "1.3"
+    cluster_signatures: "1.0"
+    moment_synthesizer: "1.2"
+    micro_arc_detector: "1.1"
+
+profiles:
+  - id: "AP_SUPER"
+    version: "3.12.8"
+    processing:
+      validate_schema: true
+      ingest_tags: ["valence","archetypal"]
+      prefilter_candidates: true
+      memoize_positions: {"grid_min": 1, "parquet_cache": true}
+      solar_arc_fast_path: true
+      subchannels: ["Mind","Body","Spirit"]
+      clustering:
+        window_minutes: { snapshot: [15,45], range: [60,180], extended: ["1d","3d"] }
+        weights:
+          planets: {"Sun":0.9, "Moon":1.0, "Mercury":0.4, "Venus":0.5, "Mars":0.6, "Jupiter":0.45, "Saturn":1.1, "Uranus":0.7, "Neptune":0.6, "Pluto":1.2, "Node":1.0, "Chiron":0.8, "Vertex":0.9}
+          valence_multiplier: {"positive":0.9, "mixed":1.0, "negative":1.05}
+          aspect_tightness_bonus: {"exact":1.2, "tight":1.1, "loose":1.0}
+      continuity: {"method":"dW_dt", "thresholds": {"build":0.15, "fade":-0.15}, "annotate": true}
+      numeric: {"vectorize": true, "numba_jit": "optional", "chebyshev_interpolation": {"enable": true, "bin_max_minutes": 60, "accuracy_arcsec": 0.5}}
+      parallelism: {"enable": true, "workers": "auto", "partition_by": ["Mind","Body","Spirit"]}
+      determinism: {"tie_break_seed": 1729}
+      exports: {"formats": ["md","html"], "out_dir": "exports/" }
+
+modules:
+  cluster_signatures:
+    version: "1.0"
+    enable: true
+    thresholds:
+      min_intensity_to_label: 1.3
+
+  moment_synthesizer:
+    version: "1.2"
+    enable: true
+    include_channels: ["Chris","Remy"]
+    composite_role: "field_overlay"
+    aggregation:
+      strategy: "per-bin"
+      include_quiet_bins: true
+    scoring:
+      combine_valence: "weighted_average"
+      combine_intensity: "sum+reinforcement_bonuses"
+      combine_tone: "merge_tags"
+      reinforcement_bonuses:
+        harmonic_exact: 0.08
+        draconic_contact: 0.06
+        vertex_or_node_contact: 0.06
+        solar_arc_anchor: 0.08
+        davison_alignment: 0.05
+      conflict_resolution:
+        rule: "tone_blend"
+
+  micro_arc_detector:
+    version: "1.1"
+    enable: true
+    triggers:
+      multi_valence_clusters_in_bin: true
+      dW_dt_micro:
+        window: "15m..30m"   # adaptive scaling
+        threshold: 0.10
+      interaction_conflict: ["overshadow","negate","harmonize"]
+    action:
+      split_bin: true
+      narrate_micro_arc: true
+      markers: ["build","crest","fade"]
+
+narrative_binding:
+  style: "jungian_epic"
+  include_channels: ["Chris","Remy"]
+  composite_role: "field_overlay"
+  field_annotation_mode: "mythic_commentary"
+  micro_arcs_inline: true
+  always_show_contributions: true
+  lexicon:
+    healing_under_shadow: "a light carried in the dark"
+    treasure_under_pressure: "a gift found beneath strain"
+    dream_break: "the vision shatters as reality intrudes"
+
+modules_apply_order:
+  - cluster_signatures
+  - moment_synthesizer
+  - micro_arc_detector
+  - text_interface
+
+modules_output_binding:
+  time_frame: { include_signature_cards: true }
+  narrative:  { weave_signatures_inline: true, require_context_for_micro_spikes: true }
+  summary:    { list_top_signatures: 5 }
+  deep_analysis:
+    tables:
+      - "clusters_with_scores"
+      - "signature_family_hits"
+      - "interaction_matrix"
+      - "moments_with_scores"
+      - "overlay_hits"
+      - "micro_arc_windows"
+
+reliability:
+  schema: "VCA_Protocol_v2.2.1.yaml"
+  assertions:
+    - "Only Chris + Remy produce direct moment-signatures"
+    - "Composite appears only as field overlay"
+    - "Micro-arc windows surface whenever thresholds trigger"
+    - "Lexicon phrases mapped correctly into narrative"

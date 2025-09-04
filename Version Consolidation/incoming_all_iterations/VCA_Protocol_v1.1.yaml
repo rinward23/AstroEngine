@@ -1,0 +1,455 @@
+system:
+  short_name: VCA
+  long_name: Vox Crucis Athenor
+  type: Protocol
+  version: '1.0'
+  description: 'VCA (Vox Crucis Athenor) is the alchemical crucible housing the four
+    elemental protocols: AIR, WATER, EARTH, FIRE.'
+definitions:
+  elemental_module: Top-level archetypal channel inside VCA. The four ElementalModules
+    are AirModule, WaterModule, EarthModule, FireModule.
+  tier: 'Output breadth/intensity setting within a module: Super, Light, Strict, Extreme.'
+  mode: Presentation style/time window within a tier (e.g., Daily Narrative, Weekly
+    Arc, Epic Narrative, Yearly Review, Exact-Only, Lite).
+  capability: Feature bucket within a module (e.g., Relational Engine, Divination
+    Module, Data Feeds, Ritual Interface).
+  component: Concrete feature inside a capability (e.g., Composite, Davison, Tarot,
+    Ephemeris).
+  domain: Optional organizational layer grouping related subject areas inside a module
+    (e.g., Relationships, Timing, Research).
+  channel: Optional stream within a domain (e.g., Synastry, Composite, Electional).
+  subchannel: Optional finer stream within a channel.
+  preflight: Lightweight same-day checks and compute-gating executed before a run;
+    may auto-include heavy layers when same-day hits are detected.
+  doctrine: Rules/gating that enforce consistency, orb policy, and valence balance
+    across outputs.
+taxonomy:
+  hierarchy:
+  - VCA
+  - ElementalModule
+  - Tier
+  - Mode
+  - Capability
+  - Component
+  optional_layers:
+  - Domain
+  - Channel
+  - Subchannel
+elemental_modules:
+  AirModule:
+    title: Astrology Informatics Relational
+    description: Relational/connection protocol (composites, harmonics, draconics)
+      with full ephemeris backing and sweep.
+    tiers:
+      Super:
+        description: All-inclusive tier with narrativity ON and minor aspects included.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.6
+          cluster_hours: 72
+          minor_weight: 0.75
+        modes:
+          Daily Narrative:
+            window_max_days: 3
+            style: stitched_daily
+            footer_appendix: true
+          Weekly Arc:
+            window_max_days: 10
+            style: weekly_arc
+            footer_appendix: true
+          Epic Narrative:
+            window_max_days: 40
+            style: mythic_month
+            footer_appendix: true
+          Yearly / Life Review:
+            window_max_days: 400
+            style: yearly_review
+            include_progressions_exacts_by_default: true
+            footer_appendix: true
+          Strict:
+            window_max_days: 3
+            style: exact_only
+            narrativity_override:
+              enabled: false
+              orb_bonus_deg: 0.0
+            footer_appendix: true
+          Lite:
+            window_max_days: 3
+            style: minimal_list
+            footer_appendix: true
+      Light:
+        description: Minimal outputs; sweep still auto-includes same-day heavy layers.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.4
+          cluster_hours: 48
+          minor_weight: 0.85
+        modes:
+          Daily:
+            window_max_days: 3
+            style: minimal_list
+            footer_appendix: true
+      Strict:
+        description: Exact aspects only; no narrativity/orb widening. Sweep governs
+          what computes today.
+        narrativity:
+          enabled: false
+          orb_bonus_deg: 0.0
+          cluster_hours: 0
+          minor_weight: 1.0
+        modes:
+          Daily:
+            window_max_days: 3
+            style: exact_only
+            footer_appendix: true
+      Extreme:
+        description: Maximalist tone; for ≤3 days, force all flagged heavy layers.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.8
+          cluster_hours: 84
+          minor_weight: 0.7
+        modes:
+          Daily Narrative:
+            window_max_days: 3
+            style: stitched_daily_max
+            footer_appendix: true
+          Weekly Arc:
+            window_max_days: 10
+            style: weekly_arc_max
+            footer_appendix: true
+          Epic Narrative:
+            window_max_days: 60
+            style: mythic_month_max
+            footer_appendix: true
+    capabilities:
+    - name: Relational Engine
+      components:
+      - Composite
+      - Davison
+      - Group Composites
+      - Coalescent
+    - name: Special Layers
+      components:
+      - Draconic
+      - Harmonics
+      - Asteroids
+    domains: []
+  WaterModule:
+    title: World Archetypal Tradition Esoteric Resource
+    description: Divinatory/symbolic protocol (Tarot, Oracle, Runes, I Ching, Dreamwork,
+      Numerology) bridged with ephemeris timing.
+    tiers:
+      Super:
+        description: All-inclusive tier with narrativity ON and minor aspects included.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.6
+          cluster_hours: 72
+          minor_weight: 0.75
+        modes:
+          Daily Narrative:
+            window_max_days: 3
+            style: stitched_daily
+            footer_appendix: true
+          Weekly Arc:
+            window_max_days: 10
+            style: weekly_arc
+            footer_appendix: true
+          Epic Narrative:
+            window_max_days: 40
+            style: mythic_month
+            footer_appendix: true
+          Yearly / Life Review:
+            window_max_days: 400
+            style: yearly_review
+            include_progressions_exacts_by_default: true
+            footer_appendix: true
+          Strict:
+            window_max_days: 3
+            style: exact_only
+            narrativity_override:
+              enabled: false
+              orb_bonus_deg: 0.0
+            footer_appendix: true
+          Lite:
+            window_max_days: 3
+            style: minimal_list
+            footer_appendix: true
+      Light:
+        description: Minimal outputs; sweep still auto-includes same-day heavy layers.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.4
+          cluster_hours: 48
+          minor_weight: 0.85
+        modes:
+          Daily:
+            window_max_days: 3
+            style: minimal_list
+            footer_appendix: true
+      Strict:
+        description: Exact aspects only; no narrativity/orb widening. Sweep governs
+          what computes today.
+        narrativity:
+          enabled: false
+          orb_bonus_deg: 0.0
+          cluster_hours: 0
+          minor_weight: 1.0
+        modes:
+          Daily:
+            window_max_days: 3
+            style: exact_only
+            footer_appendix: true
+      Extreme:
+        description: Maximalist tone; for ≤3 days, force all flagged heavy layers.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.8
+          cluster_hours: 84
+          minor_weight: 0.7
+        modes:
+          Daily Narrative:
+            window_max_days: 3
+            style: stitched_daily_max
+            footer_appendix: true
+          Weekly Arc:
+            window_max_days: 10
+            style: weekly_arc_max
+            footer_appendix: true
+          Epic Narrative:
+            window_max_days: 60
+            style: mythic_month_max
+            footer_appendix: true
+    capabilities:
+    - name: Divination Module
+      components:
+      - Tarot
+      - Oracle
+      - Runes
+      - I Ching
+      - Dreamwork
+      - Numerology
+    domains: []
+  EarthModule:
+    title: Ephemeris Analysis Research Testing Hub
+    description: Pure data/statistics backend for astro datasets; no narrative, just
+      calculations, tests, exports.
+    tiers:
+      Super:
+        description: All-inclusive tier with narrativity ON and minor aspects included.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.6
+          cluster_hours: 72
+          minor_weight: 0.75
+        modes:
+          Daily Narrative:
+            window_max_days: 3
+            style: stitched_daily
+            footer_appendix: true
+          Weekly Arc:
+            window_max_days: 10
+            style: weekly_arc
+            footer_appendix: true
+          Epic Narrative:
+            window_max_days: 40
+            style: mythic_month
+            footer_appendix: true
+          Yearly / Life Review:
+            window_max_days: 400
+            style: yearly_review
+            include_progressions_exacts_by_default: true
+            footer_appendix: true
+          Strict:
+            window_max_days: 3
+            style: exact_only
+            narrativity_override:
+              enabled: false
+              orb_bonus_deg: 0.0
+            footer_appendix: true
+          Lite:
+            window_max_days: 3
+            style: minimal_list
+            footer_appendix: true
+      Light:
+        description: Minimal outputs; sweep still auto-includes same-day heavy layers.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.4
+          cluster_hours: 48
+          minor_weight: 0.85
+        modes:
+          Daily:
+            window_max_days: 3
+            style: minimal_list
+            footer_appendix: true
+      Strict:
+        description: Exact aspects only; no narrativity/orb widening. Sweep governs
+          what computes today.
+        narrativity:
+          enabled: false
+          orb_bonus_deg: 0.0
+          cluster_hours: 0
+          minor_weight: 1.0
+        modes:
+          Daily:
+            window_max_days: 3
+            style: exact_only
+            footer_appendix: true
+      Extreme:
+        description: Maximalist tone; for ≤3 days, force all flagged heavy layers.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.8
+          cluster_hours: 84
+          minor_weight: 0.7
+        modes:
+          Daily Narrative:
+            window_max_days: 3
+            style: stitched_daily_max
+            footer_appendix: true
+          Weekly Arc:
+            window_max_days: 10
+            style: weekly_arc_max
+            footer_appendix: true
+          Epic Narrative:
+            window_max_days: 60
+            style: mythic_month_max
+            footer_appendix: true
+    capabilities:
+    - name: Data Feeds
+      components:
+      - Ephemeris
+      - Aspects
+      - Midpoints
+      - Harmonics
+      - Calendar
+    - name: Statistical Engines
+      components:
+      - Circular Stats
+      - Permutation Tests
+      - Bootstrap CIs
+      - Event Studies
+      - Survival/Hazard
+      - FDR
+    domains: []
+  FireModule:
+    title: Fields Interpreter Ritual Extension
+    description: 'Ritual interface: interprets field conditions to advise timing &
+      correspondences for action.'
+    tiers:
+      Super:
+        description: All-inclusive tier with narrativity ON and minor aspects included.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.6
+          cluster_hours: 72
+          minor_weight: 0.75
+        modes:
+          Daily Narrative:
+            window_max_days: 3
+            style: stitched_daily
+            footer_appendix: true
+          Weekly Arc:
+            window_max_days: 10
+            style: weekly_arc
+            footer_appendix: true
+          Epic Narrative:
+            window_max_days: 40
+            style: mythic_month
+            footer_appendix: true
+          Yearly / Life Review:
+            window_max_days: 400
+            style: yearly_review
+            include_progressions_exacts_by_default: true
+            footer_appendix: true
+          Strict:
+            window_max_days: 3
+            style: exact_only
+            narrativity_override:
+              enabled: false
+              orb_bonus_deg: 0.0
+            footer_appendix: true
+          Lite:
+            window_max_days: 3
+            style: minimal_list
+            footer_appendix: true
+      Light:
+        description: Minimal outputs; sweep still auto-includes same-day heavy layers.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.4
+          cluster_hours: 48
+          minor_weight: 0.85
+        modes:
+          Daily:
+            window_max_days: 3
+            style: minimal_list
+            footer_appendix: true
+      Strict:
+        description: Exact aspects only; no narrativity/orb widening. Sweep governs
+          what computes today.
+        narrativity:
+          enabled: false
+          orb_bonus_deg: 0.0
+          cluster_hours: 0
+          minor_weight: 1.0
+        modes:
+          Daily:
+            window_max_days: 3
+            style: exact_only
+            footer_appendix: true
+      Extreme:
+        description: Maximalist tone; for ≤3 days, force all flagged heavy layers.
+        narrativity:
+          enabled: true
+          orb_bonus_deg: 0.8
+          cluster_hours: 84
+          minor_weight: 0.7
+        modes:
+          Daily Narrative:
+            window_max_days: 3
+            style: stitched_daily_max
+            footer_appendix: true
+          Weekly Arc:
+            window_max_days: 10
+            style: weekly_arc_max
+            footer_appendix: true
+          Epic Narrative:
+            window_max_days: 60
+            style: mythic_month_max
+            footer_appendix: true
+    capabilities:
+    - name: Ritual Interface
+      components:
+      - Real-time Astro Feed
+      - Electional-lite Timing
+      - Correspondences/Invocations
+      - Live Ritual Dashboard
+    domains: []
+defaults:
+  tier: Super
+  mode: Daily Narrative
+  header_format:
+  - 'Protocol: {system.short_name} ({system.long_name})'
+  - 'ElementalModule: {elemental_module} ({elemental_module_title})'
+  - 'Tier: {tier}'
+  - 'Mode: {mode}'
+  - 'Scope: {scope}'
+  - 'Window: {window}'
+  - 'Ephemeris data: Checked Yes'
+  footer_appendix: true
+  apply_sweep_to_all_profiles: true
+  elemental_module: AirModule
+  elemental_module_title: Astrology Informatics Relational
+changelog:
+- version: '1.1'
+  date: '20250902'
+  summary: 'Reorganized structure: protocols→elemental_modules; added definitions
+    & taxonomy; standardized keys (modes, capabilities, components, preflight, doctrine).'
+  breaking_changes: false
+- version: '1.0'
+  date: ''
+  summary: Initial VCA Protocol scaffold with AIR/WATER/EARTH/FIRE.
+  breaking_changes: false

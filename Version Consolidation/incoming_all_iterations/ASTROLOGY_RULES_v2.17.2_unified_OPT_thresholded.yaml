@@ -1,0 +1,807 @@
+meta:
+  version: 2.17.2-unified-OPT-THRESH
+  profile_default: AP-SUPER
+  tz: America/New_York
+  house_system: whole
+  nodes: true
+  sidereal: false
+  stars: precess
+  solar_fire_mode: 'on'
+  time_of_birth_tolerance: ±00:45
+  integrity:
+    require_base_yaml: true
+    allow_noncanonical_numbers: false
+  canonical_ref_map:
+    orbs_external: policies.orbs.external_ap_super
+    smoothing_external: policies.smoothing.external
+    flashpoints_std: policies.flashpoints.standard
+    weights_base: weights.base
+    mult_relationship: multipliers.relationship
+    mult_draconic: multipliers.draconic
+    mult_harmonics: multipliers.harmonics
+    mult_composite: multipliers.composite
+    mult_eclipse: multipliers.eclipse
+    mult_lunation: multipliers.lunation
+    thr_prob: policies.thresholds.ap_super.min_prob
+    thr_peak: policies.thresholds.ap_super.flashpoint_min
+    thr_val: policies.thresholds.ap_super.valence_allow
+profiles:
+  AP-SUPER:
+    compute_all_channels: true
+    include_only_above_threshold: true
+    channels_enabled:
+    - self
+    - external
+    - composite
+    - synastry
+    - draconic
+    - harmonics
+    - eclipse_lunation
+    - event_log
+    - composite_multi
+    - network_synastry
+    - declination_midpoints
+    channels_hidden: []
+    thresholds_policy_ref:
+      prob_min_ref: policies.thresholds.ap_super.min_prob
+      flashpoint_min_ref: policies.thresholds.ap_super.flashpoint_min
+      valence_filter_ref: policies.thresholds.ap_super.valence_allow
+    threshold_filter_applies_to: corridor_channels_only
+  AP-LITE:
+    compute_all_channels: false
+    include_only_above_threshold: true
+    channels_enabled:
+    - self
+    - external
+    - composite
+    - synastry
+    - eclipse_lunation
+    thresholds_policy_ref:
+      prob_min_ref: policies.thresholds.ap_super.min_prob
+      flashpoint_min_ref: policies.thresholds.ap_super.flashpoint_min
+      valence_filter_ref: policies.thresholds.ap_super.valence_allow
+policies:
+  orbs: {}
+  smoothing:
+    external:
+      kernel: gaussian
+      bandwidth_days: 1.8
+    relationship:
+      kernel: gaussian
+      bandwidth_days: 1.5
+    draconic:
+      kernel: gaussian
+      bandwidth_days: 1.0
+    harmonics:
+      kernel: gaussian
+      bandwidth_days: 0.8
+    multi_scale:
+      scales:
+      - id: daily
+        bandwidth_days: 0.8
+        weight: 0.5
+      - id: weekly
+        bandwidth_days: 3.0
+        weight: 0.35
+      - id: monthly
+        bandwidth_days: 9.0
+        weight: 0.15
+      fusion_method: weighted_sum
+  flashpoints:
+    standard:
+      min_sep_hours: 18
+      prominence: auto
+  thresholds:
+    ap_super:
+      min_prob: 0.25
+      flashpoint_min: 0.35
+      valence_allow:
+      - supportive
+      - mixed
+      - challenging
+  windows:
+    eclipses:
+      window_days: 7
+      kinds:
+        Total Solar:
+          window_days: 8
+        Annular Solar:
+          window_days: 7
+        Partial Solar:
+          window_days: 6
+        Total Lunar:
+          window_days: 6
+        Partial Lunar:
+          window_days: 5
+        Penumbral Lunar:
+          window_days: 4
+    lunations:
+      window_days: 2
+      modifiers:
+        Perigee:
+          window_days_add: 1
+        Apogee:
+          window_days_add: 0
+    stations:
+      pre_days: 2
+      post_days: 2
+    ingresses:
+      pre_days: 1
+      post_days: 1
+    retrogrades:
+      pre_days: 2
+      post_days: 2
+  corridor_width:
+    adaptive:
+      speed_bands:
+      - name: very_slow
+        max_deg_per_day: 0.2
+        width_scale: 1.4
+      - name: slow
+        max_deg_per_day: 0.8
+        width_scale: 1.2
+      - name: medium
+        max_deg_per_day: 1.5
+        width_scale: 1.0
+      - name: fast
+        max_deg_per_day: 13.0
+        width_scale: 0.8
+      default_width_scale: 1.0
+      apply_to:
+      - external
+      - self
+      - composite
+      - synastry
+  ranking:
+    aspect_bias:
+      hard_weight: 1.0
+      soft_weight: 0.7
+      apply_to_channels:
+      - synastry
+      - composite
+      - self
+      - external
+  fusion:
+    weights:
+      self: 1.0
+      external: 1.0
+      composite: 0.9
+      synastry: 0.85
+      draconic: 0.6
+      harmonics: 0.5
+      eclipse_lunation: 0.7
+    normalize: true
+    output_curve_name: fusion_probability
+  valence_map:
+    supportive:
+    - trine
+    - sextile
+    challenging:
+    - square
+    - opposition
+    mixed:
+    - conjunction
+schemas:
+  synastry:
+    required_columns:
+    - primary
+    - secondary
+    - aspect
+    - orb_deg
+    - date
+  draconic:
+    required_columns:
+    - system
+    - primary
+    - secondary
+    - aspect
+    - orb_deg
+    - date
+  harmonics:
+    required_columns:
+    - harmonic
+    - primary
+    - secondary
+    - aspect
+    - orb_deg
+    - date
+  combined_chart:
+    required_columns:
+    - point1
+    - point2
+    - aspect
+    - orb_deg
+    - date
+  ephemeris_monthly:
+    required_columns:
+    - date
+    - event
+    - sign
+    - deg
+  ephemeris_hourly:
+    required_columns:
+    - datetime
+    - planet
+    - sign
+    - deg
+    - speed
+  declinations:
+    required_columns:
+    - datetime
+    - planet
+    - declination
+    - type
+  midpoints:
+    required_columns:
+    - date
+    - point_a
+    - point_b
+    - midpoint_longitude
+  event_log:
+    required_columns:
+    - date
+    - label
+    - valence
+    - intensity
+    - notes
+pipeline:
+  corridor_core:
+    description: Unified pipeline with adaptive widths and multi-scale smoothing
+    steps:
+    - id: aspect_ingest
+      expects:
+      - csv_inputs
+      - aspect_schema
+    - id: rules_apply
+      expects:
+      - orb_policy
+      - weights
+      - multipliers
+      - valence_map
+    - id: adaptive_widths
+      expects:
+      - policies.corridor_width.adaptive
+      - ephemeris_speed
+    - id: smooth_time_multi
+      expects:
+      - policies.smoothing.multi_scale
+    - id: flashpoints
+      expects:
+      - peak_policy
+    - id: filter_threshold
+      expects:
+      - profiles.AP-SUPER.thresholds_policy_ref
+    - id: label_channel
+      expects:
+      - channel_tag
+  inheritance:
+    orb_policy_ref: policies.orbs.external_ap_super
+    smoothing_policy_ref: policies.smoothing.external
+    peak_policy_ref: policies.flashpoints.standard
+    weights_ref: weights.base
+    multipliers_ref:
+      relationship: multipliers.relationship
+      draconic: multipliers.draconic
+      harmonics: multipliers.harmonics
+      composite: multipliers.composite
+      eclipse: multipliers.eclipse
+      lunation: multipliers.lunation
+filters:
+  filter_threshold:
+    description: Drop rows/peaks below thresholds while keeping full compute
+    use_profile_thresholds: true
+    behaviour:
+      drop_below_prob: true
+      drop_below_flashpoint: true
+      apply_valence_whitelist: true
+channels:
+  self:
+    enabled: true
+    module: personal
+  external:
+    enabled: true
+    module: personal
+  composite:
+    enabled: true
+    inputs:
+    - file: Chris_Remy_Combined_Charts_Structured.csv
+      schema_ref: schemas.combined_chart
+    corridor:
+      inherit:
+        orb_policy: '*pipeline.inheritance.orb_policy_ref'
+        smoothing_policy: policies.smoothing.relationship
+        peak_policy: '*pipeline.inheritance.peak_policy_ref'
+        weights: '*pipeline.inheritance.weights_ref'
+      multipliers_ref: '*pipeline.inheritance.multipliers_ref.composite'
+      labels:
+        channel_tag: Composite corridor
+        energy_tagging: internal+relationship
+      ranking_policy_ref: policies.ranking.aspect_bias
+    module: relationship
+  composite_multi:
+    enabled: true
+    description: 3+ person composite corridors
+    participants_ref: ASTROLOGY_INDIVIDUALS_v*.csv
+    strategy: all_triplets
+    corridor:
+      inherit:
+        orb_policy: '*pipeline.inheritance.orb_policy_ref'
+        smoothing_policy: policies.smoothing.relationship
+        peak_policy: '*pipeline.inheritance.peak_policy_ref'
+        weights: '*pipeline.inheritance.weights_ref'
+      labels:
+        channel_tag: Composite (multi) corridor
+        energy_tagging: group/relationship
+    module: relationship
+  synastry:
+    enabled: true
+    inputs:
+    - file: Chris_Remy_Synastry_Aspects.csv
+      schema_ref: schemas.synastry
+    corridor:
+      inherit:
+        orb_policy: '*pipeline.inheritance.orb_policy_ref'
+        smoothing_policy: policies.smoothing.relationship
+        peak_policy: '*pipeline.inheritance.peak_policy_ref'
+        weights: '*pipeline.inheritance.weights_ref'
+      multipliers_ref: '*pipeline.inheritance.multipliers_ref.relationship'
+      labels:
+        channel_tag: Synastry corridor
+        energy_tagging: relationship
+      ranking_policy_ref: policies.ranking.aspect_bias
+    module: relationship
+  network_synastry:
+    enabled: true
+    description: Matrix of synastry corridors across all individuals in roster
+    roster_ref: ASTROLOGY_INDIVIDUALS_v*.csv
+    pairing: all_pairs
+    output:
+      top_n_flashpoints_per_pair: 5
+    module: relationship
+    corridor:
+      inherit:
+        orb_policy: '*pipeline.inheritance.orb_policy_ref'
+        peak_policy: '*pipeline.inheritance.peak_policy_ref'
+        weights: '*pipeline.inheritance.weights_ref'
+        smoothing_policy: policies.smoothing.relationship
+      labels:
+        channel_tag: network_synastry corridor
+        energy_tagging: relationship
+  draconic:
+    enabled: true
+    inputs:
+    - file: Chris_Remy_Draconic_Natal_Structured.csv
+      schema_ref: schemas.draconic
+    corridor:
+      inherit:
+        orb_policy: '*pipeline.inheritance.orb_policy_ref'
+        smoothing_policy: policies.smoothing.draconic
+        peak_policy: '*pipeline.inheritance.peak_policy_ref'
+        weights: '*pipeline.inheritance.weights_ref'
+      multipliers_ref: '*pipeline.inheritance.multipliers_ref.draconic'
+      overrides:
+        use_tighter_orbs: true
+      labels:
+        channel_tag: Draconic corridor
+        energy_tagging: karmic/underlying
+    module: auxiliary
+  harmonics:
+    enabled: true
+    inputs:
+    - file: Chris_Remy_Harmonics_1-12_with_numbers.csv
+      schema_ref: schemas.harmonics
+    subchannels:
+      H1:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H1)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+      H2:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H2)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+      H3:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H3)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+      H4:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H4)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+      H5:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H5)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+      H6:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H6)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+      H7:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H7)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+      H8:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H8)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+      H9:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H9)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+      H10:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H10)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+      H11:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H11)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+      H12:
+        corridor:
+          inherit:
+            orb_policy: '*pipeline.inheritance.orb_policy_ref'
+            peak_policy: '*pipeline.inheritance.peak_policy_ref'
+            smoothing_policy: policies.smoothing.harmonics
+            weights: '*pipeline.inheritance.weights_ref'
+          labels:
+            channel_tag: Harmonic corridor (H12)
+            energy_tagging: resonance
+          multipliers_ref: '*pipeline.inheritance.multipliers_ref.harmonics'
+    module: auxiliary
+  declination_midpoints:
+    enabled: true
+    inputs:
+    - file: Declinations.csv
+      schema_ref: schemas.declinations
+      optional: true
+    - file: Midpoints.csv
+      schema_ref: schemas.midpoints
+      optional: true
+    corridor:
+      inherit:
+        orb_policy: '*pipeline.inheritance.orb_policy_ref'
+        smoothing_policy: '*pipeline.inheritance.smoothing_policy_ref'
+        peak_policy: '*pipeline.inheritance.peak_policy_ref'
+        weights: '*pipeline.inheritance.weights_ref'
+      labels:
+        channel_tag: Declination/Midpoint corridor
+        energy_tagging: auxiliary
+    module: auxiliary
+  eclipse_lunation:
+    enabled: true
+    inputs:
+    - file: Ephemeris 1900-2050 0.25 month steps.csv
+      schema_ref: schemas.ephemeris_monthly
+      optional: true
+    - file: ephem_hourly_2025.csv
+      schema_ref: schemas.ephemeris_hourly
+      optional: true
+    triggers:
+      retrogrades: true
+      stations: true
+      ingresses: true
+      enabled_via_features: true
+    corridor:
+      inherit:
+        smoothing_policy: '*pipeline.inheritance.smoothing_policy_ref'
+        peak_policy: '*pipeline.inheritance.peak_policy_ref'
+        weights: '*pipeline.inheritance.weights_ref'
+      orbs:
+        eclipse_window_days_ref: policies.windows.eclipses
+        lunation_window_days_ref: policies.windows.lunations
+        station_window_ref: policies.windows.stations
+        ingress_window_ref: policies.windows.ingresses
+        retrograde_window_ref: policies.windows.retrogrades
+      multipliers_ref: '*pipeline.inheritance.multipliers_ref.eclipse'
+      labels:
+        channel_tag: Eclipse/Lunation corridor
+        energy_tagging: external/tidal
+    module: cosmic_triggers
+  event_log:
+    enabled: true
+    inputs:
+    - file: Structured_Event_Log_v1.5.0_clean.csv
+      schema_ref: schemas.event_log
+    mode: validation
+    metrics:
+    - precision
+    - recall
+    - lead_lag_distribution
+    - hit_rate_by_channel
+    module: validation
+outputs:
+  corridor_csv:
+    enabled: true
+    filter:
+      apply_threshold_filter: true
+    fields:
+    - date
+    - channel
+    - aspect
+    - pair
+    - orb_deg
+    - raw_score
+    - smoothed_prob
+    - valence_label
+    - energy_type
+    - notes
+  flashpoints_csv:
+    enabled: true
+    filter:
+      apply_threshold_filter: true
+    fields:
+    - date
+    - channel
+    - peak_prob
+    - top_aspects
+    - Δ°
+    - internal_weight
+    - external_weight
+    - energy_type
+    - precision_label
+  charts:
+    unified_probability_corridor:
+      enabled: true
+      filter:
+        apply_threshold_filter: true
+      channel_order:
+      - self
+      - external
+      - composite
+      - synastry
+      - draconic
+      - harmonics.H1
+      - harmonics.H2
+      - harmonics.H3
+      - harmonics.H4
+      - harmonics.H5
+      - harmonics.H6
+      - harmonics.H7
+      - harmonics.H8
+      - harmonics.H9
+      - harmonics.H10
+      - harmonics.H11
+      - harmonics.H12
+      - eclipse_lunation
+      - declination_midpoints
+      smoothing_overlay: true
+      flashpoint_markers: true
+      legend:
+        group_harmonics: true
+        group_label: Harmonics (H1–H12)
+    heatmap_calendar:
+      enabled: true
+      resolution: monthly
+    flashpoint_clusters:
+      enabled: true
+      method: density_contours
+    overlay_view:
+      enabled: true
+      show_event_log_hits: true
+  fusion_curve_csv:
+    enabled: true
+    curve_name_ref: policies.fusion.output_curve_name
+    fields:
+    - date
+    - fusion_probability
+  validation_json:
+    enabled: true
+    path: validation_summary.json
+    fields:
+    - precision
+    - recall
+    - hit_rate
+    - lead_lag_distribution
+    - by_channel_stats
+  summary_json:
+    enabled: true
+    fields:
+    - thresholds_used
+    - rows_kept
+    - rows_filtered
+    - flashpoints_total
+    - flashpoints_kept
+    - notifications
+    - channel_counts
+    - rows_total
+    path: run_summary.json
+  run_manifest:
+    enabled: true
+    path: run_manifest.json
+    fields:
+    - version
+    - profile
+    - channels_enabled
+    - time_range
+    - thresholds
+    - input_files
+    - hashes
+    - start_time
+    - end_time
+validation:
+  severity: warn
+  proceed_on_missing_files: true
+  notify_on_missing_files: true
+  require_paths:
+  - policies.orbs
+  - policies.smoothing
+  - policies.flashpoints
+  - policies.thresholds
+  - weights
+  - multipliers
+  require_files_present:
+  - Chris_Remy_Synastry_Aspects.csv
+  - Chris_Remy_Draconic_Natal_Structured.csv
+  - Chris_Remy_Harmonics_1-12_with_numbers.csv
+  - Chris_Remy_Combined_Charts_Structured.csv
+  - Ephemeris 1900-2050 0.25 month steps.csv
+  - ephem_hourly_2025.csv
+  - Structured_Event_Log_v1.5.0_clean.csv
+  file_checks:
+    Ephemeris 1900-2050 0.25 month steps.csv:
+      min_rows: 1
+      headers_must_include:
+      - date
+      - event
+      - sign
+      - deg
+    ephem_hourly_2025.csv:
+      min_rows: 1
+      headers_must_include:
+      - datetime
+      - planet
+      - sign
+      - deg
+      - speed
+engine_hints:
+  cache:
+    enable: true
+    ephemeris_cache: true
+    smoothing_kernel_cache: true
+    cache_scope: session
+  missing_input_policy:
+    default: warn_and_continue
+  pipeline_fallbacks:
+    smooth_time_multi: smooth_time
+    adaptive_widths: skip
+notifications:
+  enabled: true
+  channels:
+  - console
+  - summary_json
+  on_events:
+    missing_file:
+      level: warning
+      message_template: 'Required file not found: {filename}. Proceeding; some channels
+        may be incomplete.'
+    schema_mismatch:
+      level: warning
+      message_template: 'Schema mismatch in {filename}: missing {missing}. Proceeding;
+        some rows skipped.'
+tests:
+  smoke:
+  - name: load_yaml
+    expect: ok
+  - name: channels_present
+    expect:
+    - self
+    - external
+    - composite
+    - synastry
+    - draconic
+    - harmonics
+    - eclipse_lunation
+  unit:
+  - name: adaptive_widths_applies
+    channel: external
+    expect: width_scale_applied
+  - name: fusion_curve_emits
+    expect: fusion_probability_present
+plugins:
+  registry: []
+  notes: 'Future area: register new chart types or data sources here.'
+features:
+  temporal_intelligence:
+    adaptive_widths: true
+    retrogrades: true
+    stations: true
+    ingresses: true
+    multi_scale_smoothing: true
+  data_fusion:
+    enabled: true
+    output_curve_name_ref: policies.fusion.output_curve_name
+  validation_mode:
+    event_log_channel: true
+modules:
+  personal:
+  - self
+  - external
+  relationship:
+  - synastry
+  - composite
+  - composite_multi
+  - network_synastry
+  auxiliary:
+  - draconic
+  - harmonics
+  - declination_midpoints
+  cosmic_triggers:
+  - eclipse_lunation
+  validation:
+  - event_log

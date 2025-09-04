@@ -1,0 +1,17 @@
+
+# Loader: ASTROLOGY unified (v2.13.0 FINAL)
+[APCFG rules=YAML v2.13.0] house=whole node=true tz=America/New_York reloc=no sidereal=no stars=precess sf=on tob=est±0:45
+
+include:
+  - ASTROLOGY_RULES_v2.12.0.yaml
+  - ASTROLOGY_RULES_scoring_patch_v2.12.1.yaml
+  - ASTROLOGY_RULES_patch_v2.12.2.yaml
+  - ASTROLOGY_RULES_patch_v2.12.3.yaml
+  - ASTROLOGY_RULES_patch_v2.12.4.yaml
+  - ASTROLOGY_RULES_patch_v2.12.5.yaml
+  - ASTROLOGY_RULES_patch_v2.12.6.yaml
+  - ASTROLOGY_RULES_patch_v2.12.7.yaml
+  - ASTROLOGY_RULES_patch_v2.12.8.yaml
+  - ASTROLOGY_RULES_patch_v2.12.9.yaml
+  - ASTROLOGY_RULES_patch_v2.12.10.yaml
+  - ASTROLOGY_RULES_patch_v2.13.0.yaml

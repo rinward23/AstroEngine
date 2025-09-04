@@ -1,0 +1,95 @@
+meta:
+  name: ASTROLOGY_RULES_v2.13.1_single
+  version: 2.13.1
+  profile_default: AP-SUPER
+  notes:
+  - Self-contained rules for corridor scoring; no includes required.
+  - 'Aspect set: 0, 60, 90, 120, 180'
+  - Transit→Natal only (personal mode).
+timing:
+  bin_minutes: 60
+  smoothing_bins: 3
+aspects:
+- name: conjunction
+  angle: 0
+  weight: 1.0
+  orb_mult: 1.0
+- name: sextile
+  angle: 60
+  weight: 0.6
+  orb_mult: 0.8
+- name: square
+  angle: 90
+  weight: 0.95
+  orb_mult: 0.9
+- name: trine
+  angle: 120
+  weight: 0.8
+  orb_mult: 0.85
+- name: opposition
+  angle: 180
+  weight: 1.0
+  orb_mult: 1.0
+orbs_deg_by_transit:
+  Moon: 6.0
+  Sun: 5.0
+  Mercury: 4.0
+  Venus: 4.0
+  Mars: 3.5
+  Jupiter: 3.0
+  Saturn: 3.0
+  Uranus: 2.5
+  Neptune: 2.5
+  Pluto: 2.0
+weights_by_transit:
+  Moon: 0.4
+  Sun: 0.6
+  Mercury: 0.5
+  Venus: 0.55
+  Mars: 0.85
+  Jupiter: 0.75
+  Saturn: 1.0
+  Uranus: 1.05
+  Neptune: 0.85
+  Pluto: 1.1
+energy_type_by_transit:
+  Moon: sharp/flashpoint
+  Sun: sharp/flashpoint
+  Mercury: sharp/flashpoint
+  Venus: broad/background
+  Mars: sharp/flashpoint
+  Jupiter: broad/background
+  Saturn: broad/background
+  Uranus: broad/background
+  Neptune: broad/background
+  Pluto: broad/background
+event_precision_by_transit:
+  Moon: day-specific
+  Sun: day-specific
+  Mercury: day-specific
+  Venus: day-specific
+  Mars: day-specific
+  Jupiter: windowed only
+  Saturn: windowed only
+  Uranus: windowed only
+  Neptune: windowed only
+  Pluto: windowed only
+probability_thresholds:
+  low_max: 0.35
+  med_max: 0.65
+external_internal_by_aspect:
+  conjunction:
+  - 0.55
+  - 0.45
+  sextile:
+  - 0.4
+  - 0.6
+  square:
+  - 0.65
+  - 0.35
+  trine:
+  - 0.45
+  - 0.55
+  opposition:
+  - 0.7
+  - 0.3

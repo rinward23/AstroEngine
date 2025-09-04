@@ -1,0 +1,484 @@
+manifest_version: '1.1'
+generated_at: '2025-08-31 05:43:56'
+timezone_default: America/New_York
+notes:
+- This manifest indexes all known CSV/YAML assets for the Astrology - Final project.
+- Use `enabled` and `priority` to guide selective loading per AP profile.
+- Use `channels` and `modules` tags to route files to the correct interpretive layers.
+- 'v1.1: Added integrity hashes/row counts, ephemeris section indexes, and profile-specific
+  priority overrides.'
+loader_defaults:
+  engine: pandas
+  encoding: utf-8
+  errors: strict
+  low_memory: true
+  dtype_inference: safe
+  date_parse: true
+  cache_strategy: session
+  chunk_size_rows: 200000
+profiles:
+  AP-SUPER:
+    selective_load: all-indexed
+    priority_bias:
+    - natal
+    - synastry
+    - composite
+    - progressions
+    - ephemeris_hourly
+    - event_log
+    lazy_ephemeris: false
+  AP-LIGHT:
+    selective_load: minimal
+    priority_bias:
+    - natal
+    - composite
+    - ephemeris_quarter
+    lazy_ephemeris: true
+  AP-COMPOSITE:
+    selective_load: focused
+    priority_bias:
+    - composite
+    - synastry
+    - event_log
+    lazy_ephemeris: true
+  AP-EXTERNAL:
+    selective_load: focused
+    priority_bias:
+    - progressions
+    - ephemeris_hourly
+    - event_log
+    lazy_ephemeris: false
+  AP-MUNDANE:
+    selective_load: focused
+    priority_bias:
+    - mundane
+    - ephemeris_quarter
+    lazy_ephemeris: true
+  AP-STRICT:
+    selective_load: strict
+    priority_bias:
+    - natal
+    - composite
+    - ephemeris_hourly
+    lazy_ephemeris: true
+datasets:
+- id: individuals_template
+  path: /mnt/data/ASTROLOGY_INDIVIDUALS_template_v1.5.0.csv
+  enabled: true
+  type: meta
+  scope: all
+  chart_type: natal
+  priority: 90
+  tags:
+  - schema
+  - reference
+  - template
+  schema_expectations:
+  - person_id
+  - name
+  - birth_date
+  - birth_time
+  - birth_place
+  - tz
+  - house_system
+  index:
+  - person_id
+  integrity:
+    status: missing_or_unavailable
+- id: individuals_clean
+  path: /mnt/data/ASTROLOGY_INDIVIDUALS_v1.5.0_clean.csv
+  enabled: true
+  type: meta
+  scope: all
+  chart_type: natal
+  priority: 95
+  tags:
+  - schema
+  - reference
+  - roster
+  schema_expectations:
+  - person_id
+  - name
+  - birth_date
+  - birth_time
+  - birth_place
+  - tz
+  - house_system
+  index:
+  - person_id
+  integrity:
+    status: missing_or_unavailable
+- id: event_log_template
+  path: /mnt/data/ASTROLOGY_EVENT_LOG_template_v1.5.0.csv
+  enabled: true
+  type: events
+  scope: all
+  chart_type: n/a
+  priority: 60
+  tags:
+  - template
+  - events
+  schema_expectations:
+  - event_id
+  - event_date
+  - event_time
+  - title
+  - description
+  - channel_hint
+  - valence_hint
+  index:
+  - event_id
+  datetime_cols:
+  - event_date
+  - event_time
+  integrity:
+    status: missing_or_unavailable
+- id: event_log_structured
+  path: /mnt/data/Structured_Event_Log_v1.5.0_clean.csv
+  enabled: true
+  type: events
+  scope: all
+  chart_type: n/a
+  priority: 98
+  tags:
+  - events
+  - structured
+  - analysis_ready
+  schema_expectations:
+  - event_id
+  - event_datetime
+  - person_id
+  - affects
+  - channel
+  - valence
+  - notes
+  index:
+  - event_id
+  datetime_cols:
+  - event_datetime
+  integrity:
+    status: missing_or_unavailable
+- id: ruleset_yaml
+  path: /mnt/data/ASTROLOGY_RULES_v3.9.4_FULL_unified.yaml
+  enabled: true
+  type: ruleset
+  scope: all
+  priority: 100
+  tags:
+  - ruleset
+  - weights
+  - orbs
+  - channels
+  - jungian_overlay
+  schema_expectations:
+  - channels
+  - submodules
+  - weights
+  - gating
+  - jungian_layer
+  integrity:
+    status: missing_or_unavailable
+- id: ephemeris_hourly_2025
+  path: /mnt/data/2025 Ephemeris - 1HR.xls.csv
+  enabled: true
+  type: ephemeris_hourly
+  scope: year_2025
+  chart_type: transits
+  priority: 99
+  tags:
+  - ephemeris
+  - hourly
+  - high_resolution
+  schema_expectations:
+  - datetime
+  - sun
+  - moon
+  - mercury
+  - venus
+  - mars
+  - jupiter
+  - saturn
+  - uranus
+  - neptune
+  - pluto
+  - chiron
+  - nodes
+  datetime_cols:
+  - datetime
+  time_coverage:
+    start: '2025-01-01 00:00:00'
+    end: '2025-12-31 23:00:00'
+  loader_hints:
+    parse_dates:
+    - datetime
+    infer_datetime_format: true
+  integrity:
+    status: missing_or_unavailable
+- id: ephemeris_quarter_1900_2050
+  path: /mnt/data/Ephemeris 1900-2050 0.25 month steps.csv
+  enabled: true
+  type: ephemeris_quarter
+  scope: 1900-2050
+  chart_type: transits
+  priority: 70
+  tags:
+  - ephemeris
+  - broad
+  - quarter_month_steps
+  schema_expectations:
+  - date
+  - sun
+  - moon
+  - mercury
+  - venus
+  - mars
+  - jupiter
+  - saturn
+  - uranus
+  - neptune
+  - pluto
+  - chiron
+  - nodes
+  datetime_cols:
+  - date
+  time_coverage:
+    start: '1900-01-01'
+    end: '2050-12-31'
+  loader_hints:
+    parse_dates:
+    - date
+    infer_datetime_format: true
+  integrity:
+    status: missing_or_unavailable
+- id: chris_all_modules
+  path: /mnt/data/Chris_ALL_MODULES_MERGED.csv
+  enabled: true
+  type: natal_modules
+  scope: self
+  person: Chris
+  chart_type: natal
+  priority: 96
+  tags:
+  - natal
+  - modules
+  - merged
+  schema_expectations:
+  - person_id
+  - module
+  - submodule
+  - channel
+  - aspect
+  - orb_deg
+  - exact_datetime
+  - valence
+  - notes
+  index:
+  - person_id
+  - module
+  - aspect
+  datetime_cols:
+  - exact_datetime
+  integrity:
+    status: missing_or_unavailable
+- id: remy_all_modules
+  path: /mnt/data/Remy_ALL_MODULES_MERGED.csv
+  enabled: true
+  type: natal_modules
+  scope: other
+  person: Remy
+  chart_type: natal
+  priority: 96
+  tags:
+  - natal
+  - modules
+  - merged
+  schema_expectations:
+  - person_id
+  - module
+  - submodule
+  - channel
+  - aspect
+  - orb_deg
+  - exact_datetime
+  - valence
+  - notes
+  index:
+  - person_id
+  - module
+  - aspect
+  datetime_cols:
+  - exact_datetime
+  integrity:
+    status: missing_or_unavailable
+- id: chris_remy_composite_all
+  path: /mnt/data/Chris_&_Remy_-_Composite_ALL_MERGED.csv
+  enabled: true
+  type: composite_modules
+  scope: pair
+  persons:
+  - Chris
+  - Remy
+  chart_type: composite
+  priority: 97
+  tags:
+  - composite
+  - midpoint
+  - davison
+  - coalescent
+  - drv_asc
+  - group
+  schema_expectations:
+  - pair_id
+  - composite_type
+  - module
+  - submodule
+  - channel
+  - aspect
+  - orb_deg
+  - exact_datetime
+  - valence
+  - notes
+  index:
+  - pair_id
+  - composite_type
+  - module
+  - aspect
+  datetime_cols:
+  - exact_datetime
+  integrity:
+    status: missing_or_unavailable
+- id: chris_remy_harmonics
+  path: /mnt/data/Chris_Remy_Harmonics_1-12_with_numbers.csv
+  enabled: true
+  type: harmonics
+  scope: pair
+  persons:
+  - Chris
+  - Remy
+  chart_type: harmonic
+  priority: 85
+  tags:
+  - harmonics
+  - H1-H12
+  - pair
+  schema_expectations:
+  - pair_id
+  - harmonic_number
+  - module
+  - channel
+  - aspect
+  - orb_deg
+  - exact_datetime
+  - valence
+  - notes
+  index:
+  - pair_id
+  - harmonic_number
+  - aspect
+  datetime_cols:
+  - exact_datetime
+  integrity:
+    status: missing_or_unavailable
+- id: chris_remy_draconic
+  path: /mnt/data/Chris_Remy_Draconic_Natal_Structured.csv
+  enabled: true
+  type: draconic
+  scope: pair
+  persons:
+  - Chris
+  - Remy
+  chart_type: draconic
+  priority: 85
+  tags:
+  - draconic
+  - nodes
+  - pair
+  schema_expectations:
+  - pair_id
+  - module
+  - submodule
+  - channel
+  - aspect
+  - orb_deg
+  - exact_datetime
+  - valence
+  - notes
+  index:
+  - pair_id
+  - module
+  - aspect
+  datetime_cols:
+  - exact_datetime
+  integrity:
+    status: missing_or_unavailable
+routing:
+  channels_map:
+    natal:
+    - chris_all_modules
+    - remy_all_modules
+    synastry: []
+    composite:
+    - chris_remy_composite_all
+    harmonics:
+    - chris_remy_harmonics
+    draconic:
+    - chris_remy_draconic
+    ephemeris:
+    - ephemeris_hourly_2025
+    - ephemeris_quarter_1900_2050
+    events:
+    - event_log_structured
+    ruleset:
+    - ruleset_yaml
+  jungian_overlay_targets:
+  - natal
+  - composite
+  - harmonics
+  - draconic
+  - events
+profile_overrides:
+  AP-SUPER:
+    ephemeris_hourly_2025:
+      priority: 100
+      enabled: true
+    event_log_structured:
+      priority: 99
+      enabled: true
+  AP-LIGHT:
+    ephemeris_quarter_1900_2050:
+      priority: 100
+      enabled: true
+    ephemeris_hourly_2025:
+      priority: 60
+      enabled: true
+  AP-EXTERNAL:
+    ephemeris_hourly_2025:
+      priority: 100
+      enabled: true
+    event_log_structured:
+      priority: 99
+      enabled: true
+    ruleset_yaml:
+      priority: 98
+      enabled: true
+  AP-COMPOSITE:
+    chris_remy_composite_all:
+      priority: 100
+      enabled: true
+    ephemeris_quarter_1900_2050:
+      priority: 80
+      enabled: true
+  AP-STRICT:
+    ruleset_yaml:
+      priority: 100
+      enabled: true
+    ephemeris_hourly_2025:
+      priority: 95
+      enabled: true
+    event_log_structured:
+      priority: 90
+      enabled: true
+  AP-MUNDANE:
+    ephemeris_quarter_1900_2050:
+      priority: 100
+      enabled: true

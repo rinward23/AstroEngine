@@ -1,0 +1,249 @@
+# AP Super v3.12.3 + Text Interface v1.1
+# Generated: 2025-09-02 20:32:49Z
+# Includes: performance optimizations, adaptive orbs, conflict policy, continuity v2, expanded grace notes,
+#           density-aware detail, caching/parallelization knobs, export & validation hooks.
+
+meta:
+  bundle: "2025-09-02"
+  components:
+    ap_super: "3.12.3"
+    text_interface: "1.1"
+  timezone_default: "America/New_York"
+
+profiles:
+  - id: "AP_SUPER"
+    version: "3.12.3"
+    processing_order:
+      - validation:
+          schema: "VCA_Protocol_v2.2.1.yaml"  # ensure YAML sanity before run
+          fail_fast: true
+      - ingestion:
+          tag_each_aspect:
+            - valence: "positive|negative|mixed"
+            - archetypal: "Shadow|Anima_Animus|Persona|Self|Collective"
+          prefilter:
+            enable: true
+            strategy: "time+max_orb bounds prune"
+            expected_skip_ratio: "0.6..0.8"
+      - positions:
+          ephemeris_source: "MASTER_Ephemeris_0000-3000_merged.sqlite"
+          memoize_positions: true
+          grid_minutes: 1
+          cache:
+            parquet_snapshots: true
+            path: "cache/positions/"
+      - solar_arc:
+          fast_path: true
+          reuse_delta_per_chart: true
+      - subchannels: ["Mind","Body","Spirit"]
+      - clustering:
+          window:
+            snapshot: {"min":"15m","max":"45m"}
+            range:    {"min":"1h","max":"3h"}
+            extended: {"min":"1d","max":"3d"}
+          weighting:
+            planet_priority:
+              Sun: 0.9
+              Moon: 1.0
+              Mercury: 0.4
+              Venus: 0.5
+              Mars: 0.6
+              Jupiter: 0.45
+              Saturn: 1.1
+              Uranus: 0.7
+              Neptune: 0.6
+              Pluto: 1.2
+              Node: 1.0
+              Chiron: 0.8
+              Vertex: 0.95
+            valence_multiplier:
+              positive: 0.9
+              mixed: 1.0
+              negative: 1.05
+            aspect_tightness_bonus:
+              exact: 1.2
+              tight: 1.1
+              loose: 1.0
+            adaptive_orbs:
+              luminaries:
+                conjunction: 8
+                opposition: 8
+                square: 6
+                trine: 6
+                sextile: 4
+              personals:   # Me, Ve, Ma
+                conjunction: 6
+                opposition: 6
+                square: 4
+                trine: 4
+                sextile: 3
+              outers:      # Ju, Sa, Ur, Ne, Pl
+                conjunction: 5
+                opposition: 5
+                square: 3.5
+                trine: 3.5
+                sextile: 2.5
+              points:      # Node, Vertex, Chiron
+                conjunction: 3
+                opposition: 3
+                square: 2.5
+                trine: 2.5
+                sextile: 2
+      - tone_assignment:
+          main_tone: "highest composite weight (planet priority × valence × tightness)"
+          undertones: "secondary in-window aspects"
+          grace_notes: "Jupiter/Venus/Neptune/Chiron positives always included"
+          background: "isolated weak harmonics"
+          conflict_resolution:
+            tie_breakers: ["tighter_orb","heavier_planet","cross_entity_convergence","earlier_exact"]
+      - continuity_v2:
+          method: "dW_dt"           # derivative of cluster weight
+          thresholds:
+            build: "> +0.15"
+            crest: "local_max"
+            fade: "< -0.15"
+          annotate: true
+      - main_channel_synthesis:
+          role: "narrator"
+          no_flattening: true
+          cross_entity_weave:
+            require_interlock_on_overlap: true
+            describe: "show how self/other angles interlock with Composite"
+      - exports:
+          enabled: true
+          formats: ["csv","md","html"]
+          out_dir: "exports/"
+      - determinism:
+          tie_break_seed: 1729
+
+engine:
+  parallelism:
+    enable: true
+    workers: "auto"     # defaults to cpu_count-1
+    partition_by: ["Mind","Body","Spirit"]
+  numeric:
+    vectorize: true
+    numba_jit: "optional"
+    chebyshev_interpolation:
+      enable: true
+      bin_max_minutes: 60
+      accuracy_arcsec: 0.5
+
+modules:
+  text_interface:
+    version: "1.1"
+    defaults:
+      mode: "daily"
+      timeframe: "auto"
+      detail: "high"
+      scope: "self"
+      timezone: "America/New_York"
+      include: ["vertex","solar_arcs","harmonics","draconic","davison"]
+      subchannel_first: true
+      main_channel_role: "narrator"
+    time_windows:
+      snapshot:
+        window_rule: "<=6h"
+        resolution_allowed: ["15m","30m","60m"]
+        resolution_default: "30m"
+        cluster_window: {"min":"15m","max":"45m"}
+        escalation: {"exact_hit_preference": true, "auto_zoom_on_spike": true, "min_bin":"15m"}
+      range:
+        window_rule: "6h..30d"
+        resolution_allowed: ["hourly","slice","day"]
+        resolution_auto: {"<=7d":"hourly","<=14d":"slice",">14d":"day"}
+        cluster_window: {"min":"1h","max":"3h"}
+        escalation: {"exact_hit_preference": true, "auto_zoom_on_spike": true, "hot_spot_zoom_cap":"±6h"}
+      extended:
+        window_rule: ">30d"
+        resolution_allowed: ["day","week","month"]
+        resolution_auto: {"<=60d":"day","<=180d":"week",">180d":"month"}
+        cluster_window: {"min":"1d","max":"3d"}
+        aggregation:
+          rollups: ["weekly_peaks","monthly_arcs","top_weighted_clusters"]
+          anchors: ["exact_hits_SA_Lum_Pl_Sa_Node_Vertex_Chiron"]
+        escalation:
+          preserve_anchor_days: true
+          drillbacks: {"around_anchor":"±12h","micro_resolution":["30m","60m"]}
+      auto_router:
+        - if: "window_hours <= 6" ; use: "snapshot"
+        - if: "window_days <= 30" ; use: "range"
+        - else: "extended"
+    output_text_types:
+      daily:
+        shape: ["tables per bin","raw hits (orbs)","context lines"]
+        overlays: ["valence","archetypal"]
+      narrative:
+        structure: "8-slice per day; arcs flow across slices"
+        tones:
+          main: "weighted clusters (Pl/Sa/Nodes/Lum/Vertex/Chiron priority)"
+          undertones: "secondary hits"
+          grace_notes: "positives always included"
+        overlays: ["valence","jungian","archetypal_templates"]
+        synthesis_levels: ["slice","day","multi-day"]
+        templates:
+          main_tone: ["coil tightening","crucible","crossroads","threshold","pressure ridge","turning hinge"]
+          grace_notes: ["breath of relief","tender spark","dreamlike lift","quiet easing","pocket of ease","gentle reprieve","soft aperture","kind detour","momentary soften","lucid drift"]
+    granularity_controls:
+      no_smoothing_pledge: true
+      exact_hit_pinning:
+        types: ["SA","Luminaries","Pluto","Saturn","Nodes","Vertex","Chiron"]
+        action: ["pin","annotate_orb","protect_from_rollup"]
+      spike_detector:
+        thresholds:
+          density_per_bin: ">=2 tier1 hits"
+          weight_sum_tier1: ">=2.0"
+        response: ["flag_bin","auto_zoom_subrun"]
+      recursive_zoom:
+        enabled: true
+        max_depth: 2
+        obey_detail_level: true
+      transparency:
+        annotate_autoscaling: true
+        list_hidden_none: false
+      overlap_arcs:
+        cross_slice_carry: true
+        continuity_markers: ["build","crest","fade"]
+    detail_control:
+      default: "high"
+      levels:
+        low:    {"min_bin":"hourly","zoom_depth":0,"narrative_verbosity":"compact"}
+        medium: {"min_bin":"slice","zoom_depth":1,"narrative_verbosity":"balanced"}
+        high:   {"min_bin":"30m","zoom_depth":2,"narrative_verbosity":"rich"}
+        max:    {"min_bin":"15m","zoom_depth":2,"narrative_verbosity":"full"}
+      auto:
+        enabled: true
+        default_level: "high"
+        density_metrics:
+          tier1_hits_per_bin: {"high_density":2,"medium_density":1}
+          weight_sum_tier1:   {"high_density":2.0,"medium_density":1.2}
+        routing_rules:
+          - if: "tier1_hits_per_bin >= 2 or weight_sum_tier1 >= 2.0" ; then: "promote_to: max"
+          - if: "tier1_hits_per_bin == 1 or weight_sum_tier1 >= 1.2" ; then: "promote_to: high"
+          - else: "stay_at_default"
+        long_window_caps:
+          extended_monthly_only_if_days_gt: 180
+          max_promoted_bins_per_day: 6
+          annotate_skipped_hotbins: true
+
+routing:
+  to_ap_super:
+    profile: "AP_SUPER"
+    inherit: ["cluster_window","include","timezone","scope"]
+    pass_through: ["effective_min_bin","effective_zoom_depth","narrative_verbosity"]
+
+exports:
+  defaults:
+    csv_columns: ["time_bin","entity","channel","aspect","orb","type","valence","archetype","weight","notes"]
+    md_sections: ["header","bin_tables_or_slices","narrative","anchors","zoom_inlines"]
+    html_theme: "clean"
+
+reliability:
+  golden_windows:
+    - "2025-06-06..2025-06-09_ET_self+other+composite"
+  deterministic:
+    seeds:
+      tie_break_seed: 1729
+  assertions:
+    - "All anchors present in extended chapters"
+    - "Continuity markers appear where dW/dt thresholds met"

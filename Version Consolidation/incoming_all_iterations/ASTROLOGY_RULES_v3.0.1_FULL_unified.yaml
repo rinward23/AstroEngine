@@ -1,0 +1,572 @@
+meta:
+  name: ASTROLOGY_RULES_v3.0.0_FULL_unified
+  version: 3.0.0
+  created_utc: '2025-08-30T16:48:07Z'
+  timezone: America/New_York
+  ephemeris_reference: Swiss Ephemeris (DE431)
+  deterministic_seed: 42
+  float_tolerance: 1e-9
+  house_system_default: Placidus
+  notes:
+  - This ruleset implements AP-SUPER pipeline with capture margins, hybrid gating,
+    and post-run reporting.
+  - Consent gating removed for testing per project directive (0829).
+  - Auto-gating enabled for heavy channels; harmonics & draconic gating ON by default.
+  - Visualization defaults updated to Orb Corridor v3 (gradient bars, vertical event
+    markers, footnotes).
+user_settings_defaults:
+  profile: AP-SUPER
+  run_scope: self
+  include_synastry: false
+  include_composite: false
+  include_draconic: true
+  include_harmonics: true
+  include_mundane: false
+  outputs:
+    graphs_default: false
+    csv_default: false
+    ask_before_outputs: true
+  sensitivity:
+    orb_margin_degrees: 0.5
+    orb_margin_vertex: 1.0
+    near_threshold_buffer: 0.015
+  text_render:
+    show_reasons: true
+    post_run_report: true
+io:
+  inputs:
+    accepted_sources:
+    - SolarFire/exports/*.csv
+    - SolarFire/reports/*.txt
+    - csv/*.csv
+    expected_sets:
+      natal_core:
+      - natal_positions
+      - house_cusps
+      - angles
+      - points
+      synastry:
+      - synastry_aspects_grid
+      composite:
+      - composite_positions
+      - composite_cusps
+      - composite_angles
+      draconic:
+      - draconic_positions
+      - draconic_cusps
+      harmonics:
+      - harmonics_H1_to_H12
+      transits:
+      - transit_to_natal_aspects
+      - transit_positions_hourly_or_daily
+      progressions:
+      - secondary_progressions_positions
+      - progressed_aspects
+      solar_arc:
+      - solar_arc_positions
+      - solar_arc_aspects
+      returns:
+      - solar_return
+      - lunar_return
+      events:
+      - lunations
+      - eclipses
+      - ingresses
+  solar_fire_integration:
+    formats:
+      csv_delimiter: ','
+      decimal: .
+      timezone_field: true
+    mapping:
+      positions:
+        columns:
+        - Body
+        - Longitude
+        - Latitude
+        - Speed
+        - RetrogradeFlag
+        bodies_expected:
+          majors:
+          - Sun
+          - Moon
+          - Mercury
+          - Venus
+          - Mars
+          - Jupiter
+          - Saturn
+          - Uranus
+          - Neptune
+          - Pluto
+          points:
+          - Node True
+          - Node Mean
+          - Chiron
+          - Lilith Mean
+          - Lilith True
+          - Vertex
+          - Anti-Vertex
+          - Part of Fortune
+      houses:
+        columns:
+        - House
+        - CuspLongitude
+        include_angles:
+        - Ascendant
+        - MC
+        - IC
+        - Descendant
+      aspects:
+        columns:
+        - BodyA
+        - BodyB
+        - Aspect
+        - Orb
+        - ApplyingSeparating
+        declination_supported: true
+      synastry_grid:
+        columns:
+        - NatA
+        - NatB
+        - Aspect
+        - Orb
+      returns:
+        solar:
+        - DateTime
+        - Positions
+        - Angles
+        lunar:
+        - DateTime
+        - Positions
+        - Angles
+      events:
+        eclipses:
+        - DateTime
+        - Type
+        - Longitude
+        - Magnitude
+        - Gamma
+        - Saros
+        ingresses:
+        - DateTime
+        - Planet
+        - NewSign
+        lunations:
+        - DateTime
+        - Type
+        - Longitude
+    sanity_checks:
+      require_time_zone: true
+      require_house_system: true
+      retrograde_flag_boolean: true
+      orb_nonnegative: true
+      longitude_range_degrees:
+      - 0
+      - 360
+  outputs:
+    text:
+      include_inline_reasons: true
+      include_end_of_run_summary: true
+    csv:
+      filename_pattern: run_{profile}_{scope}_{start}_{end}.csv
+    graphs:
+      filename_pattern: chart_{profile}_{scope}_{start}_{end}.png
+      style: orb_corridor_v3
+      footnotes:
+        include_kernel: true
+        include_thresholds: true
+        include_mean_offset_note: true
+        include_tz_house: true
+        include_calc_method: true
+    graphs_default: false
+    csv_default: false
+    ask_before_outputs: true
+    text_only_for_AP: true
+    graph_display_mode: inline_only
+    offer_download_prompt: true
+  sources:
+    SolarFire:
+      enabled: true
+      format: csv
+      fields_map:
+        date: Date
+        time: Time
+        tz: Time Zone
+        object: Body
+        longitude: Longitude
+        latitude: Latitude
+        speed: Speed
+      assume_source_of_truth: true
+      indexing:
+        manifest_support: true
+        one_click_filter: true
+profiles:
+  AP-SUPER:
+    description: Full detail; all channels; capture margins + hybrid gating.
+    text_output_only_by_default: true
+    channels:
+      natal_core: true
+      synastry: '{{ user_settings_defaults.include_synastry }}'
+      composite: '{{ user_settings_defaults.include_composite }}'
+      draconic: '{{ user_settings_defaults.include_draconic }}'
+      harmonics: '{{ user_settings_defaults.include_harmonics }}'
+      mundane: '{{ user_settings_defaults.include_mundane }}'
+      triggers:
+      - transits
+      - progressions
+      - solar_arc
+      - returns
+      - events
+    thresholds:
+      percentile_primary: 0.86
+      percentile_secondary: 0.76
+      near_threshold_buffer: '{{ user_settings_defaults.sensitivity.near_threshold_buffer
+        }}'
+    gating:
+      consent_gate: false
+      auto_gate_heavy_channels: true
+      gate_draconic: true
+      gate_harmonics: true
+      vertex_and_eclipse_required_for_symbolic_track: false
+      enabled: true
+  AP-LIGHT:
+    description: Quick scan; fewer minor events; simplified thresholds.
+    channels:
+      draconic: true
+      harmonics: true
+    thresholds:
+      percentile_primary: 0.9
+      percentile_secondary: 0.8
+  AP-COMPOSITE:
+    description: Relationship focus; composites + synastry foregrounded.
+    channels:
+      synastry: true
+      composite: true
+      draconic: true
+      harmonics: true
+    thresholds:
+      percentile_primary: 0.84
+      percentile_secondary: 0.74
+  AP-EXTERNAL:
+    description: 'External triggers: transits/progressions/solar arcs logged distinctly.'
+    channels:
+      triggers:
+      - transits
+      - progressions
+      - solar_arc
+      - returns
+      - events
+      draconic: true
+      harmonics: true
+    thresholds:
+      percentile_primary: 0.84
+      percentile_secondary: 0.74
+  AP-MUNDANE:
+    description: Collective/global; mundane charts enabled.
+    channels:
+      mundane: true
+      triggers:
+      - transits
+      - ingresses
+      - events
+    thresholds:
+      percentile_primary: 0.88
+      percentile_secondary: 0.78
+  AP-STRICT:
+    description: Minimal noise; only high-confidence, exact hits.
+    thresholds:
+      percentile_primary: 0.93
+      percentile_secondary: 0.85
+    gating:
+      auto_gate_heavy_channels: true
+    channels:
+      draconic: true
+      harmonics: true
+aspect_sets:
+  major:
+  - Conjunction
+  - Opposition
+  - Square
+  - Trine
+  - Sextile
+  minor:
+  - Quincunx
+  - Semisextile
+  - Semisquare
+  - Sesquiquadrate
+  - Quintile
+  - BiQuintile
+  declination:
+  - Parallel
+  - Contraparallel
+  orbs_degrees:
+    base:
+      Conjunction: 8.0
+      Opposition: 7.0
+      Square: 6.5
+      Trine: 6.5
+      Sextile: 4.5
+      Quincunx: 3.0
+      Semisextile: 2.0
+      Semisquare: 2.5
+      Sesquiquadrate: 2.5
+      Quintile: 2.0
+      BiQuintile: 2.0
+    per_body_adjustment:
+      luminaries: 1.0
+      outer_heavy: -0.5
+      points: -0.5
+    global_margins:
+      degrees: '{{ user_settings_defaults.sensitivity.orb_margin_degrees }}'
+      vertex_extra: '{{ user_settings_defaults.sensitivity.orb_margin_vertex }}'
+weights:
+  by_aspect:
+    Conjunction: 1.0
+    Opposition: 0.95
+    Square: 0.9
+    Trine: 0.8
+    Sextile: 0.65
+    Quincunx: 0.55
+    Semisquare: 0.45
+    Sesquiquadrate: 0.45
+    Semisextile: 0.35
+    Quintile: 0.4
+    BiQuintile: 0.4
+    Parallel: 0.5
+    Contraparallel: 0.5
+  by_body_class:
+    personal: 1.0
+    social: 0.85
+    outer: 0.95
+    points: 0.7
+  polarity_signs:
+    benefic_mod: 1.05
+    malefic_mod: 1.05
+  synastry_scalar: 1.1
+  composite_scalar: 1.08
+  draconic_scalar: 1.06
+  harmonics_scalar: 1.04
+  orb_strengths:
+    catalog: standard
+    scale_with_channel_modifier: true
+    standards:
+      conjunction:
+        base: 8.0
+      opposition:
+        base: 8.0
+      trine:
+        base: 7.0
+      square:
+        base: 6.0
+      sextile:
+        base: 4.0
+      quincunx:
+        base: 3.0
+scoring:
+  method: contrast_stretch_v3
+  base_metric: weighted_sum
+  contrast_stretch:
+    clip_low_percentile: 0.05
+    clip_high_percentile: 0.95
+    recenter_mean: false
+    note_mean_offset: true
+  normalization:
+    unit_range:
+    - 0.0
+    - 1.0
+    preserve_sign: true
+  overshadowing:
+    window_hours: 12
+    min_delta: 0.12
+time_series:
+  base_resolution_hours: 1
+  smoothing:
+    type: gaussian
+    kernel_hours_sigma: 6
+  clustering:
+    window_days: 2
+  thresholds:
+    primary_percentile: '{{ profiles.AP-SUPER.thresholds.percentile_primary }}'
+    secondary_percentile: '{{ profiles.AP-SUPER.thresholds.percentile_secondary }}'
+    near_threshold_buffer: '{{ user_settings_defaults.sensitivity.near_threshold_buffer
+      }}'
+  kernel:
+    type: gaussian
+    sigma_hours: 2.0
+  base_granularity: hourly
+gating:
+  consent_gate_enabled: false
+  auto_gate_heavy_channels: true
+  include_draconic: true
+  include_harmonics: true
+  symbolic_track:
+    enable_vertex: true
+    enable_eclipses: true
+    enable_ingresses: true
+    enable_lunations: true
+    logic: hybrid
+  capture_margins:
+    enable: true
+    orb_buffer_deg: '{{ user_settings_defaults.sensitivity.orb_margin_degrees }}'
+    strength_buffer: 0.08
+    record_shadow_exclusions: true
+  enable_harmonics: true
+  enable_draconic: true
+  consent:
+    enabled: false
+  auto_gating_for_heavy_channels: true
+channels:
+  natal_core:
+    compute_declinations: true
+    include_asteroids_subset: false
+  synastry:
+    require_birth_times_if_house_sensitive: true
+  composite:
+    type: midpoint
+    recompute_houses: true
+  draconic:
+    reference_node: North True
+    overlay_tropical_aspects: true
+  harmonics:
+    include_range:
+    - 1
+    - 12
+    aspects_within_harmonic: true
+  triggers:
+    transits:
+      resolution: auto
+      include_applying_separating: true
+    progressions:
+      type: secondary
+      day_for_a_year: true
+    solar_arc:
+      method: Naibod
+    returns:
+      solar: true
+      lunar: true
+    events:
+      eclipses: true
+      ingresses: true
+      lunations: true
+detection:
+  vertex_hits:
+    orb_deg: 1.0
+    log_anti_vertex: true
+  eclipses:
+    include_penumbra: false
+    minimum_magnitude: 0.2
+  ingresses:
+    planets:
+    - Sun
+    - Mercury
+    - Venus
+    - Mars
+    - Jupiter
+    - Saturn
+    - Uranus
+    - Neptune
+    - Pluto
+  lunations:
+    types:
+    - New Moon
+    - Full Moon
+  returns:
+    solar:
+      +/-days_window: 3
+    lunar:
+      +/-hours_window: 48
+  vertex_enabled: true
+  eclipses_enabled: true
+visualization:
+  default_style: orb_corridor_v3
+  orb_corridor_v3:
+    polarity_colors:
+      positive: green
+      negative: red
+      neutral: none
+    column_alpha:
+      max: 0.85
+      min: 0.1
+    add_vertical_markers_for_peaks: true
+    annotate_bands:
+      low_label: Low {{metric}}
+      mid_label: Medium {{metric}}
+      high_label: High {{metric}}
+    footnote:
+      include_kernel_sigma: true
+      include_thresholds: true
+      include_mean_offset_note: true
+      include_calc_method: contrast_stretch_v3
+      include_notes:
+      - Scores use unit-range scaling; mean not re-centered.
+      - Vertical lines mark strongest grouped transits for the day.
+      - Color intensity reflects stacked aspect weights within orbs.
+    smoothing_for_columns: linear
+  legacy_styles_pruned: true
+  charts:
+    note_mean_offset: true
+post_run_report:
+  include_channels_used: true
+  include_channels_skipped_with_reasons: true
+  reasons_catalog:
+  - below_threshold
+  - overshadowed_by_stronger_cluster
+  - outside_orb_after_margins
+  - missing_data_or_birth_time
+  - gated_by_profile
+  markers_legend:
+    symbolic: dashed
+    capture_margin: triangle
+    near_threshold: dot
+  footnotes:
+    include_kernel: true
+    include_thresholds: true
+    include_mean_offset: true
+    include_timezone_house: true
+  include_included_vs_excluded: true
+  show_reasons: true
+  include_markers:
+    symbolic: dashed
+    capture_margin: triangle
+    near_threshold: dot
+error_handling:
+  on_missing_columns: warn_and_skip_field
+  on_bad_rows: coerce_and_log
+  on_unsupported_format: fail_fast_with_message
+  logs:
+    level: INFO
+    write_jsonl: true
+    filename_pattern: runlog_{ts}.jsonl
+performance:
+  caching:
+    enable_in_memory: true
+    ephemeris_cache: true
+  vectorization: true
+  parallel_workers: auto
+  chunk_sizes:
+    time_series_hours: 168
+    aspects_block: 4096
+  processing:
+    single_pass: true
+    double_filtering: false
+  deterministic_seed: 42
+  fixed_float_tolerance: 1.0e-09
+changelog:
+- version: 3.0.0
+  date: '2025-08-30'
+  changes:
+  - Added Solar Fire integration mapping + sanity checks.
+  - Enabled auto-gating for heavy channels; consent gate removed.
+  - Gating ON by default for harmonics & draconic.
+  - 'Visualization: Orb Corridor v3 with gradient columns, vertical peak markers,
+    band labels, and footnotes.'
+  - Scoring switched to contrast_stretch_v3 with mean-offset note.
+  - Post-run summary enhanced with included/excluded channels and reasons.
+  - Standardized thresholds and buffers across profiles.
+- date: '2025-08-30T22:06:59Z'
+  version: v3.0.1
+  summary: 'Applied latest user-requested updates: outputs defaults (text-only AP),
+    harmonics/draconic gating on, consent gating off, auto gating for heavy channels,
+    single-pass processing, vertex+eclipses detection on, standardized orb strengths
+    scaling with channel modifiers, SolarFire source integration with manifest, post-run
+    report includes included/excluded with reasons & markers, visualization mean-offset
+    note, gaussian kernel hourly base, performance determinism.'

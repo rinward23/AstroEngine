@@ -1,0 +1,703 @@
+version: v1.9.2-full
+description: Authoritative complete ruleset merging v1.8.5-proposal display/module
+  pipeline with full scoring, probability corridor, internal/external, valence, and
+  robust file handling.
+source_of_truth: true
+timezone_default: America/New_York
+houses_system: whole
+sidereal: false
+node_mean: true
+relocation: false
+fixed_stars_precessed: true
+solar_fire_on: true
+tob_defaults:
+  est_margin: ±0:45
+  unknown_margin: ±3:00
+sandbox_integrity:
+  required_core_files:
+  - ASTROLOGY_RULES_*.yaml
+  - ASTROLOGY_CSV_SCHEMA_*.yaml
+  - ASTROLOGY_INDIVIDUALS_v*.csv
+  - Structured_Event_Log_*.csv
+  halt_if_missing: true
+  manifest_file: manifest_core_files.csv
+  checksum_algo: sha256
+  version_prefer_highest: true
+  graceful_recovery_hint: If integrity fails, ask whether to override by excluding
+    missing files.
+  on_integrity_failure: halt_and_prompt_override
+io_normalization:
+  csv_dialect_sniffing: true
+  encoding_fallbacks:
+  - utf-8
+  - python-infer
+  - latin-1
+  datetime_detection_order:
+  - datetime_utc
+  - timestamp_utc
+  - ts_utc
+  - datetime
+  - date_time
+  - timestamp
+  - ts
+  - time
+  - parts:Y/M/D/H/(M)
+  - excel_serial
+  timezone_policy:
+    assume_naive_as: UTC
+    emit:
+    - datetime_utc
+    - datetime_local
+  local_tz: America/New_York
+  planet_alias_map_enabled: true
+  angle_from_pos_str: true
+  numeric_longitude_preferred: true
+  errors_sidecar: ingest_errors.jsonl
+  continue_on_row_error: true
+  checksums_enable: true
+  compressed_input_support: true
+  partitioned_ephemerides: true
+  empty_directory_rejection: true
+display:
+  format:
+    glyph_output: true
+    show_text_labels: true
+    label_style: glyph_plus_text
+    aspect_labels:
+      conj: Conjunction
+      sextile: Sextile
+      trine: Trine
+      square: Square
+      oppose: Opposition
+      semisextile: Semi-sextile
+      quincunx: Quincunx
+    planet_labels:
+      Sun: Sun
+      Moon: Moon
+      Mercury: Mercury
+      Venus: Venus
+      Mars: Mars
+      Jupiter: Jupiter
+      Saturn: Saturn
+      Uranus: Uranus
+      Neptune: Neptune
+      Pluto: Pluto
+      NodeN: North Node
+      NodeS: South Node
+      ASC: Ascendant
+      MC: Midheaven
+      DSC: Descendant
+      IC: Imum Coeli
+  pre_run:
+    prompt_enabled: false
+    batch_prompts: false
+    show_recommendations: false
+  badges:
+    opener: ⟡
+    amplifier: ➕
+  label_pairing: glyph_plus_text
+  corridor_mode_default: valence
+  valence_scale:
+    min: -10
+    max: 10
+    zero: 0
+  intensity_scale:
+    min: 0
+    max: 100
+  normalization:
+    method: valence_signed_maxabs
+    zero_if_max_abs_zero: true
+modules:
+  natal: true
+  transit: true
+  progressed:
+    supports_valence: true
+  solar_arc:
+    supports_valence: true
+  composite:
+    supports_valence: true
+  davison: true
+  harmonic:
+    active: true
+    include:
+    - 7
+    - 9
+    - 11
+    available:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    source_file: Chris_Remy_Harmonics_1-12_with_numbers.csv
+  draconic:
+    active: true
+    reference: mean_node
+    frame: draconic
+    supports_valence: true
+  eclipse_saros: true
+  fixed_stars:
+    supports_valence: true
+  declination:
+    supports_valence: true
+  symbol_log: true
+  mundane_usa_sibly:
+    active: false
+  transits:
+    supports_valence: true
+  harmonics:
+    supports_valence: true
+  eclipses:
+    supports_valence: true
+orbs:
+  default_deg: 1.0
+  angles_multiplier: 2.0
+  eclipse_multiplier: 3.0
+  retro_multiplier: 1.5
+  station_multiplier: 1.5
+  fixed_star_orb: 1.0
+  declination_orb: 1.0
+  harmonic_orb: 0.5
+  aspect_base_orbs:
+    conj: 1.2
+    oppose: 1.0
+    square: 0.9
+    trine: 0.9
+    sextile: 0.7
+    quincunx: 0.7
+    semisextile: 0.5
+timing_windows_days:
+  default: 3
+  major: 5
+  minor: 2
+  eclipse: 7
+  retro_station: 5
+  angles_hit_bonus_days: 1
+weights:
+  layers:
+    transit: 1.0
+    progressed: 1.2
+    solar_arc: 1.2
+    composite: 1.0
+    davison: 1.0
+    draconic: 0.8
+    harmonic: 0.7
+    eclipse: 1.5
+    fixed_star: 0.5
+    declination: 0.5
+    symbol_log: 0.5
+  aspects:
+    conj: 1.15
+    oppose: 1.0
+    square: 0.95
+    trine: 0.85
+    sextile: 0.75
+    quincunx: 0.7
+    semisextile: 0.6
+  planets:
+    Sun: 1.0
+    Moon: 1.0
+    Mercury: 0.8
+    Venus: 0.9
+    Mars: 1.0
+    Jupiter: 0.9
+    Saturn: 1.1
+    Uranus: 1.1
+    Neptune: 0.9
+    Pluto: 1.2
+    NodeN: 0.8
+    NodeS: 0.8
+    ASC: 1.4
+    MC: 1.4
+    DSC: 1.3
+    IC: 1.3
+  angles:
+    ASC: 1.4
+    MC: 1.4
+    DSC: 1.3
+    IC: 1.3
+  eclipse_angle_bonus: 1.3
+  progressed:
+    multiplier: 1.25
+    window_widen_days: 2
+  solar_arc:
+    multiplier: 1.5
+    window_widen_days: 2
+  moon:
+    damp_factor: 0.85
+  caps:
+    per_hit_points_abs_max: 10.0
+    angle_multiplier_abs_max: 1.5
+event_precision_rules:
+  allow_day_precision: false
+  note: Windowed only unless angle/eclipse thresholds are exceeded.
+probability_labels:
+  low: <35%
+  medium: 35–65%
+  high: '>65%'
+energy_type_rules:
+  sharp_flashpoint:
+    criteria:
+    - angles_hit: true
+    - planet_any_of:
+      - Mars
+      - Uranus
+      - Pluto
+      aspect_any_of:
+      - conj
+      - square
+      - oppose
+    - eclipse_window_days: 7
+    window_max_days: 3
+  broad_background:
+    criteria:
+    - planet_any_of:
+      - Neptune
+      - Saturn
+      aspect_any_of:
+      - trine
+      - sextile
+      - quincunx
+    - window_min_days: 3
+valence_rules:
+  aspect_valence:
+    trine: 0.6
+    sextile: 0.45
+    conj: 0.0
+    square: -0.45
+    oppose: -0.5
+    quincunx: -0.2
+    semisextile: 0.1
+  planet_valence:
+    Jupiter: 0.5
+    Venus: 0.4
+    Sun: 0.2
+    Moon: 0.1
+    Mercury: 0.0
+    Mars: -0.3
+    Saturn: -0.4
+    Uranus: 0.0
+    Neptune: -0.1
+    Pluto: -0.2
+  conjunction_polarity_overrides:
+    Jupiter: 0.4
+    Venus: 0.3
+    Saturn: -0.3
+    Mars: -0.25
+    Pluto: -0.2
+    Neptune: -0.1
+  clamp_range:
+  - -1.0
+  - 1.0
+  polarity_by_aspect:
+    trine: +
+    sextile: +
+    square: −
+    opposition: −
+    quincunx: −
+    conj: ±
+  conj_tone_bias:
+    positive:
+    - Sun
+    - Venus
+    - Jupiter
+    negative:
+    - Saturn
+    - Uranus
+    - Neptune
+    - Pluto
+    neutral:
+    - Moon
+    - Mercury
+    - Chiron
+    - Node
+  magnitude_to_points:
+    Low: 3
+    Medium: 6
+    High: 9
+  tone_nudge_points:
+    Venus: 1
+    Jupiter: 1
+    Saturn: -1
+    Pluto: -1
+    Uranus: -1
+    Neptune: -1
+    Sun: 0
+    Moon: 0
+    Mercury: 0
+    Chiron: -1
+  clamp_to_scale: true
+  allocation:
+    normalize_splits: true
+    preserve_sign: true
+  kernel:
+    type: triangular
+    bin_minutes: 60
+    unit_area_discrete: true
+  validation:
+    pointwise_residual_epsilon: 0.001
+    sign_integrity_required: true
+internal_external_rules:
+  base_allocation:
+    external_pct: 50
+    internal_pct: 50
+  planet_adjustments:
+    Sun:
+      external_pct: 10
+    Moon:
+      internal_pct: 10
+    Mars:
+      external_pct: 15
+    Saturn:
+      internal_pct: 10
+    Uranus:
+      external_pct: 10
+    Neptune:
+      internal_pct: 15
+    Pluto:
+      external_pct: 10
+  angle_adjustments:
+    ASC:
+      external_pct: 15
+    MC:
+      external_pct: 20
+    DSC:
+      external_pct: 10
+    IC:
+      internal_pct: 10
+  aspect_adjustments:
+    trine:
+      internal_pct: 5
+    sextile:
+      internal_pct: 5
+    square:
+      external_pct: 10
+    oppose:
+      external_pct: 10
+  layer_adjustments:
+    composite:
+      external_pct: 5
+    davison:
+      external_pct: 5
+    draconic:
+      internal_pct: 5
+    harmonic:
+      internal_pct: 5
+  clamp_and_normalize: true
+scoring:
+  orb_falloff:
+    mode: cosine
+    min_factor_at_edge: 0.1
+  per_hit_formula: score = W_layer * W_aspect * W_planet * OrbFactor * AngleMult *
+    EclipseMult * RetroMult * StationMult
+  angle_multiplier_when_on_axis: 1.5
+  eclipse_multiplier_when_within_days: 7
+  retrograde_bonus_planets:
+  - Mercury
+  - Mars
+  - Jupiter
+  - Saturn
+  - Uranus
+  - Neptune
+  - Pluto
+  station_bonus: true
+  house_emphasis:
+    angular_houses_bonus: 1.2
+  stacking:
+    simultaneous_hits_window_hours: 24
+    sum_mode: add
+    cap_per_window: 5.0
+  confidence_mapping:
+    low:
+    - 0.0
+    - 0.35
+    medium:
+    - 0.35
+    - 0.65
+    high:
+    - 0.65
+    - 1.0
+corridor:
+  channels:
+  - chris
+  - remy
+  - composite
+  line_definition: External likelihood % over time
+  aggregation:
+    bin: hour
+    combine_hits: sum_scores
+    normalize_to_prob:
+      method: logistic
+      params:
+        k: 3.0
+        x0: 0.8
+  smoothing:
+    enabled: false
+    method: moving_average
+    window_hours: 3
+  mean_line:
+    enabled: true
+    type: simple_mean_across_channels
+  bands:
+    per_channel_shaded: true
+    combined_band: true
+  annotations:
+    mark_exact_hits: true
+    mark_window_bounds: true
+    spike_descriptor: true
+  internal_external_reporting:
+    legend_internal_pct: true
+    main_line_external_pct: true
+  valence_area:
+    enabled: true
+    fill_by_positive_negative: true
+  confidence_shading: true
+  legend:
+    show_internal_pct: true
+    show_channels: true
+  markers:
+    shape_exact_hits: triangle
+    shape_window_bounds: band
+  output:
+    main_line: external_pct
+    legend_internal_pct: true
+watchlist:
+  alert_threshold:
+    score: 1.5
+    prob_external_pct: 60
+  micro_windows:
+    padding_days: 1
+  action_suggestions:
+    external_high: Plan outward actions or expect visible developments.
+    internal_high: Schedule reflection, journaling, low-stakes creative work.
+  include_window_triplet: true
+promptable_modules:
+  harmonics:
+    mode: recommend
+    default_include: false
+    user_override_allowed: true
+    criteria:
+      suggest_if_stack_score_gt: 0.35
+      hard_aspect_overlap_days: 2
+  eclipses:
+    mode: auto
+    default_include: true
+    user_override_allowed: true
+    criteria:
+      within_days_of_eclipse: 21
+output_format:
+  sections:
+  - summary
+  - data_snapshot
+  - interpretation
+  - watchlist
+  - assumptions_gaps
+  - qa_checklist
+  - run_overview
+  run_overview:
+    purpose: Provide a short, human-readable recap at the end of every run.
+    contents:
+    - '✅ Data used: list the files/layers included in this run.'
+    - '📂 Integrity check: manifest/sandbox status, any ingest errors found.'
+    - '⚠️ Recommendations: note missing or useful optional datasets (eclipses, declinations,
+      asteroids, mundane overlays, etc.).'
+    - '🚀 Next step suggestion: one actionable idea (e.g., ''Add monthly eclipse CSV
+      to sharpen windows'').'
+    style: Single paragraph, friendly tone, not technical.
+non_negotiables:
+- Exact datetime + orb (°) + window (±N days)
+- Label Energy Type (sharp/flashpoint vs broad/background)
+- State Event Precision (day-specific allowed? else 'windowed only')
+- Probability of External Signs (Low/Medium/High)
+- Projection Safeguard (avoid over-interpretation; stick to rules/weights/evidence)
+qa_checklist:
+  conservation_pointwise: max|Combined − Σchannels| < 1e-3
+  kernel_unit_area: each hit integrates to magnitude_points (after splits)
+  allocation_sums: per-hit domain weights sum to 1.0
+  global_scale_only: no per-channel normalization
+  sign_integrity: sign(norm) == sign(raw_valence) for all non-zero points
+modes:
+  AP-SUPER:
+    compute_layers:
+    - natal
+    - transit
+    - progressed
+    - solar_arc
+    - composite
+    - davison
+    - harmonic
+    - draconic
+    - eclipse_saros
+    - fixed_stars
+    - declination
+    - symbol_log
+    graphs:
+      probability_corridor: true
+    output_sections:
+    - summary
+    - data_snapshot
+    - interpretation
+    - watchlist
+    - assumptions_gaps
+    - qa_checklist
+    - run_overview
+    conflict_handling: A_B_paths
+  AP-LITE:
+    compute_layers:
+    - transit
+    - progressed
+    - solar_arc
+    - composite
+    - eclipse_saros
+    graphs:
+      probability_corridor: true
+    output_sections:
+    - summary
+    - watchlist
+    - run_overview
+  AP-STRICT:
+    compute_layers:
+    - natal
+    - transit
+    - progressed
+    - solar_arc
+    - composite
+    - davison
+    - draconic
+    - harmonic
+    - eclipse_saros
+    - fixed_stars
+    - declination
+    - symbol_log
+    graphs:
+      probability_corridor: false
+    output_sections:
+    - data_snapshot
+    - assumptions_gaps
+    - qa_checklist
+  AP-DEBUG:
+    compute_layers: ALL
+    graphs:
+      probability_corridor: true
+    output_sections:
+    - summary
+    - data_snapshot
+    - interpretation
+    - watchlist
+    - assumptions_gaps
+    - qa_checklist
+    - run_overview
+    - debug_config
+    include_config_dump: true
+hit_annotation_fields:
+  include:
+  - source
+  - valence_polarity
+  - valence_sign
+  - tone
+  - magnitude
+  - magnitude_points
+  - channel_domain
+  - channel_magnitude
+  - agency
+conflict_resolution:
+  mode: A_B_paths
+  present_when:
+    contradicting_valence: true
+    opposed_layer_stories: true
+  discriminators:
+  - angles vs cadent emphasis
+  - eclipse proximity vs none
+  - Mars/Uranus activations vs Venus/Jupiter smoothing
+  - external_pct spikes vs internal_pct dominance
+  user_copy: When signals conflict, present A/B narratives with what to watch for
+    to tell them apart.
+  combined_series:
+    definition: sum_channels
+    normalization: global
+  mixed_signs_within_domain:
+    policy: algebraic_sum
+    flag_if_opposed_within_hours: 3
+schema_validation:
+  use_schema_file: ASTROLOGY_CSV_SCHEMA_v1.4.0.yaml
+  enforce: true
+  rules:
+    tob_known_requires_time: true
+    tob_unknown_widen_by:
+      est: ±0:45
+      unknown: ±3:00
+    prob_sum_100_when_both_present: true
+    list_separator: '; '
+    date_formats:
+    - YYYY-MM-DD
+    - YYYY-MM-DD HH:MM
+    timezone_must_be_valid: true
+  on_violation: skip_row_and_log
+event_log_policy:
+  append_outcomes: true
+  file: Structured_Event_Log_Full_With_ID.csv
+  primary_key_unique: true
+  auto_link_watchlist_windows: true
+  required_fields:
+  - name
+  - date_logged
+  - users_involved
+  - details
+  - interpretation
+  - astro_events
+  - notes
+  probability_sum_check: true
+default_mode: AP-SUPER
+output_contract:
+  apcfg_header: '[APCFG rules=YAML v1.9.2]'
+  series:
+  - name: Combined
+    scale: valence
+    range:
+    - -10
+    - 10
+    definition: sum of channels (signed)
+  - name: Channels
+    type: Domain×Magnitude (signed)
+probability_label_mapping:
+  low:
+    max: 0.35
+  medium:
+    min: 0.35
+    max: 0.65
+  high:
+    min: 0.65
+individuals_policy:
+  respect_exclude_list: true
+  missing_birth_time_handling: widen_windows_per_tob_defaults_and_note
+declination:
+  aspects:
+  - parallel
+  - contraparallel
+  orb_deg: 1.0
+eclipse_data:
+  source: ephem_monthly_1900_2100.csv
+  window_days_default: 7
+fixed_stars_catalog:
+  source: fixed_stars_catalog.csv
+  orb_deg: 1.0
+  active: true
+projection_safeguard_text: Interpret conservatively; when narratives conflict present
+  A/B paths and anchor to rules, weights, and observed evidence.
+agency:
+  internal_triggers:
+  - ASC
+  - Sun
+  - Mars
+  external_triggers:
+  - MC
+  - Saturn
+  - Uranus
+  - Pluto

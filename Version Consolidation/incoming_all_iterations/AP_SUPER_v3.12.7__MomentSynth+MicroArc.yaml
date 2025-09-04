@@ -1,0 +1,155 @@
+# AP Super v3.12.7 — Moment Synthesizer + Micro Arc Detector (ALL-LAYERS)
+# Generated: 2025-09-02 21:35:13Z
+# Purpose: Ensure micro-arc shifts are always surfaced and narrated inline; integrate ALL layers (transits, harmonics, draconic,
+#          vertex/nodes, solar arcs, Davison) into every moment-signature.
+
+meta:
+  bundle: "2025-09-02"
+  tz_default: "America/New_York"
+  versions: { ap_super: "3.12.7", text_interface: "1.3", cluster_signatures: "1.0", moment_synthesizer: "1.1", micro_arc_detector: "1.0" }
+
+profiles:
+  - id: "AP_SUPER"
+    version: "3.12.7"
+    processing:
+      validate_schema: true
+      ingest_tags: ["valence","archetypal"]
+      prefilter_candidates: true
+      memoize_positions: {"grid_min": 1, "parquet_cache": true}
+      solar_arc_fast_path: true
+      subchannels: ["Mind","Body","Spirit"]
+      clustering:
+        window_minutes: { snapshot: [15,45], range: [60,180], extended: ["1d","3d"] }
+        weights:
+          planets: {"Sun":0.9, "Moon":1.0, "Mercury":0.4, "Venus":0.5, "Mars":0.6, "Jupiter":0.45, "Saturn":1.1, "Uranus":0.7, "Neptune":0.6, "Pluto":1.2, "Node":1.0, "Chiron":0.8, "Vertex":0.9}
+          valence_multiplier: {"positive":0.9, "mixed":1.0, "negative":1.05}
+          aspect_tightness_bonus: {"exact":1.2, "tight":1.1, "loose":1.0}
+          adaptive_orbs:
+            luminaries: {"conjunction":8, "opposition":8, "square":6, "trine":6, "sextile":4}
+            personals:  {"conjunction":6, "opposition":6, "square":4, "trine":4, "sextile":3}
+            outers:     {"conjunction":5, "opposition":5, "square":3.5, "trine":3.5, "sextile":2.5}
+            points:     {"conjunction":3, "opposition":3, "square":2.5, "trine":2.5, "sextile":2}
+      continuity: {"method":"dW_dt", "thresholds": {"build":0.15, "fade":-0.15}, "annotate": true}
+      narrator: {"role":"main_channel", "preserve_subchannels": true, "interlock_on_overlap": true}
+      numeric: {"vectorize": true, "numba_jit": "optional", "chebyshev_interpolation": {"enable": true, "bin_max_minutes": 60, "accuracy_arcsec": 0.5}}
+      parallelism: {"enable": true, "workers": "auto", "partition_by": ["Mind","Body","Spirit"]}
+      determinism: {"tie_break_seed": 1729}
+      exports: {"formats": ["csv","md","html"], "out_dir": "exports/" }
+
+modules:
+  cluster_signatures:
+    version: "1.0"
+    enable: true
+    apply_to_outputs: ["time_frame","narrative","summary","deep_analysis"]
+    scoring:
+      valence_polarity:
+        positive: ["Jupiter","Venus","Chiron"]
+        negative: ["Pluto","Saturn","Mars"]
+        mixed: ["Uranus","Neptune"]
+      intensity_weights: {"Pluto":1.2, "Saturn":1.1, "Moon":1.0, "Sun":0.9, "Uranus":0.7, "Neptune":0.6, "Jupiter":0.5, "Venus":0.5, "Mercury":0.4, "Node":1.0, "Chiron":0.8, "Vertex":0.9}
+      aspect_multipliers: {"conjunction":1.2, "opposition":1.1, "square":1.1, "trine":1.0, "sextile":0.9}
+      orb_bonus: {"exact":1.2, "tight":1.1, "loose":1.0}
+      compute:
+        valence_rule: "weighted_average_by_planet_and_orb"
+        intensity_rule: "sum(weight*orb_bonus*aspect_multiplier)"
+        tone_rule: "from_signature_family_tags"
+    families:
+      subconscious_eruption: { tags: ["shadow","psychic","dream"], patterns: [[Moon,Pluto],[Moon,Pluto,Neptune],[Moon,Neptune,Chiron]] }
+      symbolic_retrieval:    { tags: ["quest","synchronicity","gift"], patterns: [[Venus,Jupiter,Node],[Venus,Vertex,Jupiter],[Sun,Chiron,Node]] }
+      relational_break:      { tags: ["rupture","decision","threshold"], patterns: [[Venus,Pluto,Saturn],[Venus,Pluto,Uranus],[Mars,Saturn,Venus]] }
+      severance_crisis:      { tags: ["snap","collapse","irreversible"], patterns: [[Mars,Saturn,Pluto],[Sun,Uranus,Saturn],[Mars,Uranus,Node]] }
+      healing_integration:   { tags: ["repair","forgiveness","processing"], patterns: [[Sun,Chiron,Jupiter],[Venus,Chiron,Moon],[Saturn,Chiron]] }
+      creative_expansion:    { tags: ["inspiration","flow","vision"], patterns: [[Sun,Venus,Jupiter],[Sun,Neptune,Jupiter],[Mercury,Uranus,Neptune]] }
+      nodal_turning_point:   { tags: ["destiny","karmic","chapter"], patterns: [[Node,Vertex,Pluto],[Node,Saturn,Chiron],[Sun,Node,Pluto]] }
+      collective_wave:       { tags: ["transpersonal","societal","big_weather"], patterns: [[Uranus,Neptune,Pluto],[Saturn,Uranus,Neptune]] }
+    interaction:
+      reinforce:  "same_valence OR tone_overlap → sum intensities"
+      overshadow: "cluster_with_max_intensity = dominant tone"
+      negate:     "opposite_valence → reduce effective_valence by min(intensity_ratio, 0.6)"
+      report: { show_relative_strengths: true, show_dominant: true, show_counterweights: true }
+
+  moment_synthesizer:
+    version: "1.1"
+    enable: true
+    inputs: ["transit_clusters","harmonics","draconic","vertex","nodes","solar_arcs","davison"]
+    aggregation:
+      strategy: "per-bin"
+      bin_sources: ["self","other","composite"]
+      include_quiet_bins: true
+    scoring:
+      combine_valence: "weighted_average"
+      combine_intensity: "sum+reinforcement_bonuses"
+      combine_tone: "merge_tags"
+      reinforcement_bonuses:
+        same_signature_family: 0.15
+        cross_layer_same_motif: 0.10
+        harmonic_exact: 0.08
+        draconic_contact: 0.06
+        vertex_or_node_contact: 0.06
+        solar_arc_anchor: 0.08
+        davison_alignment: 0.05
+      conflict_resolution:
+        rule: "tone_blend"
+        examples:
+          - "healing + shadow → healing_under_shadow"
+          - "quest + rupture → treasure_under_pressure"
+          - "dream + severance → psychic_break"
+    classification:
+      method: "nearest_signature_family_with_tone_modifiers"
+      output_fields: ["family","valence","intensity","tone","overlays"]
+      overlays:
+        include: ["harmonics","draconic","vertex","nodes","solar_arcs","davison"]
+        style: "compact_notes"
+    thresholds:
+      min_intensity_to_label: 1.2
+      min_cross_layer_hits_for_bonus: 2
+    narrative_binding:
+      style: "integrated_line"
+      include_markers: ["build","crest","fade"]
+      micro_spikes_inline: true
+      quiet_bins_language: ["breathing space","pocket of ease","quiet settling"]
+
+  micro_arc_detector:
+    version: "1.0"
+    enable: true
+    triggers:
+      multi_valence_clusters_in_bin: true
+      dW_dt_micro:
+        window: "15m"
+        threshold: 0.10
+      interaction_conflict: ["overshadow","negate","harmonize"]
+    action:
+      split_bin: true
+      narrate_micro_arc: true
+      markers: ["build","crest","fade"]
+    overlay_bonus:
+      neptune_chiron_node: 1.20
+      venus_jupiter: 1.10
+      vertex_exact: 1.08
+      harmonic_resonance: 1.08
+
+modules_apply_order:
+  - cluster_signatures
+  - moment_synthesizer
+  - micro_arc_detector
+  - text_interface
+
+modules_output_binding:
+  time_frame: { include_signature_cards: true }
+  narrative:  { weave_signatures_inline: true, require_context_for_micro_spikes: true }
+  summary:    { list_top_signatures: 5 }
+  deep_analysis:
+    tables:
+      - "clusters_with_scores"
+      - "signature_family_hits"
+      - "interaction_matrix"
+      - "moments_with_scores"
+      - "overlay_hits"
+      - "micro_arc_windows"
+
+reliability:
+  schema: "VCA_Protocol_v2.2.1.yaml"
+  assertions:
+    - "Micro-arc windows appear when triggers fire"
+    - "All overlays contribute to scoring when present (harmonics, draconic, vertex/nodes, solar arcs, Davison)"
+    - "No personal hardcoding present; behavior universal"

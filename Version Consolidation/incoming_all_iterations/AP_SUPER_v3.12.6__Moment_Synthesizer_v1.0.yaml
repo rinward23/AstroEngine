@@ -1,0 +1,144 @@
+# AP Super v3.12.6 + Text Interface v1.3 + Cluster Signatures v1.0 + Moment Synthesizer v1.0
+# Generated: 2025-09-02 21:26:31Z
+# Note: This version introduces a GENERALIZED 'moment_synthesizer' that integrates transits, clusters,
+#       harmonics, draconic, vertex/nodes, solar arcs, and Davison overlays into a single "moment-signature".
+#       It contains NO user-specific event hardcoding. Personalization is optional and external.
+
+meta:
+  bundle: "2025-09-02"
+  tz_default: "America/New_York"
+  versions: { ap_super: "3.12.6", text_interface: "1.3", cluster_signatures: "1.0", moment_synthesizer: "1.0" }
+
+profiles:
+  - id: "AP_SUPER"
+    version: "3.12.6"
+    processing:
+      validate_schema: true
+      ingest_tags: ["valence","archetypal"]
+      prefilter_candidates: true
+      memoize_positions: {"grid_min": 1, "parquet_cache": true}
+      solar_arc_fast_path: true
+      subchannels: ["Mind","Body","Spirit"]
+      clustering:
+        window_minutes: { snapshot: [15,45], range: [60,180], extended: ["1d","3d"] }
+        weights:
+          planets: {"Sun":0.9, "Moon":1.0, "Mercury":0.4, "Venus":0.5, "Mars":0.6, "Jupiter":0.45, "Saturn":1.1, "Uranus":0.7, "Neptune":0.6, "Pluto":1.2, "Node":1.0, "Chiron":0.8, "Vertex":0.9}
+          valence_multiplier: {"positive":0.9, "mixed":1.0, "negative":1.05}
+          aspect_tightness_bonus: {"exact":1.2, "tight":1.1, "loose":1.0}
+          adaptive_orbs:
+            luminaries: {"conjunction":8, "opposition":8, "square":6, "trine":6, "sextile":4}
+            personals:  {"conjunction":6, "opposition":6, "square":4, "trine":4, "sextile":3}
+            outers:     {"conjunction":5, "opposition":5, "square":3.5, "trine":3.5, "sextile":2.5}
+            points:     {"conjunction":3, "opposition":3, "square":2.5, "trine":2.5, "sextile":2}
+      continuity: {"method":"dW_dt", "thresholds": {"build":0.15, "fade":-0.15}, "annotate": true}
+      narrator: {"role":"main_channel", "preserve_subchannels": true, "interlock_on_overlap": true}
+      numeric: {"vectorize": true, "numba_jit": "optional", "chebyshev_interpolation": {"enable": true, "bin_max_minutes": 60, "accuracy_arcsec": 0.5}}
+      parallelism: {"enable": true, "workers": "auto", "partition_by": ["Mind","Body","Spirit"]}
+      determinism: {"tie_break_seed": 1729}
+      exports: {"formats": ["csv","md","html"], "out_dir": "exports/"}
+
+modules:
+  cluster_signatures:
+    version: "1.0"
+    enable: true
+    apply_to_outputs: ["time_frame","narrative","summary","deep_analysis"]
+    scoring:
+      valence_polarity:
+        positive: ["Jupiter","Venus","Chiron"]
+        negative: ["Pluto","Saturn","Mars"]
+        mixed: ["Uranus","Neptune"]
+      intensity_weights: {"Pluto":1.2, "Saturn":1.1, "Moon":1.0, "Sun":0.9, "Uranus":0.7, "Neptune":0.6, "Jupiter":0.5, "Venus":0.5, "Mercury":0.4, "Node":1.0, "Chiron":0.8, "Vertex":0.9}
+      aspect_multipliers: {"conjunction":1.2, "opposition":1.1, "square":1.1, "trine":1.0, "sextile":0.9}
+      orb_bonus: {"exact":1.2, "tight":1.1, "loose":1.0}
+      compute:
+        valence_rule: "weighted_average_by_planet_and_orb"
+        intensity_rule: "sum(weight*orb_bonus*aspect_multiplier)"
+        tone_rule: "from_signature_family_tags"
+    families:
+      subconscious_eruption: { tags: ["shadow","psychic","dream"], patterns: [[Moon,Pluto],[Moon,Pluto,Neptune],[Moon,Neptune,Chiron]] }
+      symbolic_retrieval:    { tags: ["quest","synchronicity","gift"], patterns: [[Venus,Jupiter,Node],[Venus,Vertex,Jupiter],[Sun,Chiron,Node]] }
+      relational_break:      { tags: ["rupture","decision","threshold"], patterns: [[Venus,Pluto,Saturn],[Venus,Pluto,Uranus],[Mars,Saturn,Venus]] }
+      severance_crisis:      { tags: ["snap","collapse","irreversible"], patterns: [[Mars,Saturn,Pluto],[Sun,Uranus,Saturn],[Mars,Uranus,Node]] }
+      healing_integration:   { tags: ["repair","forgiveness","processing"], patterns: [[Sun,Chiron,Jupiter],[Venus,Chiron,Moon],[Saturn,Chiron]] }
+      creative_expansion:    { tags: ["inspiration","flow","vision"], patterns: [[Sun,Venus,Jupiter],[Sun,Neptune,Jupiter],[Mercury,Uranus,Neptune]] }
+      nodal_turning_point:   { tags: ["destiny","karmic","chapter"], patterns: [[Node,Vertex,Pluto],[Node,Saturn,Chiron],[Sun,Node,Pluto]] }
+      collective_wave:       { tags: ["transpersonal","societal","big_weather"], patterns: [[Uranus,Neptune,Pluto],[Saturn,Uranus,Neptune]] }
+    interaction:
+      reinforce:  "same_valence OR tone_overlap → sum intensities"
+      overshadow: "cluster_with_max_intensity = dominant tone"
+      negate:     "opposite_valence → reduce effective_valence by min(intensity_ratio, 0.6)"
+      report: { show_relative_strengths: true, show_dominant: true, show_counterweights: true }
+
+  moment_synthesizer:
+    version: "1.0"
+    enable: true
+    # Generalized integration across layers; no user-specific events.
+    inputs: ["transit_clusters","harmonics","draconic","vertex","nodes","solar_arcs","davison"]
+    aggregation:
+      strategy: "per-bin"              # every time bin aggregates all hits
+      bin_sources: ["self","other","composite"]
+      include_quiet_bins: true         # preserve lulls for contrast
+    scoring:
+      combine_valence: "weighted_average"  # across layers
+      combine_intensity: "sum+reinforcement_bonuses"
+      combine_tone: "merge_tags"           # tone is a tag-set; frequency-weighted
+      reinforcement_bonuses:
+        same_signature_family: 0.15
+        cross_layer_same_motif: 0.10       # e.g., Venus–Pluto transit + Venus–Pluto harmonic + Vertex contact
+      conflict_resolution:
+        rule: "tone_blend"
+        examples:
+          - "healing + shadow → healing_under_shadow"
+          - "quest + rupture → treasure_under_pressure"
+          - "dream + severance → psychic_break"
+    classification:
+      # Map the aggregated scores to a single moment-signature
+      method: "nearest_signature_family_with_tone_modifiers"
+      output_fields: ["family","valence","intensity","tone","overlays"]
+      overlays:
+        include: ["harmonics","draconic","vertex","nodes","solar_arcs","davison"]
+        style: "compact_notes"          # short annotations like: H5 Venus–Pluto exact; Draconic Node; SA Sun=Chiron
+    thresholds:
+      # Control chatter: ensure we don't over-classify noise
+      min_intensity_to_label: 1.2
+      min_cross_layer_hits_for_bonus: 2
+    narrative_binding:
+      style: "integrated_line"
+      include_markers: ["build","crest","fade"]
+      micro_spikes_inline: true
+      quiet_bins_language: ["breathing space","pocket of ease","quiet settling"]
+    outputs:
+      time_frame:
+        include_signature_card: true
+        card_fields: ["family","valence","intensity","tone","overlays"]
+      narrative:
+        weave_inline: true
+        mention_overlays: true
+      summary:
+        list_top_moments: 7
+      deep_analysis:
+        tables: ["moments_with_scores","overlay_hits","interaction_matrix"]
+
+modules_apply_order:
+  - cluster_signatures
+  - moment_synthesizer
+  - text_interface
+
+modules_output_binding:
+  time_frame: { include_signature_cards: true }
+  narrative:  { weave_signatures_inline: true, require_context_for_micro_spikes: true }
+  summary:    { list_top_signatures: 5 }
+  deep_analysis:
+    tables:
+      - "clusters_with_scores"
+      - "signature_family_hits"
+      - "interaction_matrix"
+      - "moments_with_scores"
+      - "overlay_hits"
+
+reliability:
+  schema: "VCA_Protocol_v2.2.1.yaml"
+  assertions:
+    - "Moment signatures appear whenever min_intensity_to_label is exceeded"
+    - "Overlay notes present when cross-layer motifs reinforce"
+    - "No personal hardcoding present; personalization is external/optional"

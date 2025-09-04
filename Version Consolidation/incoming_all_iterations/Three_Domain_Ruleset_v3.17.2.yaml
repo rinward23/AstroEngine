@@ -1,0 +1,291 @@
+# THREE_DOMAIN_RULESET v3.17.2 (UPDATED 2025-09-01)
+# Status: ACTIVE
+# Scope default: self (Chris)
+# 
+# CHANGELOG (since Three_Domain_Calibration_SINGLE.yaml base):
+# - Unified single-pass gating (removed double-filtering)
+# - Orb normalization to standard table; identical across v3 + 3-Domain
+# - Ported v3 Narrativity orb-widening toggle into 3-Domain (off by default)
+# - Added explicit prioritization order (optional) to match v3 behavior when desired
+# - Jungian overlay wired into all channels/subchannels (Shadow, Self, Anima/Animus, Persona, Trickster, Wound/Healer)
+# - Wired new composite chart types (coalescent, composite_group_drv_asc, composite_midpoint, drv_asc, relationship_davison)
+# - Manifest cross-linking for ephemeris/natal/harmonics/draconic; CSV+SQLite aware
+# - Output formatting: de-duplication & collapse rules across domains
+# - Performance pass: cached ephemeris windows; channel-level include masks
+#
+# NOTE: This file is self-contained. No external includes are required.
+
+meta:
+  id: three_domain_ruleset
+  version: 3.17.2
+  date: 2025-09-01
+  author: "Astrology - Final"
+  description: "Modular tri-domain ruleset with unified orbs, Jungian overlay, and optional v3-style prioritization."
+
+runtime:
+  defaults:
+    window:
+      start: 2025-09-01
+      end: 2025-09-30
+    timezone: America/New_York
+    scope: self
+  caching:
+    ephemeris_cache: true
+    keep_last_runs: 2
+
+orbs:
+  table_degrees:
+    conjunction: 8
+    opposition: 8
+    square: 6
+    trine: 6
+    sextile: 4
+    quincunx: 3
+    semisextile: 2
+    semisquare: 2
+    sesquiquadrate: 2
+    quintile: 2
+    biquintile: 2
+  angle_bonus:
+    mc_ic: 1.0
+    asc_desc: 1.0
+  luminary_bonus:
+    sun: 1.0
+    moon: 1.0
+  narrativity_mode:
+    enabled: false
+    widen_all_by_deg: 0.6
+  tightening_profiles:
+    strict: 0.0
+    normal: 0.0
+    tight: -0.5
+
+prioritization:
+  enabled: true
+  order:
+    - personal_planets
+    - angles
+    - social_planets
+    - outer_planets
+    - nodes_chiron
+    - midpoints
+    - harmonics
+    - draconic
+    - ephemeris_cycles
+
+include_masks:
+  transits: true
+  solar_arc: true
+  ephemeris: true
+  harmonics: true
+  draconic: true
+  midpoints: true
+  archetypes: true
+
+manifest:
+  files:
+    ephemeris_csv: 
+      - "/mnt/data/MASTER_Ephemeris_0000-3000_merged.csv"
+    ephemeris_sqlite:
+      - "/mnt/data/MASTER_Ephemeris_0000-3000_merged.sqlite"
+    astro_engine_sqlite:
+      - "/mnt/data/ASTRO_ENGINE.sqlite"
+    individuals_csv:
+      - "/mnt/data/ASTROLOGY_INDIVIDUALS_v1.5.0_clean.csv"
+      - "/mnt/data/Chris_ALL_MODULES_MERGED.csv"
+      - "/mnt/data/Remy_ALL_MODULES_MERGED.csv"
+    composite_csv:
+      - "/mnt/data/Chris_&_Remy_-_Composite_ALL_MERGED.csv"
+      - "/mnt/data/Chris_Remy_Harmonics_1-12_with_numbers.csv"
+      - "/mnt/data/CV_CR_Composite_Midpoints.csv"
+    natal_csv:
+      - "/mnt/data/CV_Natal_Chart.csv"
+    draconic_csv:
+      - "/mnt/data/Chris_Remy_Draconic_Natal_Structured.csv"
+    event_log_csv:
+      - "/mnt/data/Structured_Event_Log_v1.5.0_clean.csv"
+  indexing:
+    id_columns:
+      - chart_id
+      - module
+      - subtype
+    date_fields:
+      - datetime_utc
+      - date
+      - jd
+  csv_read:
+    keep_all_columns: true
+    infer_types: true
+
+scopes:
+  self:
+    id: chris
+    enabled: true
+    sources:
+      - natal
+      - transits
+      - solar_arc
+      - ephemeris
+      - harmonics
+      - draconic
+  self_plus_other:
+    enabled: false
+    sources:
+      - synastry
+      - comparative_transits
+  composite:
+    enabled: false
+    sources:
+      - composite_midpoint
+      - relationship_davison
+      - coalescent
+      - composite_group_drv_asc
+      - drv_asc
+
+modules:
+  transits:
+    aspects:
+      major: [conjunction, opposition, square, trine, sextile]
+      minors: [quincunx, semisquare, sesquiquadrate, quintile, biquintile, semisextile]
+    include_outer_midpoints: true
+    weight: 1.0
+  solar_arc:
+    to_angles: true
+    to_points: [Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, NN, SN, Chiron]
+    allow_minor_aspects: true
+    weight: 1.2
+  ephemeris:
+    include:
+      - outer_ingresses
+      - station_points
+      - lunations
+      - notable_phases
+    weight: 0.8
+  harmonics:
+    set: [1,2,3,4,5,6,7,8,9,10,11,12]
+    allow_cross_hits_to_natal: true
+    weight: 0.6
+  draconic:
+    cross_to_natal: true
+    include_nodes_chiron: true
+    weight: 0.7
+  midpoints:
+    pairs:
+      - [Sun, Moon]
+      - [Sun, MC]
+      - [Moon, MC]
+      - [Venus, Mars]
+      - [Saturn, Pluto]
+    hits_to:
+      - angles
+      - luminaries
+      - personal_planets
+    weight: 0.9
+
+archetypes:
+  enabled: true
+  map:
+    Sun:
+      Self: [conjunction, trine, sextile]
+      Persona: [square, opposition]
+    Moon:
+      Self: [trine, sextile]
+      Shadow: [square, opposition]
+    Mercury:
+      Persona: [all]
+    Venus:
+      Anima_Animus: [all]
+    Mars:
+      Shadow: [square, opposition]
+      Self: [conjunction]
+    Jupiter:
+      Self: [trine, sextile]
+    Saturn:
+      Shadow: [conjunction, square, opposition]
+    Uranus:
+      Trickster: [all]
+    Neptune:
+      Self: [trine, sextile]
+      Shadow: [square, opposition]
+    Pluto:
+      Shadow: [conjunction, square, opposition]
+      Self: [trine]
+    Chiron:
+      Wound_Healer: [all]
+
+scoring:
+  base:
+    aspect_weight:
+      conjunction: 1.00
+      opposition: 0.95
+      square: 0.90
+      trine: 0.80
+      sextile: 0.70
+      quincunx: 0.55
+      semisquare: 0.45
+      sesquiquadrate: 0.45
+      quintile: 0.40
+      biquintile: 0.40
+      semisextile: 0.35
+    orb_falloff_per_deg: 0.08
+    luminary_bonus: 0.15
+    angle_bonus: 0.20
+    exact_hit_bonus_within: 0.2
+  module_multipliers:
+    transits: 1.00
+    solar_arc: 1.15
+    ephemeris: 0.80
+    harmonics: 0.75
+    draconic: 0.85
+    midpoints: 1.00
+
+filters:
+  gating_single_pass: true
+  min_score_threshold:
+    normal: 0.38
+    narrativity: 0.30
+  dedupe:
+    by:
+      - same_bodies
+      - same_aspect
+      - within_deg: 0.25
+    collapse_strategy: "keep_highest_score"
+
+output:
+  mode: structured_interpretive_listing
+  include:
+    - ranked_events
+    - archetypal_tags
+    - coverage_stats
+  collapse_redundancy: true
+  annotate:
+    orb: true
+    exact_times: where_available
+    source_module: true
+  formatting:
+    list_bullets: dash
+    section_order: [Coverage, Key Hits, Supporting Themes, Cycles]
+
+run_profiles:
+  AP_SUPER:
+    narrativity_mode: false
+    min_score_threshold: normal
+    include_minor_aspects: true
+  AP_LIGHT:
+    narrativity_mode: false
+    min_score_threshold: normal
+    include_minor_aspects: false
+  NARRATIVITY:
+    narrativity_mode: true
+    min_score_threshold: narrativity
+
+validation:
+  assertions:
+    - name: no_data_loss_on_csv_ingest
+      expect: true
+    - name: orbs_identical_across_domains
+      expect: true
+    - name: single_pass_filtering_enabled
+      expect: true
+
+# --- END OF FILE ---

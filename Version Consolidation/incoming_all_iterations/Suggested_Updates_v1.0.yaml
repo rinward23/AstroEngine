@@ -1,0 +1,119 @@
+# ==========================================
+# ASTROLOGY PROJECT — SUGGESTED UPDATES (v1.0)
+# ==========================================
+version: 1.0
+changelog:
+  - "2025-08-24: Initialized suggested-updates ledger with schema, statuses, and patch format."
+
+links:
+  rules_candidates: ["ASTROLOGY_RULES_v1.3.1.yaml", "ASTROLOGY_RULES.yaml"]
+  individuals_candidates: ["ASTROLOGY_INDIVIDUALS_v1.1.yaml", "ASTROLOGY_INDIVIDUALS.yaml"]
+  event_log_candidates: ["ASTROLOGY_EVENT_LOG_v1.0.yaml", "ASTROLOGY_EVENT_LOG.yaml"]
+
+workflow:
+  statuses: [proposed, in_review, approved, applied, rejected, deferred]
+  priorities: [P0, P1, P2]     # P0 = urgent/critical, P1 = normal, P2 = nice-to-have
+  effort: [S, M, L]            # small/medium/large
+  approvals_required: 1
+
+conventions:
+  # YAML path references use JSON Pointer style (RFC 6901).
+  # Examples: "/charting/tiers/thresholds", "/individuals/2/birth/time"
+  path_style: "json_pointer"
+  file_keys: { rules: "rules", individuals: "individuals", event_log: "event_log" }
+  id_format: "SU-YYYYMMDD-###"
+
+suggestions: []
+# ^ Add items below as shown in the examples section and they’ll be tracked with status.
+# When a suggestion is approved, I will generate a new versioned file and move status → applied.
+
+# --------- Examples (keep or delete) ---------
+examples:
+  - id: SU-20250824-001
+    title: "Rules: Add explicit reference to individuals & event log files (done)"
+    target_file: rules
+    target_filename: "ASTROLOGY_RULES_v1.3.1.yaml"
+    target_path: "/data_sources"           # JSON Pointer path inside the YAML
+    change_type: update                    # add | update | remove
+    priority: P1
+    effort: M
+    requested_by: chris
+    requested_on: 2025-08-24
+    rationale: "Link external data files so analysis always resolves people and events."
+    patch:
+      description: "Adds data_sources with candidates and required fields."
+      new_block: |
+        data_sources:
+          individuals_file:
+            candidates: ["ASTROLOGY_INDIVIDUALS.yaml", "Astrology_Individuals.yaml", "astrology_individuals.yaml"]
+            top_key: "individuals"
+            id_field: "id"
+            required_fields: ["id","name","relationship","birth.date","birth.location"]
+            optional_fields: ["birth.time","chart.sun","chart.moon","chart.rising"]
+            on_missing:
+              propose_patch: true
+          event_log_file:
+            candidates: ["ASTROLOGY_EVENT_LOG.yaml", "Event Log.yaml", "Astrology_Event_Log.yaml"]
+            top_key: "events"
+            id_field: "event_id"
+            required_fields: ["event_id","name","date_logged","users_involved","event_details"]
+            optional_fields: ["interpretation","astro_events_involved","outcomes","attachments"]
+    impact_assessment:
+      scope: "System linkage"
+      risk: "Low"
+      notes: "Already implemented in v1.3.1"
+    status: applied
+    applied_in_version: "ASTROLOGY_RULES_v1.3.1.yaml"
+
+  - id: SU-20250824-002
+    title: "Individuals: Add Jessica birth time when available"
+    target_file: individuals
+    target_filename: "ASTROLOGY_INDIVIDUALS_v1.1.yaml"
+    target_path: "/individuals"            # we’ll update the matching object by id
+    change_type: update
+    priority: P1
+    effort: S
+    requested_by: chris
+    requested_on: 2025-08-24
+    rationale: "Improves precision of angular hits and micro-windows."
+    pending_fields:
+      - id: jessica
+        field: "birth.time"
+        current_value: unknown
+        desired_value: "HH:MM"             # fill when known
+    patch:
+      description: "When confirmed, set Jessica birth time."
+      new_block: |
+        # PATCH for ASTROLOGY_INDIVIDUALS.yaml
+        individuals:
+          - id: jessica
+            birth:
+              time: "10:12"
+    impact_assessment:
+      scope: "Personal chart accuracy"
+      risk: "Low"
+      notes: "TOB reduces uncertainty for house-based interpretations."
+    status: proposed
+
+  - id: SU-20250824-003
+    title: "Event Log: Add 'evidence_links' and 'tags' to events"
+    target_file: event_log
+    target_filename: "ASTROLOGY_EVENT_LOG_v1.0.yaml"
+    target_path: "/events"                 # schema enhancement for each event item
+    change_type: add
+    priority: P2
+    effort: S
+    requested_by: chris
+    requested_on: 2025-08-24
+    rationale: "Attach screenshots/notes and searchable tags for pattern mining."
+    patch:
+      description: "Extend event schema with optional fields."
+      new_block: |
+        # Schema addition (optional fields per event):
+        evidence_links: []    # URLs or file refs
+        tags: []              # freeform keywords, e.g., ["work", "family", "travel"]
+    impact_assessment:
+      scope: "Metadata"
+      risk: "Low"
+      notes: "Backward compatible; optional fields."
+    status: in_review

@@ -1,0 +1,103 @@
+
+meta:
+  name: ASTROLOGY_MANIFEST
+  version: 1.3
+  date: 2025-08-31
+  notes: >
+    Updated to register Story Mode (NarrativeText) and all referenced sources.
+    Story Mode is isolated/optimization-exempt per ruleset v3.14.
+
+sources:
+  - id: ephem_master
+    type: csv
+    path: MASTER_Ephemeris_0000-3000_merged.csv
+    dialect: default
+  - id: ephem_2025_hourly
+    type: csv
+    path: 2025 Ephemeris - 1HR.xls.csv
+    dialect: default
+
+  - id: individuals_clean
+    type: csv
+    path: ASTROLOGY_INDIVIDUALS_v1.5.0_clean.csv
+    dialect: default
+  - id: events_structured
+    type: csv
+    path: Structured_Event_Log_v1.5.0_clean.csv
+    dialect: default
+
+  - id: chris_merged
+    type: csv
+    path: Chris_ALL_MODULES_MERGED.csv
+    dialect: default
+  - id: remy_merged
+    type: csv
+    path: Remy_ALL_MODULES_MERGED.csv
+    dialect: default
+  - id: composite_cr
+    type: csv
+    path: Chris_&_Remy_-_Composite_ALL_MERGED.csv
+    dialect: default
+
+  - id: harmonics_cr
+    type: csv
+    path: Chris_Remy_Harmonics_1-12_with_numbers.csv
+    dialect: default
+  - id: draconic_cr
+    type: csv
+    path: Chris_Remy_Draconic_Natal_Structured.csv
+    dialect: default
+
+  - id: cv_midpoints
+    type: csv
+    path: CV_CR_Composite_Midpoints.csv
+    dialect: default
+  - id: cv_natal
+    type: csv
+    path: CV_Natal_Chart.csv
+    dialect: default
+
+  # Optional SQLite stores (registered but not required by September pipeline)
+  - id: ephem_master_db
+    type: sqlite
+    path: MASTER_Ephemeris_0000-3000_merged.sqlite
+    tables:
+      ephemeris: ephemeris
+    optional: true
+  - id: astro_engine_db
+    type: sqlite
+    path: ASTRO_ENGINE.sqlite
+    optional: true
+
+pipelines:
+  - id: storymode_september_2025
+    name: StoryMode_September
+    ruleset: ASTROLOGY_RULES_v3.14_story_mode.yaml
+    module: NarrativeText
+    window:
+      start: 2025-09-01
+      end:   2025-09-30
+    sources:
+      - ephem_master
+      - ephem_2025_hourly
+      - individuals_clean
+      - events_structured
+      - chris_merged
+      - remy_merged
+      - composite_cr
+      - harmonics_cr
+      - draconic_cr
+      - cv_midpoints
+      - cv_natal
+    options:
+      over_ocean_mode: true
+      profile: AP-SUPER
+      narrative_voice: archetypal_multi_channel
+      suppress_raw_numbers: true
+      safety:
+        no_predictions: true
+        no_outcomes: true
+      cache:
+        strategy: narrative_local
+        max_hot_windows: 3
+        autopin: true

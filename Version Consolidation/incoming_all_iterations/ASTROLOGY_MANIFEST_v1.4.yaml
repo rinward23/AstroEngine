@@ -1,0 +1,46 @@
+version: '1.4'
+updated: '2025-09-01'
+rulesets:
+- name: Three_Domain_Ruleset_v3.17.4_continuity_EMBEDDED.yaml
+  path: /mnt/data/Three_Domain_Ruleset_v3.17.4_continuity_EMBEDDED.yaml
+  active: true
+  notes: 'Continuity upgrades: EMA, micro-motifs, event anchors, caching, confidence
+    tiers'
+data_sources:
+- name: MASTER_Ephemeris_0000-3000_merged.sqlite
+  path: /mnt/data/MASTER_Ephemeris_0000-3000_merged.sqlite
+  type: sqlite
+- name: MASTER_Ephemeris_0000-3000_merged.csv
+  path: /mnt/data/MASTER_Ephemeris_0000-3000_merged.csv
+  type: csv
+- name: ASTRO_ENGINE.sqlite
+  path: /mnt/data/ASTRO_ENGINE.sqlite
+  type: sqlite
+- name: Chris_ALL_MODULES_MERGED.csv
+  path: /mnt/data/Chris_ALL_MODULES_MERGED.csv
+  type: csv
+- name: Remy_ALL_MODULES_MERGED.csv
+  path: /mnt/data/Remy_ALL_MODULES_MERGED.csv
+  type: csv
+- name: Chris_&_Remy_-_Composite_ALL_MERGED.csv
+  path: /mnt/data/Chris_&_Remy_-_Composite_ALL_MERGED.csv
+  type: csv
+- name: Chris_Remy_Harmonics_1-12_with_numbers.csv
+  path: /mnt/data/Chris_Remy_Harmonics_1-12_with_numbers.csv
+  type: csv
+- name: Chris_Remy_Draconic_Natal_Structured.csv
+  path: /mnt/data/Chris_Remy_Draconic_Natal_Structured.csv
+  type: csv
+- name: CV_CR_Composite_Midpoints.csv
+  path: /mnt/data/CV_CR_Composite_Midpoints.csv
+  type: csv
+- name: CV_Natal_Chart.csv
+  path: /mnt/data/CV_Natal_Chart.csv
+  type: csv
+caching:
+  policy: keep current+last; older shelved to summary
+  active_windows:
+  - start: '2025-01-01'
+    end: '2025-12-31'
+notes: Ensure harmonics/draconic act as supportive color only; composites amplify
+  only; eclipse event_anchor enabled.

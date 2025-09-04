@@ -1,0 +1,275 @@
+# VCA Protocol — Version 2.2.1 (Exhaustive Sweep Patch)
+# Source of Truth for Astrology - Final
+# Notes:
+# - Extends v2.2 with recall boosters, adaptive orbs, edge buffers, and near-miss sweeps.
+# - Target: ~99–100% capture completeness with re-scoring to keep precision.
+
+vca:
+  version: "2.2.1"
+  build:
+    date: "2025-09-02"
+    commit: "v2.2.1-recall-patch"
+  doctrine:
+    immutable_core: true
+    violation_policy:
+      flag_and_prompt: true
+      prompt_text: >
+        The requested action conflicts with a protected doctrine rule: {{rule}}.
+        Consequences: {{consequence}}. Override anyway?
+      allow_override: true
+
+  cache:
+    total_size_cap_mib: 2048
+    tiers:
+      small: { days_span_max: 3,   keep_last: 6,  size_cap_mib: 256 }
+      medium:{ days_span_max: 31,  keep_last: 4,  size_cap_mib: 768 }
+      large: { days_span_max: 366, keep_last: 2,  size_cap_mib: 1024 }
+    retention_basis: "date_range"
+    eviction:
+      order: [unpinned_oldest, pinned_oldest]
+    nightly_maintenance:
+      enabled: true
+      tasks: [compact_indexes, prune_stale_artifacts, verify_checksums]
+      window_local: "02:00-04:00"
+      safety_floor_keep_last_runs: 2
+
+  run_meta:
+    seed: "auto"
+    logging:
+      level: "info"
+      include:
+        - run_header
+        - active_modules
+        - thresholds_applied
+        - gating_decisions
+        - degradations
+        - import_checksums
+        - recall_near_misses
+    determinism:
+      time_zone: "America/New_York"
+      float_precision: 1e-9
+
+  qdf:
+    stable: { lookback_days: 3650, weight: 1.0 }
+    recent: { lookback_days: 540,  weight: 1.1 }
+    hot:    { lookback_days: 60,   weight: 1.2 }
+
+  orb_modifiers:
+    strict:    { factor: 0.85, min_arcmin: 10 }
+    super:     { factor: 1.00, min_arcmin: 12 }
+    narrative: { factor: 1.10, min_arcmin: 14 }
+    daily:     { factor: 1.05, min_arcmin: 13 }
+
+  thresholds:
+    aspect_strength_floor: 0.15
+    composite_union_strategy: "weighted_union"
+    include_when_present: [harmonics, draconic, davison, vertex, midpoints]
+
+  recall:
+    near_miss:
+      enabled: true
+      orb_expand_factor: 1.15
+      qdf_step_up: 1
+      strength_floor: 0.08
+    edge_buffer:
+      enabled: true
+      hours: 24
+    ensemble_profiles:
+      enabled: true
+      members: [strict, ap_super, monthly]
+    re_score:
+      final_strength_floor: 0.14
+
+  aspects:
+    base_orbs_arcmin:
+      conjunction: 480
+      opposition: 420
+      trine: 360
+      square: 360
+      sextile: 300
+      quincunx: 240
+      semisquare: 150
+      sesquiquadrate: 150
+    minor_enabled: true
+    minor_list: [quintile, biquintile, septile, novile, semisextile, parallel, contraparallel, antiscia, contraantiscia]
+
+  orbs:
+    adaptive:
+      by_speed: true
+      luminary_bonus_factor: 1.10
+      angular_bonus_factor: 1.12
+
+  events:
+    force_include:
+      - type: retrograde_station
+      - type: eclipse
+      - type: lunation_exact
+
+  hygiene:
+    timezone_lock: "America/New_York"
+    birthtime_tolerance_minutes: 5
+    house_system: "Placidus"
+    ayanamsha: "Tropical"
+    ephemeris_subday_resolution_minutes: 10
+
+  analytics:
+    log_near_misses: true
+    auto_promote_repeated_misses: 3
+
+  profiles:
+    ap_super:
+      include_modules: [core, transits, aspects, composites, importers, jungian_overlay]
+      orb_modifier: "@orb_modifiers.super"
+      qdf_gate: "@qdf.recent"
+      jungian_overlay_eval: "lazy"
+    daily:
+      inherits: ap_super
+      profile_flag: daily
+      include_modules: [core, transits, aspects, jungian_overlay]
+      include_when_present: "@thresholds.include_when_present"
+      orb_modifier: "@orb_modifiers.daily"
+      qdf_gate: "@qdf.hot"
+      jungian_overlay_eval: "eager"
+    monthly:
+      inherits: ap_super
+      include_modules: [core, transits, aspects, jungian_overlay, composites]
+      include_when_present: "@thresholds.include_when_present"
+      orb_modifier: "@orb_modifiers.narrative"
+      qdf_gate: "@qdf.recent"
+      jungian_overlay_eval: "eager"
+    strict:
+      inherits: ap_super
+      orb_modifier: "@orb_modifiers.strict"
+      qdf_gate: "@qdf.stable"
+      jungian_overlay_eval: "lazy"
+
+  ingest:
+    manifest_version_required: ">=1.6"
+    checksum_policy: "strict"
+    sources:
+      solar_fire:
+        allow_lossy: false
+        mapping: "@schemas.solar_fire_v1"
+      astro_seek:
+        allow_lossy: false
+        mapping: "@schemas.astro_seek_v1"
+      csv_generic:
+        allow_lossy: false
+        mapping: "@schemas.generic_csv_v1"
+    fallback_freeform:
+      enabled: true
+      strategy: "tag_based_dynamic_schema"
+      lossless: true
+
+  jungian_overlay:
+    components: [shadow, anima_animus, self, persona, complex_map]
+    caching: true
+    mode_defaults:
+      daily:    { evaluation: "eager" }
+      monthly:  { evaluation: "eager" }
+      ap_super: { evaluation: "lazy" }
+      strict:   { evaluation: "lazy" }
+    weights:
+      shadow: 1.00
+      anima_animus: 0.95
+      self: 1.05
+      persona: 0.90
+      complex_map: 1.10
+
+  composites:
+    enabled: true
+    variants:
+      midpoint:             { weight: 1.00, include_midpoints: true }
+      davison_relationship: { weight: 0.95 }
+      coalescent:           { weight: 0.90 }
+      group_drv_asc:        { weight: 0.85 }
+      drv_asc:              { weight: 0.80 }
+    conflict_resolution:
+      strategy: "weighted_union"
+      tie_break:
+        prefer_variants: [midpoint, davison_relationship, coalescent]
+        seeded: true
+
+  resilience:
+    module_failure:
+      action: "degrade_and_continue"
+      report: true
+    timeouts:
+      module_ms: 120000
+      importer_ms: 180000
+
+  gating:
+    formula: >
+      gate_score = aspect_strength * qdf_weight * orb_factor;
+      include if gate_score >= 0.12
+
+  modules:
+    core:
+      enabled: true
+      tasks: [chart_load, normalize, index]
+    importers:
+      enabled: true
+      tasks: [manifest_check, checksum_verify, source_map, parse, normalize]
+    transits:
+      enabled: true
+      options:
+        ephemeris_source: "MASTER_Ephemeris_0000-3000_merged.sqlite"
+        lookahead_days: 370
+    aspects:
+      enabled: true
+    harmonics:
+      enabled: true
+      numbers: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+      file: "Chris_Remy_Harmonics_1-16.csv"
+    draconic:
+      enabled: true
+      file: "Chris_Remy_Draconic_Natal_Structured.csv"
+    composites_module:
+      enabled: true
+      files:
+        - "Chris_&_Remy_-_Composite_ALL_MERGED.csv"
+        - "CV_CR_Composite_Midpoints.csv"
+    jungian_overlay_module:
+      enabled: true
+      depends_on: [aspects, transits]
+    vertex:
+      enabled: true
+    midpoints:
+      enabled: true
+
+  io:
+    inputs:
+      - "Chris_ALL_MODULES_MERGED.csv"
+      - "Remy_ALL_MODULES_MERGED.csv"
+      - "Chris_&_Remy_-_Composite_ALL_MERGED.csv"
+      - "CV_Natal_Chart.csv"
+      - "MASTER_Ephemeris_0000-3000_merged.csv"
+      - "MASTER_Ephemeris_0000-3000_merged.sqlite"
+      - "ASTRO_ENGINE_OPT9.sqlite"
+      - "ENTITIES_20250902_142650Z.csv"
+      - "CHARTS_20250902_142650Z.csv"
+      - "EVENTS_20250902_142650Z.csv"
+    outputs:
+      logs_dir: "logs/v2.2.1"
+      cache_dir: "cache/v2.2.1"
+      reports_dir: "reports/v2.2.1"
+
+  validation:
+    schema: "VCA_Protocol_v2_schema.json"
+    rules:
+      - check: "pointers_resolve"
+      - check: "file_presence"
+      - check: "no_duplicate_module_ids"
+      - check: "profiles_inherit_resolve"
+
+  changelog:
+    v2_2_1:
+      - "Added recall.near_miss sweeps with +15% orb, QDF step-up, strength floor 0.08."
+      - "Edge buffer of ±24h around run window."
+      - "Ensemble profiles (strict+ap_super+monthly) with re-scoring floor 0.14."
+      - "Enabled minor aspects: quintile, septile, novile, semisextile, parallels, antiscia."
+      - "Adaptive orbs: widen for luminaries and angular points, scale by planet speed."
+      - "Force-include retrograde stations, eclipses, and exact lunations."
+      - "Added harmonics up to 16."
+      - "Hygiene: timezone lock, ±5min birthtime tolerance, subday ephemeris resolution 10min."
+      - "Analytics: log near-misses, auto-promote repeated misses."

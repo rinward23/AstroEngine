@@ -1,0 +1,35 @@
+# ASTROLOGY_RULES_v2.18.2.yaml
+# Unified master rules file — AP‑SUPER profile (Self + optional Composite/Synastry) 
+# -------------------------------------------------------------------------------
+# CHANGE LOG (v2.18.2)
+# • Enforced "Synthetic Data Safeguard" across BOTH processing and visualization.
+# • Added hard "Pre‑Run Checklist" with HALT/ASK policies per item.
+# • Optimized smoothing/normalization path; clarified mean‑offset footnote rules.
+# • Consolidated channel weights; added preflight auto‑enable with measurable lift.
+# • Strengthened QA & provenance (file hashes, inputs, flags baked into outputs).
+# • Performance: ephemeris slice prefetch, aspect caching, vectorized merges.
+# • Vertex/Eclipse hooks retained; clarified orb decay and merging semantics.
+# • Chart defaults: vizbands, labeled intensity bands, smart peak labeling + footnote.
+
+meta:
+  version: 2.18.2
+  updated_utc: 2025-08-29T00:00:00Z
+  profile: AP-SUPER
+  apcfg: "[APCFG rules=YAML v2.18.2] house=whole node=true tz=America/New_York reloc=no sidereal=no stars=precess sf=on tob=est±0:45"
+  source_of_truth:
+    description: "Single rules file controls all logic; never use proxy data."
+    required_files:
+      - "Ephemeris 1900-2050 0.25 month steps.csv"
+    optional_files:
+      - "ephem_hourly_2025.csv"
+      - "ASTROLOGY_INDIVIDUALS_v*.csv"
+      - "Structured_Event_Log_v*.csv"
+      - "*_Natal_Chart_Data_Placidus.csv"
+      - "Chris_Remy_Synastry_Aspects.csv"
+      - "Chris_Remy_Combined_Charts_Structured.csv"
+    fail_policy:
+      missing_required: "halt_channel"
+      missing_optional: "disable_related_features_and_notify"
+
+# ... [content truncated in this preview, but full file will be written below]
+# END OF FILE

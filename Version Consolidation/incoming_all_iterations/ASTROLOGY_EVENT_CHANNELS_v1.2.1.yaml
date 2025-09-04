@@ -1,0 +1,489 @@
+meta:
+  version: 1.2.1
+  description: Semantic channels with explicit valence + modifiers (flattened)
+  author: Astrology - Final
+channels:
+- work
+- relationship
+- health
+- personal
+- finance
+- social
+- travel_comm
+scales:
+  probability_min: 0
+  probability_max: 100
+thresholds:
+  low: 20
+  medium: 40
+  high: 60
+rules:
+  work:
+    weights:
+      base: 1.0
+      angle_multiplier: 1.25
+      eclipse_multiplier: 1.35
+      stationary_multiplier: 1.25
+    matches:
+    - natal_point:
+      - MC
+      - Sun
+      - Mercury
+      - Mars
+      - Saturn
+      aspect:
+      - tr
+      - se
+      weight: 12
+      valence: +
+    - transit_house:
+      - 10
+      - 6
+      aspect:
+      - tr
+      - se
+      weight: 8
+      valence: +
+    - planet:
+      - Jupiter
+      - Venus
+      aspect:
+      - tr
+      - se
+      weight: 8
+      valence: +
+    - planet:
+      - Mercury
+      aspect:
+      - conj
+      weight: 7
+      valence: +
+    - planet:
+      - Mars
+      - Saturn
+      - Uranus
+      - Pluto
+      aspect:
+      - sq
+      - opp
+      weight: 12
+      valence: '-'
+    - transit_house:
+      - 10
+      - 6
+      aspect:
+      - sq
+      - opp
+      weight: 9
+      valence: '-'
+    - planet:
+      - Mercury
+      aspect:
+      - sq
+      - opp
+      weight: 8
+      valence: '-'
+    - planet:
+      - Jupiter
+      - Venus
+      aspect:
+      - conj
+      weight: 10
+      valence: +
+    - planet:
+      - Mars
+      - Saturn
+      - Pluto
+      aspect:
+      - conj
+      weight: 10
+      valence: '-'
+  relationship:
+    weights:
+      base: 1.0
+      angle_multiplier: 1.25
+      eclipse_multiplier: 1.3
+      stationary_multiplier: 1.2
+    matches:
+    - natal_point:
+      - Venus
+      - Moon
+      - DC
+      - 7th_ruler
+      aspect:
+      - tr
+      - se
+      weight: 12
+      valence: +
+    - transit_house:
+      - 7
+      - 5
+      - 11
+      aspect:
+      - tr
+      - se
+      weight: 9
+      valence: +
+    - planet:
+      - Venus
+      - Jupiter
+      aspect:
+      - tr
+      - se
+      weight: 9
+      valence: +
+    - planet:
+      - Moon
+      aspect:
+      - tr
+      - se
+      - conj
+      weight: 6
+      valence: +
+    - planet:
+      - Mars
+      - Saturn
+      aspect:
+      - sq
+      - opp
+      weight: 11
+      valence: '-'
+    - natal_point:
+      - Chiron
+      aspect:
+      - conj
+      - sq
+      - opp
+      weight: 8
+      valence: '-'
+    - transit_house:
+      - 7
+      - 5
+      - 11
+      aspect:
+      - sq
+      - opp
+      weight: 8
+      valence: '-'
+    - planet:
+      - Venus
+      - Jupiter
+      aspect:
+      - conj
+      weight: 9
+      valence: +
+    - planet:
+      - Mars
+      - Saturn
+      - Pluto
+      aspect:
+      - conj
+      weight: 9
+      valence: '-'
+  health:
+    weights:
+      base: 1.0
+      angle_multiplier: 1.2
+      eclipse_multiplier: 1.2
+      stationary_multiplier: 1.25
+    matches:
+    - transit_house:
+      - 6
+      - 12
+      aspect:
+      - tr
+      - se
+      weight: 9
+      valence: +
+    - planet:
+      - Sun
+      - Venus
+      - Jupiter
+      aspect:
+      - tr
+      - se
+      weight: 8
+      valence: +
+    - planet:
+      - Mars
+      - Saturn
+      - Neptune
+      aspect:
+      - conj
+      - sq
+      - opp
+      weight: 11
+      valence: '-'
+    - natal_point:
+      - ASC
+      - Mars
+      - Saturn
+      aspect:
+      - conj
+      - sq
+      - opp
+      weight: 9
+      valence: '-'
+  personal:
+    weights:
+      base: 1.0
+      angle_multiplier: 1.2
+      eclipse_multiplier: 1.2
+      stationary_multiplier: 1.1
+    matches:
+    - natal_point:
+      - Sun
+      - Moon
+      - ASC
+      aspect:
+      - tr
+      - se
+      weight: 11
+      valence: +
+    - planet:
+      - Sun
+      - Moon
+      - Jupiter
+      - Venus
+      aspect:
+      - tr
+      - se
+      weight: 9
+      valence: +
+    - transit_house:
+      - 1
+      - 4
+      aspect:
+      - tr
+      - se
+      weight: 8
+      valence: +
+    - planet:
+      - Saturn
+      - Mars
+      - Pluto
+      aspect:
+      - sq
+      - opp
+      weight: 10
+      valence: '-'
+    - transit_house:
+      - 1
+      - 4
+      aspect:
+      - sq
+      - opp
+      weight: 8
+      valence: '-'
+    - planet:
+      - Jupiter
+      - Venus
+      aspect:
+      - conj
+      weight: 9
+      valence: +
+    - planet:
+      - Mars
+      - Saturn
+      - Pluto
+      aspect:
+      - conj
+      weight: 9
+      valence: '-'
+  finance:
+    weights:
+      base: 1.0
+      angle_multiplier: 1.15
+      eclipse_multiplier: 1.2
+      stationary_multiplier: 1.1
+    matches:
+    - transit_house:
+      - 2
+      - 8
+      aspect:
+      - tr
+      - se
+      weight: 9
+      valence: +
+    - planet:
+      - Venus
+      - Jupiter
+      aspect:
+      - tr
+      - se
+      - conj
+      weight: 10
+      valence: +
+    - planet:
+      - Pluto
+      - Saturn
+      aspect:
+      - sq
+      - opp
+      weight: 10
+      valence: '-'
+    - transit_house:
+      - 2
+      - 8
+      aspect:
+      - sq
+      - opp
+      weight: 8
+      valence: '-'
+  social:
+    weights:
+      base: 1.0
+      angle_multiplier: 1.1
+      eclipse_multiplier: 1.15
+      stationary_multiplier: 1.05
+    matches:
+    - transit_house:
+      - 11
+      - 5
+      - 3
+      aspect:
+      - tr
+      - se
+      weight: 9
+      valence: +
+    - planet:
+      - Mercury
+      - Venus
+      - Jupiter
+      aspect:
+      - tr
+      - se
+      weight: 8
+      valence: +
+    - planet:
+      - Saturn
+      - Mars
+      aspect:
+      - sq
+      - opp
+      weight: 9
+      valence: '-'
+    - transit_house:
+      - 11
+      - 5
+      - 3
+      aspect:
+      - sq
+      - opp
+      weight: 8
+      valence: '-'
+  travel_comm:
+    weights:
+      base: 1.0
+      angle_multiplier: 1.1
+      eclipse_multiplier: 1.1
+      stationary_multiplier: 1.1
+    matches:
+    - transit_house:
+      - 3
+      - 9
+      aspect:
+      - tr
+      - se
+      weight: 9
+      valence: +
+    - planet:
+      - Mercury
+      - Jupiter
+      - Uranus
+      aspect:
+      - tr
+      - se
+      weight: 9
+      valence: +
+    - planet:
+      - Mercury
+      - Uranus
+      - Mars
+      aspect:
+      - sq
+      - opp
+      weight: 9
+      valence: '-'
+    - transit_house:
+      - 3
+      - 9
+      aspect:
+      - sq
+      - opp
+      weight: 8
+      valence: '-'
+modifiers:
+  speed_weights:
+    fast:
+      Moon: 1.0
+      Sun: 1.0
+      Mercury: 1.0
+      Venus: 1.0
+      Mars: 1.0
+    slow:
+      Jupiter: 1.1
+      Saturn: 1.15
+      Uranus: 1.2
+      Neptune: 1.2
+      Pluto: 1.25
+  retrograde:
+    Jupiter:
+      plus_scale: 0.9
+    Saturn:
+      minus_scale: 1.1
+    Mars:
+      minus_scale: 1.05
+    Mercury:
+      comms_disrupt_scale: 1.1
+  house_bias:
+    work:
+      houses:
+      - 10
+      - 6
+      factor: 1.15
+    relationship:
+      houses:
+      - 7
+      - 5
+      - 11
+      factor: 1.1
+    health:
+      houses:
+      - 6
+      - 12
+      factor: 1.15
+    finance:
+      houses:
+      - 2
+      - 8
+      factor: 1.1
+    personal:
+      houses:
+      - 1
+      - 4
+      factor: 1.08
+    social:
+      houses:
+      - 11
+      - 3
+      - 5
+      factor: 1.08
+    travel_comm:
+      houses:
+      - 3
+      - 9
+      factor: 1.12
+  angles:
+    natal_points:
+    - ASC
+    - MC
+    - DC
+    - IC
+    factor: 1.25
+scoring:
+  method: linear
+  linear:
+    max_score: 40
+  softmax:
+    temperature: 8.0

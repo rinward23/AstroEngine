@@ -1,0 +1,180 @@
+# ASTROLOGY_MANIFEST_v2.1.yaml
+# Generated: 2025-09-02T13:28:23.532468Z
+# This manifest inlines schemas and small registries, so you can delete external template CSVs.
+
+schemas:
+  ENTITIES:
+    required: [entity_id, entity_kind, display_label, consent_level, active, created_at, updated_at]
+    fields:
+      entity_id:        {type: string, unique: true, format: slug_or_uuid}
+      entity_kind:      {type: enum, values: [individual, composite, group, org, other]}
+      display_label:    {type: string}
+      public_alias:     {type: string, nullable: true}
+      member_ids:       {type: list|string, sep: "|", nullable: true}
+      consent_level:    {type: enum, values: [private, internal, shared, public], default: internal}
+      active:           {type: bool,  default: true}
+      tags:             {type: list|string, sep: "|", nullable: true}
+      notes_private:    {type: text,  nullable: true}
+      created_at:       {type: datetime}
+      updated_at:       {type: datetime}
+      source_file:      {type: string, nullable: true}
+      # Optional diagnostics
+      datasets_ok:      {type: bool, default: true, nullable: true}
+
+  CHARTS:
+    required: [chart_id, entity_id, chart_type, created_at, updated_at]
+    fields:
+      chart_id:         {type: string, unique: true, format: slug_or_uuid}
+      entity_id:        {type: string, fk: "ENTITIES.entity_id"}
+      chart_type:       {type: enum, values: [natal, draconic, harmonic, composite, midpoint, davison, group, solar_return, lunar_return, transit_context, coalescent, other]}
+      reference_system: {type: enum, values: [tropical, sidereal, other], default: tropical}
+      epoch:            {type: string, nullable: true, default: "J2000"}
+      calc_notes:       {type: text, nullable: true}
+      metadata:         {type: text, nullable: true}
+      created_at:       {type: datetime}
+      updated_at:       {type: datetime}
+      source_file:      {type: string, nullable: true}
+
+  EVENTS:
+    required: [event_id, chart_id, event_dt_utc, event_tz, event_date_accuracy, title, event_type, visibility, created_at, updated_at]
+    fields:
+      event_id:         {type: string, unique: true, format: slug_or_uuid}
+      chart_id:         {type: string, fk: "CHARTS.chart_id"}
+      entity_id:        {type: string, fk: "ENTITIES.entity_id", nullable: true}
+      event_dt_utc:     {type: datetime, tz: "UTC"}
+      event_tz:         {type: tz}
+      event_local_dt:   {type: datetime, nullable: true}
+      event_date_accuracy: {type: enum, values: [exact, approx, range_start, range_end, unknown], default: exact}
+      title:            {type: string}
+      description:      {type: text, nullable: true}
+      event_type:       {type: enum, values: [transit, progression, solar_arc, life_event, reading, ritual, upload, import, other]}
+      subtype:          {type: string, nullable: true}
+      module_origin:    {type: string, nullable: true}
+      score_strength:   {type: float, range: [0,1], nullable: true}
+      score_valence:    {type: float, range: [-1,1], nullable: true}
+      orb_deg:          {type: float, nullable: true}
+      aspect:           {type: string, nullable: true}
+      bodies:           {type: list|string, sep: "|", nullable: true}
+      location_context: {type: string, nullable: true}
+      media_refs:       {type: list|string, sep: "|", nullable: true}
+      tags:             {type: list|string, sep: "|", nullable: true}
+      visibility:       {type: enum, values: [private, internal, shared, public], default: internal}
+      created_at:       {type: datetime}
+      updated_at:       {type: datetime}
+      source_file:      {type: string, nullable: true}
+
+embedded_tables:
+  CHART_TYPES_registry:
+    columns: [chart_type, description, active_default]
+    rows:
+      - [natal, "Individual birth chart (tropical default)", true]
+      - [draconic, "Nodes-referenced draconic chart", true]
+      - [harmonic, "Harmonic charts (H varies; set via metadata)", true]
+      - [composite, "Standard composite midpoint", true]
+      - [midpoint, "Explicit midpoint composite", true]
+      - [davison, "Davison time-space midpoint", true]
+      - [group, "Group composite (3+ members)", true]
+      - [solar_return, "Solar Return chart", true]
+      - [lunar_return, "Lunar Return chart", true]
+      - [transit_context, "Transit-only context", true]
+      - [coalescent, "Alt composite variant", false]
+      - [other, "Custom/experimental", false]
+
+  ENTITY_CHART_MATRIX:
+    columns: [entity_id, entity_kind, display_label, member_ids,
+              natal, draconic, harmonic, composite, midpoint, davison, group,
+              solar_return, lunar_return, transit_context, coalescent, other, datasets_ok]
+    rows:
+      - ["__TEMPLATE__", "individual", "Example", "",
+         true, true, true, false, false, false, false, true, true, true, false, false, true]
+
+access:
+  ap_super:
+    sources: ["ENTITIES","CHARTS","EVENTS","embedded_tables.CHART_TYPES_registry","embedded_tables.ENTITY_CHART_MATRIX"]
+    mode: "read_all"
+
+gating:
+  order: ["consent","activation","visibility","datasets_ok","matrix_scope"]
+  rules:
+    consent:
+      ENTITIES: "consent_level in ['internal','shared','public']"
+      EVENTS:   "visibility in ['internal','shared','public']"
+    activation:
+      ENTITIES: "active == true"
+      CHARTS:   "true"
+    visibility:
+      EVENTS:   "visibility != 'private'"
+    datasets_ok:
+      ENTITIES: "entity_kind != 'individual' or datasets_ok != false"
+      CHARTS:   "true"
+    matrix_scope:
+      CHARTS:   "embedded_tables.ENTITY_CHART_MATRIX[entity_id][chart_type] == true"
+
+charts:
+  source: embedded_tables.ENTITY_CHART_MATRIX
+  require_datasets_ok: true
+  create_charts_when:
+    condition: "row[chart_type] == true"
+    expand:
+      chart_id: "chart_{entity_id}_{chart_type}"
+      entity_id: "{entity_id}"
+      chart_type: "{chart_type}"
+      reference_system: "tropical"
+      epoch: "J2000"
+
+preflight:
+  quickscan:
+    enabled: true
+    window_padding: {default: {days: 7}, monthly: {days: 15}}
+    datasets:
+      draconic:   {check: "compute_transit_hits", aspects: [conjunction, opposition, square, trine, sextile, quincunx], orb_deg: 1.0}
+      harmonics:  {check: "compute_harmonic_hits", aspects: [conjunction, opposition, square, trine, sextile], orb_deg: 0.8, modes: {H: [1,2,3,4,5,6,7,8,9,10,11,12]}}
+      progressions: {type: "secondary", check: "compute_progressed_hits", aspects: [conjunction, opposition, square, trine, sextile], orb_deg: 0.8}
+      solar_arc:  {check: "compute_solar_arc_hits", aspects: [conjunction, opposition, square, trine, sextile], orb_deg: 0.5}
+      returns:
+        solar_return: {check: "compute_solar_return_exact", expand_if_within_days: 30}
+        lunar_return: {check: "compute_lunar_return_exact", expand_if_within_days: 5}
+    expand_rules: {any_hit_triggers_full_run: true, min_hits_to_expand: 1, min_quick_strength: 0.25}
+    include_light_context_when_no_hits: true
+
+runs:
+  ap_super:
+    inputs: {targets: ["*"], scope: "ALL_DATA"}
+    preflight: {use: preflight.quickscan, window_mode: "monthly"}
+    selection:
+      entities: "gated(ENTITIES)"
+      charts:   "gated(CHARTS) and entity_id in :entities.entity_id"
+      events:   "gated(EVENTS) and chart_id in :charts.chart_id"
+    export_profile: "internal"
+
+intake:
+  wizard:
+    enabled: true
+    expects:
+      individuals_minimum: [display_label]
+      events_minimum: [title, event_local_dt, event_tz]
+    defaults:
+      entities: {consent_level: internal, active: true}
+      events: {event_type: life_event, event_date_accuracy: exact, visibility: internal, module_origin: INTAKE_WIZARD}
+  data_index:
+    enabled: true
+    discover:
+      sources:
+        - type: file
+          glob: ["*.csv"]
+          include: ["*Entities*","*Event*","*Composite*","*Harmonic*","*Draconic*","*Natal*"]
+    build_index:
+      output: "INDIVIDUAL_DATA_INDEX_v1.0.csv"
+
+privacy:
+  anonymization:
+    enabled: false
+    require_explicit: true
+    salt_file: "ANON_SALT.txt"
+    id_field_internal: "entity_id"
+    id_field_anon: "anon_id"
+
+performance:
+  tuning:
+    event_partition: "monthly"
+    event_indexes: ["chart_id","event_dt_utc"]

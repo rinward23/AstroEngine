@@ -1,0 +1,88 @@
+# ASTROLOGY_RULES merged edition
+# Auto-merged on 2025-08-27T17:55:56
+# Embedded: charts, event_channels; legacy YAML checks relaxed.
+version: v2.5.0
+charts:
+  default_view: tier_split
+  views:
+    tier_split:
+      enabled: true
+      description: Three-panel Minor/Moderate/Major event tiers (locked style).
+    native_overlay:
+      enabled: true
+      description: 'Three panels: (1) Individuals overlaid, (2) Composite only, (3)
+        Combined index = mean(Chris, Remy, Composite).'
+      cadence:
+        base: hourly
+        resample_to: 30min
+        method: linear
+      panels:
+      - id: individuals_overlay
+        title: Native 30‑Minute Probability — Chris & Remy with Event Overlays
+        series:
+        - name: Chris
+          color: '#0B63FF'
+        - name: Remy
+          color: '#2BA84A'
+        fill_under: true
+        hatch: ///
+        overlays:
+          clusters:
+            enabled: true
+          events:
+            enabled: false
+      - id: composite_only
+        title: Native 30‑Minute Probability — Composite with Event Overlays
+        series:
+        - name: Composite
+          color: '#7E22CE'
+        fill_under: true
+        hatch: ///
+        overlays:
+          clusters:
+            enabled: true
+          events:
+            enabled: false
+      - id: combined_index
+        title: Native 30‑Minute Probability — Combined Index ⟨Chris + Remy + Composite⟩/3
+          with Event Overlays
+        series:
+        - name: Combined Index
+          color: '#111111'
+          combine: mean
+          of:
+          - Chris
+          - Remy
+          - Composite
+        fill_under: true
+        hatch: ///
+        overlays:
+          clusters:
+            enabled: true
+          events:
+            enabled: false
+  render_locked: true
+  y_range:
+  - -100
+  - 100
+  line_style: steps-mid
+  label_style:
+    font_size: 10
+    readable_label_colors:
+      yellow: darkgoldenrod
+      orange: saddlebrown
+      red: darkred
+router:
+  views:
+    patterns:
+      native_overlay:
+      - (?i)\b(native overlay|individuals overlay|combined index|three panels like
+        before|30\s*minute view)\b
+      tier_split:
+      - (?i)\b(tier split|minor moderate major|event tiers)\b
+integrity:
+  legacy_files_optional:
+  - GRAPH_CHART_RULES_v1.6.2.yaml
+  - ASTROLOGY_EVENT_CHANNELS_v1.2.1.yaml
+  require_legacy_chart_yaml: false
+  require_legacy_event_channels_yaml: false

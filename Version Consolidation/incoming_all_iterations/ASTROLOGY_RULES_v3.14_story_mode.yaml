@@ -1,0 +1,190 @@
+
+meta:
+  name: ASTROLOGY_RULES
+  version: 3.14
+  date: 2025-08-31
+  notes: >
+    Consolidated ruleset with Story Mode (NarrativeText) module:
+    - include-all-by-default ingestion (natal, transits, progressions, arcs, composites, harmonics, draconic, returns, eclipses, vertex)
+    - salience gating for narrative focus
+    - expanded, locked orbs (module-scoped)
+    - optimization/caching isolation (module-scoped)
+
+defaults:
+  timezone: America/New_York
+  house_system: Placidus
+  orb_margin_degrees: 0.5
+  orb_margin_vertex: 1.0
+  near_threshold_buffer: 0.015
+  profiles_enabled: [AP-SUPER, AP-LIGHT, AP-STRICT, AP-COMPOSITE, AP-EXTERNAL, AP-MUNDANE]
+  # Global optimizers (do NOT touch Story Mode due to isolation flags)
+  optimizers:
+    enable_deduplicate_events: true
+    collapse_minor_echoes: true
+    prune_inactive_modules: true
+
+profiles:
+  AP-SUPER:
+    description: Full detail capture with capture margins + gating.
+    modules: [TransitsCore, Progressions, SolarArcs, Returns, Eclipses, Composites, Harmonics, Draconic, NarrativeText]
+  AP-LIGHT:
+    description: Quick scan.
+    modules: [TransitsCore, Eclipses, NarrativeText]
+  AP-STRICT:
+    description: Minimal noise.
+    modules: [TransitsCore, Eclipses]
+  AP-COMPOSITE:
+    description: Relationship-focused.
+    modules: [Composites, NarrativeText]
+  AP-EXTERNAL:
+    description: External triggers/events focus.
+    modules: [TransitsCore, Progressions, SolarArcs, Eclipses]
+  AP-MUNDANE:
+    description: Collective/global focus.
+    modules: [TransitsCore, Eclipses]
+
+modules:
+
+  # ---- Core computational modules (stubs preserved) -----------------------
+  TransitsCore:
+    kind: transits
+    enabled: true
+    orbs:
+      conjunction: 5
+      opposition: 5
+      square: 4
+      trine: 4
+      sextile: 3
+      quincunx: 2
+  Progressions:
+    kind: secondary_progressions
+    enabled: true
+  SolarArcs:
+    kind: solar_arcs
+    enabled: true
+  Returns:
+    kind: returns
+    enabled: true
+    include:
+      solar_return: true
+      lunar_return: true
+  Eclipses:
+    kind: eclipses
+    enabled: true
+  Composites:
+    kind: composites
+    enabled: true
+    pairings_default: [self_plus_remy, self_plus_jung]
+    include_midpoints: true
+  Harmonics:
+    kind: harmonics
+    enabled: true
+    range: [1, 12]
+    include_numbers: true
+  Draconic:
+    kind: draconic
+    enabled: true
+
+  # ---- Story Mode: self-contained narrative module -----------------------
+  NarrativeText:
+    kind: narrative_text
+    enabled: true
+
+    # Scope & Inputs (include everything by default)
+    inputs:
+      include_layers:
+        natal: true
+        transits: true
+        secondary_progressions: true
+        solar_arcs: true
+        returns:
+          solar_return: true
+          lunar_return: true
+        eclipses: true
+        ingresses: true
+        draconic: true
+        harmonics:
+          range: [1, 12]
+          include_numbers: true
+        composites:
+          pairings:
+            - self_plus_remy
+            - self_plus_jung
+            - self_plus_other
+          midpoints: true
+        points:
+          vertex: true
+          antivertex: true
+          nodes: true
+          chiron: true
+          angles: [ASC, MC, DSC, IC]
+          lots: false
+
+    # Gating (keeps narrative focused)
+    gating:
+      use_salience_gate: true
+      salience_rules:
+        time_window_days: 31
+        min_weight: 0.35
+        theme_alignment: true
+        over_ocean_mode: true
+      conflict_resolution:
+        prefer_exact: true
+        tie_breaker: [angles, luminaries, nodes, eclipses]
+        overshadowing: keep_minor_as_echo
+
+    # Orb policy (Story Mode–specific, forgiving, locked)
+    orbs:
+      policy: story_mode_expanded
+      base_deg:
+        conjunction: 6
+        opposition: 6
+        square: 5
+        trine: 5
+        sextile: 4
+        quincunx: 3
+        semisquare: 2
+        sesquiquadrate: 2
+      luminary_bonus_deg: 1.0
+      angle_bonus_deg: 1.0
+      eclipse_bonus_deg: 1.0
+      vertex_bonus_deg: 1.0
+      capture_margin_deg: 0.5
+      near_threshold_buffer: 0.015
+      lock_policy: true
+
+    # Isolation / Optimization exemptions
+    isolation:
+      optimization_exempt: true
+      dedupe_collapse: false
+      cache_strategy: narrative_local
+      hot_window_autopin: true
+
+    # Output voice & hygiene
+    narrative:
+      voice: archetypal_multi_channel
+      include_background_echoes: true
+      suppress_raw_numbers: true
+      safety:
+        no_predictions: true
+        no_outcomes: true
+        frame_as_guidance: true
+
+pipelines:
+  - name: StoryMode_September
+    module: NarrativeText
+    sources:
+      - ref: MASTER_Ephemeris_0000-3000_merged.csv
+      - ref: 2025 Ephemeris - 1HR.xls.csv
+      - ref: ASTROLOGY_INDIVIDUALS_v1.5.0_clean.csv
+      - ref: Structured_Event_Log_v1.5.0_clean.csv
+      - ref: Chris_ALL_MODULES_MERGED.csv
+      - ref: Remy_ALL_MODULES_MERGED.csv
+      - ref: Chris_&_Remy_-_Composite_ALL_MERGED.csv
+      - ref: Chris_Remy_Harmonics_1-12_with_numbers.csv
+      - ref: Chris_Remy_Draconic_Natal_Structured.csv
+      - ref: CV_CR_Composite_Midpoints.csv
+      - ref: CV_Natal_Chart.csv
+    options:
+      window_start: 2025-09-01
+      window_end:   2025-09-30

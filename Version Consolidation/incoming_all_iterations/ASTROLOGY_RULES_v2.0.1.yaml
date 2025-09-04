@@ -1,0 +1,74 @@
+# Astrology Rules — v2.0.1
+# NOTE: This version is identical in spirit to v2.0.0 but adds hard-coded
+# graph/data integrity requirements and failure-handling. If your loader
+# supports inheritance, treat this as extending v2.0.0.
+version: "2.0.1"
+extends: "ASTROLOGY_RULES_v2.0.0.yaml"
+
+NON-NEGOTIABLES:
+  - Orb of Influence — exact datetime + numerical orb (°) + window (±N days).
+  - Energy Type — "sharp/flashpoint" vs. "broad/background."
+  - Event Precision — state "day-specific" or "windowed only."
+  - Probability of External Signs — label Low/Med/High (per YAML thresholds).
+  - Projection Safeguard — flag over-interpretation; anchor back to YAML rules/evidence.
+  - Graph Integrity — graphs and probability corridors must always be computed
+    exclusively from valid natal + transit geometry using provided ephemerides and YAML rules.
+  - Proxy Ban — proxy waves, placeholder oscillations, or synthetic stress proxies are prohibited.
+  - Failure Handling — if any required file (rules, ephemeris, natal, schema) is missing,
+    invalid, or unparsable → HALT and issue integrity failure. Do not attempt substitution.
+  - Corridor Scaling — must follow: z-score normalization → tanh squashing →
+    signed [-100, +100] scale, baseline 0. Any deviation = invalid run.
+
+graph_integrity:
+  enforce_strict: true
+  allow_proxy: false
+  normalization:
+    method: zscore
+    squash: tanh
+    output_range: [-100, 100]
+    baseline: 0
+  binning:
+    source: ephemeris_hourly   # must use hourly (or finer) ephemeris
+    allow_downsample: false
+  failure_behavior:
+    on_missing_rules: halt
+    on_unparsable_rules: halt
+    on_missing_ephemeris: halt
+    on_missing_natal: halt
+    on_missing_schema: halt
+    message: "Integrity failure: cannot compute corridor. Proxy data not allowed. Please re-upload or explicitly override."
+
+aspect_engine:
+  permitted_aspects: [conj, sext, sq, tri, opp]
+  # If you want me to import orbs/weights from v2.0.0, leave these commented.
+  # These defaults mirror our fallback used in the last run.
+  defaults:
+    conj: {angle: 0,   orb: 8, weight: 1.0}
+    sext: {angle: 60,  orb: 4, weight: 0.8}
+    sq:   {angle: 90,  orb: 6, weight: 1.1}
+    tri:  {angle: 120, orb: 6, weight: 0.9}
+    opp:  {angle: 180, orb: 8, weight: 1.2}
+  angle_weights:
+    angles_heavier: true
+    multipliers:
+      Asc: 1.3
+      MC: 1.3
+
+signing_rules:
+  # Aspect valence for signing the corridor contributions
+  sext: +1
+  tri: +1
+  sq: -1
+  opp: -1
+  conj_by_planet: true   # conjunction sign derives from planet valence
+  planet_valence:
+    Sun: +0.2
+    Moon: +0.2
+    Mercury: 0.0
+    Venus: +0.6
+    Mars: -0.6
+    Jupiter: +0.8
+    Saturn: -0.7
+    Uranus: -0.2
+    Neptune: -0.1
+    Pluto: -0.5

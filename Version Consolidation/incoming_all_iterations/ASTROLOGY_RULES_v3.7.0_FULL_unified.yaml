@@ -1,0 +1,497 @@
+meta:
+  version: v3.7.0
+  note: skeleton base created due to missing file
+  last_updated_utc: '2025-08-31T01:36:44Z'
+channels:
+  natal_core:
+    aspect_orb_profile_ref: STD_A1
+    use_polarity_from_standards: true
+  synastry:
+    aspect_orb_profile_ref: STD_A1
+    use_polarity_from_standards: true
+  draconic:
+    aspect_orb_profile_ref: STD_A1
+    use_polarity_from_standards: true
+  harmonics:
+    aspect_orb_profile_ref: STD_A1
+    use_polarity_from_standards: true
+  triggers:
+    aspect_orb_profile_ref: STD_A1
+    use_polarity_from_standards: true
+post_run_report:
+  archetypal_overlay:
+    enabled: true
+    use_channel_polarity: true
+    print_for_top_hits: 5
+    format: 'Channel(Archetype + face) :: Planet(s)→House [Aspect=plot]'
+    notes: Faces selected by supportive vs challenging; conjunction chosen by context.
+      Optional layers inherit or bias polarity as defined.
+standards:
+  aspect_orb_profiles:
+    STD_A1:
+      description: Standardized orbs and weights for major aspects (tight, modern).
+      orbs_deg:
+        conjunction: 8.0
+        opposition: 7.0
+        square: 6.0
+        trine: 6.0
+        sextile: 4.0
+        quincunx: 3.0
+      weights:
+        conjunction: 1.0
+        opposition: 0.92
+        square: 0.88
+        trine: 0.82
+        sextile: 0.6
+        quincunx: 0.5
+  default_aspect_orb_profile_id: STD_A1
+  polarity_map:
+    supportive_aspects:
+    - trine
+    - sextile
+    challenging_aspects:
+    - square
+    - opposition
+    neutral_aspects:
+    - conjunction
+    - quincunx
+  gating:
+    min_score: 0.15
+    min_strength_z: 1.0
+    orb_scale: 1.0
+    orb_margin_degrees: 0.5
+archetypes:
+  channels:
+    natal_core:
+      label: Hero / Self
+      creative_face:
+      - individuation
+      - purpose
+      - authenticity
+      shadow_face:
+      - ego_inflation
+      - identity_crisis
+      - paralysis
+    synastry:
+      label: Lover / Mirror
+      creative_face:
+      - intimacy
+      - collaboration
+      - projection_awareness
+      shadow_face:
+      - enmeshment
+      - rivalry
+      - dependency
+      - projection_blindness
+    draconic:
+      label: Soul / Ancestor
+      creative_face:
+      - ancestral_wisdom
+      - destiny_alignment
+      - spiritual_pull
+      shadow_face:
+      - fatalism
+      - karma_fixation
+      - past_entrapment
+    harmonics:
+      label: Magician / Hidden Order
+      creative_face:
+      - pattern_insight
+      - elegant_solutions
+      - resonance
+      shadow_face:
+      - over_analysis
+      - paranoia
+      - apophenia
+    triggers:
+      label: Trickster / Gatekeeper
+      creative_face:
+      - synchronicity
+      - opportunity
+      - initiation_thresholds
+      shadow_face:
+      - disruption
+      - chaos
+      - loss
+      - destabilization
+  planets:
+    Sun:
+      label: Hero
+      creative_face:
+      - vitality
+      - purpose
+      - authenticity
+      shadow_face:
+      - egoism
+      - burnout
+      - self_centeredness
+    Moon:
+      label: Mother/Child
+      creative_face:
+      - nurture
+      - empathy
+      - bonding
+      shadow_face:
+      - devouring_mother
+      - neediness
+      - regression
+    Mercury:
+      label: Trickster/Messenger
+      creative_face:
+      - insight
+      - communication
+      - curiosity
+      shadow_face:
+      - deceit
+      - distraction
+      - restlessness
+    Venus:
+      label: Lover
+      creative_face:
+      - attraction
+      - harmony
+      - values
+      shadow_face:
+      - vanity
+      - codependence
+      - superficiality
+    Mars:
+      label: Warrior
+      creative_face:
+      - courage
+      - boundaries
+      - initiative
+      shadow_face:
+      - aggression
+      - conflict
+      - domination
+    Jupiter:
+      label: Sage/King
+      creative_face:
+      - wisdom
+      - growth
+      - generosity
+      shadow_face:
+      - arrogance
+      - excess
+      - inflation
+    Saturn:
+      label: Judge/Father
+      creative_face:
+      - responsibility
+      - mastery
+      - structure
+      shadow_face:
+      - oppression
+      - rigidity
+      - fear_guilt
+    Uranus:
+      label: Rebel/Liberator
+      creative_face:
+      - innovation
+      - freedom
+      - awakening
+      shadow_face:
+      - instability
+      - erratic_rebellion
+      - isolation
+    Neptune:
+      label: Mystic/Dreamer
+      creative_face:
+      - compassion
+      - transcendence
+      - imagination
+      shadow_face:
+      - delusion
+      - escapism
+      - victimhood
+    Pluto:
+      label: Transformer/Shadow
+      creative_face:
+      - regeneration
+      - depth
+      - empowerment
+      shadow_face:
+      - control
+      - obsession
+      - destructive_compulsion
+    Chiron:
+      label: Wounded Healer
+      creative_face:
+      - insight_from_wounds
+      - healing_service
+      shadow_face:
+      - perpetual_victim
+      - reopened_wounds
+    NorthNode:
+      label: Destiny/Calling
+      creative_face:
+      - growth
+      - purpose_path
+      shadow_face:
+      - avoidance_of_growth
+    SouthNode:
+      label: Past/Ancestral
+      creative_face:
+      - skills_from_past
+      shadow_face:
+      - stagnation
+      - old_patterns
+    Lilith:
+      label: Rejected Feminine
+      creative_face:
+      - empowerment
+      - truth_telling
+      - eros
+      shadow_face:
+      - rage
+      - exile
+      - destructive_rejection
+  houses:
+    '1':
+      label: Identity/Persona
+      creative_face:
+      - presence
+      - initiative
+      shadow_face:
+      - narcissism
+      - false_mask
+    '2':
+      label: Value/Resources
+      creative_face:
+      - self_worth
+      - stability
+      shadow_face:
+      - greed
+      - insecurity
+    '3':
+      label: Mind/Network
+      creative_face:
+      - learning
+      - connection
+      shadow_face:
+      - gossip
+      - scatter
+    '4':
+      label: Home/Roots
+      creative_face:
+      - belonging
+      - foundation
+      shadow_face:
+      - enmeshment
+      - family_traps
+    '5':
+      label: Creativity/Child
+      creative_face:
+      - play
+      - romance
+      - expression
+      shadow_face:
+      - immaturity
+      - puer_puella
+    '6':
+      label: Work/Health
+      creative_face:
+      - service
+      - ritual
+      - craft
+      shadow_face:
+      - drudgery
+      - martyrdom
+    '7':
+      label: Partner/Mirror
+      creative_face:
+      - collaboration
+      - balance
+      shadow_face:
+      - dependency
+      - projection
+    '8':
+      label: Power/Intimacy
+      creative_face:
+      - depth_bonding
+      - transformation
+      shadow_face:
+      - obsession
+      - destructive_intimacy
+    '9':
+      label: Meaning/Journey
+      creative_face:
+      - vision
+      - faith
+      shadow_face:
+      - dogma
+      - fanaticism
+    '10':
+      label: Authority/Role
+      creative_face:
+      - mastery
+      - legacy
+      shadow_face:
+      - tyranny
+      - burnout
+    '11':
+      label: Community/Vision
+      creative_face:
+      - allies
+      - innovation
+      shadow_face:
+      - groupthink
+      - exile
+    '12':
+      label: Collective/Unconscious
+      creative_face:
+      - compassion
+      - surrender
+      shadow_face:
+      - addiction
+      - self_undoing
+  aspects:
+    conjunction:
+      creative_face:
+      - fusion
+      - seed
+      shadow_face:
+      - enmeshment
+      - overload
+    opposition:
+      creative_face:
+      - complementarity
+      - perspective
+      shadow_face:
+      - polarization
+      - projection
+    trine:
+      creative_face:
+      - flow
+      - ease
+      shadow_face:
+      - complacency
+    sextile:
+      creative_face:
+      - opportunity
+      - skill
+      shadow_face:
+      - underutilization
+    square:
+      creative_face:
+      - forging_strength
+      - discipline
+      shadow_face:
+      - conflict
+      - blockage
+    quincunx:
+      creative_face:
+      - reframe
+      - adaptation
+      shadow_face:
+      - incongruity
+      - awkwardness
+  optional_layers:
+    midpoints:
+      role: mediators_transcendent_function
+      polarity_behavior: inherit_from_triggering_aspect
+      channel_refs:
+      - natal_core
+      - synastry
+    antiscia:
+      role: shadow_mirror_echoes
+      polarity_behavior: bias_to_shadow
+      channel_refs:
+      - natal_core
+      - synastry
+    arabic_parts:
+      role: mythic_levers
+      examples:
+      - Fortune
+      - Spirit
+      - Eros
+      - Necessity
+      polarity_behavior: inherit_from_contact
+      channel_refs:
+      - draconic
+      - triggers
+    asteroids:
+      role: sub_archetypes
+      examples:
+      - Ceres
+      - Pallas
+      - Vesta
+      - Juno
+      - Psyche
+      - Eros
+      - Hygeia
+      polarity_behavior: inherit_from_aspect
+      channel_refs:
+      - natal_core
+      - synastry
+    fixed_stars:
+      role: ancestral_collective
+      examples:
+      - Regulus
+      - Spica
+      - Antares
+      - Aldebaran
+      - Algol
+      polarity_behavior: amplify_current_face
+      channel_refs:
+      - draconic
+      - triggers
+    sect:
+      role: day_night_modifier
+      effect: reweight
+      channel_refs:
+      - natal_core
+    retrogrades:
+      role: inward_loop_bias
+      effect: shadow_bias
+      channel_refs:
+      - natal_core
+    out_of_bounds:
+      role: extremes_amplifier
+      effect: increase_variance
+      channel_refs:
+      - natal_core
+      - synastry
+    phases:
+      role: appearance_style
+      examples:
+      - Venus/Mercury morning/evening
+      - heliacal
+      channel_refs:
+      - natal_core
+    chart_shapes:
+      role: global_coping_style
+      effect: contextual_modifier
+      channel_refs:
+      - natal_core
+diagnostics:
+  completeness_checks:
+    require_channel_archetype: true
+    require_planet_mapping: true
+    require_house_mapping: true
+    require_aspect_mapping: true
+    require_optional_layer_assignment: true
+  double_weighting_guards:
+    enforce_single_orb_profile: true
+    disallow_per_channel_aspect_weights: true
+    polarity_source: standards.polarity_map
+  runtime_assertions:
+    fail_on_unassigned: true
+    warn_on_unknown_point: true
+performance:
+  ephemeris_cache: true
+  vectorized_aspect_calc: true
+  prebake_transit_windows: true
+  max_optional_layers: 3
+  optional_layers_default:
+  - midpoints
+  - antiscia
+  - asteroids
+  lazy_fixed_stars: true
+changelog:
+- date: '2025-08-31T01:36:44Z'
+  version: v3.7.0
+  summary: Archetypal system fully integrated with polarity; optional techniques assigned
+    to channels; standards centralized (orbs/weights/polarity/gating); diagnostics
+    added to prevent double-weighting; performance hints set. Scoring math unchanged.

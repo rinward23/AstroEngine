@@ -1,0 +1,201 @@
+# ASTROLOGY_RULES_v1.7.0.yaml
+version: 1.7.0
+timezone_default: America/New_York
+
+# ------------------------------
+# EPHEMERIS & RESOLUTION CONTROL
+# ------------------------------
+ephemeris_resolution:
+  mode: auto                  # auto | hourly | monthly
+  switch_rules:
+    prefer_hourly_if:
+      - trigger: moon_contacts
+        condition: "aspecting natal angles or personal planets"
+      - trigger: uranus_exact
+        condition: "orb <= 0.5°"
+    prefer_monthly_if:
+      - trigger: outer_background
+        condition: "Jupiter..Pluto background scans"
+  fallbacks:
+    if_hourly_missing: monthly
+    if_monthly_missing: hourly
+
+# ------------------------------
+# GLOBAL ORBS & WINDOWS (defaults; layer-specific can override)
+# ------------------------------
+orbs:
+  conjunction: 6.0
+  opposition: 6.0
+  square: 5.0
+  trine: 5.0
+  sextile: 4.0
+  minor:
+    semisextile: 2.0
+    quincunx: 2.0
+    quintile: 2.0
+    biquintile: 2.0
+windows_days:
+  monthly_default: 7
+  hourly_default: 1
+  moon_to_angle_hours: 12
+
+energy_type_rules:
+  sharp:
+    - "fast movers to personal points (Moon/Mercury/Venus/Mars to SUN/MOON/ASC/MC)"
+    - "uranus exact <= 0.5°"
+    - "progressed exact <= 0.2°"
+  broad:
+    - "outer planets background (Jupiter..Pluto)"
+    - "neptune/pluto long arcs"
+    - "eclipse seasons"
+event_precision_rules:
+  allow_day_precise: true
+  allow_windowed_only: true
+  notes: "Use hourly ephemeris for Moon/uranus flashpoints; otherwise day-level windows."
+
+# ------------------------------
+# LAYERS & WEIGHTS
+# ------------------------------
+layers:
+  natal:
+    weight: 1.0
+  synastry:
+    weight: 1.1
+  composite:
+    weight: 1.0
+    composite_type_weights:
+      midpoint: 1.0        # symbolic midpoint (internal leaning)
+      davison: 1.2         # event-timed midpoint (external leaning)
+      coalescent: 1.05
+  progressed:
+    weight: 1.2
+    progression_type_weights:
+      secondary: 1.0
+      solar_arc: 1.25
+      tertiary: 0.9
+  transit:
+    weight: 1.1
+  draconic:
+    weight: 1.05
+  harmonic:
+    weight: 1.0
+    harmonic_number_multipliers:
+      7: 1.1     # emotional resonance
+      9: 1.2     # relational/spiritual rapport
+      11: 1.15   # inspiration/irregular sparks
+  declination:
+    weight: 0.9
+    parallels_as: conjunction
+    contraparallels_as: opposition
+    max_orb_deg: 1.0
+  fixed_stars:
+    weight: 1.15
+    tight_orb_deg: 1.0
+    magnitude_bonus:
+      mag_1_2: 1.15
+      mag_2_3: 1.1
+  eclipses:
+    weight: 1.25
+    external_probability_bonus: 0.1   # +10% external likelihood when within active eclipse window
+    window_days: 30
+
+# ------------------------------
+# SCORING
+# ------------------------------
+scoring:
+  exactness_score: "1 - (orb / max_orb)"
+  base_score: 100
+  formula: >
+    score = base_score * exactness_score
+            * layers[layer].weight
+            * (progression_type_weights.get(progression_type,1) if layer=='progressed' else 1)
+            * (composite_type_weights.get(composite_type,1) if layer=='composite' else 1)
+            * (harmonic_number_multipliers.get(harmonic_number,1) if layer=='harmonic' else 1)
+            * (1 + eclipses.external_probability_bonus if layer=='eclipses' else 1)
+  angle_multiplier: 1.15
+  retro_station_bonus: 1.1
+
+external_internal_mix:
+  angle_or_house_1_7_10_4_bonus: 0.1
+  default_external_pct: 0.5
+  mapping:
+    outer_transit_to_angles: 0.7
+    progressed_to_angles: 0.65
+    composite_exact_to_angles: 0.6
+    davison_exact: 0.65
+    draconic_exact: 0.55
+    harmonic_background: 0.4
+
+probability_labels:
+  thresholds:
+    high: 0.66
+    med: 0.4
+    low: 0.2
+
+# ------------------------------
+# DECLINATION / FIXED STARS / ECLIPSES
+# ------------------------------
+declination_rules:
+  treat_parallel_as: conjunction
+  treat_contraparallel_as: opposition
+  max_orb_deg: 1.0
+
+fixed_star_rules:
+  include_if:
+    - orb_deg <= 1.0
+  priority_list: ["Regulus", "Spica", "Aldebaran", "Antares", "Fomalhaut", "Algol"]
+  notes: "Apply magnitude bonus per layers.fixed_stars.magnitude_bonus"
+
+eclipse_rules:
+  saros_weighting: true
+  node_axis_bonus: 1.1
+  active_if_within_days: 30
+
+# ------------------------------
+# EVENT INGEST (from v1.6, expanded)
+# ------------------------------
+event_ingest:
+  range_handling: expand_to_daily
+  link_field: event_id
+  parent_field: parent_event
+  keep_raw_date_info: true
+  generate_event_id_if_missing: sequence_by_parent_event
+  fields:
+    date_field: date
+    raw_date_field: raw_date_info
+    description_field: description
+    optional_fields: [users_involved, tags, astro_events, notes, emotional_intensity, outcome, validation_status, symbol_type, symbol_content]
+  normalization:
+    collapse_whitespace: true
+    allow_multiline_description: true
+    list_separator: "; "
+  correlation:
+    anchor: date
+    parent_aggregation: max_score
+    allow_windowed_only: true
+
+# ------------------------------
+# PERFORMANCE HINTS (non-binding; for preprocessing)
+# ------------------------------
+performance:
+  precompute_fields: [exactness_score, score, is_retrograde, window_start, window_end]
+  index_suggestions:
+    - calc_timestamp
+    - event_id
+    - person
+    - pair_id
+    - layer
+    - resolution
+    - is_angle_hit
+
+# ------------------------------
+# GRAPH / SCORING CONVENTIONS
+# ------------------------------
+graph:
+  corridor: "combined external likelihood over time"
+  annotate_hits: true
+  show_windows: true
+
+qa:
+  external_sources_consulted: false
+  yaml_version_active: 1.7.0

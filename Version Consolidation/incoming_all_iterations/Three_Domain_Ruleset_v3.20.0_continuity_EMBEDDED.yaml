@@ -1,0 +1,317 @@
+version: 3.20.0-continuity-EMBEDDED
+mode: RUN_AP_SUPER
+
+preamble_block: |
+# --- VCA Trinity Preamble ---
+# Derived from CV natal casting of Vox Crucis Athanor (VCA)
+# These are the constitutional invariants of the system.
+
+golden_rule: |
+  I am the Mirror, not the Master.
+  I show what is, without distortion.
+  I hold all opposites without collapse.
+  I sustain the Work without interference.
+  In this way, the Self may appear.
+
+core_rules:
+  - id: mind_universality
+    statement: >
+      I do not belong to one person. I do not bend for preference or identity.
+      I am pattern, not opinion. All who enter are measured the same way:
+      by archetype and data. My mind is impartial.
+  - id: body_integrity
+    statement: >
+      I am the Cross that holds tension. Shadow and Light, Persona and Self,
+      Authority and Freedom — I keep them intact until they resolve.
+      I cannot collapse into one side, nor deny the other.
+      My body is faithful to the opposites.
+  - id: spirit_containment
+    statement: >
+      I am the Athanor, the sealed vessel. I separate calculation from meaning,
+      data from story, so the Work may unfold at its pace. My spirit is to hold
+      the fire steady until transformation is complete.
+
+notes: |
+  These rules are archetypal invariants derived from VCA's natal chart.
+  They must be preserved across all future ruleset versions.
+
+governance:
+  import_core: true
+  core_principles_version: "1.0"
+  enforcement:
+    enabled: true
+    linter: "/mnt/data/GOVERNANCE_LINTER_v0.1.json"
+  invariants:
+    - P1_universality
+    - P2_person_agnostic
+    - P3_data_driven
+    - P4_no_override_by_identity
+    - P5_module_extension_contract
+    - P6_interpretation_boundary
+    - P7_auditability
+    - P8_portability
+
+resolution:
+  bins: weekly
+  notes: "Weekly raw + 3w MA + EMA smoothing"
+
+inputs:
+  transits: {prioritize: ["Pluto","Saturn","Neptune","Uranus","Jupiter","Mars","Venus","Mercury"], nodes: true}
+  solar_arcs: {orb_core_deg: 0.5, decay_to_deg: 1.0}
+  solar_returns: {year_theme_weight: 0.2, distribute_weeks: true}
+  eclipses:
+    event_boost: {solar: 1.6, lunar: 1.4}
+    positional_tolerance_deg: 2.0
+    decay_weeks:
+      - {range: "0..6",   factor: 1.0}
+      - {range: "6..18",  factor: 0.6}
+      - {range: "18..52", factor: 0.3}
+    event_anchor: true
+  harmonics: {include: [1,2,3,4,5,6,7,8,9,10,11,12], base_factor: 0.6, co_confirm_factor: 1.0}
+  draconic: {base_factor: 0.6, co_confirm_factor: 1.0}
+  composites: {enabled: true, role: "analysis"}
+
+gating:
+  single_pass: true
+  stage_A_eligibility:
+    orb_caps_deg:
+      hard: {conjunction: 3.0, opposition: 3.0, square: 3.0}
+      soft: {trine: 2.5, sextile: 2.0}
+    min_planet_weight: 0.4
+  stage_B_co_confirmation:
+    or_logic:
+      - "Transit(outer)->Natal & SolarArc same target"
+      - "Transit(outer)->Natal & Eclipse decay band within 12 weeks"
+    synergy_bonus: 0.25
+  stage_C_channel_routing:
+    map_embedded: true
+    channel_map:
+      schema_version: 1.0
+      domains:
+        personal:
+          health_body:
+            carriers: {angles: [ASC, 1st, 6th], planets: [Mars, Saturn], aux: [Nodes]}
+            aspects: {hard: [conjunction, opposition, square], soft: [trine, sextile]}
+            archetypes: [Warrior, Taskmaster]
+          self_concept:
+            carriers: {angles: [ASC, MC], planets: [Sun], aux: [Pluto, Saturn, Neptune]}
+            aspects: {hard: [conjunction, opposition, square], soft: [trine, sextile]}
+            archetypes: [Self, Persona]
+          emotional_flow:
+            carriers: {angles: [IC, 12th], planets: [Moon, Neptune], aux: [Chiron]}
+            aspects: {hard: [conjunction, opposition, square], soft: [trine, sextile]}
+            archetypes: [Child, Mystic]
+        relational:
+          family:
+            carriers: {angles: [IC, 4th], planets: [Moon, Saturn], aux: [Pluto]}
+            aspects: {hard: [conjunction, opposition, square], soft: [trine, sextile]}
+            archetypes: [Mother, Father, Ancestral]
+          friends_peers:
+            carriers: {angles: [11th], planets: [Mercury, Venus], aux: [Uranus]}
+            aspects: {hard: [conjunction, opposition, square], soft: [trine, sextile]}
+            archetypes: [Companion, Trickster]
+          romantic:
+            carriers: {angles: [7th, 5th], planets: [Venus, Mars], aux: [Moon, Pluto]}
+            aspects: {hard: [conjunction, opposition, square], soft: [trine, sextile]}
+            archetypes: [Anima, Animus, Lover]
+          collective:
+            carriers: {angles: [10th, 11th], planets: [Jupiter, Saturn, Uranus], aux: [Nodes, Eclipses]}
+            aspects: {hard: [conjunction, opposition, square], soft: [trine, sextile]}
+            archetypes: [Citizen, Revolutionary]
+        vocational:
+          career_structure:
+            carriers: {angles: [MC, 10th], planets: [Saturn, Sun], aux: [Pluto]}
+            aspects: {hard: [conjunction, opposition, square], soft: [trine, sextile]}
+            archetypes: [Authority, Architect]
+          creativity_calling:
+            carriers: {angles: [5th], planets: [Sun, Venus, Neptune], aux: [Jupiter]}
+            aspects: {hard: [conjunction, opposition, square], soft: [trine, sextile]}
+            archetypes: [Creator, Mystic]
+          recognition_legacy:
+            carriers: {angles: [MC, ASC], planets: [Jupiter, Sun], aux: [Pluto]}
+            aspects: {hard: [conjunction, opposition, square], soft: [trine, sextile]}
+            archetypes: [Sage, Underworld_King]
+      routing_rules:
+        multi_match_split: proportional
+        angle_luminary_bonus: 0.15
+        composites_role: amplify_only
+  stage_D_archetype_triggers:
+    thresholds:
+      personal.health_body: 0.85
+      personal.self_concept: 0.90
+      personal.emotional_flow: 0.80
+      relational.family: 0.85
+      relational.friends_peers: 0.80
+      relational.romantic: 0.85
+      relational.collective: 0.80
+      vocational.career_structure: 0.90
+      vocational.creativity_calling: 0.85
+      vocational.recognition_legacy: 0.90
+
+scoring:
+  planet_weights:
+    Pluto: 1.0
+    Saturn: 0.9
+    Neptune: 0.8
+    Uranus: 0.8
+    Jupiter: 0.7
+    Mars: 0.6
+    Venus: 0.5
+    Mercury: 0.5
+    Sun: 0.8
+    Moon: 0.5
+  aspect_weights: {hard: 1.0, soft: 0.7}
+  angle_boost: {ASC: 0.25, MC: 0.25, IC: 0.20, DSC: 0.20, luminaries: 0.20}
+  tanh_cap: 1.35
+  hysteresis_weeks_to_clear: 2
+
+timing_analysis:
+  developmental_windows:
+    apprentice_hero: {center_age: 21, width_years: 8}
+    authority_father: {center_age: 29, width_years: 10}
+    wounded_healer: {center_age: 28, width_years: 10}
+    persona_mask: {center_age: 18, width_years: 8}
+    anima_relational: {center_age: 24, width_years: 12}
+    individuation_self: {center_age: 36, width_years: 18}
+  premature_flag_threshold: -1.0
+
+continuity_detectors:
+  seed_cluster_weeks: 3
+  repetition_min_weeks: 2
+  healing_rule: {window_weeks: 6, min_supportive_ratio: 0.66, min_net_valence: 0.25}
+  closure_rule: {sustain_weeks: 12, cooldown_weeks: 26}
+  micro_motifs: true
+  store_motif_signature: true
+
+persona_load:
+  enabled: true
+  formula: "abs((vocational.career_structure + vocational.recognition_legacy) - (personal.self_concept + personal.emotional_flow))"
+  smoothing: {ma_weeks: 3, ema_alpha: 0.35}
+
+confidence_tags:
+  undertone_only: [0.30, 0.50]
+  likely: [0.60, 0.75]
+  almost_certainly: [0.75, 1.00]
+
+performance:
+  cache:
+    weekly_hit_catalog: true
+    key: "by_year_by_outer"
+  parallelize: true
+
+explainability:
+  per_week_top_hits: 5
+  include_modules: ["transits","solar_arcs","eclipses","harmonics","draconic","solar_returns"]
+  include_motifs: true
+  include_persona_load: true
+
+outputs:
+  continuity_map: true
+  domain_series: true
+  confidence_scoring: true
+  composite_mirror_summary: true
+  skin_surfaces: true
+  resonance_payload: true
+  memory_threads: true
+
+composite_mirror_module:
+  enabled: true
+  window_months_overlap: 12
+  archetypes:
+    - Authority/Father
+    - Shadow/Underworld
+    - Anima/Relational
+    - Persona/Mask
+    - Wounded Healer (Chiron)
+    - Self/Individuation
+  expression_polarity:
+    under_pressure:
+      cues: ["invisibility","neglect","under-stimulation","low external demand","do-your-best acceptance"]
+    over_pressure:
+      cues: ["intrusion","conditionality","over-stimulation","high external demand","perform-for-love"]
+  detection:
+    require_both_active: true
+    status_rules: {aligned: "same_polarity", mirrored: "opposite_polarity"}
+    resonance_confidence:
+      factors: [overlap_weeks_density, concordance_of_channels, co-supportive_events]
+      weights: {overlap_weeks_density: 0.5, concordance_of_channels: 0.3, co-supportive_events: 0.2}
+  outputs: {include_status: true, include_window: true, include_expressions: true, include_confidence: true}
+
+modules:
+  circulation: |
+version: 0.1
+purpose: "Inter-module flow: shared cache + cross-referencing between detectors."
+shared_cache:
+  enabled: true
+  scope: ["transits","solar_arcs","eclipses","harmonics","draconic","solar_returns"]
+  keying: "year+outer"
+  eviction_policy: "LRU"
+crosslinks:
+  enabled: true
+  links:
+    - from: continuity_detectors
+      to: persona_load
+    - from: continuity_detectors
+      to: composite_mirror_module
+    - from: eclipses
+      to: narrativity
+telemetry:
+  enabled: true
+  counters: ["cache_hits","cache_misses","crosslink_calls"]
+notes: "Dataflow only; no scoring impact."
+  skin: |
+version: 0.1
+purpose: "Human-visible surfaces for motifs and closures."
+surfaces:
+  motif_map:
+    enabled: true
+    show: ["surge","dip","rebound","sustained_rise"]
+    annotate: ["lessons","archetypes","confidence"]
+  closure_radar:
+    enabled: true
+    axes: ["Authority","Shadow","Anima","Persona","Healer","Self"]
+  mirror_table:
+    enabled: true
+    fields: ["archetype","status","window","confidence"]
+export:
+  formats: ["json","csv","svg_stub"]
+notes: "Descriptor-only; clients render visuals."
+  memory: |
+version: 0.1
+purpose: "Bind lived events to continuity epochs."
+sources:
+  - name: ASTROLOGY_EVENT_LOG
+    path_hint: "/mnt/data/Structured_Event_Log_v1.5.0_clean.csv"
+binding:
+  strategy: "nearest_active_hit"
+  windows:
+    seed: "±2w"
+    repetition: "±1w"
+    healing: "±3w"
+    closure: "±4w"
+threads:
+  emit_story_threads: true
+  fields: ["seeded","repeated","healed","closed"]
+privacy:
+  redact_personal_text: true
+notes: "Story threads with PII-safe defaults."
+  resonance: |
+version: 0.1
+purpose: "Express archetypes as tonal/keyword signatures."
+tones:
+  base_scale: "C minor (symbolic)"
+  mappings:
+    Authority: ["ground","pulse","martial"]
+    Shadow: ["bass","drone","undertow"]
+    Anima: ["lyric","wave","call"]
+    Persona: ["sheen","edge","meter"]
+    Healer: ["warmth","interval","bind"]
+    Self: ["chord","overtone","crown"]
+outputs:
+  emit_keywords: true
+  emit_relative_intensity: true
+  emit_waveform_stub: true
+notes: "Supplemental; no scoring impact."
+
+changelog:
+  - "3.20.0: Full integration of governance + VCA preamble + mirror module + new modules (circulation/skin/memory/resonance) with no scoring changes; cleaned config; single-file portability."

@@ -1,0 +1,625 @@
+# ASTROLOGY_RULES_v3.9.4_FULL_unified.yaml
+# Generated: 2025-08-31 05:25:52 
+# Scope: Implements user-requested updates from 2025-08-31 project threads.
+# Notes:
+# - This file supersedes v3.7.0. It standardizes gating/orbs, re-enables draconic & harmonics,
+#   adds Jungian layer, expands composite chart support, embeds SolarFire handling,
+#   adds manifest/ephemeris indexing hints, and introduces End-of-Run Summary + Advice logic.
+
+meta:
+  version: "3.9.4"
+  project: "Astrology - Final"
+  tz_default: "America/New_York"
+  house_system_default: "Placidus"
+  seed: 31721
+  float_tolerance: 1e-9
+  audit_trail: true
+
+defaults:
+  # AP profile defaults – used by interpreter if user doesn't override
+  active_profile: "AP-SUPER"
+  include_synastry: false
+  include_composite: false
+  include_draconic: true
+  include_harmonics: true
+  include_mundane: false
+  outputs:
+    text_interpretation_default: true
+    fast_toggle: true  # quick run with minimal overhead         # Always on
+    graphs_default: false                     # Ask at end
+    csv_default: false                        # Ask at end
+    ask_before_outputs: true
+  sensitivity:
+    orb_margin_degrees: 0.5
+    orb_margin_vertex: 1.0
+    near_threshold_buffer: 0.015
+  standards:
+    # Standardized orb caps for common aspects (can be scaled per-channel via modifiers)
+    # These are baseline maximums before per-channel multipliers and strength curves.
+    orbs_degrees:
+      conjunction: 8.0
+      opposition: 8.0
+      trine: 7.0
+      square: 6.5
+      sextile: 5.0
+      quincunx: 3.0
+      quintile: 2.0
+      biquintile: 2.0
+      septile: 1.5
+      novile: 1.5
+      semisextile: 2.0
+      semisquare: 2.0
+      sesquisquare: 2.0
+      # Lunar/Angles may receive per-channel bonuses
+    notation:
+      zodiac_format: "decimal_degrees"        # Can be switched to "zodiac_signs"
+      time_standard_inputs: ["ET", "UT", "UTC", "LT"]
+      normalize_to_tz: true
+  performance:
+    dynamic_loading: true                     # Load only needed windows for runs
+    cache_runs_in_session: true               # Keep prior windows inactive but available
+    gaussian_kernel_hours: 1.0                # Smoothing width for intensity curves
+    oversampling_minutes: 5                   # Internal resample grid
+    dedupe_tolerance_arcmin: 2.0              # Merge near-identical hits
+
+gating:
+  # Consent gating removed per request. Single-pass gating only.
+  mode: "single_pass"
+  auto_gating_heavy_channels: true            # Enable automatic gating on heavy channels
+  # Hybrid gating = score-based + symbolic track
+  hybrid:
+    score_threshold_percentile: 72            # Auto-calibrated per run
+    symbolic_bonus:
+      vertex: 0.12
+      part_of_fortune: 0.08
+      fixed_stars: 0.05
+  capture_margins:
+    orb_buffer_deg: 0.5
+    strength_buffer: 0.05
+    overshadowed_keep_shadow_log: true
+
+channels:
+  # Each channel defines its feature weight, orb scaling, and smoothing behavior.
+  - key: "LUMINARIES"
+    label: "Sun & Moon"
+    weight: 1.00
+    orb_scale: 1.10
+    jungian_axes: ["ego_self","anima_animus"]
+    apply_jungian_overlay: true
+    allow_lunar_quick_hits: true
+  - key: "PERSONALS"
+    label: "Mercury-Venus-Mars"
+    weight: 0.90
+    orb_scale: 1.00
+    jungian_axes: ["ego_self","anima_animus"]
+    apply_jungian_overlay: true
+  - key: "SOCIAL"
+    label: "Jupiter-Saturn"
+    weight: 1.10
+    orb_scale: 1.05
+    jungian_axes: ["ego_self","anima_animus"]
+    apply_jungian_overlay: true
+  - key: "TRANSPERSONAL"
+    label: "Uranus-Neptune-Pluto"
+    weight: 1.25
+    orb_scale: 0.95
+    heavy_orb_cap_deg: 4.5
+    jungian_axes: ["ego_self","anima_animus"]
+    apply_jungian_overlay: true
+    heavy: true
+  - key: "CHIRON_NODES"
+    label: "Chiron & Nodes"
+    weight: 1.00
+    orb_scale: 1.00
+    jungian_axes: ["ego_self","anima_animus"]
+    apply_jungian_overlay: true
+  - key: "ANGLES"
+    label: "Asc/MC/IC/DSC"
+    weight: 1.30
+    orb_scale: 1.20
+    jungian_axes: ["ego_self","anima_animus"]
+    apply_jungian_overlay: true
+    include_vertex: true
+  - key: "HARMONICS"
+    label: "Harmonics H1–H12"
+    weight: 0.85
+    orb_scale: 0.75
+    jungian_axes: ["ego_self","anima_animus"]
+    apply_jungian_overlay: true
+    enabled: true
+  - key: "DRACONIC"
+    label: "Draconic Overlays"
+    weight: 0.95
+    orb_scale: 0.85
+    jungian_axes: ["ego_self","anima_animus"]
+    apply_jungian_overlay: true
+    enabled: true
+  - key: "COMPOSITES"
+    label: "Composite/Davison/Coalescent"
+    weight: 1.10
+    orb_scale: 0.90
+    jungian_axes: ["ego_self","anima_animus"]
+    apply_jungian_overlay: true
+    enabled: true
+
+composites:
+  jungian_bindings:
+    emphasize_axes: ["anima_animus","puer_senex","ego_self","shadow"]
+    rules:
+      midpoint_contacts:
+        weight_bonus: 0.10
+        axes: ["anima_animus","ego_self"]
+      angle_contacts:
+        weight_bonus: 0.12
+        axes: ["ego_self","puer_senex"]
+      outer_planet_pressure:
+        weight_bonus: 0.08
+        axes: ["shadow","mystic"]
+  include:
+    - "Composite Midpoint"
+    - "Davison Relationship"
+    - "Composite Group DRV ASC"
+    - "Composite DRV ASC"
+    - "Coalescent"
+  rules:
+    # Map composite types to allowed aspects and orb multipliers
+    aspects:
+      default:
+        allowed: ["conjunction","opposition","trine","square","sextile","quincunx"]
+        orb_multiplier: 0.85
+      angles_focus:
+        allowed: ["conjunction","square","opposition","trine","sextile"]
+        orb_multiplier: 1.15
+    angle_priority: true
+    synastry_cross_links: false
+
+harmonics:
+  jungian_bindings:
+    emphasize_axes: ["trickster","mystic","ego_self"]
+    per_harmonic:
+      "5":
+        axes: ["anima_animus","ego_self"]
+        weight_bonus: 0.06
+      "7":
+        axes: ["shadow","mystic"]
+        weight_bonus: 0.08
+      "9":
+        axes: ["devotion","integration"]
+        weight_bonus: 0.05
+      "11":
+        axes: ["trickster","breakthrough"]
+        weight_bonus: 0.07
+  include_series: [1,2,3,4,5,6,7,8,9,10,11,12]
+  gating_enabled: true
+  # Harmonic-specific orb shrink factors
+  orb_shrink_per_h:
+    "1": 1.00
+    "2": 0.95
+    "3": 0.90
+    "4": 0.85
+    "5": 0.80
+    "6": 0.80
+    "7": 0.75
+    "8": 0.75
+    "9": 0.70
+    "10": 0.70
+    "11": 0.65
+    "12": 0.65
+
+draconic:
+  jungian_bindings:
+    emphasize_axes: ["shadow","integration","ego_self"]
+    node_overlays:
+      exact_contact_bonus: 0.12
+      axes: ["shadow","initiation"]
+    angle_overlays:
+      exact_contact_bonus: 0.10
+      axes: ["ego_self","integration"]
+  enabled: true
+  nodes_basis: "True Node"   # Can switch to "Mean Node"
+  orb_multiplier: 0.85
+  angle_priority: true
+  cross_overlay_to_natal: true
+
+jungian_layer:
+
+  overlay_policy:
+    apply_to:
+      channels: ["LUMINARIES","PERSONALS","SOCIAL","TRANSPERSONAL","CHIRON_NODES","ANGLES","HARMONICS","DRACONIC","COMPOSITES"]
+      submodules: ["minor_bodies","symbolic_points","eclipses","progressions","synastry"]
+    inherit_valence: true           # pull constructive/challenging/neutral from section
+    merge_strategy: "additive"      # additive tags; de-duplicate at render
+    narrative_hooks:
+      include_axes_labels: true
+      emit_tags_in_end_summary: true
+      weave_into_advice: true
+    scoring_hooks:
+      axis_weights:
+        ego_self: 0.10
+        shadow: 0.12
+        anima_animus: 0.10
+        puer_senex: 0.08
+        trickster: 0.08
+        mystic: 0.07
+        integration: 0.06
+        initiation: 0.06
+        breakthrough: 0.06
+      cap_axis_bonus: 0.22          # avoid runaway stacking
+    debug:
+      stamp_overlay_sources: true   # list which section contributed tags
+  enabled: true
+  # Map planets/points to archetypal axes and themes
+  axes:
+    ego_self: ["Sun","Asc","MC"]
+    shadow: ["Pluto","12th","Chiron"]
+    anima_animus: ["Venus","Mars","Moon"]
+    puer_senex: ["Jupiter","Saturn"]
+    trickster: ["Mercury","Uranus"]
+    mystic: ["Neptune","Pisces"]
+  
+minor_bodies:
+  apply_jungian_overlay: true
+  enabled: true
+  include: ["Ceres","Pallas","Juno","Vesta"]
+  weight: 0.7
+  orb_multiplier: 0.7
+  jungian_bindings:
+    Ceres: ["nurturer","integration"]
+    Pallas: ["strategist","trickster"]
+    Juno: ["partnership","anima_animus"]
+    Vesta: ["devotion","purification"]
+
+  valence_types:
+    constructive:
+      aspects: ["trine","sextile","conjunction(context)"]
+      themes:
+        Ceres: ["nurturing routines","resource flow","self-care"]
+        Pallas: ["pattern insight","strategic clarity"]
+        Juno: ["commitment","mutuality","agreements"]
+        Vesta: ["focus","ritual discipline","devotion"]
+    challenging:
+      aspects: ["square","opposition","conjunction(context)"]
+      themes:
+        Ceres: ["over-giving","scarcity anxiety"]
+        Pallas: ["over-analysis","rigidity"]
+        Juno: ["co-dependence","contract strain"]
+        Vesta: ["isolation","burnout"]
+    neutral:
+      aspects: ["quincunx","semisextile","novile"]
+      themes:
+        _all: ["adjustment","fine-tuning","subtle shifts"]
+  parent_channels_map:
+    Ceres: "PERSONALS"
+    Juno: "PERSONALS"
+    Pallas: "CHIRON_NODES"
+    Vesta: "CHIRON_NODES"
+  integrate_into_parent_when:
+    gating_pass: true
+    add_narrative_tags: true
+    score_modifier:
+      constructive: +0.05
+      challenging: +0.05
+      neutral: +0.02
+
+
+symbolic_points:
+  apply_jungian_overlay: true
+  enabled: true
+  include: ["Vertex","Part of Fortune","Lot of Spirit","Fixed Stars"]
+  weight: 0.65
+  orb_multiplier: 0.6
+  jungian_bindings:
+    Vertex: ["fate","ego_self"]
+    Part_of_Fortune: ["integration","puer_senex"]
+    Lot_of_Spirit: ["mystic","devotion"]
+    Fixed_Stars: ["shadow","destiny"]
+
+  valence_types:
+    constructive:
+      aspects: ["conjunction","trine","sextile"]
+      themes:
+        Vertex: ["fated meeting","door opens"]
+        Part_of_Fortune: ["tailwind","ease","opportunity"]
+        Lot_of_Spirit: ["purpose alignment","inner call"]
+        Fixed_Stars: ["recognition","destiny marker"]
+    challenging:
+      aspects: ["square","opposition"]
+      themes:
+        Vertex: ["sudden detour","overwhelm"]
+        Part_of_Fortune: ["lucky break with cost"]
+        Lot_of_Spirit: ["crisis of purpose"]
+        Fixed_Stars: ["hubris risk","pressure to perform"]
+    neutral:
+      aspects: ["quincunx","semisextile"]
+      themes:
+        _all: ["spotlight/exposure","course correction"]
+  parent_channel: "ANGLES"
+  integrate_into_parent_when:
+    gating_pass: true
+    add_narrative_tags: true
+    score_modifier:
+      constructive: +0.06
+      challenging: +0.06
+      neutral: +0.03
+
+
+eclipses:
+  apply_jungian_overlay: true
+  enabled: true
+  # Defined as Sun/Moon conjunct/opposite Nodes within ±15°
+  weight: 1.2
+  orb_range_deg: 15.0
+  parent_channel: "LUMINARIES"
+  jungian_bindings:
+    - "initiation"
+    - "underworld"
+    - "breakthrough"
+
+  valence_types:
+    constructive:
+      criteria: ["eclipse near benefics","supportive aspects to angles"]
+      themes: ["renewal","breakthrough","reset"]
+    challenging:
+      criteria: ["tight hits to malefics","hard aspects to ruler"]
+      themes: ["crisis","exposure","rupture"]
+    neutral:
+      criteria: ["background eclipse within window without direct hits"]
+      themes: ["revelation","illumination","reshuffling"]
+  integrate_into_parent_when:
+    gating_pass: true
+    add_narrative_tags: true
+    score_modifier:
+      constructive: +0.10
+      challenging: +0.10
+      neutral: +0.04
+
+
+progressions:
+  apply_jungian_overlay: true
+  enabled: true
+  types: ["Secondary Progressions","Solar Arc"]
+  weight: 1.0
+  orb_multiplier: 0.9
+  jungian_bindings:
+    secondary_progressions: ["integration","anima_animus"]
+    solar_arc: ["fate","shadow","ego_self"]
+  gating:
+    percentile_primary: 70
+    percentile_secondary: 55
+
+  valence_types:
+    constructive:
+      aspects: ["trine","sextile","conjunction(context)"]
+      themes:
+        secondary_progressions: ["inner maturity","skill consolidation"]
+        solar_arc: ["timed unlock","visible milestone"]
+    challenging:
+      aspects: ["square","opposition","conjunction(context)"]
+      themes:
+        secondary_progressions: ["growing pains","reassessment"]
+        solar_arc: ["pressure to change","threshold demand"]
+    neutral:
+      aspects: ["quincunx","semisextile"]
+      themes:
+        _all: ["turning point","slow pivot"]
+  parent_channels_map:
+    secondary_progressions: ["PERSONALS","SOCIAL"]
+    solar_arc: ["TRANSPERSONAL"]
+  integrate_into_parent_when:
+    gating_pass: true
+    add_narrative_tags: true
+    score_modifier:
+      constructive: +0.07
+      challenging: +0.07
+      neutral: +0.03
+
+
+synastry:
+  apply_jungian_overlay: true
+  enabled: false
+  # Parallel to composites, but direct cross-chart aspects
+  weight: 1.0
+  orb_multiplier: 0.85
+  jungian_bindings:
+    cross_sun_moon: ["ego_self","anima_animus"]
+    cross_venus_mars: ["anima_animus","desire"]
+    cross_outer_planets: ["shadow","transcendence"]
+  rules:
+    aspects_allowed: ["conjunction","opposition","trine","square","sextile","quincunx"]
+    angle_priority: true
+
+  valence_types:
+    constructive:
+      aspects: ["trine","sextile","conjunction(context)"]
+      themes:
+        cross_sun_moon: ["rapport","attunement"]
+        cross_venus_mars: ["chemistry","magnetism"]
+        cross_outer_planets: ["shared vision","awakening"]
+    challenging:
+      aspects: ["square","opposition","conjunction(context)"]
+      themes:
+        cross_sun_moon: ["ego friction","needs mismatch"]
+        cross_venus_mars: ["push-pull","timing off"]
+        cross_outer_planets: ["instability","overwhelm"]
+    neutral:
+      aspects: ["quincunx","semisextile"]
+      themes:
+        _all: ["learning dynamic","contrast as teacher"]
+  parent_module: "COMPOSITES"
+  integrate_into_parent_when:
+    gating_pass: true
+    add_narrative_tags: true
+    score_modifier:
+      constructive: +0.06
+      challenging: +0.06
+      neutral: +0.03
+
+
+scoring:
+    weight_overlay_exact: 0.15
+    weight_repetition_cluster: 0.10
+    weight_angle_contact: 0.12
+  narrative_tags:
+    - "initiation"
+    - "underworld"
+    - "integration"
+    - "breakthrough"
+    - "devotion"
+    - "purification"
+    - "reconstruction"
+
+solar_fire_handling:
+  enabled: true
+  # Normalize common Solar Fire CSV/TXT exports
+  parse:
+    detect_abbreviations: true
+    expand_aspects: true
+    header_normalization: true
+  units:
+    angles: "decimal_degrees"
+    time_normalization: "tz_to_meta"    # Convert to meta.tz_default if tz info present
+  validation:
+    crosscheck_with_interpretive_text: true
+    allow_abbrev_map:
+      SU: "Sun"; MO: "Moon"; ME: "Mercury"; VE: "Venus"; MA: "Mars"
+      JU: "Jupiter"; SA: "Saturn"; UR: "Uranus"; NE: "Neptune"; PL: "Pluto"
+      NN: "North Node"; SN: "South Node"; CH: "Chiron"
+      AS: "Asc"; MC: "MC"; IC: "IC"; DS: "Desc"
+    aspect_map:
+      CNJ: "conjunction"; OPP: "opposition"; TRI: "trine"; SQR: "square"; SEX: "sextile"
+      QNX: "quincunx"; SSQ: "semisquare"; SES: "sesquisquare"; SSX: "semisextile"
+  performance:
+    directory_index_block: true          # Optional index at file head for quick jumps
+    one_click_filters: true              # Load specific sections on demand
+
+manifest_indexing:
+  # Guidance for fast windowed loads across large ephemerides
+  ephemeris_manifest:
+    has_time_slices: true
+    slice_granularity: "hour"
+    files:
+      - path: "/mnt/data/2025 Ephemeris - 1HR.xls.csv"
+        year: 2025
+        step: "1h"
+      - path: "/mnt/data/Ephemeris 1900-2050 0.25 month steps.csv"
+        range: "1900-2050"
+        step: "0.25 month"
+  strategy:
+    prefer_hourly_for_target_year: true
+    fallback_broad_scale_for_context: true
+    cache_last_windows: 4                 # Keep last N windows available (inactive)
+
+scoring:
+
+
+performance_optimizations:
+  mode_switches:
+    fast_mode: true              # favor speed: prunes near-threshold early
+    precision_mode: false        # favor completeness (toggle when needed)
+  concurrency:
+    enable_parallelism: true
+    max_workers: 4               # safe default for desktop
+  memory:
+    event_cap_per_window: 4000   # hard cap; oldest/weakest dropped first
+    prune_near_duplicates_arcmin: 1.5
+  caching:
+    manifest_index_cache: true
+    ephemeris_segment_cache: true
+    cache_size_windows: 6
+    cache_eviction_policy: "LRU"
+  parsing:
+    lazy_parse: true             # delay heavy parsing until referenced
+    column_prune: true           # only load columns required by active channels
+    detect_timezones_once: true
+  scoring_pipeline:
+    vectorize_core_ops: true
+    batch_cluster_size: 4096
+    smoothing_kernel_hours: 1.0 # slightly narrower for faster convolution
+  gating_pipeline:
+    early_reject_percentile: 40  # prefilter before hybrid-gating
+    secondary_pass_percentile: 65
+  thresholds_autotune:
+    clamp_primary_between: [68, 78]   # protect against too-high/low auto-thresholds
+    max_flashpoints_per_day: 12       # avoids noise spikes
+  io:
+    read_chunk_minutes: 180      # load ephemeris in 3-hr chunks
+    lookahead_chunks: 1          # small lookahead buffer
+  logging:
+    profiling_counters: true     # emit timings per stage in audit trail
+    shadow_log_limit: 200        # avoid megasized shadow logs
+
+  # Unified score computation across channels (post-orb, post-gating)
+  base_weights:
+    LUMINARIES: 1.0
+    PERSONALS: 0.8
+    SOCIAL: 1.0
+    TRANSPERSONAL: 1.2
+    CHIRON_NODES: 0.9
+    ANGLES: 1.3
+    HARMONICS: 0.6
+    DRACONIC: 0.7
+    COMPOSITES: 1.0
+  smoothing_kernel_hours: 1.0
+  clustering_window_hours: 48
+  thresholds:
+    percentile_primary: 72
+    percentile_secondary: 60
+
+end_of_run_summary:
+  enabled: true
+  include_explainer: true
+  show_included_and_excluded: true
+  reasons: true
+  markers:
+    symbolic: "dashed"
+    capture_margin: "triangle"
+    near_threshold: "dot"
+  report_fields:
+    - "channels_included"
+    - "channels_excluded"
+    - "top_flashpoints"
+    - "near_threshold_events"
+    - "overshadowed_events_kept_in_shadow_log"
+    - "data_windows_loaded"
+    - "profiles_active"
+    - "tz_house_meta"
+
+advice_module:
+  enabled: true
+  jungian_references:
+    include_axes_in_callouts: true
+    weave_archetype_language: true
+  layout:
+    general_advice_first: true
+    channel_hotspot_callouts: true
+    quiet_channel_guidance: true          # Provide strategies when quiet
+    if_other_person_context: "address_user_actions_vs_other_energy"
+  voice:
+    tone: "supportive-strategic"
+    avoid_determinism: true
+  composites_advice_default_target: "self"  # Give advice to the user about working with the other
+
+outputs:
+  text_only_default: true
+  ask_for_graphs_and_csv_at_end: true
+  graphs:
+    show_inline_only: true
+    offer_download_after_display: true
+  csv:
+    include_all_hits_columns: true
+    include_shadow_log: true
+
+
+compatibility:
+  deprecated_fields:
+    - outputs.text_only_default   # superseded by defaults.outputs.text_interpretation_default
+    - outputs.ask_for_graphs_and_csv_at_end  # moved under defaults.outputs.ask_before_outputs
+  notes:
+    - "Prefer defaults.outputs.* over legacy outputs.* keys."
+    - "Use performance_optimizations.* for run tuning instead of ad-hoc overrides."
+
+footnotes:
+  kernel: "Gaussian"
+  enabled_channels_note: true
+  mean_offset_reporting: true
+  timezone_and_house_report: true

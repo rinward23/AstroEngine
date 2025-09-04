@@ -1,0 +1,96 @@
+graphing:
+  modules:
+    HybridSPS_TightnessCorridor:
+      name: HybridSPS_TightnessCorridor
+      version: 1.0.0
+      enabled: true
+      default: true
+      exclusive: true
+      description: Unified Strength line using Centered SPS (±1, signed), overlaid
+        with a hybrid corridor whose width is derived from real orb tightness but
+        rescaled into SPS percentile space. Shows intensity (line) and concentration
+        vs diffusion (band) without overstating probability.
+      inputs:
+        ephemeris: ephem_hourly_YYYY.csv
+        natal_chart: Chris_Natal_Chart_Data_Placidus.csv
+        rules: ASTROLOGY_RULES_v2.18.0.yaml
+      pooling:
+        mode: auto
+        force_hourly_max_days: 3
+        prompt_min_days: 7
+        default_for_4_to_6_days: hourly
+        options:
+        - hourly
+        - daily
+        - weekly
+        - monthly
+        prompting:
+          enabled: true
+          when_condition: range_days >= 7
+          message: 'This range spans {range_days} days. Recommended polling: {recommendation}.
+            Choose one: hourly, daily, weekly, monthly.'
+          default_choice: '{recommendation}'
+        recommendation:
+          rules:
+          - when: range_days >= 30
+            suggest: daily
+            rationale: 'Month-scale: daily balances detail with readability; hourly
+              is too granular.'
+          - when: 7 <= range_days < 30
+            suggest: daily
+            rationale: 'Week+ windows: daily shows structure; pick hourly only for
+              exact timestamps.'
+          - when: range_days < 7
+            suggest: hourly
+            rationale: 'Short windows: hourly preserves intra-day peaks and exact
+              hits.'
+        notify_user_of_choice: true
+        notify_message: Using {chosen_polling} polling for this run.
+      unified_strength:
+        components:
+          orb_tight: 0.6
+          orb_broad: 0.4
+        formula: unified_raw = 0.6*orb_tight + 0.4*orb_broad
+        normalization:
+          method: centered_sps
+          steps:
+          - percentile := rank(|unified_raw|) / N
+          - centered_sps := sign(unified_raw) * (2*percentile - 1)
+          output_field: unified_centered_sps
+      corridor:
+        source: orb_tightness
+        rescaling: centered_percentile
+        width_sigma: 2
+        scaling:
+          baseline: std(unified_centered_sps)
+          width_formula: '| 2*percentile(tightness) - 1 | * baseline'
+        calibration:
+          clamp_percentiles:
+          - 5
+          - 95
+          mean_match: true
+      visual:
+        line:
+          label: Unified Strength (Centered SPS)
+        band:
+          label: ±2 corridor (Hybrid tightness)
+          alpha: 0.25
+        trip_window_markers: true
+        date_ticks: auto
+        figsize:
+        - 14
+        - 6
+      outputs:
+        table_fields:
+        - datetime_or_date
+        - orb_broad
+        - orb_tight
+        - unified_raw
+        - unified_centered_sps
+        figure_name_pattern: '{range_label}_hybrid_sps_corridor.png'
+        table_name_pattern: '{range_label}_hybrid_sps_series.csv'
+      safety:
+        notes: Corridor widths are amplified for visibility but recalibrated to match
+          raw mean and stay within raw 5–95% range.
+  default_module: HybridSPS_TightnessCorridor
+_last_updated: '2025-08-28T18:58:39.918882Z'
