@@ -76,3 +76,4 @@ Enable the GitHub Actions workflow by committing `.github/workflows/consolidate-
 - It’s OK if some older files are malformed; see the Validation report for exact errors.
 - If a module has two files with the same `version`, the latest by sort order is chosen. You can bump the `version` in the intended latest file to force selection.
 - You can re-run the script as many times as needed; it never overwrites your originals, only writes new timestamped outputs.
+ 
