@@ -208,11 +208,145 @@ modules:
   declination_parallels:
     enabled: true
     max_orb_deg_equiv: 0.5
+    moon_orb_deg_equiv: 0.6667
+    include_contraparallel: true
     weight: 0.85
+    gate_instructions: |
+      Use is_parallel(body, natal_point) and is_contraparallel(body, natal_point) with orb_for("declination", body, natal_point, aspect).
+      Treat luminaries and natal angles as priority contacts; allow up to 0.6667° for the Moon and 0.5° otherwise.
+      Flag angular hits so scoring_modifiers.angularity can apply weight_angularity outputs.
+  sign_ingresses:
+    enabled: true
+    dataset_type: ephemeris_hourly
+    detection: is_ingress
+    bodies_default:
+    - Sun
+    - Moon
+    - Mercury
+    - Venus
+    - Mars
+    - Jupiter
+    - Saturn
+    - Uranus
+    - Neptune
+    - Pluto
+    nodes_optional: true
+    window_hours: 12
+    metadata_fields:
+    - ingress_sign
+    gate_instructions: |
+      Use is_ingress(body) to detect longitude crossings of 0°, 30°, 60° ….
+      Always include Sun, Mars, Jupiter, and Saturn sign changes.
+      Allow inners (Moon, Mercury, Venus) when near(is_angle(natal_point), 3) or near(ruler_of(house), 2).
+      Capture house_ingress(body, house) metadata when location context exists.
+  stations:
+    enabled: true
+    dataset_type: ephemeris_hourly
+    detection: is_station
+    window_hours: 36
+    include_shadow_phase: true
+    metadata_fields:
+    - station_kind
+    gate_instructions: |
+      Always include is_station(body, retro) and is_station(body, direct) for Mercury, Venus, and Mars.
+      Include outer planet stations when within_orb(natal_point, 2) or near(is_angle(natal_point), 3).
+      Surface in_shadow(body) context when angular or partile to natal hits so retrograde phase modifiers can adjust severity.
+  lunations:
+    enabled: true
+    detection: is_lunation
+    window_hours: 24
+    gate_instructions: |
+      Include all is_lunation(type) events within ±24 hours.
+      Boost severity ×1.2 when near(natal_angle, 3) or near(natal_luminary, 3) using near(point, deg).
+      Mark hits to angles so angularity multipliers can stamp weight_angularity metadata.
+  eclipses:
+    enabled: true
+    detection: is_eclipse
+    orb_deg_to_natal: 1.0
+    metadata_fields:
+    - eclipse_kind
+    - saros
+    gate_instructions: |
+      Include eclipses when within_orb(natal_point, 1) of planets or angles; prefer 0.5° for luminaries and angles.
+      Record eclipse_kind and saros identifiers for downstream exporters.
+      Treat eclipse contacts as automatic major events.
+  combust_states:
+    enabled: true
+    detection:
+      cazimi_deg: 0.2833
+      combust_deg: 8.0
+      under_beams_deg: 15.0
+    metadata_fields:
+    - combust_state
+    severity_adjustments:
+      cazimi_bonus_pct: 0.10
+      combust_penalty_pct: -0.15
+      under_beams_penalty_pct: -0.05
+    gate_instructions: |
+      Always include is_cazimi(body).
+      Include is_combust(body) and is_under_beams(body) for Mercury and Venus; allow other bodies when profile toggles them on.
+      Apply severity adjustments as noted and surface combust_state for export.
+  out_of_bounds:
+    enabled: true
+    threshold_deg: 23.45
+    metadata_fields:
+    - is_oob
+    - oob_transition
+    gate_instructions: |
+      Monitor is_oob(body) status and emit oob_transition(body) events for enter/exit moments.
+      Include Moon, Mercury, Venus, and Mars transitions by default; allow others when profiles request them.
+      Keep is_oob true while the body remains beyond the threshold for downstream weighting.
+  antiscia_contacts:
+    enabled: false
+    detection:
+      antiscia: is_antiscia
+      contra_antiscia: is_contra_antiscia
+    default_orb_deg: 1.5
+    orb_to_angles_deg: 2.5
+    profile_toggle: antiscia_contacts
+    gate_instructions: |
+      When profile antiscia_contacts is enabled, include is_antiscia(body, natal_point) and is_contra_antiscia(body, natal_point) with orb_for("antiscia", body, natal_point, aspect).
+      Prioritize angles and benefics; enforce ≤1.5° unless the natal point is angular (≤2.5°).
   midpoints:
     enabled: true
-    orb_deg: 1.5
+    orb_deg: 1.0
+    orb_to_angles_deg: 1.5
+    midpoint_pairs:
+    - Sun/Moon
+    - ASC/MC
+    - MC/Node
+    aspects:
+    - conjunction
+    - square
+    - opposition
+    - semisquare
+    - sesquisquare
     weight: 0.7
+    gate_instructions: |
+      Evaluate hit_midpoint(body, pair, aspect) for listed midpoint_pairs with hard aspects (0/45/90/135/180) using orb_for("midpoint", body, pair, aspect).
+      Prioritize outer planet transits; allow faster planets only when exact or angular.
+  fixed_stars:
+    enabled: true
+    star_catalog: bright_mag_le_1_5
+    default_orb_deg: 0.3333
+    mag_le_1_orb_deg: 0.1667
+    metadata_fields:
+    - fixed_star_id
+    gate_instructions: |
+      Include hit_fixed_star(body, star_id) only when the profile weight for the star is >0 and the transiting body is angular or a personal significator.
+      Apply tighter orb (0.1667°) when star magnitude ≤1.0.
+  vertex_contacts:
+    enabled: true
+    aspects:
+    - CON
+    - SQR
+    - OPP
+    orb_deg: 2.0
+    metadata_fields:
+    - vertex_axis
+    gate_instructions: |
+      Use hit_vertex(body, aspect) for Vertex and Antivertex.
+      Include hard aspects by default with orb ≤2°; tighten to 1° when the contact is angular or partile.
   house_fields:
     enabled: true
     cusp_orb_deg: 1.5
@@ -282,6 +416,7 @@ modules:
         channel_cap_mult: 1.4
         combined_master_cap_mult: 1.3
         optional_layers_cap_fraction_of_anchor: 0.3
+        family_cap_per_week: 5
       dedupe:
         collapse_same_transit_planet_and_aspect_family: true
         synastry_per_transit_planet_top_hits: 1
@@ -381,6 +516,7 @@ modules:
         caps:
           per_hour_channel_cap_mult: ${modules.channels_system.ap_super.caps.channel_cap_mult}
           optional_layers_cap_fraction_of_anchor: ${modules.channels_system.ap_super.caps.optional_layers_cap_fraction_of_anchor}
+          family_cap_per_week: 5
         gating:
           require_theme_match_for_mods: ${modules.channels_system.ap_super.gating.require_theme_match_for_mods}
           off_theme_mod_fraction: ${modules.channels_system.ap_super.gating.off_theme_mod_fraction}
@@ -421,6 +557,7 @@ modules:
         caps:
           per_hour_channel_cap_mult: ${modules.channels_system.ap_super.caps.channel_cap_mult}
           optional_layers_cap_fraction_of_anchor: ${modules.channels_system.ap_super.caps.optional_layers_cap_fraction_of_anchor}
+          family_cap_per_week: 5
         gating:
           require_theme_match_for_mods: ${modules.channels_system.ap_super.gating.require_theme_match_for_mods}
           off_theme_mod_fraction: ${modules.channels_system.ap_super.gating.off_theme_mod_fraction}
@@ -469,6 +606,7 @@ modules:
       normalization: true
       caps:
         combined_master_cap_mult: ${modules.channels_system.ap_super.caps.combined_master_cap_mult}
+        family_cap_per_week: 5
       guards:
         composite_not_exceed_individuals_plus_personal_eclipses: true
     run_presets:
@@ -557,6 +695,12 @@ profiles:
   AP-LITE:
     include_modules:
     - transits
+    - sign_ingresses
+    - stations
+    - lunations
+    - eclipses
+    - combust_states
+    - out_of_bounds
     include_points:
     - Vertex
     - AntiVertex
@@ -567,6 +711,16 @@ profiles:
     - composite_synastry
     - secondary_progressions
     - solar_arc
+    - sign_ingresses
+    - stations
+    - lunations
+    - eclipses
+    - combust_states
+    - out_of_bounds
+    - declination_parallels
+    - midpoints
+    - fixed_stars
+    - vertex_contacts
     include_points:
     - Vertex
     - AntiVertex
@@ -588,6 +742,15 @@ profiles:
     - declination_parallels
     - midpoints
     - house_fields
+    - sign_ingresses
+    - stations
+    - lunations
+    - eclipses
+    - combust_states
+    - out_of_bounds
+    - fixed_stars
+    - vertex_contacts
+    - antiscia_contacts
     include_points:
     - Vertex
     - AntiVertex
@@ -602,6 +765,16 @@ profiles:
     - composite_synastry
     - secondary_progressions
     - solar_arc
+    - sign_ingresses
+    - stations
+    - lunations
+    - eclipses
+    - combust_states
+    - out_of_bounds
+    - declination_parallels
+    - midpoints
+    - fixed_stars
+    - vertex_contacts
     include_points:
     - Vertex
     - AntiVertex
@@ -653,10 +826,141 @@ interpretive_channels:
     house_fields:
       promote_scale: 0.3
       tag_label: House field
+    sign_ingresses:
+      promote_scale: 0.55
+      tag_label: Sign ingress
+    stations:
+      promote_scale: 0.65
+      tag_label: Planetary station
+    lunations:
+      promote_scale: 0.5
+      tag_label: Lunation highlight
+    eclipses:
+      promote_scale: 0.9
+      tag_label: Eclipse contact
+    combust_states:
+      promote_scale: 0.35
+      tag_label: Combust / cazimi state
+    out_of_bounds:
+      promote_scale: 0.4
+      tag_label: Out-of-bounds transition
+    antiscia_contacts:
+      promote_scale: 0.3
+      tag_label: Antiscia contact
+    fixed_stars:
+      promote_scale: 0.45
+      tag_label: Fixed star alignment
+    vertex_contacts:
+      promote_scale: 0.4
+      tag_label: Vertex activation
     lunar_cycles:
       interpretive:
         promote_scale: 0.3
         tag_label: Lunar cycle (context)
+scoring_modifiers:
+  angularity:
+    multiplier_angle: 1.2
+    multiplier_house_ruler: 1.1
+    instructions: >
+      Multiply severity by ×1.2 when is_angle(natal_point) is true.
+      Multiply by ×1.1 when the transiting body equals ruler_of(house).
+      Persist the applied multiplier as weight_angularity in event metadata.
+  sect_and_dignity:
+    day_chart_benefic_bonus_pct: 0.10
+    day_chart_malefic_penalty_pct: -0.10
+    essential_dignity_bonus_pct: 0.10
+    detriment_fall_penalty_pct: -0.10
+    instructions: >
+      Use is_day_chart(natal_id) to determine sect and has_dignity(body, kind) for essential dignity checks.
+      Boost benefics (Venus, Jupiter) by +10% in day charts and reduce malefics (Mars, Saturn) by −10%.
+      Apply ±10% adjustments when a planet is in rulership/exaltation versus fall/detriment and stamp results to weight_dignity and weight_sect.
+  retrograde_phase:
+    pre_station_multiplier: 1.1
+    post_station_multiplier: 0.9
+    instructions: >
+      When phase(body) == pre_station increase severity by ×1.1; when phase(body) == post_station reduce to ×0.9.
+      Pair with stations metadata so near-station hits inherit context during scoring.
+  partile_priority:
+    always_pass_gate: true
+    instructions: >
+      If is_partile() is true, allow the contact to pass gating layers unless a module explicitly suppresses it.
+  family_caps:
+    per_week: 5
+    instructions: >
+      Apply family_cap_per_week(5) to planet-aspect families to prevent over-surfacing within seven-day windows.
+  orb_profile_overrides:
+    minors_to_angles_deg: 1.5
+    declination_parallel_default_deg: 0.5
+    declination_parallel_moon_deg: 0.6667
+    antiscia_default_deg: 1.5
+    antiscia_to_angles_deg: 2.5
+    fixed_stars_bright_deg: 0.3333
+    fixed_stars_mag_le1_deg: 0.1667
+    midpoints_transit_deg: 1.0
+    instructions: >
+      Use orb_for(technique, body, point, aspect) to fetch profile-tuned orbs.
+      Tighter tolerances automatically apply for angular targets and bright fixed stars per values above.
+event_metadata:
+  stamp_flags: true
+  fields:
+    station_kind:
+      type: enum
+      values: [retro, direct, none]
+    ingress_sign:
+      type: zodiac_sign
+      default: none
+    is_oob:
+      type: boolean
+    oob_transition:
+      type: enum
+      values: [enter, exit, none]
+    combust_state:
+      type: enum
+      values: [cazimi, combust, under_beams, none]
+    eclipse_kind:
+      type: enum
+      values: [solar, lunar, none]
+    saros:
+      type: string
+      optional: true
+    weight_angularity:
+      type: float
+    weight_dignity:
+      type: float
+    weight_sect:
+      type: float
+  instructions: >
+    Exporters should surface these fields without recomputation; treat missing enums as "none" and persist numeric weights for audit trails.
+dsl_support:
+  predicates:
+  - is_ingress(body)
+  - house_ingress(body, house)
+  - is_station(body, kind)
+  - in_shadow(body)
+  - is_lunation(type)
+  - is_eclipse(type)
+  - is_cazimi(body)
+  - is_combust(body)
+  - is_under_beams(body)
+  - is_oob(body)
+  - oob_transition(body)
+  - is_parallel(body, natal_point)
+  - is_contraparallel(body, natal_point)
+  - is_antiscia(body, natal_point)
+  - is_contra_antiscia(body, natal_point)
+  - hit_midpoint(body, pair, aspect)
+  - hit_fixed_star(body, star_id)
+  - hit_vertex(body, aspect)
+  - near(natal_point, deg)
+  - within_orb(natal_point, deg)
+  - is_angle(natal_point)
+  - ruler_of(house)
+  - has_dignity(body, kind)
+  - is_day_chart(natal_id)
+  - phase(body)
+  - is_partile()
+  - orb_for(technique, body, point, aspect)
+  - family_cap_per_week(n)
   tagging:
     include_minor_aspects: true
     include_notes: true
