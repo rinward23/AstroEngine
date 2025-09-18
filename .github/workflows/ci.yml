@@ -1,0 +1,28 @@
+# <<< AUTO-GEN START: CI v1.0 >>>
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install click jsonschema ruff black mypy pytest
+      - name: Ruff
+        run: ruff check astroengine src tests
+      - name: Black
+        run: black --check astroengine/__init__.py src tests
+      - name: Mypy
+        run: mypy --ignore-missing-imports astroengine src tests
+      - name: Pytest
+        run: pytest -q
+# <<< AUTO-GEN END: CI v1.0 >>>

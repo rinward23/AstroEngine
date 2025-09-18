@@ -55,3 +55,24 @@ Two utility layers support schema validation:
 The validation helpers are intentionally lightweight so they can
 be embedded into existing “doctor” or pre-flight scripts without
 risking accidental module removals.
+
+# <<< AUTO-GEN START: CLI Usage v1.0 >>>
+## CLI (demo)
+
+Run the mock transit scan without a real ephemeris by invoking:
+
+```bash
+python -m astroengine.transit.cli scan-mock \
+  --start 2025-01-01T00:00:00Z \
+  --end 2025-01-31T00:00:00Z \
+  --step 12 \
+  --body Mars \
+  --lon0 50 \
+  --speed 6 \
+  --natal-point Venus \
+  --natal-lon 100 \
+  --aspect square
+```
+
+The command uses a linear motion mock provider, so no external ephemeris is required for the demo run.
+# <<< AUTO-GEN END: CLI Usage v1.0 >>>
