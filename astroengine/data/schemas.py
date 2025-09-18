@@ -31,6 +31,10 @@ SchemaMetadata = Mapping[str, str]
 
 SCHEMA_REGISTRY: Dict[str, SchemaMetadata] = {
     "result_v1": {"filename": "result_schema_v1.json", "kind": "jsonschema"},
+    "result_v1_domains": {
+        "filename": "result_schema_v1.json",
+        "kind": "jsonschema",
+    },
     "contact_gate_v2": {
         "filename": "contact_gate_schema_v2.json",
         "kind": "jsonschema",

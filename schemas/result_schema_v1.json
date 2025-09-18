@@ -384,6 +384,24 @@
           },
           "notes": {
             "type": "string"
+          },
+          "elements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "domains": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "domain_profile": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       }
