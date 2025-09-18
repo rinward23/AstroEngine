@@ -1,0 +1,89 @@
+{
+  "schema": {
+    "id": "astroengine.orbs.policy",
+    "version": "2025-09-03",
+    "notes": "Derived from ruleset appendix major/minor aspect tolerances."
+  },
+  "profiles": {
+    "standard": {
+      "description": "Default profile tuned for AP-SUPER runs.",
+      "multipliers": {
+        "luminaries": 1.2,
+        "outer": 0.8,
+        "asteroids": 0.6
+      }
+    },
+    "tight": {
+      "description": "Stricter gating used for high-precision diagnostics.",
+      "multipliers": {
+        "luminaries": 1.0,
+        "outer": 0.7,
+        "asteroids": 0.5
+      }
+    },
+    "wide": {
+      "description": "Relaxed profile for exploratory scans and storyline assembly.",
+      "multipliers": {
+        "luminaries": 1.35,
+        "outer": 0.9,
+        "asteroids": 0.75
+      }
+    }
+  },
+  "aspects": {
+    "conjunction": {
+      "category": "major",
+      "base_orb": 8.0,
+      "profile_overrides": {
+        "tight": 6.5,
+        "wide": 9.0
+      },
+      "notes": "Luminaries use multipliers; composites clamp at +/- 9\u00b0."
+    },
+    "opposition": {
+      "category": "major",
+      "base_orb": 7.0,
+      "profile_overrides": {
+        "tight": 6.0,
+        "wide": 8.0
+      },
+      "notes": "Outer planets rarely exceed 6\u00b0 after multipliers."
+    },
+    "square": {
+      "category": "major",
+      "base_orb": 6.0,
+      "profile_overrides": {
+        "tight": 5.0,
+        "wide": 7.0
+      },
+      "notes": "Used for tension/pressure motifs in relationship channel."
+    },
+    "trine": {
+      "category": "major",
+      "base_orb": 6.0,
+      "profile_overrides": {
+        "tight": 4.5,
+        "wide": 7.0
+      },
+      "notes": "Friendly flow aspects; minors borrow from this window."
+    },
+    "sextile": {
+      "category": "minor",
+      "base_orb": 4.0,
+      "profile_overrides": {
+        "tight": 3.0,
+        "wide": 5.0
+      },
+      "notes": "Used for activation prompts and guidance."
+    },
+    "quincunx": {
+      "category": "minor",
+      "base_orb": 3.0,
+      "profile_overrides": {
+        "tight": 2.5,
+        "wide": 4.0
+      },
+      "notes": "Health and adjustments channel emphasises these hits."
+    }
+  }
+}

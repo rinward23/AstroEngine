@@ -1,0 +1,242 @@
+{
+  "$id": "https://astro.engine/schemas/contact_gate_schema_v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AstroEngine Contact Gate Decisions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "run",
+    "gates"
+  ],
+  "properties": {
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^astroengine\\.contact_gate$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^v?2\\.0\\.[0-9]+$"
+        }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "generated_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "profile": {
+          "type": "string"
+        },
+        "ruleset_version": {
+          "type": "string"
+        }
+      }
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "channel",
+          "decision",
+          "score",
+          "threshold",
+          "window",
+          "subjects",
+          "evidence",
+          "audit"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^GATE-[A-Z0-9]{4,}$"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "subchannel": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "include",
+              "exclude",
+              "defer"
+            ]
+          },
+          "score": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "threshold": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "delta": {
+            "type": "number"
+          },
+          "window": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "start",
+              "end",
+              "timezone"
+            ],
+            "properties": {
+              "start": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "end": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "timezone": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            }
+          },
+          "subjects": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "token",
+                "role"
+              ],
+              "properties": {
+                "token": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "summary",
+              "events"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "events": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/eventReference"
+                }
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "notes": {
+                "type": "string"
+              }
+            }
+          },
+          "audit": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "decided_by",
+              "decided_at",
+              "source"
+            ],
+            "properties": {
+              "decided_by": {
+                "type": "string"
+              },
+              "decided_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "source": {
+                "type": "string"
+              },
+              "manual_override": {
+                "type": "boolean"
+              }
+            }
+          },
+          "recommendation": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "eventReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "orb",
+        "valence"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string"
+        },
+        "orb": {
+          "type": "number"
+        },
+        "valence": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "strength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "near_threshold": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
