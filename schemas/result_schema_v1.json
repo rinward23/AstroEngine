@@ -10,7 +10,9 @@
     "window",
     "subjects",
     "channels",
-    "events"
+    "events",
+    "modules",
+    "datasets"
   ],
   "properties": {
     "schema": {
@@ -39,7 +41,10 @@
         "profile",
         "generated_at",
         "engine_version",
-        "ruleset_version"
+        "ruleset_version",
+        "providers",
+        "ruleset_modules",
+        "data_integrity"
       ],
       "properties": {
         "id": {
@@ -64,6 +69,126 @@
         },
         "timezone": {
           "type": "string"
+        },
+        "providers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ephemeris"
+          ],
+          "properties": {
+            "ephemeris": {
+              "$ref": "#/$defs/ephemerisProvider"
+            },
+            "atlas": {
+              "$ref": "#/$defs/atlasProvider"
+            },
+            "fixed_stars": {
+              "$ref": "#/$defs/catalogProvider"
+            },
+            "time_scale": {
+              "$ref": "#/$defs/timeProvider"
+            }
+          }
+        },
+        "ruleset_modules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "transit.stations",
+              "transit.ingresses",
+              "transit.lunations",
+              "transit.eclipses",
+              "transit.combust",
+              "transit.oob",
+              "transit.declination",
+              "transit.antiscia",
+              "transit.midpoints",
+              "transit.fixedstars"
+            ]
+          }
+        },
+        "extras": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "skyfield",
+              "swe",
+              "parquet",
+              "cli",
+              "dev",
+              "maps"
+            ]
+          }
+        },
+        "profile_settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "default_house_system": {
+              "$ref": "#/$defs/houseSystem"
+            },
+            "default_ayanamsha": {
+              "$ref": "#/$defs/ayanamsha"
+            },
+            "enable_minor_planets": {
+              "type": "boolean"
+            },
+            "enable_progressions": {
+              "type": "boolean"
+            },
+            "enable_returns": {
+              "type": "boolean"
+            },
+            "enable_fixed_stars": {
+              "type": "boolean"
+            },
+            "enable_declination": {
+              "type": "boolean"
+            },
+            "enable_midpoints": {
+              "type": "boolean"
+            },
+            "enable_lunations": {
+              "type": "boolean"
+            },
+            "enable_eclipses": {
+              "type": "boolean"
+            }
+          }
+        },
+        "data_integrity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "datasets_verified"
+          ],
+          "properties": {
+            "datasets_verified": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ephemeris_cross_checks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "house_system_checks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -101,7 +226,8 @@
         "required": [
           "token",
           "name",
-          "role"
+          "role",
+          "natal"
         ],
         "properties": {
           "token": {
@@ -118,6 +244,21 @@
           },
           "consent": {
             "type": "boolean"
+          },
+          "natal": {
+            "$ref": "#/$defs/natalRecord"
+          },
+          "house_system": {
+            "$ref": "#/$defs/houseSystem"
+          },
+          "ayanamsha": {
+            "$ref": "#/$defs/ayanamsha"
+          },
+          "data_sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
@@ -129,6 +270,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "module",
           "id",
           "name",
           "score",
@@ -218,6 +360,15 @@
                       }
                     }
                   }
+                },
+                "module": {
+                  "type": "string"
+                },
+                "submodule": {
+                  "type": "string"
+                },
+                "channel": {
+                  "type": "string"
                 }
               }
             }
@@ -254,6 +405,12 @@
                 }
               }
             }
+          },
+          "submodule": {
+            "type": "string"
+          },
+          "module": {
+            "type": "string"
           }
         }
       }
@@ -275,7 +432,13 @@
           "channel",
           "orb",
           "valence",
-          "strength"
+          "strength",
+          "module",
+          "submodule",
+          "subchannel",
+          "family",
+          "predicates",
+          "provenance"
         ],
         "properties": {
           "id": {
@@ -384,6 +547,721 @@
           },
           "notes": {
             "type": "string"
+          },
+          "module": {
+            "type": "string"
+          },
+          "submodule": {
+            "type": "string"
+          },
+          "subchannel": {
+            "type": "string"
+          },
+          "family": {
+            "type": "string",
+            "enum": [
+              "transit",
+              "station",
+              "ingress",
+              "lunation",
+              "solar_eclipse",
+              "lunar_eclipse",
+              "combust",
+              "cazimi",
+              "under_beams",
+              "out_of_bounds",
+              "declination_parallel",
+              "declination_contraparallel",
+              "midpoint",
+              "fixed_star",
+              "antiscia",
+              "contra_antiscia",
+              "progression",
+              "return",
+              "minor_planet"
+            ]
+          },
+          "predicates": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": [
+                "is_transit",
+                "is_station",
+                "is_ingress",
+                "is_lunation",
+                "is_eclipse",
+                "is_cazimi",
+                "is_combust",
+                "is_under_beams",
+                "is_oob",
+                "oob_transition",
+                "is_parallel",
+                "is_contraparallel",
+                "is_antiscia",
+                "is_contra_antiscia",
+                "hit_midpoint",
+                "hit_fixed_star",
+                "is_minor_planet",
+                "is_progression",
+                "is_return"
+              ]
+            }
+          },
+          "feature_flags": {
+            "$ref": "#/$defs/featureFlags"
+          },
+          "provenance": {
+            "$ref": "#/$defs/eventProvenance"
+          },
+          "house_system": {
+            "$ref": "#/$defs/houseSystem"
+          },
+          "ayanamsha": {
+            "$ref": "#/$defs/ayanamsha"
+          },
+          "midpoint": {
+            "$ref": "#/$defs/midpointDescriptor"
+          },
+          "fixed_star": {
+            "$ref": "#/$defs/fixedStarDescriptor"
+          },
+          "dignity": {
+            "$ref": "#/$defs/dignityState"
+          },
+          "saros_series": {
+            "type": "string"
+          },
+          "lunar_phase": {
+            "type": "string"
+          },
+          "declination": {
+            "type": "number"
+          },
+          "progression_kind": {
+            "type": "string",
+            "enum": [
+              "secondary",
+              "solar_arc",
+              "lunar",
+              "other"
+            ]
+          },
+          "return_kind": {
+            "type": "string",
+            "enum": [
+              "solar",
+              "lunar",
+              "venus",
+              "mars",
+              "other"
+            ]
+          },
+          "dataset_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "severity_modifier": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/moduleDescriptor"
+      }
+    },
+    "datasets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/dataSource"
+      }
+    }
+  },
+  "$defs": {
+    "houseSystem": {
+      "type": "string",
+      "enum": [
+        "whole_sign",
+        "equal",
+        "placidus",
+        "koch",
+        "regiomontanus",
+        "campanus",
+        "porphyry",
+        "topocentric",
+        "alcabitius",
+        "morinus",
+        "meridian"
+      ]
+    },
+    "ayanamsha": {
+      "type": "string",
+      "enum": [
+        "tropical",
+        "lahiri",
+        "fagan_bradley",
+        "krishnamurti",
+        "raman",
+        "true_chitra",
+        "yukteswar",
+        "galactic_center"
+      ]
+    },
+    "ephemerisProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "version",
+        "mode"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "ephemeris"
+          ]
+        },
+        "version": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "skyfield",
+            "swiss_ephemeris",
+            "hybrid"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        },
+        "ayanamsha": {
+          "$ref": "#/$defs/ayanamsha"
+        },
+        "house_system_default": {
+          "$ref": "#/$defs/houseSystem"
+        },
+        "supports_minor_planets": {
+          "type": "boolean"
+        },
+        "supports_fixed_stars": {
+          "type": "boolean"
+        },
+        "supports_lunations": {
+          "type": "boolean"
+        },
+        "supports_eclipses": {
+          "type": "boolean"
+        },
+        "parity_window_arcsec": {
+          "type": "number"
+        },
+        "house_cusp_tolerance_arcsec": {
+          "type": "number"
+        },
+        "tests_ran": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "atlasProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "atlas"
+          ]
+        },
+        "version": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "supports_timezone_lookup": {
+          "type": "boolean"
+        },
+        "geocoder": {
+          "type": "string"
+        }
+      }
+    },
+    "catalogProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "fixed_star_catalog"
+          ]
+        },
+        "version": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "epoch": {
+          "type": "string"
+        },
+        "magnitude_limit": {
+          "type": "number"
+        }
+      }
+    },
+    "timeProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "time_scale"
+          ]
+        },
+        "version": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "database": {
+          "type": "string"
+        }
+      }
+    },
+    "dataSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "format",
+        "path"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "csv",
+            "sqlite",
+            "parquet",
+            "json",
+            "jsonl",
+            "feather"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "indexed": {
+          "type": "boolean"
+        },
+        "index_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "row_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checksum": {
+          "type": "string"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "eventProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset",
+        "record_id"
+      ],
+      "properties": {
+        "dataset": {
+          "type": "string"
+        },
+        "record_id": {
+          "type": "string"
+        },
+        "source_module": {
+          "type": "string"
+        },
+        "calculation": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "quality": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "featureFlags": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "is_station": {
+          "type": "boolean"
+        },
+        "is_ingress": {
+          "type": "boolean"
+        },
+        "is_lunation": {
+          "type": "boolean"
+        },
+        "is_eclipse": {
+          "type": "boolean"
+        },
+        "is_cazimi": {
+          "type": "boolean"
+        },
+        "is_combust": {
+          "type": "boolean"
+        },
+        "is_under_beams": {
+          "type": "boolean"
+        },
+        "is_out_of_bounds": {
+          "type": "boolean"
+        },
+        "entered_out_of_bounds": {
+          "type": "boolean"
+        },
+        "is_declination_parallel": {
+          "type": "boolean"
+        },
+        "is_declination_contraparallel": {
+          "type": "boolean"
+        },
+        "is_midpoint": {
+          "type": "boolean"
+        },
+        "is_fixed_star": {
+          "type": "boolean"
+        },
+        "is_antiscia": {
+          "type": "boolean"
+        },
+        "is_contra_antiscia": {
+          "type": "boolean"
+        },
+        "is_progressed": {
+          "type": "boolean"
+        },
+        "is_return": {
+          "type": "boolean"
+        },
+        "is_minor_planet": {
+          "type": "boolean"
+        }
+      }
+    },
+    "natalRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timestamp",
+        "tzid",
+        "utc_offset_minutes",
+        "latitude",
+        "longitude",
+        "source"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tzid": {
+          "type": "string"
+        },
+        "utc_offset_minutes": {
+          "type": "integer"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "altitude_m": {
+          "type": "number"
+        },
+        "location_name": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "atlas_provider": {
+          "type": "string"
+        },
+        "house_system": {
+          "$ref": "#/$defs/houseSystem"
+        },
+        "ayanamsha": {
+          "$ref": "#/$defs/ayanamsha"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "midpointDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "points"
+      ],
+      "properties": {
+        "points": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "string"
+          }
+        },
+        "angle": {
+          "type": "number"
+        }
+      }
+    },
+    "fixedStarDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "magnitude": {
+          "type": "number"
+        },
+        "orb": {
+          "type": "number"
+        }
+      }
+    },
+    "dignityState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rulership": {
+          "type": "string"
+        },
+        "exaltation": {
+          "type": "string"
+        },
+        "triplicity": {
+          "type": "string"
+        },
+        "term": {
+          "type": "string"
+        },
+        "face": {
+          "type": "string"
+        },
+        "sect": {
+          "type": "string"
+        },
+        "modifier": {
+          "type": "number"
+        }
+      }
+    },
+    "subchannelDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "channelDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "subchannels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/subchannelDescriptor"
+          }
+        }
+      }
+    },
+    "submoduleDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "channels"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/channelDescriptor"
+          }
+        }
+      }
+    },
+    "moduleDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "channels"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "profile": {
+          "type": "string"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/channelDescriptor"
+          }
+        },
+        "submodules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/submoduleDescriptor"
           }
         }
       }

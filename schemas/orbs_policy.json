@@ -84,6 +84,167 @@
         "wide": 4.0
       },
       "notes": "Health and adjustments channel emphasises these hits."
+    },
+    "parallel": {
+      "category": "declination",
+      "base_orb": 0.5,
+      "notes": "Declination parallel treated similar to conjunction; Moon uses wider orb via conditions."
+    },
+    "contraparallel": {
+      "category": "declination",
+      "base_orb": 0.5,
+      "notes": "Contraparallel mirrors opposition in declination scoring."
     }
+  },
+  "conditions": {
+    "cazimi": {
+      "orb_deg": 0.2833,
+      "notes": "\u2264 0\u00b017\u2032 separation from the Sun."
+    },
+    "combust": {
+      "orb_deg": 8.0,
+      "notes": "Classical combustion window."
+    },
+    "under_beams": {
+      "orb_deg": 15.0,
+      "notes": "Under-beams tracking for Mercury and Venus."
+    },
+    "out_of_bounds": {
+      "declination_deg": 23.45,
+      "bodies": [
+        "Moon",
+        "Mercury",
+        "Venus",
+        "Mars"
+      ],
+      "notes": "Detect transitions beyond solar declination limits."
+    },
+    "declination_parallel": {
+      "orb_deg": 0.5,
+      "moon_orb_deg": 0.6667,
+      "notes": "Default \u00b10\u00b030\u2032, Moon \u00b10\u00b040\u2032."
+    },
+    "fixed_star": {
+      "default_orb_deg": 0.3333,
+      "bright_magnitude_threshold": 1.0,
+      "bright_orb_deg": 0.1667,
+      "notes": "Bright stars tighter orb, default \u22640\u00b020\u2032."
+    },
+    "midpoint": {
+      "orb_deg": 1.0,
+      "angles": [
+        0,
+        45,
+        90,
+        135,
+        180
+      ],
+      "notes": "Cosmobiology core midpoint aspects."
+    },
+    "lunation_boost": {
+      "angle_tight_deg": 3.0,
+      "boost_multiplier": 1.2,
+      "notes": "Boost when lunation within 3\u00b0 of angles or natal luminaries."
+    },
+    "eclipse": {
+      "orb_deg": 1.0,
+      "notes": "Eclipse inclusion when degree within 1\u00b0 of natal contact."
+    }
+  },
+  "minor_planets": {
+    "default_enabled": false,
+    "bodies": [
+      "Ceres",
+      "Pallas",
+      "Juno",
+      "Vesta",
+      "Chiron"
+    ],
+    "orb_profile": {
+      "personal_like": 6.0,
+      "outer_like": 4.0
+    },
+    "notes": "Minor planets available behind profile toggles."
+  },
+  "fixed_stars": {
+    "catalog": "astroengine-fixed-stars",
+    "default_orb_deg": 0.3333,
+    "bright_star_orb_deg": 0.1667,
+    "notes": "Curated bright-star list with proper motion applied."
+  },
+  "midpoints": {
+    "core_sets": [
+      "Sun/Moon",
+      "ASC/MC",
+      "MC/Node"
+    ],
+    "angles": [
+      0,
+      45,
+      90,
+      135,
+      180
+    ],
+    "orb_deg": 1.0,
+    "notes": "Extended Uranian sets remain profile gated."
+  },
+  "ayanamshas": {
+    "tropical": {
+      "offset_deg_at_j2000": 0.0,
+      "source": "Tropical zodiac reference.",
+      "offset_reference_epoch": "J2000.0"
+    },
+    "lahiri": {
+      "offset_deg_at_j2000": -23.8531,
+      "source": "Hindu Calendar Reform Committee (1955).",
+      "offset_reference_epoch": "J2000.0"
+    },
+    "fagan_bradley": {
+      "offset_deg_at_j2000": -24.0275,
+      "source": "Donald Bradley calculations.",
+      "offset_reference_epoch": "J2000.0"
+    },
+    "krishnamurti": {
+      "offset_deg_at_j2000": -23.9617,
+      "source": "K. S. Krishnamurti ayanamsha.",
+      "offset_reference_epoch": "J2000.0"
+    },
+    "raman": {
+      "offset_deg_at_j2000": -22.8586,
+      "source": "B. V. Raman sidereal zodiac.",
+      "offset_reference_epoch": "J2000.0"
+    },
+    "true_chitra": {
+      "offset_deg_at_j2000": -23.8531,
+      "source": "True Chitra (Chitra Paksha).",
+      "offset_reference_epoch": "J2000.0"
+    },
+    "yukteswar": {
+      "offset_deg_at_j2000": -23.501,
+      "source": "Sri Yukteswar ayanamsha.",
+      "offset_reference_epoch": "J2000.0"
+    },
+    "galactic_center": {
+      "offset_deg_at_j2000": -27.0,
+      "source": "Experimental alignment to Galactic Center.",
+      "offset_reference_epoch": "J2000.0"
+    }
+  },
+  "house_systems": {
+    "default": "whole_sign",
+    "supported": [
+      "whole_sign",
+      "equal",
+      "placidus",
+      "koch",
+      "regiomontanus",
+      "campanus",
+      "porphyry",
+      "topocentric",
+      "alcabitius",
+      "morinus",
+      "meridian"
+    ],
+    "notes": "Default Whole Sign; others selectable per profile."
   }
 }

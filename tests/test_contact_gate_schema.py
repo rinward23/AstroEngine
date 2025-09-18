@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from copy import deepcopy
 
 import pytest
@@ -21,6 +19,10 @@ def _valid_gate_payload() -> dict:
                 "id": "GATE-001A",
                 "channel": "relationship",
                 "subchannel": "relationship_bonding",
+                "module": "transits",
+                "submodule": "transits.relationship",
+                "family": "transit",
+                "predicates": ["is_transit"],
                 "decision": "include",
                 "score": 42.0,
                 "threshold": 35.0,
@@ -44,6 +46,16 @@ def _valid_gate_payload() -> dict:
                             "valence": 0.85,
                             "strength": 72.5,
                             "near_threshold": False,
+                            "family": "transit",
+                            "predicates": ["is_transit"],
+                            "provenance": {
+                                "dataset": "ephemeris_jpl",
+                                "record_id": "EVT-0001",
+                                "source_module": "transits.core",
+                                "timestamp": "2025-09-03T12:00:01Z",
+                            },
+                            "module": "transits",
+                            "submodule": "transits.relationship",
                         }
                     ],
                     "confidence": 0.93,
@@ -55,6 +67,13 @@ def _valid_gate_payload() -> dict:
                     "source": "scoring.contact_gate",
                     "manual_override": False,
                 },
+                "provenance": {
+                    "dataset": "contact_gates",
+                    "record_id": "GATE-001A",
+                    "source_module": "scoring.contact_gate",
+                    "timestamp": "2025-09-03T12:05:01Z",
+                },
+                "datasets": ["ephemeris_jpl", "contact_gates"],
                 "recommendation": "Highlight in daily narrative",
             }
         ],

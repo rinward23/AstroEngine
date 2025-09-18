@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astroengine"
+version = "0.1.0"
+description = "Schema definitions and validation helpers for AstroEngine"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "AstroEngine Operators" }]
+license = { text = "MIT" }
+
+[project.optional-dependencies]
+skyfield = ["skyfield", "jplephem", "numpy"]
+# Swiss Ephemeris bindings ship under a restrictive license; audit before enabling commercially.
+swe = ["pyswisseph"]
+parquet = ["pyarrow"]
+cli = ["click"]
+dev = ["pytest", "hypothesis", "ruff", "black", "mypy", "tzdata"]
+maps = ["pyproj", "shapely", "geopandas"]
+
+[project.urls]
+"Repository" = "https://example.com/astroengine"
+"Documentation" = "https://example.com/astroengine/docs"

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from astroengine.data.schemas import list_schema_keys, load_schema_document
 from astroengine.validation import available_schema_keys
 
@@ -16,7 +14,22 @@ def test_orbs_policy_contains_expected_entries():
         "trine",
         "sextile",
         "quincunx",
+        "parallel",
+        "contraparallel",
     }
+    assert data["conditions"]["cazimi"]["orb_deg"] == 0.2833
+    assert data["conditions"]["fixed_star"]["bright_orb_deg"] == 0.1667
+    assert data["minor_planets"]["bodies"] == [
+        "Ceres",
+        "Pallas",
+        "Juno",
+        "Vesta",
+        "Chiron",
+    ]
+    assert data["fixed_stars"]["catalog"] == "astroengine-fixed-stars"
+    assert data["midpoints"]["orb_deg"] == 1.0
+    assert data["ayanamshas"]["lahiri"]["offset_deg_at_j2000"] == -23.8531
+    assert data["house_systems"]["default"] == "whole_sign"
 
 
 def test_available_schema_keys_filters_jsonschemas():
