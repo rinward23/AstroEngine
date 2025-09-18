@@ -108,6 +108,14 @@ def test_result_schema_accepts_valid_payload():
     validate_payload("result_v1", payload)
 
 
+def test_result_schema_accepts_domain_annotations():
+    payload = _valid_result_payload()
+    payload["events"][0]["elements"] = ["FIRE"]
+    payload["events"][0]["domains"] = {"MIND": 1.0}
+    payload["events"][0]["domain_profile"] = "vca_neutral"
+    validate_payload("result_v1", payload)
+
+
 def test_result_schema_rejects_invalid_event_payload():
     payload = _valid_result_payload()
     broken = deepcopy(payload)
