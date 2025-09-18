@@ -1,0 +1,231 @@
+# Base AstroEngine profile covering default orbs, severity weights, and feature toggles.
+profile_id: base
+version: 0.1.0
+schema_version: 1
+updated_at: 2024-05-01T00:00:00Z
+description: >-
+  Baseline profile enabling core transit techniques (stations, ingresses, lunations,
+  declination checks) with conservative orb policies and severity weights suited for
+  general natal transit monitoring.
+provenance:
+  dignities_table: profiles/dignities.csv
+  fixed_star_table: profiles/fixed_stars.csv
+  feature_flags_doc: profiles/feature_flags.md
+  maintainer: astroengine-core
+  notes: |
+    All orb/severity values derived from traditional sources (Ptolemy, Lilly) blended
+    with modern practice references (Houlding, Frawley). Modifiers calibrated for
+    deterministic scoring in schema v1.
+
+providers:
+  default: skyfield
+  skyfield:
+    cache_path: "${ASTROENGINE_CACHE}/skyfield/de440s"
+    cadence_hours:
+      inner: 6
+      outer: 24
+      moon: 1
+      minor: 12
+    extras: [skyfield]
+  swe:
+    enabled: false
+    ephemeris_path: null
+    cadence_hours:
+      inner: 6
+      outer: 24
+      moon: 1
+      minor: 12
+    extras: [swe]
+
+bodies:
+  classes:
+    inner: [sun, moon, mercury, venus, mars]
+    outer: [jupiter, saturn, uranus, neptune, pluto]
+    minor: [ceres, pallas, juno, vesta]
+    dwarf: [eris, sedna]
+    points: [asc, mc, ic, dsc, vertex, antivertex, fortune, spirit]
+  enablement:
+    sun: true
+    moon: true
+    mercury: true
+    venus: true
+    mars: true
+    jupiter: true
+    saturn: true
+    uranus: true
+    neptune: true
+    pluto: true
+    ceres: false
+    pallas: false
+    juno: false
+    vesta: false
+    eris: false
+    sedna: false
+    vertex: true
+    antivertex: true
+    fortune: true
+    spirit: true
+  severity_weights:
+    sun: 1.00
+    moon: 1.10
+    mercury: 1.00
+    venus: 0.95
+    mars: 1.15
+    jupiter: 0.85
+    saturn: 1.05
+    uranus: 0.80
+    neptune: 0.75
+    pluto: 0.85
+    ceres: 0.60
+    pallas: 0.55
+    juno: 0.55
+    vesta: 0.55
+    eris: 0.65
+    sedna: 0.60
+  benefic_malefic:
+    day_chart:
+      benefics: {venus: 1.10, jupiter: 1.10}
+      malefics: {mars: 0.90, saturn: 0.90}
+    night_chart:
+      benefics: {venus: 1.10}
+      malefics: {mars: 0.90, saturn: 0.85}
+
+orb_policies:
+  angular_priority_orb_deg: 3.0
+  natal_gate_orb_deg:
+    default: 2.0
+    outer: 2.0
+    inner: 3.0
+    moon: 4.0
+    minor: 2.0
+    dwarf: 2.0
+  transit_orbs_deg:
+    sun: 8.0
+    moon: 6.0
+    mercury: 6.0
+    venus: 6.0
+    mars: 6.0
+    jupiter: 6.0
+    saturn: 6.0
+    uranus: 5.0
+    neptune: 5.0
+    pluto: 5.0
+    ceres: 4.0
+    pallas: 4.0
+    juno: 4.0
+    vesta: 4.0
+    eris: 3.0
+    sedna: 3.0
+  fixed_star_orbs_deg:
+    default: 0.333
+    magnitude_le_1: 0.1667
+  declination_aspect_orb_deg:
+    default: 0.5
+    moon: 0.6667
+  antiscia_orb_deg:
+    default: 1.5
+    angular: 2.5
+  midpoint_orb_deg:
+    default: 1.0
+    angular: 1.5
+  combustion:
+    cazimi_deg: 0.2833   # 0°17′
+    under_beams_deg: 15.0
+    combust_deg: 8.0
+  lunations:
+    angular_orb_deg: 3.0
+    eclipse_lat_deg: 1.5
+    eclipse_node_orb_deg: 1.0
+
+severity_modifiers:
+  combust: 0.85
+  under_beams: 0.90
+  cazimi: 1.10
+  out_of_bounds: 1.05
+  eclipse_base: 1.40
+  angular_priority: 1.20
+  profected_lord_hit: 1.15
+  natal_luminary_hit: 1.10
+  eclipse_natal_tight: 1.30
+  detriment_penalty: 0.90
+  fall_penalty: 0.90
+  dignity_bonus: 1.05
+  benefic_day_bonus: 1.10
+  malefic_day_penalty: 0.90
+  benefic_night_bonus: 1.05
+  malefic_night_penalty: 0.90
+
+feature_flags:
+  stations:
+    enabled: true
+    outer_always_on: false
+    natal_gate_orb_deg: 2.0
+  ingresses:
+    enabled: true
+    include_moon: false
+    inner_mode: angles_only
+  lunations:
+    enabled: true
+    oob_bonus: true
+  eclipses:
+    enabled: true
+    max_orb_deg: 1.0
+  declination_aspects:
+    enabled: true
+    parallels: true
+    contraparallels: true
+  out_of_bounds:
+    enabled: true
+    threshold_deg: 23.45
+  antiscia:
+    enabled: false
+  midpoints:
+    enabled: true
+    base_pairs: [sun_moon, asc_mc, mc_node]
+  fixed_stars:
+    enabled: false
+    lunation_bonus: false
+  profections:
+    enabled: true
+    cycle: annual
+  returns:
+    enabled: true
+    solar: true
+    lunar: true
+    lunation_boost: true
+  progressions:
+    enabled: false
+  timelords:
+    enabled: false
+  maps:
+    enabled: false
+  draconic:
+    enabled: false
+  sidereal:
+    enabled: false
+    ayanamsha: lahiri
+  house_system:
+    default: whole_sign
+    available: [whole_sign, equal, placidus, koch, regiomontanus, campanus, porphyry, alcabitius, morinus, meridian, topocentric]
+  minor_planets:
+    enabled: false
+    stations: false
+    ingresses: false
+  dwarfs:
+    enabled: false
+
+validation:
+  determinism_hash: sha256
+  schema_version: 1
+  tests:
+    - determinism_repeat_run
+    - provider_parity
+    - profile_schema_check
+
+export:
+  formats:
+    - jsonl
+    - parquet
+    - csv
+    - ics
+  include_determinism_hash: true
