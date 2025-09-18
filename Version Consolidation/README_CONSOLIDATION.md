@@ -76,5 +76,20 @@ Enable the GitHub Actions workflow by committing `.github/workflows/consolidate-
 - It’s OK if some older files are malformed; see the Validation report for exact errors.
 - If a module has two files with the same `version`, the latest by sort order is chosen. You can bump the `version` in the intended latest file to force selection.
 - You can re-run the script as many times as needed; it never overwrites your originals, only writes new timestamped outputs.
+
+## Schema contracts
+
+JSON schema definitions that mirror the appendix references live in the top-level
+[`schemas/`](../schemas) directory.  Use the helpers in `astroengine.validation`
+to validate run payloads or contact-gate decisions prior to publishing a new
+ruleset bundle:
+
+```bash
+pip install pytest
+pytest tests/test_result_schema.py tests/test_contact_gate_schema.py
+```
+
+The same utilities are safe to call from custom doctor scripts because they do
+not modify or relocate any ruleset modules.
  
 
