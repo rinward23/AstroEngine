@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://astroengine/schemas/result_v1_with_domains.json",
+  "title": "AstroEngine Run Result (with Domains)",
+  "type": "object",
+  "properties": {
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "elements": {"type": "array", "items": {"type": "string"}},
+          "domains": {"type": "object", "additionalProperties": {"type": "number"}},
+          "domain_profile": {"type": ["string", "null"]}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -31,11 +31,19 @@ SchemaMetadata = Mapping[str, str]
 
 SCHEMA_REGISTRY: Dict[str, SchemaMetadata] = {
     "result_v1": {"filename": "result_schema_v1.json", "kind": "jsonschema"},
+    "result_v1_with_domains": {
+        "filename": "result_schema_v1_with_domains.json",
+        "kind": "jsonschema",
+    },
     "contact_gate_v2": {
         "filename": "contact_gate_schema_v2.json",
         "kind": "jsonschema",
     },
     "orbs_policy": {"filename": "orbs_policy.json", "kind": "data"},
+    "natal_input_v1_ext": {
+        "filename": "natal_input_v1_ext.json",
+        "kind": "jsonschema",
+    },
 }
 
 
