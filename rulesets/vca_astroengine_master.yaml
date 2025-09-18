@@ -1,0 +1,115 @@
+version: 0.1.0
+modules:
+  gating:
+    submodules:
+      contact_gating_v2:
+        description: Contact gating with hard vetoes, dampeners, and boosters.
+        channels:
+          natal_to_transit:
+            subchannels:
+              default:
+                hard_vetoes:
+                  - id: combustion
+                    description: "Veto conjunctions where angular distance is under 8 degrees"
+                    conditions:
+                      - column: angular_distance
+                        op: lt
+                        value: 8
+                  - id: under_orb
+                    description: "Reject contacts below minimum orb requirement"
+                    conditions:
+                      - column: orb
+                        op: lt
+                        value: 0.1
+                dampeners:
+                  - id: malefic_square
+                    factor: 0.5
+                    conditions:
+                      - column: aspect
+                        op: eq
+                        value: square
+                      - column: malefic_involved
+                        op: eq
+                        value: true
+                boosters:
+                  - id: benefic_trine
+                    factor: 1.25
+                    conditions:
+                      - column: aspect
+                        op: eq
+                        value: trine
+                      - column: benefic_involved
+                        op: eq
+                        value: true
+        outputs:
+          state_table: tables/contact_gate_states.parquet
+  timelords:
+    submodules:
+      timelords:
+        description: Time-lord scheduling including zodiacal releasing and annual profections.
+        channels:
+          releasing:
+            subchannels:
+              lot_of_spirit:
+                base_periods:
+                  Aries: 15
+                  Taurus: 8
+                  Gemini: 20
+                  Cancer: 25
+                  Leo: 19
+                  Virgo: 20
+                  Libra: 8
+                  Scorpio: 15
+                  Sagittarius: 12
+                  Capricorn: 27
+                  Aquarius: 30
+                  Pisces: 12
+          profections:
+            subchannels:
+              annual:
+                zodiac_sequence:
+                  - Aries
+                  - Taurus
+                  - Gemini
+                  - Cancer
+                  - Leo
+                  - Virgo
+                  - Libra
+                  - Scorpio
+                  - Sagittarius
+                  - Capricorn
+                  - Aquarius
+                  - Pisces
+  directions_progressions:
+    submodules:
+      directions_progressions:
+        description: Implements Ptolemaic primary directions and secondary progressions.
+        channels:
+          primary_directions:
+            subchannels:
+              default:
+                aspects:
+                  conjunction: 0
+                  sextile: 60
+                  square: 90
+                  trine: 120
+                  opposition: 180
+                orb: 3
+                rate_degrees_per_year: 1
+          secondary_progressions:
+            subchannels:
+              solar_arc:
+                motion_rate_degrees_per_year: 1
+  synastry_composite:
+    submodules:
+      synastry_composite:
+        description: Composite chart generator and transit matcher.
+        channels:
+          composite_transits:
+            subchannels:
+              default:
+                orb: 2
+                tracked_points:
+                  - Sun
+                  - Moon
+                  - Ascendant
