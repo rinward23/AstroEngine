@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
-import argparse, os, sys, json, re, hashlib, csv, datetime
+import argparse
+import csv
+import datetime
+import json
+import sys
 from pathlib import Path
 
 try:
-    import yaml
+    import yaml  # type: ignore[import]
 except ImportError:
-    print("Please `pip install pyyaml` and rerun.", file=sys.stderr); sys.exit(1)
+    print("Please `pip install pyyaml` and rerun.", file=sys.stderr)
+    sys.exit(1)
 
-REQUIRED_MODULE_IDS = {"aspects","transits","scoring","narrative"}
-TS_FMT_FILE = "%Y%m%d-%H%M"   # for filenames
+REQUIRED_MODULE_IDS = {"aspects", "transits", "scoring", "narrative"}
+TS_FMT_FILE = "%Y%m%d-%H%M"  # for filenames
+
 
 def iso_to_dt(s: str):
     try:
@@ -26,10 +32,11 @@ def iso_to_dt(s: str):
         pass
     return None
 
+
 def load_any(path: Path):
     txt = path.read_text(encoding="utf-8")
     try:
-        if path.suffix.lower() in (".yaml",".yml"):
+        if path.suffix.lower() in (".yaml", ".yml"):
             data = yaml.safe_load(txt)
         elif path.suffix.lower() == ".json":
             data = json.loads(txt)
@@ -39,6 +46,7 @@ def load_any(path: Path):
     except Exception as e:
         return None, f"Parse error: {e}"
 
+
 def extract_header(doc: dict, src: Path):
     if not isinstance(doc, dict):
         return None, "Top-level must be a mapping"
@@ -46,7 +54,7 @@ def extract_header(doc: dict, src: Path):
         "id": doc.get("id"),
         "name": doc.get("name"),
         "version": doc.get("version"),
-        "status": doc.get("status","active"),
+        "status": doc.get("status", "active"),
         "supersedes": doc.get("supersedes"),
         "source_file": str(src),
     }
@@ -61,14 +69,33 @@ def extract_header(doc: dict, src: Path):
     hdr["_version_dt"] = dt
     return (hdr if not errs else None), (", ".join(errs) if errs else None)
 
+
 def ensure_dir(p: Path):
     p.mkdir(parents=True, exist_ok=True)
 
+
 def main():
-    ap = argparse.ArgumentParser(description="Rebuild consolidated astrology ruleset from all iterations (append-only).")
-    ap.add_argument("--in", dest="in_dir", required=True, help="Folder containing ALL past iterations (yaml/json)")
-    ap.add_argument("--out", dest="out_dir", default="./rulesets", help="Output folder (default ./rulesets)")
-    ap.add_argument("--single", dest="emit_single", action="store_true", help="Emit combined ruleset.main.yaml")
+    ap = argparse.ArgumentParser(
+        description="Rebuild consolidated astrology ruleset from all iterations (append-only)."
+    )
+    ap.add_argument(
+        "--in",
+        dest="in_dir",
+        required=True,
+        help="Folder containing ALL past iterations (yaml/json)",
+    )
+    ap.add_argument(
+        "--out",
+        dest="out_dir",
+        default="./rulesets",
+        help="Output folder (default ./rulesets)",
+    )
+    ap.add_argument(
+        "--single",
+        dest="emit_single",
+        action="store_true",
+        help="Emit combined ruleset.main.yaml",
+    )
     args = ap.parse_args()
 
     in_dir = Path(args.in_dir)
@@ -80,10 +107,11 @@ def main():
     for d in (base_dir, overrides_dir, report_dir):
         ensure_dir(d)
 
-    manifest_rows = []
-    registry = {}   # id -> list of entries
+    registry = {}  # id -> list of entries
     parsing_errors = []
-    files = sorted([p for p in in_dir.rglob("*") if p.suffix.lower() in (".yaml",".yml",".json")])
+    files = sorted(
+        [p for p in in_dir.rglob("*") if p.suffix.lower() in (".yaml", ".yml", ".json")]
+    )
 
     if not files:
         print("No YAML/JSON files found in input directory.", file=sys.stderr)
@@ -129,10 +157,30 @@ def main():
     manifest_path = report_dir / f"RULESET__MANIFEST_{ts_file}.csv"
     with manifest_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["module_id","name","version","status","supersedes","source_file","is_latest"])
+        w.writerow(
+            [
+                "module_id",
+                "name",
+                "version",
+                "status",
+                "supersedes",
+                "source_file",
+                "is_latest",
+            ]
+        )
         for mid, entries in lineage_by_id.items():
             for e in entries:
-                w.writerow([e["id"], e["name"], e["version"], e["status"], e["supersedes"], e["source_file"], "yes" if e is latest_by_id[mid] else "no"])
+                w.writerow(
+                    [
+                        e["id"],
+                        e["name"],
+                        e["version"],
+                        e["status"],
+                        e["supersedes"],
+                        e["source_file"],
+                        "yes" if e is latest_by_id[mid] else "no",
+                    ]
+                )
 
     val_path = report_dir / f"RULESET__VALIDATION_{ts_file}.md"
     with val_path.open("w", encoding="utf-8") as f:
@@ -148,14 +196,18 @@ def main():
                 f.write(f"- {m}\n")
             f.write("\n")
         else:
-            f.write("All required modules present: aspects, transits, scoring, narrative.\n\n")
+            f.write(
+                "All required modules present: aspects, transits, scoring, narrative.\n\n"
+            )
 
         f.write("## Module Counts\n")
         f.write(f"- Unique module ids found: {len(registry)}\n")
         f.write(f"- Latest modules selected: {len(latest_by_id)}\n")
 
     if missing_required:
-        print(f"Missing required modules: {', '.join(missing_required)}", file=sys.stderr)
+        print(
+            f"Missing required modules: {', '.join(missing_required)}", file=sys.stderr
+        )
         print(f"See validation: {val_path}", file=sys.stderr)
         sys.exit(3)
 
@@ -176,7 +228,7 @@ def main():
         emitted_paths.append(str(tgt))
 
     if args.emit_single:
-        main_path = out_root / f"ruleset.main.yaml"
+        main_path = out_root / "ruleset.main.yaml"
         stitched = {"modules": {}}
         for mid, e in latest_by_id.items():
             stitched["modules"][mid] = e["body"]
@@ -192,7 +244,9 @@ def main():
             f.write(f"## {mid}\n")
             for e in entries:
                 mark = " (latest)" if e is latest_by_id[mid] else ""
-                f.write(f"- {e['version']} — {e.get('name') or ''} [{e['status']}]{mark}\n")
+                f.write(
+                    f"- {e['version']} — {e.get('name') or ''} [{e['status']}]{mark}\n"
+                )
             f.write("\n")
 
     print("Consolidation complete.")
@@ -202,6 +256,7 @@ def main():
     if args.emit_single:
         print(f"- Stitched: {out_root / 'ruleset.main.yaml'}")
     print(f"- Latest modules written to: {overrides_dir}")
+
 
 if __name__ == "__main__":
     main()

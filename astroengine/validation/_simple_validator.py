@@ -53,7 +53,9 @@ class SimpleValidator:
         if "$ref" in schema:
             target = self._resolve_ref(schema["$ref"], path)
             if target is None:
-                yield SimpleValidationError(path, f"Unresolvable reference {schema['$ref']}")
+                yield SimpleValidationError(
+                    path, f"Unresolvable reference {schema['$ref']}"
+                )
             else:
                 yield from self._iter_errors(target, value, path)
             return
@@ -63,13 +65,15 @@ class SimpleValidator:
             if isinstance(schema_type, list):
                 if not any(self._matches_type(t, value) for t in schema_type):
                     yield SimpleValidationError(
-                        path, f"Expected type {schema_type} but got {type(value).__name__}"
+                        path,
+                        f"Expected type {schema_type} but got {type(value).__name__}",
                     )
                     return
             else:
                 if not self._matches_type(schema_type, value):
                     yield SimpleValidationError(
-                        path, f"Expected type {schema_type} but got {type(value).__name__}"
+                        path,
+                        f"Expected type {schema_type} but got {type(value).__name__}",
                     )
                     return
 
@@ -80,7 +84,9 @@ class SimpleValidator:
             required = schema.get("required", [])
             for key in required:
                 if key not in value:
-                    yield SimpleValidationError(path + (key,), "Missing required property")
+                    yield SimpleValidationError(
+                        path + (key,), "Missing required property"
+                    )
             props = schema.get("properties", {})
             additional_allowed = schema.get("additionalProperties", True)
             if additional_allowed is False:
@@ -115,9 +121,13 @@ class SimpleValidator:
                 return
             pattern = schema.get("pattern")
             if pattern and not re.fullmatch(pattern, value):
-                yield SimpleValidationError(path, f"Value does not match pattern {pattern}")
+                yield SimpleValidationError(
+                    path, f"Value does not match pattern {pattern}"
+                )
             if "enum" in schema and value not in schema["enum"]:
-                yield SimpleValidationError(path, f"Value {value!r} is not one of {schema['enum']}")
+                yield SimpleValidationError(
+                    path, f"Value {value!r} is not one of {schema['enum']}"
+                )
             fmt = schema.get("format")
             if fmt == "date-time" and not _is_datetime(value):
                 yield SimpleValidationError(path, "Invalid date-time format")
@@ -135,9 +145,13 @@ class SimpleValidator:
             minimum = schema.get("minimum")
             maximum = schema.get("maximum")
             if minimum is not None and value < minimum:
-                yield SimpleValidationError(path, f"Value {value} is less than minimum {minimum}")
+                yield SimpleValidationError(
+                    path, f"Value {value} is less than minimum {minimum}"
+                )
             if maximum is not None and value > maximum:
-                yield SimpleValidationError(path, f"Value {value} exceeds maximum {maximum}")
+                yield SimpleValidationError(
+                    path, f"Value {value} exceeds maximum {maximum}"
+                )
             return
 
         if schema_type == "number":
@@ -147,14 +161,20 @@ class SimpleValidator:
             minimum = schema.get("minimum")
             maximum = schema.get("maximum")
             if minimum is not None and value < minimum:
-                yield SimpleValidationError(path, f"Value {value} is less than minimum {minimum}")
+                yield SimpleValidationError(
+                    path, f"Value {value} is less than minimum {minimum}"
+                )
             if maximum is not None and value > maximum:
-                yield SimpleValidationError(path, f"Value {value} exceeds maximum {maximum}")
+                yield SimpleValidationError(
+                    path, f"Value {value} exceeds maximum {maximum}"
+                )
             return
 
         if "enum" in schema:
             if value not in schema["enum"]:
-                yield SimpleValidationError(path, f"Value {value!r} is not one of {schema['enum']}")
+                yield SimpleValidationError(
+                    path, f"Value {value!r} is not one of {schema['enum']}"
+                )
 
     # ------------------------------------------------------------------
     # Utility helpers

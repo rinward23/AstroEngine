@@ -1,0 +1,38 @@
+
+# >>> AUTO-GEN BEGIN: CI v1.0
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tools
+        run: |
+          python -m pip install -U pip
+          pip install ruff black mypy pytest jsonschema
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Format check (black)
+        run: black --check .
+
+      - name: Type check (mypy)
+        run: mypy --ignore-missing-imports .
+
+      - name: Tests
+        run: pytest -q
+# >>> AUTO-GEN END: CI v1.0
+

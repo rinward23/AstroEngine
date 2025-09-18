@@ -55,3 +55,15 @@ Two utility layers support schema validation:
 The validation helpers are intentionally lightweight so they can
 be embedded into existing “doctor” or pre-flight scripts without
 risking accidental module removals.
+
+<!-- >>> AUTO-GEN BEGIN: Start Here v1.0 -->
+## Start Here
+
+- [Project Instructions](docs/PROJECT_INSTRUCTIONS.md)
+- [Astrology Coverage Index](docs/ASTROLOGY_COVERAGE_INDEX.md)
+- [Astro Reference](docs/ASTRO_REFERENCE.md)
+- Public API: `from astroengine import TransitEngine, TransitScanConfig`
+- Tests: `pytest -q`
+- CI: see `.github/workflows/ci.yml`
+<!-- >>> AUTO-GEN END: Start Here v1.0 -->
+

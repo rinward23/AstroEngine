@@ -1,0 +1,18 @@
+modules:
+  - id: transit.scan
+    channels:
+      ingest: { group: natal }
+      process:
+        provider: skyfield_default
+        step: 1h
+        aspects: [conjunction, opposition, square, trine, sextile]
+        options:
+          include_declination: true
+          include_antiscia: false
+      gate: |
+        family_cap_per_day(3) and (
+          (aspect in [conjunction, opposition, square] and severity >= 0.65) or
+          (aspect in [trine, sextile] and transiting_body in [Jupiter, Venus])
+        )
+      score: { profile: standard }
+      export: { sqlite: data/transits.db }
