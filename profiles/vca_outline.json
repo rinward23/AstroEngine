@@ -1,0 +1,72 @@
+{
+  "id": "vca_outline",
+  "version": "2025-09-18",
+  "label": "Vox Crucis Athanor — Program Structural Outline (Canonical)",
+  "modules": {"EARTH": true, "AIR": true, "FIRE": true, "WATER": true},
+  "bodies": {
+    "include": [
+      "sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto",
+      "north_node", "south_node", "chiron"
+    ],
+    "optional_groups": {
+      "asteroids_main": ["ceres", "pallas", "juno", "vesta", "hygiea", "eros", "psyche", "isis", "lilith1181", "sappho", "panacea", "astraea", "hekate", "fortuna", "nemesis"],
+      "centaurs": ["chiron", "pholus", "nessus", "chariklo", "okyrhoe", "asbolus", "thereus", "hylonome", "cyllarus"],
+      "tno": ["pluto", "eris", "haumea", "makemake", "sedna", "orcus", "quaoar", "varuna", "ixion", "gonggong"]
+    },
+    "fixed_stars": {"enabled": false, "list": ["regulus", "spica", "algol", "aldebaran", "antares", "fomalhaut", "sirius", "arcturus", "vega", "altair"]}
+  },
+  "aspects": {
+    "major": [0, 60, 90, 120, 180],
+    "minor": [30, 45, 135, 150],
+    "harmonics": [22.5, 36, 40, 51.4286, 72, 80, 108, 144, 165, 18, 24, 25.7167, 32.7167],
+    "declination": {"parallel": true, "contraparallel": true, "orb_deg": 1.0},
+    "antiscia": {"enabled": true, "orb_deg": 1.0}
+  },
+  "orbs": {
+    "major": {"0": 9.0, "180": 9.0, "90": 7.0, "120": 7.0, "60": 5.0},
+    "minor": {"30": 2.5, "45": 2.5, "135": 2.5, "150": 2.5},
+    "harmonics": {"72": 1.5, "144": 1.5, "36": 1.0, "22.5": 1.0, "40": 1.0, "51.4286": 1.0, "80": 1.0, "108": 1.5, "165": 1.5, "24": 1.0, "18": 0.75, "25.7167": 1.0, "32.7167": 1.0}
+  },
+  "domain": {
+    "profile_key": "vca_neutral",
+    "scorer": "weighted",
+    "temperature": 8.0,
+    "planet_weights": {
+      "sun": {"SPIRIT": 1.0, "MIND": 0.25, "BODY": 0.25},
+      "moon": {"BODY": 1.0, "MIND": 0.25},
+      "mercury": {"MIND": 1.0},
+      "venus": {"BODY": 0.6, "SPIRIT": 0.4},
+      "mars": {"BODY": 1.0, "SPIRIT": 0.3},
+      "jupiter": {"SPIRIT": 1.0, "MIND": 0.4},
+      "saturn": {"BODY": 0.7, "MIND": 0.5},
+      "uranus": {"MIND": 0.9, "SPIRIT": 0.4},
+      "neptune": {"SPIRIT": 1.0},
+      "pluto": {"SPIRIT": 0.7, "BODY": 0.7},
+      "north_node": {"SPIRIT": 0.8, "MIND": 0.4},
+      "south_node": {"SPIRIT": 0.8, "BODY": 0.4},
+      "chiron": {"BODY": 0.8, "SPIRIT": 0.5}
+    },
+    "house_weights": {
+      "1": {"BODY": 1.0},
+      "2": {"BODY": 0.7, "MIND": 0.3},
+      "3": {"MIND": 1.0},
+      "4": {"BODY": 0.6, "SPIRIT": 0.4},
+      "5": {"SPIRIT": 0.9, "BODY": 0.3},
+      "6": {"BODY": 1.0},
+      "7": {"MIND": 0.6, "SPIRIT": 0.4},
+      "8": {"SPIRIT": 0.9, "BODY": 0.4},
+      "9": {"SPIRIT": 0.9, "MIND": 0.6},
+      "10": {"BODY": 0.6, "SPIRIT": 0.4},
+      "11": {"MIND": 0.7, "SPIRIT": 0.5},
+      "12": {"SPIRIT": 1.0}
+    }
+  },
+  "flags": {
+    "enable_declination": true,
+    "enable_antiscia": true,
+    "enable_harmonics": true,
+    "enable_fixed_stars": false,
+    "use_tropical": true,
+    "house_system": "whole_sign"
+  }
+}

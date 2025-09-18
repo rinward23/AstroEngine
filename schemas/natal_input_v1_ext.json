@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://astroengine/schemas/natal_input_v1_ext.json",
+  "title": "Natal Input (VCA Extensions)",
+  "type": "object",
+  "properties": {
+    "source_rating": {
+      "type": "string",
+      "enum": ["AA", "A", "B", "C", "DD", "X", "XX"]
+    },
+    "zodiac": {
+      "type": "string",
+      "enum": [
+        "tropical",
+        "sidereal_fagan_allen",
+        "sidereal_lahiri",
+        "sidereal_deluce",
+        "sidereal_raman",
+        "sidereal_usha_shashi",
+        "sidereal_krishnamurti",
+        "sidereal_djwal_khul",
+        "draconic",
+        "sidereal_svp",
+        "sidereal_sri_yukteswar",
+        "sidereal_jn_bhasin",
+        "sidereal_larry_eli",
+        "sidereal_takra_i",
+        "sidereal_takra_ii",
+        "sidereal_sundra_rajan",
+        "sidereal_shill_pond"
+      ]
+    },
+    "house_system": {
+      "type": "string",
+      "enum": [
+        "placidus",
+        "porphyry",
+        "regiomontanus",
+        "topocentric",
+        "equal",
+        "equal_aries0",
+        "solar_sign",
+        "whole_sign",
+        "whole_sign_fortune",
+        "hindu_bhava",
+        "alcabitius"
+      ]
+    },
+    "coordinate_system": {
+      "type": "string",
+      "enum": ["geocentric", "heliocentric"]
+    }
+  },
+  "additionalProperties": true
+}
