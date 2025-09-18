@@ -12,9 +12,11 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
-__all__ = ["__version__"]
+__all__ = ["__version__", "TransitEngine", "TransitScanConfig"]
 
 try:  # pragma: no cover - package metadata not available during tests
     __version__ = version("astroengine")
 except PackageNotFoundError:  # pragma: no cover
     __version__ = "0.0.0"
+
+from .transit.api import TransitEngine, TransitScanConfig  # ENSURE-LINE

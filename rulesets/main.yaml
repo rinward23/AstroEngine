@@ -1,0 +1,91 @@
+# >>> AUTO-GEN BEGIN: Ruleset Modules v1.0 (instructions)
+# PURPOSE: Define which modules the main ruleset must include and how to gate them.
+# NOTE: These are text instructions. Do not treat as YAML. Implement each item in proper YAML under `modules:`.
+#
+# GLOBAL RULE: When adding any module below, APPEND UNDER `modules:` ONLY IF an entry with the same `id:` is MISSING.
+#
+# 0) Core Transit Scan (baseline)
+#    id: transit.scan
+#    Channels to implement:
+#      - ingest: use natal group from your manifest (e.g., `ingest: { group: natal }`).
+#      - process: set provider profile (e.g., `skyfield_default`), scan `step` (e.g., 1h), and aspects [0,60,90,120,180].
+#                 Options flags: `include_declination: true|false`, `include_antiscia: true|false` per profile.
+#      - gate: use this gate phrase: "family_cap_per_day(3) and ((aspect in [conjunction, opposition, square] and severity >= 0.65) or (aspect in [trine, sextile] and transiting_body in [Jupiter, Venus]))". Always pass partile.
+#      - score: reference `profile: standard` (quadratic falloff + partile boost; outers slightly heavier).
+#      - export: choose one: `sqlite: data/transits.db` or `parquet: data/transits/` partitioned by natal_id/year.
+#
+# 1) Declination Parallels/Contraparallels (enable when declination available)
+#    id: transit.declination
+#    Detect: parallel/contraparallel when |δ1−δ2| <= 0°30′ (Moon: 0°40′).
+#    Gate: include for luminaries and angles; treat as hard-aspect equivalence; partile priority.
+#    Score: map to hard-aspect weights; apply angularity boost if point is an angle.
+#
+# 2) Antiscia / Contra-Antiscia (profile-toggled)
+#    id: transit.antiscia
+#    Detect: solstitial mirrors (Cancer–Capricorn axis). Use tight orbs (≤1.5°; 2–3° to angles per profile).
+#    Gate: OFF by default; when ON, include only tight hits. Prioritize benefics and angles.
+#
+# 3) Stations (Retrograde/Direct)
+#    id: transit.stations
+#    Detect: sign-change of longitudinal speed; mark `station_kind` {retro,direct} and optional `in_shadow`.
+#    Gate: always include Mercury/Venus/Mars stations; include outer stations if within 2° of any natal planet/angle.
+#    Score: modest base; apply pre-station boost for applying, post-station reduction for separating.
+#
+# 4) Sign Ingresses
+#    id: transit.ingresses
+#    Detect: body crosses multiples of 30°. Record `ingress_sign`.
+#    Gate: always include Sun, Mars, Jupiter, Saturn ingresses; include inner-planet ingresses when within 3° of angles.
+#
+# 5) Lunations
+#    id: transit.lunations
+#    Detect: Sun–Moon conjunction (new) / opposition (full).
+#    Gate: include all lunations; boost ×1.2 if within 3° of angles or natal luminaries.
+#
+# 6) Eclipses
+#    id: transit.eclipses
+#    Detect: lunation with nodal proximity (e.g., |Sun−Node| ≤ 18.5°). Record `eclipse_kind` {solar,lunar} and optional `saros`.
+#    Gate: include when eclipse degree is within 1° of a natal planet/angle.
+#
+# 7) Combust / Cazimi / Under Beams
+#    id: transit.combust
+#    Detect: distances to Sun — cazimi ≤ 0°17′; combust ≤ 8°; under-beams ≤ 15° (overridable by profile).
+#    Gate: always include cazimi; include combust/under-beams for Mercury/Venus. Apply −15% severity for combust, +10% for cazimi.
+#
+# 8) Out-of-Bounds (OOB)
+#    id: transit.oob
+#    Detect: |δ| > 23°27′ (or profile threshold). Record transitions enter/exit and `is_oob` state.
+#    Gate: include Moon, Mercury, Venus, Mars OOB enter/exit by default.
+#
+# 9) Midpoints (limited set)
+#    id: transit.midpoints
+#    Detect: transits to Sun/Moon, ASC/MC, MC/Node midpoints by hard aspects (0/45/90/135/180). Orb ≤ 1°.
+#    Gate: prioritize outer planets; pass when to angles or luminaries.
+#
+# 10) Fixed Stars (bright list)
+#     id: transit.fixedstars
+#     Detect: conjunctions to magnitude ≤ 1.5 stars (e.g., Regulus, Spica, Algol). Orbs: ≤ 0°20′ (≤ 0°10′ for very bright).
+#     Gate: include only when body is angular or a personal significator. Record `star_id`.
+#
+# 11) Vertex / Antivertex (if available)
+#     id: transit.vertex
+#     Detect: hard aspects to natal Vertex/Antivertex with 1°–2° orbs.
+#     Gate: include when personal or outer planets are involved.
+#
+# Cross-cutting Gate Modifiers (apply across modules)
+#   - Angular weighting: multiply severity ×1.2 for angles; ×1.1 when transiting body rules the activated house.
+#   - Sect & dignity: day chart boosts for benefics (+10%), malefic penalty (−10%); +5–10% for rulership/exaltation; − for fall/detriment.
+#   - Retrograde phase: pre-station (applying) boost, post-station (separating) reduction.
+#   - Partile priority: partile hits always pass gate.
+#   - Caps: keep `family_cap_per_day(3)` and add `family_cap_per_week(5)` to reduce clustering.
+#
+# Required DSL Predicates/Functions to implement (so gates can reference them):
+#   is_station(body, kind), in_shadow(body), is_ingress(body), is_lunation(type), is_eclipse(type),
+#   is_cazimi(body), is_combust(body), is_under_beams(body),
+#   is_oob(body), oob_transition(body),
+#   is_parallel(body, natal_point), is_contraparallel(body, natal_point),
+#   is_antiscia(body, natal_point), is_contra_antiscia(body, natal_point),
+#   hit_midpoint(body, pair, aspect), hit_fixed_star(body, star_id),
+#   near(natal_point, deg), within_orb(natal_point, deg),
+#   is_angle(natal_point), has_dignity(body, kind), is_day_chart(natal_id), phase(body),
+#   family_cap_per_day(n), family_cap_per_week(n).
+# >>> AUTO-GEN END: Ruleset Modules v1.0 (instructions)
