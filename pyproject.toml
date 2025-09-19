@@ -7,48 +7,31 @@ name = "astroengine"
 version = "0.2.0"
 description = "Astrology engine runtimes and schema contracts"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11,<3.12"
 license = {text = "Proprietary"}
 authors = [
   {name = "AstroEngine Maintainers"}
 ]
 dependencies = [
-  "pyswisseph",
-  "numpy",
-  "pydantic>=2",
-  "python-dateutil",
-  "timezonefinder",
-  "tzdata",
-  "pyyaml",
-  "click",
-  "rich",
-  "orjson",
-  "pyarrow",
-  "duckdb",
+
 ]
 
 [project.optional-dependencies]
-dev = [
-  "pytest",
-  "pytest-cov",
-  "hypothesis",
-  "ruff",
-  "black",
-  "isort",
-  "mypy",
-  "pre-commit",
-  "mkdocs-material",
-  "mkdocs-gen-files",
+cli = [
+  "click>=8.1",
+  "rich>=13",
 ]
+data = [
+  "numpy>=1.26",
+  "pandas>=2.0",
+  "scipy>=1.11",
+]
+time = [
+  "python-dateutil>=2.8",
+  "pytz>=2023.3",
+]
+dev = [
 
-optional = [
-  "skyfield",
-  "fastapi",
-  "uvicorn",
-  "jinja2",
-  "numba",
-  "ics",
-  "pandas",
 ]
 
 [tool.setuptools.packages.find]
@@ -72,3 +55,13 @@ ignore = ["E501"]
 
 [tool.ruff.isort]
 known-first-party = ["astroengine"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["astroengine/core", "astroengine/ephemeris", "astroengine/chart"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["astroengine.modules.*"]
+ignore_errors = true

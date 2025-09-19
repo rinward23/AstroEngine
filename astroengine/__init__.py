@@ -11,29 +11,40 @@ from .catalogs import (
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
 )
+
 from .core import (
     DOMAINS,
     ELEMENTS,
     ZODIAC_ELEMENT_MAP,
+    AngleTracker,
     DomainResolution,
     DomainResolver,
+    TransitEngine,
     TransitEvent,
     TransitScanConfig,
     apply_profile_if_any,
+    classify_relative_motion,
     compute_domain_factor,
     get_active_aspect_angles,
     get_feature_flag,
     load_profile_json,
     maybe_attach_domain_fields,
     natal_domain_factor,
+    normalize_degrees,
     profile_into_ctx,
+    to_tt,
 )
-from .infrastructure.environment import (
-    collect_environment_report,
+from .ephemeris import (
+    EphemerisAdapter,
+    EphemerisConfig,
+    EphemerisSample,
+    RefinementBracket,
+    RefinementError,
+    refine_event,
 )
-from .infrastructure.environment import (
-    main as environment_report_main,
-)
+from .ephemeris import SwissEphemerisAdapter
+from .infrastructure.environment import collect_environment_report
+from .infrastructure.environment import main as environment_report_main
 from .modules import (
     DEFAULT_REGISTRY,
     AstroChannel,
@@ -44,11 +55,23 @@ from .modules import (
     bootstrap_default_registry,
 )
 from .modules.vca import serialize_vca_ruleset
-from .profiles import VCA_DOMAIN_PROFILES, DomainScoringProfile
+from .profiles import (
+    VCA_DOMAIN_PROFILES,
+    DomainScoringProfile,
+    load_base_profile,
+    load_vca_outline,
+)
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
+from .scoring import (
+    DEFAULT_ASPECTS,
+    OrbCalculator,
+    load_dignities,
+    lookup_dignities,
+)
 
 __all__ = [
     "__version__",
+    "ChartConfig",
     "TransitEvent",
     "TransitScanConfig",
     "DomainResolver",
@@ -57,12 +80,18 @@ __all__ = [
     "DOMAINS",
     "ZODIAC_ELEMENT_MAP",
     "natal_domain_factor",
+    "AngleTracker",
+    "classify_relative_motion",
+    "normalize_degrees",
     "DomainScoringProfile",
     "VCA_DOMAIN_PROFILES",
     "compute_domain_factor",
     "load_profile_json",
     "profile_into_ctx",
     "apply_profile_if_any",
+    "EphemerisAdapter",
+    "EphemerisConfig",
+    "EphemerisSample",
     "get_active_aspect_angles",
     "get_feature_flag",
     "maybe_attach_domain_fields",
@@ -75,6 +104,7 @@ __all__ = [
     "AstroSubmodule",
     "AstroChannel",
     "AstroSubchannel",
+    "SwissEphemerisAdapter",
     "collect_environment_report",
     "environment_report_main",
     "get_vca_aspect",
@@ -84,6 +114,8 @@ __all__ = [
     "VCA_CENTAURS",
     "VCA_TNOS",
     "VCA_SENSITIVE_POINTS",
+    "VALID_ZODIAC_SYSTEMS",
+    "VALID_HOUSE_SYSTEMS",
 ]
 
 try:  # pragma: no cover - package metadata not available during tests

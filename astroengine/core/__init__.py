@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .angles import AngleTracker, DeltaLambdaTracker, classify_relative_motion, normalize_degrees
 from .api import TransitEvent, TransitScanConfig
 from .config import load_profile_json, profile_into_ctx
 from .domains import (
@@ -21,10 +22,19 @@ from .engine import (
     maybe_attach_domain_fields,
 )
 from .scoring import compute_domain_factor
+from .time import TimeConversion, to_tt
+from .transit_engine import TransitEngine
 
 __all__ = [
     "TransitEvent",
     "TransitScanConfig",
+    "TransitEngine",
+    "TimeConversion",
+    "to_tt",
+    "AngleTracker",
+    "DeltaLambdaTracker",
+    "classify_relative_motion",
+    "normalize_degrees",
     "load_profile_json",
     "profile_into_ctx",
     "DEFAULT_PLANET_DOMAIN_WEIGHTS",
