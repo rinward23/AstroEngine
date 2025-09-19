@@ -1,8 +1,7 @@
-# >>> AUTO-GEN BEGIN: AE CLI v1.1
+
 
 from __future__ import annotations
 import sys
-import argparse
 
 
 
@@ -21,5 +20,6 @@ def cmd_env(args: argparse.Namespace) -> int:
     print("ephemeris:", eph or "(unset)")
     print("providers:", ", ".join(list_providers()) or "(none)")
     return 0
+
 
 
