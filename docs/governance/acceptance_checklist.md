@@ -25,7 +25,7 @@ Use this checklist when declaring the specification complete for a release. Prov
 
 ## Section C — QA & testing
 
-- [ ] Environment recorded via `python -m astroengine.infrastructure.environment numpy pandas scipy` (attach JSON). Evidence: __________________
+- [ ] Environment recorded via `python -m astroengine.infrastructure.environment pyswisseph numpy pydantic python-dateutil timezonefinder tzdata pyyaml click rich orjson pyarrow duckdb` (attach JSON). Evidence: __________________
 - [ ] `pytest` suite passed on the release commit. Evidence: __________________
 - [ ] Solar Fire comparison report(s) generated and checksums archived with release artefacts. Evidence: __________________
 - [ ] Any additional manual checks (e.g., detector prototypes) documented with results. Evidence: __________________

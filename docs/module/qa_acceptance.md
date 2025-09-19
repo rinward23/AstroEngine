@@ -13,7 +13,7 @@ This plan captures the checks that must pass before shipping changes to the runt
 ## Determinism & environment controls
 
 1. Create or activate a virtual environment and install dependencies via `pip install -e .[dev]`.
-2. Capture an environment report with `python -m astroengine.infrastructure.environment numpy pandas scipy`; attach the JSON output to QA notes when publishing releases.
+2. Capture an environment report with `python -m astroengine.infrastructure.environment pyswisseph numpy pydantic python-dateutil timezonefinder tzdata pyyaml click rich orjson pyarrow duckdb`; attach the JSON output to QA notes when publishing releases.
 3. Run `pytest` to execute the automated suite. The current tests are fast (≪1 s) and provide coverage for schemas, registry wiring, profiles, and scoring helpers.
 4. For any changes impacting ephemeris or scoring, generate a Solar Fire comparison report (CSV or PDF) and capture the checksum alongside the QA artefacts. This proves runtime output matches the external benchmark.
 

@@ -1,4 +1,1 @@
-# >>> AUTO-GEN BEGIN: Dev Requirements v1.1
-pyswisseph==2.10.3.2
 
-# >>> AUTO-GEN END: Dev Requirements v1.1

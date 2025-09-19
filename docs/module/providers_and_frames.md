@@ -46,7 +46,7 @@ House system and ayanamsha preferences are stored under `feature_flags.house_sys
 - Provider implementations must surface cache checksums through `CacheInfo` and attach `data_provenance` dictionaries to each `EphemerisVector`.
 - Structured logging should include `provider_id`, call type (`query`, `query_window`, `prime_cache`), cache status, and timing information as described in the Skyfield design notes.
 - Once implementations land, parity tests comparing providers (Skyfield vs. Swiss Ephemeris) should be added under `tests/` to guarantee positional differences stay within documented tolerances. Include Solar Fire export comparisons for representative charts and archive the export checksums.
-- Environment validation via `python -m astroengine.infrastructure.environment numpy pandas scipy` should precede provider parity runs to confirm dependency versions.
+- Environment validation via `python -m astroengine.infrastructure.environment pyswisseph numpy pydantic python-dateutil timezonefinder tzdata pyyaml click rich orjson pyarrow duckdb` should precede provider parity runs to confirm dependency versions.
 - Record revisions to provider configurations and documentation according to `docs/governance/data_revision_policy.md` so provenance remains auditable.
 - Providers must never fabricate values. When a dataset is unavailable (e.g., Solar Fire export missing), raise a provenance error rather than falling back to synthetic numbers.
 

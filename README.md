@@ -21,26 +21,6 @@ make env
 
 ```
 
-````
-# >>> AUTO-GEN BEGIN: Ephemeris Smoketest How-To v1.0
-## Swiss Ephemeris smoketest (local)
-
-```bash
-python3 -m venv .venv && source .venv/bin/activate
-python -m pip install -U pip && pip install -r requirements.txt
-
-# Install Swiss data (either apt or manual files)
-# Ubuntu/Debian:
-sudo apt-get update && sudo apt-get install -y swe-data
-export SE_EPHE_PATH=/usr/share/sweph
-
-# Or manual files into ~/.sweph and set SE_EPHE_PATH accordingly
-# mkdir -p ~/.sweph && (download sepl_18.se1, semo_18.se1, seas_18.se1, seleapsec.txt, sefstars.txt)
-# export SE_EPHE_PATH=~/.sweph
-
-python scripts/swe_smoketest.py --utc "2025-09-19T18:10:00Z"
-```
-
 The CI workflow `.github/workflows/swe-smoketest.yml` runs the same on every push/PR.
 
 # >>> AUTO-GEN END: Ephemeris Smoketest How-To v1.0

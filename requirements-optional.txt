@@ -1,0 +1,15 @@
+# >>> AUTO-GEN BEGIN: Optional Runtime Requirements v1.0
+# Optional providers / services
+skyfield
+# Web API (when you expose a service)
+fastapi
+uvicorn
+# Narrative templating
+jinja2
+# Performance experiments
+numba
+# Calendar export
+ics
+# DataFrame convenience (only if you plan to use pandas)
+pandas
+# >>> AUTO-GEN END: Optional Runtime Requirements v1.0

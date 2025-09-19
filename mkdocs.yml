@@ -1,0 +1,9 @@
+# >>> AUTO-GEN BEGIN: MkDocs Config v1.0
+site_name: AstroEngine Docs
+theme:
+  name: material
+nav:
+  - Home: index.md
+  - Setup: setup.md
+  - Repos: repos.md
+# >>> AUTO-GEN END: MkDocs Config v1.0

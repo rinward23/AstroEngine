@@ -77,7 +77,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "packages",
         nargs="*",
-        help="Optional package names to verify (numpy pandas...).",
+        help="Optional package names to verify (pyswisseph, numpy, python-dateutil, ...).",
     )
     parser.add_argument("--as-json", action="store_true", help="Emit JSON instead of text")
     args = parser.parse_args(argv)

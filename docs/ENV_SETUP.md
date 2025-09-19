@@ -17,18 +17,22 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e .[dev]
 ```
 
-The optional ``dev`` extras install pytest, ruff, and black to match the
-continuous-integration toolchain.
+The optional ``dev`` extras install the full tooling stack—`pytest`,
+`pytest-cov`, `hypothesis`, `ruff`, `black`, `isort`, `mypy`, `pre-commit`,
+`mkdocs-material`, and `mkdocs-gen-files`—to match the continuous-integration
+toolchain.
 
 ## 3) Inspect the environment
 
 ```bash
-python -m astroengine.infrastructure.environment numpy pandas scipy
+python -m astroengine.infrastructure.environment \
+  pyswisseph numpy pydantic python-dateutil timezonefinder tzdata \
+  pyyaml click rich orjson pyarrow duckdb
 ```
 
 The command prints a concise report with the Python version, executable
 path, platform, and package versions.  Use ``--as-json`` to capture the
-information programmatically.  If any package is reported as ``MISSING``,
+information programmatically.  If any package is reported as ``missing``,
 re-run ``pip install -e .[dev]`` to pull the required dependency set so
 the runtime matches production expectations.
 

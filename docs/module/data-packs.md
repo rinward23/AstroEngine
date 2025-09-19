@@ -76,7 +76,7 @@ AstroEngine bundles a small number of static datasets that are consumed by the r
 
 - Run `pytest` after modifying any dataset to ensure loaders (`astroengine.data.schemas`, `astroengine.validation`) accept the new
   values.
-- Capture the execution environment via `python -m astroengine.infrastructure.environment numpy pandas scipy` and store the JSON
+- Capture the execution environment via `python -m astroengine.infrastructure.environment pyswisseph numpy pydantic python-dateutil timezonefinder tzdata pyyaml click rich orjson pyarrow duckdb` and store the JSON
   output with release artefacts.
 - When importing Solar Fire or Swiss Ephemeris data, archive the raw export in an internal bucket and reference it by checksum in
   the revision log so audits can reproduce the build.
