@@ -20,6 +20,7 @@ structures and result containers defined here are intentionally lightweight so
 plugins can be implemented in pure Python or compiled extensions while still
 respecting the schema contracts enforced by the engine.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -114,21 +115,27 @@ class EphemerisProvider(Protocol):
 
     metadata: ProviderMetadata
 
-    def configure(self, *, profile_flags: Mapping[str, object], options: Mapping[str, object] | None = None) -> None:
+    def configure(
+        self, *, profile_flags: Mapping[str, object], options: Mapping[str, object] | None = None
+    ) -> None:
         """Apply profile-specific configuration.
 
         Implementations MUST be idempotent and only mutate internal caches.
         Raising :class:`ProviderError` signals misconfiguration.
         """
 
-    def prime_cache(self, *, start: datetime, end: datetime, bodies: Sequence[str], cadence_hours: float) -> CacheInfo:
+    def prime_cache(
+        self, *, start: datetime, end: datetime, bodies: Sequence[str], cadence_hours: float
+    ) -> CacheInfo:
         """Warm ephemeris caches for the requested window.
 
         Providers may download ephemeris files, but MUST verify checksums and
         refuse to continue when validation fails.
         """
 
-    def query(self, *, timestamps: Sequence[datetime], bodies: Sequence[str], frame: str) -> EphemerisBatch:
+    def query(
+        self, *, timestamps: Sequence[datetime], bodies: Sequence[str], frame: str
+    ) -> EphemerisBatch:
         """Return deterministic vectors for all timestamps/bodies in the requested frame."""
 
     def query_window(

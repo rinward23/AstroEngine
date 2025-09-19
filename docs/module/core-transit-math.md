@@ -46,7 +46,7 @@ Default orb values come from Solar Fire “Default” profile exports and the in
 | Body class | Natal target | Aspect | Default orb | Tight profile (`vca_tight`) | Wide profile (`vca_support`) | Data provenance |
 | ---------- | ------------ | ------ | ----------- | --------------------------- | ---------------------------- | --------------- |
 | Luminary (Sun/Moon) | Planet | Conjunction | 10° | 8° | 12° | Solar Fire profile `DEFAULT.ASF` |
-| Luminary | Angle (ASC/MC) | Conjunction | 8° | 6° | 10° | Solar Fire | 
+| Luminary | Angle (ASC/MC) | Conjunction | 8° | 6° | 10° | Solar Fire |
 | Personal planet (Mercury/Venus/Mars) | Planet | Trine/Sextile | 6° | 5° | 7° | Solar Fire |
 | Personal planet | Angle | Square | 5° | 4° | 6° | Solar Fire |
 | Social planet (Jupiter/Saturn) | Planet | Conjunction | 5° | 4° | 6° | Solar Fire |

@@ -27,7 +27,9 @@ def _attach_domain_fields(event_obj, ctx):
     scorer = ctx.get("domain_scorer", "weighted") if ctx else "weighted"
     temperature = float(ctx.get("domain_temperature", 8.0)) if ctx else 8.0
 
-    resolution = resolver.resolve(sign_index=sign_index, planet_key=planet_key, house_index=house_index)
+    resolution = resolver.resolve(
+        sign_index=sign_index, planet_key=planet_key, house_index=house_index
+    )
     event_obj.elements = resolution.elements
     event_obj.domains = resolution.domains
     event_obj.domain_profile = profile_key
@@ -54,7 +56,9 @@ def maybe_attach_domain_fields(event_obj, ctx):
     return event_obj
 
 
-def apply_profile_if_any(ctx: dict[str, Any], profile_dict: dict[str, Any] | None = None) -> dict[str, Any]:
+def apply_profile_if_any(
+    ctx: dict[str, Any], profile_dict: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Merge an optional profile into ``ctx`` and return a new dictionary."""
 
     if profile_dict:

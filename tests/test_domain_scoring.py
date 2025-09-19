@@ -14,5 +14,7 @@ def test_top_scoring_uses_argmax():
 
 
 def test_softmax_returns_expected_value():
-    factor = compute_domain_factor({"MIND": 0.5, "BODY": 0.5}, MULTIPLIERS, method="softmax", temperature=8.0)
+    factor = compute_domain_factor(
+        {"MIND": 0.5, "BODY": 0.5}, MULTIPLIERS, method="softmax", temperature=8.0
+    )
     assert 1.0 <= factor <= 1.25
