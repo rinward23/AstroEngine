@@ -47,21 +47,30 @@ These helpers ensure the module → submodule → channel → subchannel hierarc
 remains intact, particularly when integrating new Solar Fire derived datasets or
 augmenting the runtime with additional registries.
 
-### Optional dependency extras
+# >>> AUTO-GEN BEGIN: AE README Providers Addendum v1.2
+### Optional providers & catalogs
+Install selectively via extras:
 
-`pyproject.toml` defines optional extras that cluster runtime dependencies by
-concern:
+```bash
+pip install -e .[fallback-ephemeris]   # skyfield + jplephem
+pip install -e .[astro-core]           # astropy frames/units
+pip install -e .[catalogs]             # astroquery (Horizons/SBDB/VizieR)
+pip install -e .[tz]                   # offline timezone lookup
+pip install -e .[qa-novas]             # NOVAS QA checks
+pip install -e .[trad]                 # flatlib (dignities/lots)
+```
 
-- `astroengine[cli]` installs `click` and `rich` for forthcoming interactive
-  tooling.
-- `astroengine[data]` pulls scientific stack dependencies (`numpy`, `pandas`,
-  `scipy`) when working with large Solar Fire exports or indexed CSV datasets.
-- `astroengine[time]` installs timezone helpers (`python-dateutil`, `pytz`) for
-  ingestion pipelines that reconcile historical chart metadata.
+### CLI
 
-The `dev` extra used by `make env` includes all of the above to keep local
-development frictionless while still allowing production environments to select
-only what they require.
+```bash
+python -m astroengine provider list
+python -m astroengine provider check swiss
+```
+
+> **Licensing note:** Swiss Ephemeris is AGPL/commercial for distribution. Keep data files outside the wheel; users should provide `SWE_EPH_PATH/SE_EPHE_PATH`.
+
+# >>> AUTO-GEN END: AE README Providers Addendum v1.2
+
 
 ---
 

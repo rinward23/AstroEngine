@@ -1,4 +1,4 @@
-# >>> AUTO-GEN BEGIN: AstroEngine Conda Env v1.0
+# >>> AUTO-GEN BEGIN: AstroEngine Conda Env v1.1
 name: astroengine
 channels: [conda-forge]
 dependencies:
@@ -6,9 +6,14 @@ dependencies:
   - pip
   - pip:
       - -e .
+      - .[dev]
       - .[api]
       - .[charts]
       - .[locational]
       - .[fallback-ephemeris]
-      - .[dev]
-# >>> AUTO-GEN END: AstroEngine Conda Env v1.0
+      - .[astro-core]
+      - .[catalogs]
+      - .[tz]
+      - .[qa-novas]
+      - .[trad]
+# >>> AUTO-GEN END: AstroEngine Conda Env v1.1

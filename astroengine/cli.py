@@ -1,107 +1,59 @@
-"""Command line interface for AstroEngine."""
-
+# >>> AUTO-GEN BEGIN: AE CLI v1.1
+"""AstroEngine command-line interface with provider and star utilities."""
 from __future__ import annotations
-
+import sys
 import argparse
-import json
-from collections.abc import Sequence
-from dataclasses import asdict
-from datetime import datetime
-from pathlib import Path
+import datetime as _dt
 
-from .core import TransitEngine, TransitEvent
-from .ephemeris import EphemerisConfig
-from .validation import validate_payload
-
-BODY_IDS = {
-    "sun": 0,
-    "moon": 1,
-    "mercury": 2,
-    "venus": 3,
-    "mars": 4,
-    "jupiter": 5,
-    "saturn": 6,
-    "uranus": 7,
-    "neptune": 8,
-    "pluto": 9,
-}
+from .providers import get_provider, list_providers
 
 
-def _parse_datetime(value: str) -> datetime:
-    if value.endswith("Z"):
-        value = value[:-1] + "+00:00"
-    return datetime.fromisoformat(value)
+def _add_common_flags(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--log-level", default="INFO", help="Log level: DEBUG, INFO, WARN, ERROR")
 
 
-def _command_transits(args: argparse.Namespace) -> list[TransitEvent]:
-    engine = TransitEngine.with_default_adapter(EphemerisConfig())
-    start = _parse_datetime(args.start)
-    end = _parse_datetime(args.end)
-    body = args.body
-    if isinstance(body, str):
-        key = body.lower()
-        if key in BODY_IDS:
-            body = BODY_IDS[key]
-        else:
-            try:
-                body = int(key)
-            except ValueError as exc:  # pragma: no cover - defensive guard
-                raise SystemExit(f"Unknown body identifier: {args.body}") from exc
-
-    events = list(
-        engine.scan_longitude_crossing(
-            body,
-            args.target_longitude,
-            args.aspect,
-            start,
-            end,
-            step_hours=args.step_hours,
-        )
-    )
-    if args.json:
-        Path(args.json).write_text(json.dumps([asdict(e) for e in events], default=str, indent=2))
-    else:
-        for event in events:
-            timestamp = event.timestamp.isoformat() if event.timestamp else "unknown"
-            print(f"{timestamp} | orb={event.orb:.6f}° | motion={event.motion}")
-    return events
+def cmd_env(args: argparse.Namespace) -> int:
+    import importlib
+    mods = ["pyswisseph", "numpy", "pandas"]
+    missing = [m for m in mods if importlib.util.find_spec(m) is None]
+    print("imports:", "ok" if not missing else f"missing={missing}")
+    import os
+    eph = os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH")
+    print("ephemeris:", eph or "(unset)")
+    print("providers:", ", ".join(list_providers()) or "(none)")
+    return 0
 
 
-def _command_validate(args: argparse.Namespace) -> None:
-    payload = json.loads(Path(args.path).read_text())
-    validate_payload(args.schema, payload)
-    print(f"Validation succeeded for schema {args.schema}")
+def cmd_providers(args: argparse.Namespace) -> int:
+    if args.action == "list":
+        print("available:", ", ".join(list_providers()) or "(none)")
+        return 0
+    if args.action == "check":
+        prov = get_provider(args.name)
+        now = _dt.datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        out = prov.positions_ecliptic(now, ["sun", "moon"])  # smoke
+        print(out)
+        return 0
+    return 1
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="astroengine", description="AstroEngine CLI")
-    subparsers = parser.add_subparsers(dest="command", required=True)
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    ap = argparse.ArgumentParser(prog="astroengine", description="AstroEngine CLI")
+    sub = ap.add_subparsers(dest="cmd", required=True)
 
-    transits = subparsers.add_parser("transits", help="Scan for transiting aspects")
-    transits.add_argument(
-        "--body", default="mars", help="Swiss Ephemeris body id or name (default: Mars)"
-    )
-    transits.add_argument("--target-longitude", type=float, required=True)
-    transits.add_argument("--aspect", type=float, default=0.0)
-    transits.add_argument("--start", required=True, help="Start datetime (ISO-8601)")
-    transits.add_argument("--end", required=True, help="End datetime (ISO-8601)")
-    transits.add_argument("--step-hours", type=float, default=12.0)
-    transits.add_argument("--json", help="Write events to JSON file")
-    transits.set_defaults(func=_command_transits)
+    p_env = sub.add_parser("env", help="Print environment diagnostics")
+    _add_common_flags(p_env)
+    p_env.set_defaults(fn=cmd_env)
 
-    validate = subparsers.add_parser("validate", help="Validate JSON payloads against schemas")
-    validate.add_argument("schema", help="Schema key registered in the data registry")
-    validate.add_argument("path", help="Path to JSON file")
-    validate.set_defaults(func=_command_validate)
+    p_prov = sub.add_parser("provider", help="List or check providers")
+    p_prov.add_argument("action", choices=["list", "check"])
+    p_prov.add_argument("name", nargs="?", default="swiss")
+    p_prov.set_defaults(fn=cmd_providers)
 
-    return parser
-
-
-def main(argv: Sequence[str] | None = None):
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    return args.func(args)
-
+    ns = ap.parse_args(argv)
+    return int(ns.fn(ns))
 
 if __name__ == "__main__":  # pragma: no cover
-    main()
+    raise SystemExit(main())
+# >>> AUTO-GEN END: AE CLI v1.1

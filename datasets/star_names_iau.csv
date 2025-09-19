@@ -1,0 +1,5 @@
+# >>> AUTO-GEN BEGIN: AE IAU Star Names (stub) v1.0
+name,hip,hr,ra_deg,dec_deg,notes
+Regulus,49669,3982,152.092962,11.967208,Alpha Leonis (WGSN name); sample only
+# TODO: replace with full IAU WGSN list; keep columns consistent.
+# >>> AUTO-GEN END: AE IAU Star Names (stub) v1.0

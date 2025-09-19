@@ -1,4 +1,4 @@
-# >>> AUTO-GEN BEGIN: AstroEngine Dependencies v1.0
+# >>> AUTO-GEN BEGIN: AstroEngine Dependencies v1.1
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -14,16 +14,16 @@ authors = [{ name = "AstroEngine Team" }]
 
 # Core runtime deps (minimal engine run)
 dependencies = [
-  "pyswisseph>=2.10.3.2",    # Swiss Ephemeris bindings
+  "pyswisseph>=2.10.4",      # Swiss Ephemeris bindings
   "numpy>=1.26",
   "pandas>=2.2",
   "pyarrow>=16.0",           # Parquet/Arrow IO
   "python-dateutil>=2.9",
-  "tzdata>=2024.1",          # Windows time zones (no-op on Unix)
-  "PyYAML>=6.0",             # config profiles
-  "pluggy>=1.5",             # plugin system
-  "click>=8.1",              # CLI
-  "rich>=13.7"               # pretty CLI/logging
+  "tzdata>=2024.1",
+  "PyYAML>=6.0",
+  "pluggy>=1.5",
+  "click>=8.1",
+  "rich>=13.7"
 ]
 
 [project.optional-dependencies]
@@ -39,9 +39,25 @@ locational = [
   "shapely>=2.0",
   "geographiclib>=2.0"
 ]
+# New extras — install on-demand only
 fallback-ephemeris = [
   "skyfield>=1.49",
   "jplephem>=2.21"
+]
+astro-core = [
+  "astropy>=6.0"
+]
+catalogs = [
+  "astroquery>=0.4.7"
+]
+tz = [
+  "timezonefinder[numba]>=6.5"
+]
+qa-novas = [
+  "novas>=3.1.1"
+]
+trad = [
+  "flatlib>=0.2"
 ]
 dev = [
   "pytest>=8.2",
@@ -61,5 +77,4 @@ select = ["E", "F", "I", "UP", "B", "C4", "ICN"]
 
 [tool.black]
 line-length = 100
-
-# >>> AUTO-GEN END: AstroEngine Dependencies v1.0
+# >>> AUTO-GEN END: AstroEngine Dependencies v1.1
