@@ -26,6 +26,22 @@ The CI workflow `.github/workflows/swe-smoketest.yml` runs the same on every pus
 # >>> AUTO-GEN END: Ephemeris Smoketest How-To v1.0
 ````
 
+# >>> AUTO-GEN BEGIN: AE README CLI Addendum v1.1
+### CLI quickstart
+```bash
+python -m astroengine env   # prints imports + ephemeris path hint
+```
+
+### Local dev bootstrap
+
+```bash
+bash scripts/dev_setup.sh   # macOS/Linux
+# or
+powershell -ExecutionPolicy Bypass -File scripts/dev_setup.ps1
+```
+
+# >>> AUTO-GEN END: AE README CLI Addendum v1.1
+
 The package exposes a registry-based API for discovering datasets and
 rulesets.  See `astroengine/modules` for details.
 
