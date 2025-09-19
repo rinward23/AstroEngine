@@ -1,53 +1,44 @@
 # Acceptance Checklist for "100% Specced"
 
 - **Author**: AstroEngine Governance Board
-- **Date**: 2024-05-27
+- **Updated**: 2024-05-27 (aligned with current repository assets)
 
-This checklist records the formal approval required to declare the AstroEngine specification complete. Populate each section with signatures, dates, and evidence links. All evidence must reference real datasets and documentation produced in this repository.
+Use this checklist when declaring the specification complete for a release. Provide links to commits or artefacts stored in the repository (environment reports, pytest logs, dataset diffs). Leave unchecked boxes empty until the evidence is attached.
 
-## Section A — Module Documentation
+## Section A — Documentation reviews
 
-- [ ] `core-transit-math` documentation reviewed, provenance verified (`docs/module/core-transit-math.md`). Reviewer: __________________ Date: __________ Evidence: __________________
-- [ ] `event-detectors` overview validated (`docs/module/event-detectors/overview.md`). Reviewer: __________________ Date: __________ Evidence: __________________
-- [ ] `providers` contract confirmed (`docs/module/providers_and_frames.md`). Reviewer: __________________ Date: __________ Evidence: __________________
-- [ ] `ruleset_dsl` grammar/linter approved (`docs/module/ruleset_dsl.md`). Reviewer: __________________ Date: __________ Evidence: __________________
-- [ ] `data-packs` provenance checked (`docs/module/data-packs.md`). Reviewer: __________________ Date: __________ Evidence: __________________
-- [ ] `interop` spec aligned with schemas (`docs/module/interop.md`). Reviewer: __________________ Date: __________ Evidence: __________________
-- [ ] `qa_acceptance` plan executed (`docs/module/qa_acceptance.md`). Reviewer: __________________ Date: __________ Evidence: __________________
-- [ ] `release_ops` plan approved (`docs/module/release_ops.md`). Reviewer: __________________ Date: __________ Evidence: __________________
+- [ ] `docs/module/core-transit-math.md` reviewed and confirmed against `astroengine/modules/vca/rulesets.py` and Solar Fire verification exports. Reviewer: __________________ Date: __________ Evidence: __________________
+- [ ] `docs/module/data-packs.md` verified against CSV/JSON assets in `profiles/` and `schemas/orbs_policy.json`. Reviewer: __________________ Date: __________ Evidence: __________________
+- [ ] `docs/module/event-detectors/overview.md` updated to reflect planned registry paths and Solar Fire benchmark references. Reviewer: __________________ Date: __________ Evidence: __________________
+- [ ] `docs/module/providers_and_frames.md` aligned with `astroengine/providers/__init__.py` and parity plans referencing Solar Fire. Reviewer: __________________ Date: __________ Evidence: __________________
+- [ ] `docs/module/interop.md` matches `schemas/` contents. Reviewer: __________________ Date: __________ Evidence: __________________
+- [ ] `docs/module/qa_acceptance.md` and `docs/module/release_ops.md` reviewed for accuracy. Reviewer: __________________ Date: __________ Evidence: __________________
+- [ ] `docs/module/ruleset_dsl.md` updated when new predicates/actions are introduced. Reviewer: __________________ Date: __________ Evidence: __________________
+- [ ] `docs/governance/data_revision_policy.md` reflects the latest dataset changes and includes links to revision notes. Reviewer: __________________ Date: __________ Evidence: __________________
 
-## Section B — Dataset Integrity
+## Section B — Dataset integrity
 
-- [ ] Solar Fire exports (stations, ingresses, combustion, etc.) checksums recorded and verified. Evidence: __________________
-- [ ] Swiss Ephemeris cache checksums verified via `astroengine ephem verify`. Evidence: __________________
-- [ ] Atlas/TZ database license and checksum recorded in `docs/module/data-packs.md`. Evidence: __________________
-- [ ] Minor planet elements cross-checked with JPL Horizons logs. Evidence: __________________
+- [ ] `profiles/base_profile.yaml`, `profiles/dignities.csv`, and `profiles/fixed_stars.csv` reviewed; provenance columns present and checksums recorded. Evidence: __________________
+- [ ] `schemas/orbs_policy.json` values match those used by the runtime (`tests/test_orbs_policy.py`). Evidence: __________________
+- [ ] Revision log entries added in accordance with `docs/governance/data_revision_policy.md`. Evidence: __________________
+- [ ] Solar Fire export hashes (transits, returns, natal inputs) captured and linked to the datasets above. Evidence: __________________
 
-## Section C — QA & Testing
+## Section C — QA & testing
 
-- [ ] `pip install -e .[dev]` executed in clean virtualenv (attach environment report from `python -m astroengine.infrastructure.environment numpy pandas scipy`). Evidence: __________________
-- [ ] `pytest -m "not perf"` passed on reference hardware. Evidence: __________________
-- [ ] `pytest -m perf --benchmark-only` meets performance targets. Evidence: __________________
-- [ ] Parity suite `pytest tests/parity` within tolerances. Evidence: __________________
-- [ ] Golden datasets diff-free (`tests/data/golden_events.jsonl`). Evidence: __________________
+- [ ] Environment recorded via `python -m astroengine.infrastructure.environment numpy pandas scipy` (attach JSON). Evidence: __________________
+- [ ] `pytest` suite passed on the release commit. Evidence: __________________
+- [ ] Solar Fire comparison report(s) generated and checksums archived with release artefacts. Evidence: __________________
+- [ ] Any additional manual checks (e.g., detector prototypes) documented with results. Evidence: __________________
 
-## Section D — Interop & Releases
+## Section D — Interop & release
 
-- [ ] AstroJSON schemas published with version increments logged. Evidence: __________________
-- [ ] CSV/Parquet/SQLite exports validated against sample data. Evidence: __________________
-- [ ] ICS templates verified for severity priority mapping. Evidence: __________________
-- [ ] Release checklist executed (tag, wheel build, environment report). Evidence: __________________
+- [ ] Schema consumers updated or notified about changes to `result_v1`, `contact_gate_v2`, or other registered keys. Evidence: __________________
+- [ ] Release checklist in `docs/module/release_ops.md` executed (tag, build, publish). Evidence: __________________
 
-## Section E — Security & Compliance
-
-- [ ] License entitlements documented (Solar Fire, ACS Atlas, Swiss Ephemeris). Evidence: __________________
-- [ ] OIDC secret rotation logs updated. Evidence: __________________
-- [ ] PII redaction checks performed on exports. Evidence: __________________
-
-## Section F — Sign-Off
+## Section E — Sign-off
 
 - **QA Lead**: __________________ Date: __________
 - **Data Steward**: __________________ Date: __________
 - **Governance Chair**: __________________ Date: __________
 
-Completion of this checklist with supporting evidence authorizes the AstroEngine team to declare the specification complete while preserving module integrity and dataset authenticity.
+All boxes above must be checked with supporting evidence before declaring the specification complete.

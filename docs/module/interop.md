@@ -1,97 +1,58 @@
 # Exports & Interoperability Specification
 
 - **Module**: `interop`
-- **Author**: AstroEngine Integration Guild
-- **Date**: 2024-05-27
-- **Source datasets**: AstroJSON schemas (`schemas/astrojson/*.json`), Solar Fire export samples (`exports/sample_transits.csv`), ICS templates from Venus Cycle Analytics, SQLite schema dumps (`schemas/sqlite/transits_events.sql`).
-- **Downstream links**: CLI exporters (`astroengine.exports`), QA fixtures (`tests/exports/test_interop_contracts.py`), release ops documentation (`docs/module/release_ops.md`).
+- **Maintainer**: Integration Guild
+- **Source artifacts**:
+  - `schemas/result_schema_v1.json`
+  - `schemas/result_schema_v1_with_domains.json`
+  - `schemas/contact_gate_schema_v2.json`
+  - `schemas/natal_input_v1_ext.json`
+  - `schemas/orbs_policy.json`
+  - Test coverage in `tests/test_result_schema.py`, `tests/test_contact_gate_schema.py`, and `tests/test_orbs_policy.py`
 
-This specification defines the serialization formats that guarantee deterministic exchanges between AstroEngine and external systems. All field definitions map to existing schema files or Solar Fire exports; no synthetic fields are introduced.
+The AstroEngine validation layer loads JSON schemas and supporting data from `./schemas`. This document describes the current files so downstream exporters know which payloads are supported and how they are tested. The schema keys are registered via `astroengine.data.schemas` and exercised through `astroengine.validation.validate_payload`.
 
-## AstroJSON Schemas
+## Schema catalogue
 
-### `natal_v1`
+| Key | File | Purpose | Primary sections |
+| --- | --- | --- | --- |
+| `result_v1` | `schemas/result_schema_v1.json` | Defines the baseline run result payload used by `tests/test_result_schema.py`. Events must cite `provenance` URIs that map back to Solar Fire or Swiss Ephemeris exports. | `schema`, `run`, `window`, `subjects`, `channels`, `events`. |
+| `result_v1_with_domains` | `schemas/result_schema_v1_with_domains.json` | Extends `result_v1` with domain annotations for each subject/channel. | Adds `domains` array alongside the standard result structure. |
+| `contact_gate_v2` | `schemas/contact_gate_schema_v2.json` | Captures gating decisions that map result events into UI narratives, including audit trails to Solar Fire verification datasets. | `schema`, `run`, `gates[*].{channel, decision, window, evidence, audit}`. |
+| `natal_input_v1_ext` | `schemas/natal_input_v1_ext.json` | Documents optional metadata collected with Solar Fire imports (rating, zodiac mode, house system). Implementations should also persist the export checksum via the schema’s open `additionalProperties`. | Enumerated values for `source_rating`, `zodiac`, `house_system`, `coordinate_system`; additional properties permitted. |
+| `orbs_policy` | `schemas/orbs_policy.json` | JSON data (not a JSON Schema) exposing aspect families and profile multipliers so external tools can align orbs with the engine. | `schema`, `profiles.{standard,tight,wide}`, `aspects.{conjunction,…}`. |
 
-- **Location**: `schemas/astrojson/natal_v1.json`
-- **Purpose**: Represent natal chart metadata for Solar Fire ingest and AstroEngine runtime.
-- **Required fields**:
-  - `chart_id` (UUID, references `profiles/natal_index.csv`)
-  - `name`
-  - `datetime_utc`
-  - `timezone` (IANA tzid)
-  - `location` object: `lat`, `lon`, `altitude_m`, `atlas_urn`
-  - `house_system`
-  - `profiles` (list of profile IDs)
-- **Optional fields**: `notes`, `source_dataset`
-- **Provenance**: Each record includes `source_checksum` referencing Solar Fire export row, ensuring traceability.
+## Validation hooks
 
-### `event_v1`
+- `tests/test_result_schema.py` loads a canonical payload via `validate_payload("result_v1", ...)` and asserts that removing required fields (e.g., `events[*].channel`) raises `SchemaValidationError`.
+- `tests/test_contact_gate_schema.py` performs the same checks for `contact_gate_v2`.
+- `tests/test_orbs_policy.py` ensures that `schemas/orbs_policy.json` stays in sync with the documentation by loading the document through `astroengine.data.schemas.load_schema_document` and inspecting the multipliers.
+- `tests/test_module_registry.py` indirectly checks that schema keys remain registered by comparing the registry payload emitted by `serialize_vca_ruleset()` with the documentation.
 
-- **Location**: `schemas/astrojson/event_v1.json`
-- **Purpose**: Capture runtime event detections (stations, ingresses, etc.).
-- **Fields**:
-  - `event_id` (UUID)
-  - `module_path` (module/submodule/channel/subchannel string)
-  - `event_kind`
-  - `timestamp_utc`
-  - `bodies` array with `id`, `role`, `longitude_deg`, `latitude_deg`, `declination_deg`, `speed_deg_per_day`
-  - `severity` object: `score`, `band`, `modifiers`
-  - `provenance` object: dataset URNs, Solar Fire row references, ephemeris checksum
-  - `exports` array referencing downstream channels engaged by the rule
+## Provenance requirements
 
-### `transit_v1`
+- Result and contact gate payloads must embed dataset URIs (e.g., `sf9://transits_2023.sf#row=5821`) so that every event can be
+  audited against the Solar Fire source data. Tests should include at least one payload that exercises this requirement.
+- When integrating external systems, persist the `natal_input_v1_ext.source_checksum` value alongside the imported chart to prove
+  that runtime output is derived from the recorded dataset.
+- Schema updates that introduce new provenance fields must be mirrored in the corresponding documentation and the governance
+  revision log.
 
-- **Location**: `schemas/astrojson/transit_v1.json`
-- **Purpose**: Provide rolled-up transit forecasts for UI and ICS conversions.
-- **Fields**: merges relevant pieces from `event_v1` plus user-specific schedule metadata: `window_start_utc`, `window_end_utc`, `channel_id`, `profile_id`, `notification_targets`.
+## Usage notes
 
-All AstroJSON schemas require schema versioning with `schema_version` field and `semantic_version` string to track migrations.
+- Schema identifiers (`$id`) are stable and should be used when emitting payloads to external systems. Any change requires a version bump and a corresponding update to this file and the revision log described in `docs/governance/data_revision_policy.md`.
+- The validation helpers return detailed error messages listing the JSON Pointer path of failing fields. Integrations should surface those messages when rejecting payloads.
+- `orbs_policy` is intentionally distributed as data rather than a JSON Schema so that client applications can present profile-aware orb sliders without hard-coding numbers.
 
-## CSV/Parquet Exports
+## Extending interoperability
 
-- **Default CSV columns** (Solar Fire parity):
-  - `timestamp_utc`, `event_kind`, `body`, `natal_reference`, `aspect`, `orb_deg`, `severity_score`, `severity_band`, `profile_id`, `dataset_urn`.
-- **Encoding**: UTF-8, RFC 4180 line endings, quoting minimal.
-- **Partitioning**: For Parquet exports, partition by `profile_id` and `event_kind` to allow efficient range scans.
-- **Compression**: Use `snappy` for Parquet, `gzip` for CSV optional output.
-- **Provenance**: Each file accompanies a JSON sidecar containing `source_checksum`, `exporter_version`, `row_count`.
+When introducing new exports:
 
-## SQLite Schema (`transits_events`)
+1. Add the schema or data file under `schemas/`.
+2. Register a key in the schema loader (see `astroengine/data/schemas.py`).
+3. Document the new file in the table above.
+4. Add pytest coverage that loads the schema via `validate_payload` or `load_schema_document`.
+5. Update `docs/burndown.md` to reflect the new deliverable.
+6. Record the revision following the workflow in `docs/governance/data_revision_policy.md`.
 
-- **File**: `schemas/sqlite/transits_events.sql`
-- **Tables**:
-  - `events` (`event_id` PRIMARY KEY, `timestamp_utc`, `event_kind`, `module_path`, `severity_score`, `severity_band`, `profile_id`, `provenance_json`)
-  - `bodies` (`body_id`, `event_id` FK, `role`, `longitude_deg`, `latitude_deg`, `declination_deg`, `speed_deg_per_day`)
-  - `exports` (`export_id`, `event_id` FK, `channel_id`, `status`, `last_attempt_utc`)
-  - `datasets` (`dataset_urn`, `checksum`, `last_verified`)
-- **Indices**:
-  - `idx_events_profile_time` on (`profile_id`, `timestamp_utc`)
-  - `idx_exports_channel_status` on (`channel_id`, `status`)
-- **Foreign keys**: enforce cascading deletes to prevent orphaned rows when events purge. Deletion occurs only after export retention policy satisfied.
-
-## ICS Event Format
-
-- **SUMMARY**: `[{severity_band}] {event_kind} — {body}`
-- **DESCRIPTION**: multiline string containing severity breakdown, dataset URNs, Solar Fire references, and instructions for verifying within Solar Fire.
-- **DTSTART/DTEND**: derived from `window_start_utc`/`window_end_utc`. Use UTC (`Z`) suffix.
-- **UID**: event UUID with domain `astroengine.io`.
-- **PRODID**: `-//AstroEngine//Transit Alerts {version}//EN`
-- **PRIORITY**: map severity band to ICS priority (Peak=1, Strong=3, Moderate=5, Weak=7).
-- **VALARM**: optional, triggered 30 minutes before event; include dataset URN in description.
-
-## Provenance Requirements
-
-- Every export channel must attach dataset URNs in the payload (`provenance` field) referencing real checksums from `docs/module/data-packs.md`.
-- Exporters log `export_id`, `channel_id`, `destination`, `status`, `checksum` to `astroengine.infrastructure.observability`.
-- When schemas evolve, increment `schema_version` and supply migration notes in `docs/burndown.md`.
-
-## Compatibility Matrix Stub
-
-- Maintain mapping (documented in `docs/module/release_ops.md`) connecting registry modules to export channels to ensure additions never remove existing modules.
-- Example row:
-
-| Module path | AstroJSON schema | CSV channel | SQLite table | ICS template |
-| ----------- | ---------------- | ----------- | ------------ | ------------ |
-| `event-detectors/stations/direct` | `event_v1` | `transits_events.csv` | `events` | `station_alert.ics` |
-
-This interop specification keeps all export formats synchronized with real data sources and enforces traceability for every emitted event.
+Keeping the documentation aligned with the actual files guarantees that every run sequence and export references authentic data rather than inferred values.
