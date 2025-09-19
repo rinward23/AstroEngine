@@ -26,13 +26,30 @@ ModuleRegistry = dict[str, list[dict[str, Any]]]
 ParsingErrors = list[tuple[str, str]]
 
 
-def iso_to_dt(value: str | None) -> datetime.datetime | None:
+def iso_to_dt(value: object | None) -> datetime.datetime | None:
     """Parse a loose ISO 8601 timestamp to a datetime."""
 
-    if not value:
+    if value is None:
         return None
 
+    if isinstance(value, datetime.datetime):
+        return value
+
+    if isinstance(value, bytes):
+        try:
+            value = value.decode("utf-8")
+        except Exception:  # pragma: no cover - defensive guardrails
+            return None
+
+    if not isinstance(value, str):
+        try:
+            value = str(value)
+        except Exception:  # pragma: no cover - defensive guardrails
+            return None
+
     cleaned = value.strip()
+    if not cleaned:
+        return None
     if cleaned.endswith("Z"):
         cleaned = cleaned[:-1]
 
