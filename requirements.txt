@@ -1,0 +1,9 @@
+# >>> AUTO-GEN BEGIN: Dev Requirements v1.0
+pyswisseph>=2.10.3
+numpy>=1.26
+python-dateutil
+pytz
+click
+rich
+pytest
+# >>> AUTO-GEN END: Dev Requirements v1.0

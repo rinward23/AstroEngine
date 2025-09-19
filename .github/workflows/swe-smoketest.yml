@@ -1,0 +1,27 @@
+# >>> AUTO-GEN BEGIN: CI Swiss Ephemeris Smoketest v1.0
+name: swe-smoketest
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoketest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Python deps
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt
+      - name: Install Swiss Ephemeris data (apt)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y swe-data
+          echo "SE_EPHE_PATH=/usr/share/sweph" >> $GITHUB_ENV
+      - name: Run smoketest script
+        run: |
+          python scripts/swe_smoketest.py --utc "2025-09-19T18:10:00Z"
+# >>> AUTO-GEN END: CI Swiss Ephemeris Smoketest v1.0
