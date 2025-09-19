@@ -51,7 +51,7 @@ DEFAULT_PLANET_DOMAIN_WEIGHTS: Mapping[str, Mapping[str, float]] = {
     "chiron": {"BODY": 0.8, "SPIRIT": 0.5},
 }
 
-# House index (1..12) → Domain weights (kept light; debated houses marked TODO for profiles)
+# House index (1..12) → Domain weights (profiles can override debated houses)
 DEFAULT_HOUSE_DOMAIN_WEIGHTS: Mapping[int, Mapping[str, float]] = {
     1: {"BODY": 1.0},  # Vitality, soma
     2: {"BODY": 0.7, "MIND": 0.3},
