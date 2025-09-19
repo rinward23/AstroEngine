@@ -20,6 +20,11 @@ pip install -e .[dev]
 
 # Verify the Python environment without relying on Conda
 python -m astroengine.infrastructure.environment numpy pandas scipy
+
+# Or lock to the pinned Conda/micromamba environment and run tests
+make env
+micromamba activate astroengine  # or: conda activate astroengine
+make test
 ```
 
 ````
@@ -72,11 +77,19 @@ instead of cloning the entire document into a new append-only record.
 
 - `astroengine/core` — fundamental runtime helpers (domains, scoring,
   transit event dataclasses).
+- `astroengine/ephemeris` — Swiss Ephemeris adapter emitting deterministic
+  position/house payloads for chart modules.
+- `astroengine/chart` — natal and transit calculators that lean on the
+  Swiss adapter and orb policy to stay deterministic.
 - `astroengine/modules` — registry classes for organising datasets.
 - `astroengine/modules/vca` — bundled Venus Cycle Analytics assets
   registered under module/submodule/channel/subchannel nodes.
 - `astroengine/infrastructure` — environment diagnostics and other
   operational utilities.
+
+The transit/natal calculators ship with golden regression tests covering
+three Solar Fire reference charts so future changes stay anchored to real
+ephemeris data.
 
 The default registry can be inspected by importing
 `astroengine.DEFAULT_REGISTRY` or calling

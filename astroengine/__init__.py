@@ -11,6 +11,14 @@ from .catalogs import (
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
 )
+from .chart import (
+    AspectHit,
+    ChartLocation,
+    NatalChart,
+    TransitContact,
+    TransitScanner,
+    compute_natal_chart,
+)
 from .core import (
     DOMAINS,
     ELEMENTS,
@@ -28,12 +36,9 @@ from .core import (
     natal_domain_factor,
     profile_into_ctx,
 )
-from .infrastructure.environment import (
-    collect_environment_report,
-)
-from .infrastructure.environment import (
-    main as environment_report_main,
-)
+from .ephemeris import SwissEphemerisAdapter
+from .infrastructure.environment import collect_environment_report
+from .infrastructure.environment import main as environment_report_main
 from .modules import (
     DEFAULT_REGISTRY,
     AstroChannel,
@@ -44,13 +49,30 @@ from .modules import (
     bootstrap_default_registry,
 )
 from .modules.vca import serialize_vca_ruleset
-from .profiles import VCA_DOMAIN_PROFILES, DomainScoringProfile
+from .profiles import (
+    VCA_DOMAIN_PROFILES,
+    DomainScoringProfile,
+    load_base_profile,
+    load_vca_outline,
+)
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
+from .scoring import (
+    DEFAULT_ASPECTS,
+    OrbCalculator,
+    load_dignities,
+    lookup_dignities,
+)
 
 __all__ = [
     "__version__",
     "TransitEvent",
     "TransitScanConfig",
+    "TransitContact",
+    "TransitScanner",
+    "AspectHit",
+    "ChartLocation",
+    "NatalChart",
+    "compute_natal_chart",
     "DomainResolver",
     "DomainResolution",
     "ELEMENTS",
@@ -75,10 +97,17 @@ __all__ = [
     "AstroSubmodule",
     "AstroChannel",
     "AstroSubchannel",
+    "SwissEphemerisAdapter",
     "collect_environment_report",
     "environment_report_main",
     "get_vca_aspect",
     "vca_orb_for",
+    "DEFAULT_ASPECTS",
+    "OrbCalculator",
+    "load_dignities",
+    "lookup_dignities",
+    "load_base_profile",
+    "load_vca_outline",
     "VCA_CORE_BODIES",
     "VCA_EXT_ASTEROIDS",
     "VCA_CENTAURS",
