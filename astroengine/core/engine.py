@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 from ..modules.vca.profiles import VCA_DOMAIN_PROFILES
 from .config import profile_into_ctx
@@ -53,7 +54,7 @@ def maybe_attach_domain_fields(event_obj, ctx):
     return event_obj
 
 
-def apply_profile_if_any(ctx: Dict[str, Any], profile_dict: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def apply_profile_if_any(ctx: dict[str, Any], profile_dict: dict[str, Any] | None = None) -> dict[str, Any]:
     """Merge an optional profile into ``ctx`` and return a new dictionary."""
 
     if profile_dict:
@@ -61,7 +62,7 @@ def apply_profile_if_any(ctx: Dict[str, Any], profile_dict: Optional[Dict[str, A
     return ctx
 
 
-def get_active_aspect_angles(ctx: Optional[Dict[str, Any]]) -> Iterable[float]:
+def get_active_aspect_angles(ctx: dict[str, Any] | None) -> Iterable[float]:
     """Return the sorted aspect angles configured in ``ctx``."""
 
     aspects = (ctx or {}).get("aspects", {})
@@ -72,7 +73,7 @@ def get_active_aspect_angles(ctx: Optional[Dict[str, Any]]) -> Iterable[float]:
     return sorted({float(angle) for angle in angles})
 
 
-def get_feature_flag(ctx: Optional[Dict[str, Any]], key: str, default: bool = False) -> bool:
+def get_feature_flag(ctx: dict[str, Any] | None, key: str, default: bool = False) -> bool:
     """Return the boolean feature flag stored under ``key`` in ``ctx``."""
 
     flags = (ctx or {}).get("flags", {})

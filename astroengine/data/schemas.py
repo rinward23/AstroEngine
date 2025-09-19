@@ -9,9 +9,9 @@ packing everything into the Python module.
 from __future__ import annotations
 
 import json
-from functools import lru_cache
+from collections.abc import Iterable, Mapping, MutableMapping
+from functools import cache
 from pathlib import Path
-from typing import Dict, Iterable, Mapping, MutableMapping
 
 from . import SCHEMA_DIR
 
@@ -29,7 +29,7 @@ class SchemaNotFoundError(KeyError):
 
 SchemaMetadata = Mapping[str, str]
 
-SCHEMA_REGISTRY: Dict[str, SchemaMetadata] = {
+SCHEMA_REGISTRY: dict[str, SchemaMetadata] = {
     "result_v1": {"filename": "result_schema_v1.json", "kind": "jsonschema"},
     "result_v1_with_domains": {
         "filename": "result_schema_v1_with_domains.json",
@@ -54,7 +54,7 @@ def _schema_path(metadata: Mapping[str, str]) -> Path:
     return SCHEMA_DIR / filename
 
 
-@lru_cache(maxsize=None)
+@cache
 def load_schema_document(key: str) -> MutableMapping[str, object]:
     """Return the JSON payload for the requested schema key.
 

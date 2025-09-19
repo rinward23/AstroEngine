@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import argparse
-from typing import Any, Dict, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 from .api import TransitEvent, TransitScanConfig
 from .config import load_profile_json
@@ -46,8 +47,8 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _initial_context_from_args(args: argparse.Namespace) -> Dict[str, Any]:
-    ctx: Dict[str, Any] = {
+def _initial_context_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    ctx: dict[str, Any] = {
         "emit_domains": args.emit_domains,
     }
     if args.emit_domains:
@@ -57,7 +58,7 @@ def _initial_context_from_args(args: argparse.Namespace) -> Dict[str, Any]:
     return ctx
 
 
-def main(argv: Optional[Sequence[str]] = None) -> Tuple[TransitScanConfig, Dict[str, Any]]:
+def main(argv: Sequence[str] | None = None) -> tuple[TransitScanConfig, dict[str, Any]]:
     parser = build_parser()
     args = parser.parse_args(argv)
 

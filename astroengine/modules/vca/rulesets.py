@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Mapping, Optional
 
 
 @dataclass(frozen=True)
@@ -14,7 +14,7 @@ class AspectDef:
     default_orb_deg: float
 
 
-_VCA_ASPECTS: Dict[str, AspectDef] = {
+_VCA_ASPECTS: dict[str, AspectDef] = {
     "conjunction": AspectDef("conjunction", 0.0, "major", 10.0),
     "opposition": AspectDef("opposition", 180.0, "major", 10.0),
     "square": AspectDef("square", 90.0, "major", 8.0),
@@ -69,11 +69,11 @@ VCA_RULESET = Ruleset(
 )
 
 
-def get_vca_aspect(name: str) -> Optional[AspectDef]:
+def get_vca_aspect(name: str) -> AspectDef | None:
     return _VCA_ASPECTS.get(name.lower())
 
 
-def vca_orb_for(name: str, *, override: Optional[float] = None) -> float:
+def vca_orb_for(name: str, *, override: float | None = None) -> float:
     if override is not None:
         return float(override)
     aspect = get_vca_aspect(name)

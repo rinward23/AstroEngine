@@ -11,8 +11,8 @@ existing Python modules, satisfying the ``no module loss`` constraint.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, MutableMapping
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, Mapping, MutableMapping, Optional
 
 __all__ = [
     "AstroRegistry",
@@ -29,12 +29,12 @@ class AstroSubchannel:
 
     name: str
     metadata: MutableMapping[str, object] = field(default_factory=dict)
-    payload: Optional[Mapping[str, object]] = None
+    payload: Mapping[str, object] | None = None
 
     def describe(self) -> Mapping[str, object]:
         """Return a merged view of metadata and payload references."""
 
-        data: Dict[str, object] = dict(self.metadata)
+        data: dict[str, object] = dict(self.metadata)
         if self.payload is not None:
             data.setdefault("payload", self.payload)
         return data
@@ -46,14 +46,14 @@ class AstroChannel:
 
     name: str
     metadata: MutableMapping[str, object] = field(default_factory=dict)
-    subchannels: Dict[str, AstroSubchannel] = field(default_factory=dict)
+    subchannels: dict[str, AstroSubchannel] = field(default_factory=dict)
 
     def register_subchannel(
         self,
         name: str,
         *,
-        metadata: Optional[Mapping[str, object]] = None,
-        payload: Optional[Mapping[str, object]] = None,
+        metadata: Mapping[str, object] | None = None,
+        payload: Mapping[str, object] | None = None,
     ) -> AstroSubchannel:
         if name in self.subchannels:
             sub = self.subchannels[name]
@@ -79,13 +79,13 @@ class AstroSubmodule:
 
     name: str
     metadata: MutableMapping[str, object] = field(default_factory=dict)
-    channels: Dict[str, AstroChannel] = field(default_factory=dict)
+    channels: dict[str, AstroChannel] = field(default_factory=dict)
 
     def register_channel(
         self,
         name: str,
         *,
-        metadata: Optional[Mapping[str, object]] = None,
+        metadata: Mapping[str, object] | None = None,
     ) -> AstroChannel:
         if name in self.channels:
             channel = self.channels[name]
@@ -109,13 +109,13 @@ class AstroModule:
 
     name: str
     metadata: MutableMapping[str, object] = field(default_factory=dict)
-    submodules: Dict[str, AstroSubmodule] = field(default_factory=dict)
+    submodules: dict[str, AstroSubmodule] = field(default_factory=dict)
 
     def register_submodule(
         self,
         name: str,
         *,
-        metadata: Optional[Mapping[str, object]] = None,
+        metadata: Mapping[str, object] | None = None,
     ) -> AstroSubmodule:
         if name in self.submodules:
             submodule = self.submodules[name]
@@ -137,13 +137,13 @@ class AstroRegistry:
     """Mutable registry mapping module names to :class:`AstroModule` objects."""
 
     def __init__(self) -> None:
-        self._modules: Dict[str, AstroModule] = {}
+        self._modules: dict[str, AstroModule] = {}
 
     def register_module(
         self,
         name: str,
         *,
-        metadata: Optional[Mapping[str, object]] = None,
+        metadata: Mapping[str, object] | None = None,
     ) -> AstroModule:
         if name in self._modules:
             module = self._modules[name]
@@ -160,19 +160,19 @@ class AstroRegistry:
     def iter_modules(self) -> Iterable[AstroModule]:
         return self._modules.values()
 
-    def as_dict(self) -> Dict[str, Mapping[str, object]]:
+    def as_dict(self) -> dict[str, Mapping[str, object]]:
         """Return a serialisable snapshot of the registry hierarchy."""
 
-        snapshot: Dict[str, Mapping[str, object]] = {}
+        snapshot: dict[str, Mapping[str, object]] = {}
         for module_name, module in self._modules.items():
-            module_payload: Dict[str, object] = {"metadata": dict(module.metadata), "submodules": {}}
+            module_payload: dict[str, object] = {"metadata": dict(module.metadata), "submodules": {}}
             for submodule_name, submodule in module.submodules.items():
-                submodule_payload: Dict[str, object] = {
+                submodule_payload: dict[str, object] = {
                     "metadata": dict(submodule.metadata),
                     "channels": {},
                 }
                 for channel_name, channel in submodule.channels.items():
-                    channel_payload: Dict[str, object] = {
+                    channel_payload: dict[str, object] = {
                         "metadata": dict(channel.metadata),
                         "subchannels": {},
                     }

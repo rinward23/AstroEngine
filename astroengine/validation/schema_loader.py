@@ -7,8 +7,8 @@ be swapped without touching the schema contracts.
 
 from __future__ import annotations
 
-from functools import lru_cache
-from typing import Iterable, List
+from collections.abc import Iterable
+from functools import cache
 
 from astroengine.data.schemas import (
     SCHEMA_REGISTRY,
@@ -16,6 +16,7 @@ from astroengine.data.schemas import (
     list_schema_keys,
     load_schema_document,
 )
+
 from ._simple_validator import SimpleValidator
 
 __all__ = [
@@ -30,11 +31,11 @@ class SchemaValidationError(RuntimeError):
     """Raised when a payload fails schema validation."""
 
     def __init__(self, errors: Iterable[str]):
-        self.errors: List[str] = list(errors)
+        self.errors: list[str] = list(errors)
         super().__init__("; ".join(self.errors))
 
 
-@lru_cache(maxsize=None)
+@cache
 def get_validator(schema_key: str) -> SimpleValidator:
     """Return a cached validator instance for ``schema_key``."""
 
@@ -46,7 +47,7 @@ def get_validator(schema_key: str) -> SimpleValidator:
     return SimpleValidator(schema)
 
 
-def available_schema_keys(kind: str | None = None) -> List[str]:
+def available_schema_keys(kind: str | None = None) -> list[str]:
     """List schema keys known to the registry."""
 
     return sorted(list_schema_keys(kind))

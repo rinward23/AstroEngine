@@ -30,6 +30,8 @@ from .core import (
 )
 from .infrastructure.environment import (
     collect_environment_report,
+)
+from .infrastructure.environment import (
     main as environment_report_main,
 )
 from .modules import (
@@ -42,7 +44,7 @@ from .modules import (
     bootstrap_default_registry,
 )
 from .modules.vca import serialize_vca_ruleset
-from .profiles import DomainScoringProfile, VCA_DOMAIN_PROFILES
+from .profiles import VCA_DOMAIN_PROFILES, DomainScoringProfile
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
 
 __all__ = [
