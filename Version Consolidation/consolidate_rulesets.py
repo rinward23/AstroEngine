@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-import argparse, os, sys, json, re, hashlib, csv, datetime
+import argparse
+import csv
+import datetime
+import json
+import sys
 from pathlib import Path
 
 try:
     import yaml
 except ImportError:
-    print("Please `pip install pyyaml` and rerun.", file=sys.stderr); sys.exit(1)
+    print("Please `pip install pyyaml` and rerun.", file=sys.stderr)
+    sys.exit(1)
 
 REQUIRED_MODULE_IDS = {"aspects","transits","scoring","narrative"}
 TS_FMT_FILE = "%Y%m%d-%H%M"   # for filenames
@@ -80,7 +85,6 @@ def main():
     for d in (base_dir, overrides_dir, report_dir):
         ensure_dir(d)
 
-    manifest_rows = []
     registry = {}   # id -> list of entries
     parsing_errors = []
     files = sorted([p for p in in_dir.rglob("*") if p.suffix.lower() in (".yaml",".yml",".json")])
@@ -176,7 +180,7 @@ def main():
         emitted_paths.append(str(tgt))
 
     if args.emit_single:
-        main_path = out_root / f"ruleset.main.yaml"
+        main_path = out_root / "ruleset.main.yaml"
         stitched = {"modules": {}}
         for mid, e in latest_by_id.items():
             stitched["modules"][mid] = e["body"]
