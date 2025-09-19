@@ -14,4 +14,11 @@ dist/
 *.parquet
 *.sqlite
 
+# >>> AUTO-GEN BEGIN: AE Gitignore Additions v1.1
+.env  # local secrets (use .env.example)
+# Editor/OS extras (safety)
+*.swp
+*.bak
+# >>> AUTO-GEN END: AE Gitignore Additions v1.1
+
 # >>> AUTO-GEN END: AstroEngine Gitignore v1.0
