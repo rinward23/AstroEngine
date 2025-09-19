@@ -19,6 +19,9 @@ from .catalogs import (
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
 )
+from .catalogs import sbdb  # ENSURE-LINE
+from .fixedstars import skyfield_stars  # ENSURE-LINE
+from .astro import declination  # ENSURE-LINE
 
 from .core import (
     DOMAINS,
@@ -125,6 +128,9 @@ __all__ = [
     "VCA_CENTAURS",
     "VCA_TNOS",
     "VCA_SENSITIVE_POINTS",
+    "sbdb",
+    "skyfield_stars",
+    "declination",
     "VALID_ZODIAC_SYSTEMS",
     "VALID_HOUSE_SYSTEMS",
 ]

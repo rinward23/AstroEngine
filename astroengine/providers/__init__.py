@@ -1,7 +1,9 @@
 # >>> AUTO-GEN BEGIN: AE Providers Registry v1.0
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Dict, Iterable, Protocol
+
+
+from ..ephemeris import SwissEphemerisAdapter
 
 
 class EphemerisProvider(Protocol):
@@ -44,8 +46,4 @@ try:  # pragma: no cover
 except Exception:
     pass
 
-try:  # pragma: no cover
-    from . import skyfield_provider as _skyfield  # noqa: F401
-except Exception:
-    pass
-# >>> AUTO-GEN END: AE Providers Registry v1.0
+

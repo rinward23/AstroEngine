@@ -139,6 +139,36 @@ working tree so downstream automation stays deterministic.
 
 ---
 
+# >>> AUTO-GEN BEGIN: AE README Stars/SBDB/Decl Addendum v1.0
+### Fixed stars (Skyfield & Swiss)
+- Dataset: `datasets/star_names_iau.csv` (replace with full WGSN list as needed).
+- Skyfield method requires a local JPL kernel (e.g., `de440s.bsp`).
+
+```bash
+python -m astroengine star Regulus --provider skyfield
+python -m astroengine star Regulus --provider swiss
+```
+
+### Declination & antiscia utilities
+
+```bash
+python -m astroengine decl decl --lon 123.4 --lat 0.0
+python -m astroengine decl mirror --type antiscia --lon 10
+python -m astroengine decl mirror --type contra --lon 10
+python -m astroengine decl parallel --dec1 12.0 --dec2 -11.7 --tol 0.5
+```
+
+### SBDB fetch (with cache)
+
+```python
+from astroengine.catalogs.sbdb import fetch_sbdb
+obj = fetch_sbdb("433 Eros")  # caches JSON under datasets/sbdb_cache/
+```
+
+> Tests will auto-skip when optional extras or kernels are not present.
+
+# >>> AUTO-GEN END: AE README Stars/SBDB/Decl Addendum v1.0
+
 ## Tests & validation
 
 Install the optional `dev` extras and run the test suite:
