@@ -1,0 +1,20 @@
+# >>> AUTO-GEN BEGIN: AE Orb Policy Defaults v1.0
+{
+  "longitudinal": {
+    "luminaries": 8.0,
+    "personal": 6.0,
+    "social": 5.0,
+    "outer": 4.0,
+    "minor": 2.0,
+    "partile": 0.1667
+  },
+  "declination": {
+    "parallel": 0.5,
+    "contraparallel": 0.5
+  },
+  "mirrors": {
+    "antiscia": 2.0,
+    "contra_antiscia": 2.0
+  }
+}
+# >>> AUTO-GEN END: AE Orb Policy Defaults v1.0

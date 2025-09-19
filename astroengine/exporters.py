@@ -1,16 +1,69 @@
-"""Exporter helpers for AstroEngine."""
-
+# >>> AUTO-GEN BEGIN: AE Exporters v1.0
 from __future__ import annotations
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Iterable
+
+import json
+
+try:
+    import sqlite3
+except Exception:  # pragma: no cover
+    sqlite3 = None
+
+try:
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+except Exception:  # pragma: no cover
+    pa = None
+    pq = None
 
 
-def _event_to_row(event_obj):
-    """Return a dictionary representation of ``event_obj`` suitable for persistence."""
+@dataclass
+class TransitEvent:
+    kind: str
+    when_iso: str
+    moving: str
+    target: str
+    orb_abs: float
+    applying_or_separating: str
 
-    row = getattr(event_obj, "__dict__", {}).copy()
-    row.setdefault("elements", [])
-    row.setdefault("domains", {})
-    row.setdefault("domain_profile", None)
-    return row
+
+class SQLiteExporter:
+    def __init__(self, path: str | Path) -> None:
+        if sqlite3 is None:
+            raise ImportError("sqlite3 unavailable")
+        self.path = str(path)
+        self._init()
+
+    def _init(self) -> None:
+        con = sqlite3.connect(self.path)
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS transits_events (\n"
+            "  kind TEXT, when_iso TEXT, moving TEXT, target TEXT, orb_abs REAL, applying TEXT\n"
+            ")"
+        )
+        con.commit()
+        con.close()
+
+    def write(self, events: Iterable[TransitEvent]) -> None:
+        con = sqlite3.connect(self.path)
+        con.executemany(
+            "INSERT INTO transits_events VALUES (?,?,?,?,?,?)",
+            [(e.kind, e.when_iso, e.moving, e.target, e.orb_abs, e.applying_or_separating) for e in events],
+        )
+        con.commit()
+        con.close()
 
 
-__all__ = ["_event_to_row"]
+class ParquetExporter:
+    def __init__(self, path: str | Path) -> None:
+        if pa is None or pq is None:
+            raise ImportError("pyarrow not installed")
+        self.path = str(path)
+
+    def write(self, events: Iterable[TransitEvent]) -> None:
+        rows = [asdict(e) for e in events]
+        table = pa.Table.from_pylist(rows)
+        pq.write_table(table, self.path)
+# >>> AUTO-GEN END: AE Exporters v1.0

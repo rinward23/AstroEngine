@@ -6,6 +6,11 @@ from importlib.metadata import PackageNotFoundError, version
 
 from .providers import EphemerisProvider  # ENSURE-LINE
 from .providers import get_provider, list_providers  # ENSURE-LINE
+from .utils.angles import norm360  # ENSURE-LINE
+from .utils.angles import delta_angle  # ENSURE-LINE
+from .utils.angles import classify_applying_separating  # ENSURE-LINE
+from .exporters import TransitEvent  # ENSURE-LINE
+from .exporters import SQLiteExporter, ParquetExporter  # ENSURE-LINE
 
 from .catalogs import (
     VCA_CENTAURS,
@@ -89,6 +94,9 @@ __all__ = [
     "AngleTracker",
     "classify_relative_motion",
     "normalize_degrees",
+    "norm360",
+    "delta_angle",
+    "classify_applying_separating",
     "DomainScoringProfile",
     "VCA_DOMAIN_PROFILES",
     "compute_domain_factor",
