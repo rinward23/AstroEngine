@@ -6,7 +6,7 @@
   },
   "profiles": {
     "standard": {
-      "description": "Default profile tuned for AP-SUPER runs.",
+      "description": "Default profile tuned for the base runtime profile.",
       "multipliers": {
         "luminaries": 1.2,
         "outer": 0.8,
