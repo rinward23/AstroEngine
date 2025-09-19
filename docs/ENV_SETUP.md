@@ -32,7 +32,7 @@ python -m astroengine.infrastructure.environment \
 
 The command prints a concise report with the Python version, executable
 path, platform, and package versions.  Use ``--as-json`` to capture the
-information programmatically.  If any package is reported as ``MISSING``,
+information programmatically.  If any package is reported as ``missing``,
 re-run ``pip install -e .[dev]`` to pull the required dependency set so
 the runtime matches production expectations.
 
