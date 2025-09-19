@@ -1,9 +1,12 @@
-# >>> AUTO-GEN BEGIN: AE CLI v1.1
-"""AstroEngine command-line interface (minimal, stable entry)."""
+# >>> AUTO-GEN BEGIN: AE CLI v1.2
+"""AstroEngine command-line interface with provider, star, and decl utilities."""
 from __future__ import annotations
 
 import argparse
 import sys
+import datetime as _dt
+
+from .providers import get_provider, list_providers
 
 
 def _add_common_flags(p: argparse.ArgumentParser) -> None:
@@ -11,46 +14,102 @@ def _add_common_flags(p: argparse.ArgumentParser) -> None:
 
 
 def cmd_env(args: argparse.Namespace) -> int:
-    """Environment diagnostic: prints import and ephemeris status."""
-    try:
-        import importlib
-
-        mods = ["pyswisseph", "numpy", "pandas"]
-        missing = [m for m in mods if importlib.util.find_spec(m) is None]
-        print("imports:", "ok" if not missing else f"missing={missing}")
-    except Exception as e:  # pragma: no cover - diagnostic guard
-        print("imports: error:", e)
-    # Check ephemeris path hints (non-fatal)
+    import importlib
+    mods = ["pyswisseph", "numpy", "pandas"]
+    missing = [m for m in mods if importlib.util.find_spec(m) is None]
+    print("imports:", "ok" if not missing else f"missing={missing}")
     import os
-
     eph = os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH")
     print("ephemeris:", eph or "(unset)")
+    print("providers:", ", ".join(list_providers()) or "(none)")
     return 0
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="astroengine", description="AstroEngine CLI")
-    sub = parser.add_subparsers(dest="cmd", required=True)
+def cmd_providers(args: argparse.Namespace) -> int:
+    if args.action == "list":
+        print("available:", ", ".join(list_providers()) or "(none)")
+        return 0
+    if args.action == "check":
+        prov = get_provider(args.name)
+        now = _dt.datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        out = prov.positions_ecliptic(now, ["sun", "moon"])  # smoke
+        print(out)
+        return 0
+    return 1
+
+
+def cmd_star(args: argparse.Namespace) -> int:
+    iso = args.iso or (_dt.datetime.utcnow().isoformat(timespec="seconds") + "Z")
+    if args.provider == "skyfield":
+        from .fixedstars.skyfield_stars import star_lonlat
+        lon, lat = star_lonlat(args.name, iso)
+    else:
+        from .providers.se_fixedstars import fixstar_lonlat
+        lon, lat = fixstar_lonlat(args.name, iso)
+    print({"name": args.name, "iso": iso, "lon": lon, "lat": lat})
+    return 0
+
+
+def cmd_decl(args: argparse.Namespace) -> int:
+    from .astro.declination import (
+        antiscia_lon, contra_antiscia_lon, ecl_to_dec, is_parallel, is_contraparallel,
+    )
+    if args.action == "mirror":
+        if args.type == "antiscia":
+            print({"lon": args.lon, "antiscia": antiscia_lon(args.lon)})
+        else:
+            print({"lon": args.lon, "contra_antiscia": contra_antiscia_lon(args.lon)})
+        return 0
+    if args.action == "parallel":
+        print({
+            "parallel": is_parallel(args.dec1, args.dec2, args.tol),
+            "contraparallel": is_contraparallel(args.dec1, args.dec2, args.tol),
+        })
+        return 0
+    if args.action == "decl":
+        print({"decl": ecl_to_dec(args.lon, args.lat)})
+        return 0
+    return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    ap = argparse.ArgumentParser(prog="astroengine", description="AstroEngine CLI")
+    sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_env = sub.add_parser("env", help="Print environment diagnostics")
     _add_common_flags(p_env)
     p_env.set_defaults(fn=cmd_env)
 
-    _register_core_commands(sub)
-    return parser
+    p_prov = sub.add_parser("provider", help="List or check providers")
+    p_prov.add_argument("action", choices=["list", "check"])
+    p_prov.add_argument("name", nargs="?", default="swiss")
+    p_prov.set_defaults(fn=cmd_providers)
 
+    p_star = sub.add_parser("star", help="Lookup fixed star ecliptic position")
+    p_star.add_argument("name")
+    p_star.add_argument("--provider", choices=["swiss", "skyfield"], default="swiss")
+    p_star.add_argument("--iso", help="ISO-8601 UTC (default: now)")
+    p_star.set_defaults(fn=cmd_star)
 
-def main(argv: list[str] | None = None) -> int:
-    argv = list(sys.argv[1:] if argv is None else argv)
-    parser = build_parser()
-    ns = parser.parse_args(argv)
+    p_decl = sub.add_parser("decl", help="Declination & antiscia utilities")
+    p_decl.add_argument("action", choices=["mirror", "parallel", "decl"])
+    p_decl.add_argument("--type", choices=["antiscia", "contra"], default="antiscia")
+    p_decl.add_argument("--lon", type=float, default=0.0)
+    p_decl.add_argument("--lat", type=float, default=0.0)
+    p_decl.add_argument("--dec1", type=float, default=0.0)
+    p_decl.add_argument("--dec2", type=float, default=0.0)
+    p_decl.add_argument("--tol", type=float, default=0.5)
+    p_decl.set_defaults(fn=cmd_decl)
+
+    core_registrar = globals().get("_register_core_commands")
+    if callable(core_registrar):
+        core_registrar(sub)
+
+    ns = ap.parse_args(argv)
     result = ns.fn(ns)
     return result if isinstance(result, int) else 0
-
-
-if __name__ == "__main__":  # pragma: no cover
-    raise SystemExit(main())
-# >>> AUTO-GEN END: AE CLI v1.1
+# >>> AUTO-GEN END: AE CLI v1.2
 
 import json
 from dataclasses import asdict
@@ -137,3 +196,7 @@ def _register_core_commands(subparsers) -> None:
     validate.add_argument("schema", help="Schema key registered in the data registry")
     validate.add_argument("path", help="Path to JSON file")
     validate.set_defaults(fn=_cmd_validate)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())
