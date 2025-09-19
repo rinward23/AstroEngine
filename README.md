@@ -1,57 +1,47 @@
-# AstroEngine Schema Contracts
+# AstroEngine — Schema Contracts
 
-The repository stores JSON schema definitions that mirror the
-ruleset appendix contracts referenced by the AstroEngine
-runtimes.  Operators can use the helper utilities in
-`astroengine.validation` to run doctor-style validations before
-launching a scenario.
+JSON Schema definitions that mirror the **ruleset appendix contracts** consumed by AstroEngine runtimes.  
+Operators can run “doctor-style” validations before launching a scenario using the built-in helpers.
 
-## Schema directory
+---
+
+## Contents
+
+- [Schemas](#schemas)
+- [Quick start](#quick-start)
+- [Local validations](#local-validations)
+- [Repo layout](#repo-layout)
+- [CI & quality gates](#ci--quality-gates)
+- [Contributing](#contributing)
+- [FAQ](#faq)
+
+---
+
+## Schemas
 
 All schema payloads live under [`./schemas`](./schemas):
 
-- `result_schema_v1.json` — structure for full run result
-  payloads (channels, events, and provenance metadata).
-- `contact_gate_schema_v2.json` — captures the gating decisions
-  for near-threshold contacts and the evidence that justified
-  them.
-- `orbs_policy.json` — JSON resource describing the orb policy
-  profiles that inform gating and scoring.
+- `result_schema_v1.json` — structure for full run result payloads (channels, events, provenance).
+- `contact_gate_schema_v2.json` — captures gating decisions near thresholds with supporting evidence.
+- `orbs_policy.json` — orb policy profiles informing gating and scoring.
 
-The JSON files live outside the Python modules to honor the
-append-only ruleset workflow and to keep large data assets out
-of the package namespace.
+Schemas live outside the Python modules to honor the **append-only** workflow and keep data assets out of the package namespace.
 
-## Validation helpers
+> **Schema registry keys** used by the validator:
+> - `result_v1` → `schemas/result_schema_v1.json`  
+> - `contact_gate_v2` → `schemas/contact_gate_schema_v2.json`  
+> - `orbs_policy` → `schemas/orbs_policy.json`
 
-Two utility layers support schema validation:
+---
 
-- `astroengine.data.schemas` exposes a registry that resolves the
-  JSON files to their on-disk locations.
-- `astroengine.validation` provides a self-contained validator that
-  understands the subset of JSON Schema used by the appendix contracts.
-  Doctor scripts can call `validate_payload("result_v1", payload)` (or any
-  other registered schema key) and receive actionable error messages without
-  installing third-party packages.
+## Quick start
 
-### Running local validations
+### Option A — Conda/Micromamba (recommended)
 
-1. Validate a payload:
+```bash
+# Create and activate the environment (micromamba or conda)
+micromamba create -f environment.yml -y   # or: conda env create -f environment.yml
+micromamba activate py311                 # or: conda activate py311
 
-   ```python
-   from astroengine.validation import validate_payload
-   payload = {...}  # assembled from a run
-   validate_payload("result_v1", payload)
-   ```
-
-2. (Optional) Install `pytest` and run the automated tests (these ship with
-   representative sample payloads):
-
-   ```bash
-   pip install pytest
-   pytest
-   ```
-
-The validation helpers are intentionally lightweight so they can
-be embedded into existing “doctor” or pre-flight scripts without
-risking accidental module removals.
+# (Optional) dev tools
+pip install -r requirements-dev.txt  # pytest, ruff, black if not in environment.yml
