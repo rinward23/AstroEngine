@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from ..modules.vca.profiles import VCA_DOMAIN_PROFILES
+from .api import TransitEvent
 from .config import profile_into_ctx
 from .domains import DomainResolver
 from .scoring import compute_domain_factor
 
 
-def _attach_domain_fields(event_obj, ctx):
+def _attach_domain_fields(event_obj: TransitEvent, ctx: Mapping[str, Any] | None) -> None:
     """Populate domain-related fields on ``event_obj`` using ``ctx`` metadata."""
 
     resolver = DomainResolver()
@@ -48,7 +49,9 @@ def _attach_domain_fields(event_obj, ctx):
             event_obj.severity = float(factor)
 
 
-def maybe_attach_domain_fields(event_obj, ctx):
+def maybe_attach_domain_fields(
+    event_obj: TransitEvent, ctx: Mapping[str, Any] | None
+) -> TransitEvent:
     """Attach domain metadata when the execution context requests it."""
 
     if ctx and ctx.get("emit_domains"):
@@ -70,7 +73,7 @@ def get_active_aspect_angles(ctx: dict[str, Any] | None) -> Iterable[float]:
     """Return the sorted aspect angles configured in ``ctx``."""
 
     aspects = (ctx or {}).get("aspects", {})
-    angles = []
+    angles: list[float] = []
     for key in ("major", "minor", "harmonics"):
         entries = aspects.get(key, [])
         angles.extend(entries)

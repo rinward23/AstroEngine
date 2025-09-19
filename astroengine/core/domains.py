@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 
 # Canonical element labels (uppercase; stable public API)
 ELEMENTS: tuple[str, str, str, str] = ("FIRE", "EARTH", "AIR", "WATER")
@@ -50,7 +51,7 @@ DEFAULT_PLANET_DOMAIN_WEIGHTS: Mapping[str, Mapping[str, float]] = {
     "chiron": {"BODY": 0.8, "SPIRIT": 0.5},
 }
 
-# House index (1..12) → Domain weights (kept light; debated houses marked TODO for profiles)
+# House index (1..12) → Domain weights (profiles can override debated houses)
 DEFAULT_HOUSE_DOMAIN_WEIGHTS: Mapping[int, Mapping[str, float]] = {
     1: {"BODY": 1.0},  # Vitality, soma
     2: {"BODY": 0.7, "MIND": 0.3},
@@ -89,7 +90,7 @@ class DomainResolver:
         sign_index: int,
         planet_key: str,
         house_index: int | None = None,
-        overrides: Mapping[str, Mapping] | None = None,
+        overrides: Mapping[str, Mapping[Any, Mapping[str, float]]] | None = None,
     ) -> DomainResolution:
         if not (0 <= sign_index <= 11):
             raise ValueError("sign_index must be 0..11")

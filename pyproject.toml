@@ -13,22 +13,25 @@ authors = [
   {name = "AstroEngine Maintainers"}
 ]
 dependencies = [
-  "numpy>=1.26,<2.0",
-  "pandas>=2.2,<2.3",
-  "scipy>=1.13,<1.14",
-  "pyswisseph>=2.10.3,<2.11",
-  "python-dateutil>=2.9",
-  "pytz>=2024.1",
-  "click>=8.1",
-  "rich>=13.7",
-  "PyYAML>=6.0",
+
 ]
 
 [project.optional-dependencies]
+cli = [
+  "click>=8.1",
+  "rich>=13",
+]
+data = [
+  "numpy>=1.26",
+  "pandas>=2.0",
+  "scipy>=1.11",
+]
+time = [
+  "python-dateutil>=2.8",
+  "pytz>=2023.3",
+]
 dev = [
-  "pytest>=8.2",
-  "black>=24.4",
-  "ruff>=0.5",
+
 ]
 
 [tool.setuptools.packages.find]
@@ -52,3 +55,13 @@ ignore = ["E501"]
 
 [tool.ruff.isort]
 known-first-party = ["astroengine"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["astroengine/core", "astroengine/ephemeris", "astroengine/chart"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["astroengine.modules.*"]
+ignore_errors = true
