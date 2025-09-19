@@ -22,9 +22,9 @@ from __future__ import annotations
 import os
 import shlex
 import subprocess
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, MutableMapping
 
 __all__ = ["GitAuth", "GitRepository"]
 
@@ -119,7 +119,7 @@ class GitRepository:
         *,
         auth: GitAuth | None = None,
         branch: str | None = None,
-    ) -> "GitRepository":
+    ) -> GitRepository:
         """Clone ``remote`` into ``target`` and return the repository wrapper."""
 
         target_path = Path(target)
@@ -206,4 +206,3 @@ class GitRepository:
             self.run_git("remote", "set-url", name, str(url))
         except subprocess.CalledProcessError:
             self.run_git("remote", "add", name, str(url))
-

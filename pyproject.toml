@@ -7,7 +7,7 @@ name = "astroengine"
 version = "0.2.0"
 description = "Astrology engine runtimes and schema contracts"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11,<3.12"
 license = {text = "Proprietary"}
 authors = [
   {name = "AstroEngine Maintainers"}
@@ -16,6 +16,7 @@ dependencies = [
   "numpy",
   "pandas",
   "scipy",
+  "pyswisseph==2.10.3.2",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +24,11 @@ dev = [
   "pytest",
   "black",
   "ruff",
+  "isort",
+  "mypy",
+  "hypothesis",
+  "toml-sort",
+  "build",
 ]
 
 [tool.setuptools.packages.find]
@@ -46,3 +52,13 @@ ignore = ["E501"]
 
 [tool.ruff.isort]
 known-first-party = ["astroengine"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["astroengine/core", "astroengine/ephemeris", "astroengine/chart"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["astroengine.modules.*"]
+ignore_errors = true

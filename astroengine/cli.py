@@ -1,96 +1,107 @@
-"""Command line interface helpers for AstroEngine."""
+"""Command line interface for AstroEngine."""
 
 from __future__ import annotations
 
 import argparse
+import json
 from collections.abc import Sequence
-from typing import Any
+from dataclasses import asdict
+from datetime import datetime
+from pathlib import Path
 
-from .api import TransitEvent, TransitScanConfig
-from .config import load_profile_json
-from .engine import apply_profile_if_any, maybe_attach_domain_fields
+from .core import TransitEngine, TransitEvent
+from .ephemeris import EphemerisConfig
+from .validation import validate_payload
+
+BODY_IDS = {
+    "sun": 0,
+    "moon": 1,
+    "mercury": 2,
+    "venus": 3,
+    "mars": 4,
+    "jupiter": 5,
+    "saturn": 6,
+    "uranus": 7,
+    "neptune": 8,
+    "pluto": 9,
+}
 
 
-def _add_domain_args(p: argparse.ArgumentParser) -> None:
-    p.add_argument(
-        "--emit-domains", action="store_true", help="Include elements/domains on each TransitEvent."
+def _parse_datetime(value: str) -> datetime:
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    return datetime.fromisoformat(value)
+
+
+def _command_transits(args: argparse.Namespace) -> list[TransitEvent]:
+    engine = TransitEngine.with_default_adapter(EphemerisConfig())
+    start = _parse_datetime(args.start)
+    end = _parse_datetime(args.end)
+    body = args.body
+    if isinstance(body, str):
+        key = body.lower()
+        if key in BODY_IDS:
+            body = BODY_IDS[key]
+        else:
+            try:
+                body = int(key)
+            except ValueError as exc:  # pragma: no cover - defensive guard
+                raise SystemExit(f"Unknown body identifier: {args.body}") from exc
+
+    events = list(
+        engine.scan_longitude_crossing(
+            body,
+            args.target_longitude,
+            args.aspect,
+            start,
+            end,
+            step_hours=args.step_hours,
+        )
     )
-    p.add_argument(
-        "--domain-profile",
-        default="vca_neutral",
-        help="Domain profile key (see VCA_DOMAIN_PROFILES).",
-    )
-    p.add_argument(
-        "--domain-scorer",
-        default="weighted",
-        choices=["weighted", "top", "softmax"],
-        help="Method to transform domains into a severity multiplier.",
-    )
-    p.add_argument(
-        "--domain-temperature",
-        type=float,
-        default=8.0,
-        help="Softmax temperature (only used when --domain-scorer=softmax).",
-    )
+    if args.json:
+        Path(args.json).write_text(json.dumps([asdict(e) for e in events], default=str, indent=2))
+    else:
+        for event in events:
+            timestamp = event.timestamp.isoformat() if event.timestamp else "unknown"
+            print(f"{timestamp} | orb={event.orb:.6f}° | motion={event.motion}")
+    return events
 
 
-def _add_profile_args(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--profile-file", help="Path to profile JSON (e.g., profiles/vca_outline.json)")
-
-
-def _add_ruleset_args(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--ruleset", default="vca_core", help="Aspect ruleset id (default: vca_core)")
-    p.add_argument(
-        "--no-declination",
-        action="store_true",
-        help="Disable declination aspects (parallel/contra-parallel)",
-    )
-    p.add_argument("--no-mirrors", action="store_true", help="Disable antiscia/contra-antiscia")
-    p.add_argument("--no-harmonics", action="store_true", help="Disable harmonic-derived aspects")
+def _command_validate(args: argparse.Namespace) -> None:
+    payload = json.loads(Path(args.path).read_text())
+    validate_payload(args.schema, payload)
+    print(f"Validation succeeded for schema {args.schema}")
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="astroengine", description="AstroEngine command line interface"
+    parser = argparse.ArgumentParser(prog="astroengine", description="AstroEngine CLI")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    transits = subparsers.add_parser("transits", help="Scan for transiting aspects")
+    transits.add_argument(
+        "--body", default="mars", help="Swiss Ephemeris body id or name (default: Mars)"
     )
-    _add_profile_args(parser)
-    _add_domain_args(parser)
-    _add_ruleset_args(parser)
+    transits.add_argument("--target-longitude", type=float, required=True)
+    transits.add_argument("--aspect", type=float, default=0.0)
+    transits.add_argument("--start", required=True, help="Start datetime (ISO-8601)")
+    transits.add_argument("--end", required=True, help="End datetime (ISO-8601)")
+    transits.add_argument("--step-hours", type=float, default=12.0)
+    transits.add_argument("--json", help="Write events to JSON file")
+    transits.set_defaults(func=_command_transits)
+
+    validate = subparsers.add_parser("validate", help="Validate JSON payloads against schemas")
+    validate.add_argument("schema", help="Schema key registered in the data registry")
+    validate.add_argument("path", help="Path to JSON file")
+    validate.set_defaults(func=_command_validate)
+
     return parser
 
 
-def _initial_context_from_args(args: argparse.Namespace) -> dict[str, Any]:
-    ctx: dict[str, Any] = {
-        "emit_domains": args.emit_domains,
-    }
-    if args.emit_domains:
-        ctx["domain_profile"] = args.domain_profile
-        ctx["domain_scorer"] = args.domain_scorer
-        ctx["domain_temperature"] = args.domain_temperature
-    return ctx
-
-
-def main(argv: Sequence[str] | None = None) -> tuple[TransitScanConfig, dict[str, Any]]:
+def main(argv: Sequence[str] | None = None):
     parser = build_parser()
     args = parser.parse_args(argv)
-
-    scan_config = TransitScanConfig(
-        ruleset_id=args.ruleset,
-        enable_declination=not args.no_declination,
-        enable_mirrors=not args.no_mirrors,
-        enable_harmonics=not args.no_harmonics,
-    )
-
-    ctx = _initial_context_from_args(args)
-
-    profile = load_profile_json(args.profile_file) if args.profile_file else None
-    ctx = apply_profile_if_any(ctx, profile)
-
-    sample_event = maybe_attach_domain_fields(TransitEvent(), ctx)
-    _ = sample_event  # placeholder to show integration; real engine would persist or stream events
-
-    return scan_config, ctx
+    return args.func(args)
 
 
-if __name__ == "__main__":  # pragma: no cover - manual invocation
+if __name__ == "__main__":  # pragma: no cover
     main()

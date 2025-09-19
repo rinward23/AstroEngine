@@ -18,8 +18,14 @@ source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
 # Install AstroEngine and optional developer tooling
 pip install -e .[dev]
 
-# Verify the Python environment without relying on Conda
-python -m astroengine.infrastructure.environment numpy pandas scipy
+# Verify the Python environment and ephemeris setup
+make preflight
+
+# Generate a sample transit report (Mars conjunct natal Venus)
+python -m astroengine.cli transits \
+  --target-longitude 240.9623186447056 \
+  --start 2025-10-20T00:00:00Z \
+  --end 2025-11-20T00:00:00Z
 ```
 
 ````

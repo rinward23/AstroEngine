@@ -1,5 +1,5 @@
 # >>> AUTO-GEN BEGIN: Dev Requirements v1.0
-pyswisseph>=2.10.3
+pyswisseph==2.10.3.2
 numpy>=1.26
 python-dateutil
 pytz

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 
 # Canonical element labels (uppercase; stable public API)
 ELEMENTS: tuple[str, str, str, str] = ("FIRE", "EARTH", "AIR", "WATER")
@@ -89,7 +90,7 @@ class DomainResolver:
         sign_index: int,
         planet_key: str,
         house_index: int | None = None,
-        overrides: Mapping[str, Mapping] | None = None,
+        overrides: Mapping[str, Mapping[Any, Mapping[str, float]]] | None = None,
     ) -> DomainResolution:
         if not (0 <= sign_index <= 11):
             raise ValueError("sign_index must be 0..11")
