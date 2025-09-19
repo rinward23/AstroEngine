@@ -28,10 +28,10 @@ from .core import (
     natal_domain_factor,
     profile_into_ctx,
 )
-from .infrastructure.environment import (
-    collect_environment_report,
-    main as environment_report_main,
-)
+from .infrastructure.environment import collect_environment_report
+from .infrastructure.environment import main as environment_report_main
+from .infrastructure.rebuild import main as environment_rebuild_main
+from .infrastructure.rebuild import rebuild_virtualenv
 from .modules import (
     DEFAULT_REGISTRY,
     AstroChannel,
@@ -42,7 +42,7 @@ from .modules import (
     bootstrap_default_registry,
 )
 from .modules.vca import serialize_vca_ruleset
-from .profiles import DomainScoringProfile, VCA_DOMAIN_PROFILES
+from .profiles import VCA_DOMAIN_PROFILES, DomainScoringProfile
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
 
 __all__ = [
@@ -75,6 +75,8 @@ __all__ = [
     "AstroSubchannel",
     "collect_environment_report",
     "environment_report_main",
+    "rebuild_virtualenv",
+    "environment_rebuild_main",
     "get_vca_aspect",
     "vca_orb_for",
     "VCA_CORE_BODIES",

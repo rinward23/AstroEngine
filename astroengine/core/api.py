@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 
 @dataclass
 class TransitEvent:
     """Container for a resolved transit event."""
 
-    elements: List[str] = field(default_factory=list)
-    domains: Dict[str, float] = field(default_factory=dict)
-    domain_profile: Optional[str] = None
-    severity: Optional[float] = None
+    elements: list[str] = field(default_factory=list)
+    domains: dict[str, float] = field(default_factory=dict)
+    domain_profile: str | None = None
+    severity: float | None = None
 
 
 @dataclass

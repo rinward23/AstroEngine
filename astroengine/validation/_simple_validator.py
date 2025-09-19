@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import datetime as _dt
 import re
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Iterator, Tuple
+from typing import Any
 
 __all__ = ["SimpleValidationError", "SimpleValidator"]
 
@@ -20,7 +21,7 @@ __all__ = ["SimpleValidationError", "SimpleValidator"]
 class SimpleValidationError:
     """Represents a validation failure."""
 
-    path: Tuple[Any, ...]
+    path: tuple[Any, ...]
     message: str
 
     @property
@@ -37,7 +38,7 @@ class SimpleValidationError:
 class SimpleValidator:
     """Very small subset of JSON Schema validation."""
 
-    def __init__(self, schema: Dict[str, Any]):
+    def __init__(self, schema: dict[str, Any]):
         self._schema = schema
         self._defs = schema.get("$defs") or schema.get("definitions") or {}
 
@@ -48,7 +49,7 @@ class SimpleValidator:
     # Internal helpers
     # ------------------------------------------------------------------
     def _iter_errors(
-        self, schema: Dict[str, Any], value: Any, path: Tuple[Any, ...]
+        self, schema: dict[str, Any], value: Any, path: tuple[Any, ...]
     ) -> Iterable[SimpleValidationError]:
         if "$ref" in schema:
             target = self._resolve_ref(schema["$ref"], path)
@@ -159,7 +160,7 @@ class SimpleValidator:
     # ------------------------------------------------------------------
     # Utility helpers
     # ------------------------------------------------------------------
-    def _resolve_ref(self, ref: str, path: Tuple[Any, ...]) -> Dict[str, Any] | None:
+    def _resolve_ref(self, ref: str, path: tuple[Any, ...]) -> dict[str, Any] | None:
         if ref.startswith("#/$defs/"):
             key = ref.split("/")[-1]
             return self._defs.get(key)
@@ -186,7 +187,7 @@ class SimpleValidator:
 
 
 def _is_number(value: Any) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return isinstance(value, int | float) and not isinstance(value, bool)
 
 
 def _is_datetime(value: str) -> bool:

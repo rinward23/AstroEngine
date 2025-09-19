@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from .core.domains import (
+    DEFAULT_HOUSE_DOMAIN_WEIGHTS,
+    DEFAULT_PLANET_DOMAIN_WEIGHTS,
     DOMAINS,
     ELEMENTS,
     ZODIAC_ELEMENT_MAP,
-    DEFAULT_HOUSE_DOMAIN_WEIGHTS,
-    DEFAULT_PLANET_DOMAIN_WEIGHTS,
     DomainResolution,
     DomainResolver,
     natal_domain_factor,

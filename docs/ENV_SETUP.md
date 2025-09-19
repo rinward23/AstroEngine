@@ -41,3 +41,18 @@ pip install -e . --upgrade
 
 If you prefer a clean install, remove the ``.venv`` directory and repeat
 steps 1–3.
+
+## 5) Rebuilding the environment
+
+The package ships with a helper that removes the virtual environment, recreates
+it, and reinstalls AstroEngine.  It previews the steps by default:
+
+```bash
+python -m astroengine.infrastructure.rebuild
+python -m astroengine.infrastructure.rebuild --run
+```
+
+The first command only prints the plan.  Add ``--run`` to execute it.  Additional
+flags let you choose a different target directory, interpreter, or extras.  Run
+``python -m astroengine.infrastructure.rebuild --help`` for the complete
+reference.
