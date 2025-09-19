@@ -30,6 +30,7 @@ from .engine import (
 from .profiles import DomainScoringProfile, VCA_DOMAIN_PROFILES
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
 from .scoring import compute_domain_factor
+from .doctor_conda import main as conda_doctor_main  # ENSURE-LINE
 
 __all__ = [
     "__version__",
@@ -58,6 +59,7 @@ __all__ = [
     "VCA_CENTAURS",
     "VCA_TNOS",
     "VCA_SENSITIVE_POINTS",
+    "conda_doctor_main",
 ]
 
 try:  # pragma: no cover - package metadata not available during tests
