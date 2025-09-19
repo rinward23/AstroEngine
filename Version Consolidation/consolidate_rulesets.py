@@ -35,19 +35,28 @@ def iso_to_dt(value: object | None) -> datetime.datetime | None:
     if isinstance(value, datetime.datetime):
         return value
 
-    if isinstance(value, bytes):
+    text: str | None
+    if isinstance(value, (bytes, bytearray, memoryview)):
         try:
-            value = value.decode("utf-8")
+            text = bytes(value).decode("utf-8")
+        except Exception:  # pragma: no cover - defensive guardrails
+            return None
+    elif isinstance(value, str):
+        text = value
+    else:
+        try:
+            text = str(value)
         except Exception:  # pragma: no cover - defensive guardrails
             return None
 
-    if not isinstance(value, str):
-        try:
-            value = str(value)
-        except Exception:  # pragma: no cover - defensive guardrails
-            return None
+    if not isinstance(text, str):  # pragma: no cover - extreme edge cases
+        return None
 
-    cleaned = value.strip()
+    try:
+        cleaned = text.strip()
+    except AttributeError:  # pragma: no cover - defensive guardrails
+        return None
+
     if not cleaned:
         return None
     if cleaned.endswith("Z"):
