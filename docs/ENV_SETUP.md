@@ -28,7 +28,9 @@ python -m astroengine.infrastructure.environment numpy pandas scipy
 
 The command prints a concise report with the Python version, executable
 path, platform, and package versions.  Use ``--as-json`` to capture the
-information programmatically.
+information programmatically.  If any package is reported as ``MISSING``,
+re-run ``pip install -e .[dev]`` to pull the required dependency set so
+the runtime matches production expectations.
 
 ## 4) Updating dependencies
 
