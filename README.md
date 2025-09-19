@@ -174,3 +174,15 @@ pre-commit install
 
 These hooks run Black, Ruff, and whitespace fixers using the configuration in
 `.pre-commit-config.yaml`.
+# >>> AUTO-GEN BEGIN: AE README Scan Addendum v1.0
+### Scan for declination/mirror contacts
+```bash
+python -m astroengine scan \
+  --start 2024-06-01T00:00:00Z \
+  --end   2024-06-07T00:00:00Z \
+  --moving mars --target venus \
+  --provider swiss --decl-orb 0.5 --mirror-orb 2.0 \
+  --sqlite transits.sqlite
+```
+# >>> AUTO-GEN END: AE README Scan Addendum v1.0
+
