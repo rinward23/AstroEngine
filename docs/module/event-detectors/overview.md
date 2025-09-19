@@ -1,44 +1,54 @@
 # Event Detectors Module Overview
 
 - **Module**: `event-detectors`
-- **Author**: AstroEngine Ruleset Working Group
-- **Date**: 2024-05-27
-- **Source datasets**: Solar Fire detector exports (`detectors_venus_cycle.sf`), Swiss Ephemeris state vectors (DE441), AstroEngine natal archive indices (`profiles/natal_index.csv`).
-- **Downstream links**: runtime registry nodes `astroengine.modules.vca.detectors`, scenario fixtures `tests/detectors/test_event_parity.py`.
+- **Maintainer**: Transit Working Group
+- **Source artifacts**:
+  - `profiles/base_profile.yaml` (orb policies, feature flags, severity weights).
+  - `profiles/feature_flags.md` (tabular description of the toggles referenced by the detectors).
+  - `rulesets/transit/scan.ruleset.md`, `rulesets/transit/stations.ruleset.md`, `rulesets/transit/ingresses.ruleset.md`, `rulesets/transit/lunations.ruleset.md` (design notes for each detector family).
+  - `astroengine/modules/vca/catalogs.py` (canonical body lists used when detectors are wired into the registry).
 
-This overview documents every detector channel to ensure the runtime registry retains full coverage. Each detector specification references authentic Solar Fire or Swiss Ephemeris data. No synthetic thresholds are introduced; all values align with exportable ephemeris outputs so audit logs can trace events back to real observations.
+The runtime registry currently exposes the Venus Cycle Analytics module (`vca`). This document reserves the detector structure that will live alongside it and explains how the existing configuration files back each detector. Referencing the real YAML/JSON/Markdown files listed above ensures that future implementations stay aligned with the recorded thresholds and no module/submodule/channel entries are dropped when the code is added.
 
-## Detector Catalogue
+## Detector catalogue and inputs
 
-| Detector | Signature | Inputs | Outputs | Threshold defaults | Profile toggles | Data requirements |
-| -------- | --------- | ------ | ------- | ------------------ | --------------- | ----------------- |
-| Planetary Station | `station(event_window, body, profile)` | Ephemeris series (λ, β, speed), natal chart metadata, profile flags | `station_kind`, `in_shadow`, `exact_time`, provenance URN | Velocity crosses zero within ±36h; Δspeed < 0.02°/day | `vca_support`: expands window to ±48h | Swiss Ephemeris `calc_ut`, Solar Fire station tables |
-| Sign Ingress | `ingress(body, sign, profile)` | Ephemeris longitude, sign boundaries, natal metadata | `ingress_time`, `sign_index`, `longitude`, `applying_aspects[]` | Report at sign boundary crossing with Δλ wrap < 0.0001° | `vca_tight`: add pre-ingress alert at −1° | Solar Fire ingress report, AstroEngine sign tables |
-| Lunation | `lunation(kind, profile)` | Sun/Moon longitudes, phase function, observer location | `lunation_kind`, `exact_time`, `phase_angle`, severity | New/Full: Δλ = 0°/180°; Quarter: Δλ = 90° multiples | `mundane_profile`: adds eclipse flag when | Solar Fire lunation log, NASA eclipse canon |
-| Eclipse | `eclipse(kind, profile)` | Saros tables, Besselian elements, Sun/Moon altitude | `eclipse_kind`, `magnitude`, `duration`, `visibility_path` | Magnitude ≥0.25 (partial), ≥0.95 (total) | `mundane_profile`: record path polygon URN | NASA GSFC catalog, Solar Fire eclipse module |
-| Combustion | `combustion(body, profile)` | Solar Fire combustion table, Δλ to Sun, velocity | `combustion_state`, `orb`, `phase` | Default: Δλ ≤ 8° for Mercury, 7° for Venus | `vca_tight`: Δλ threshold decreased by 1° | Solar Fire `COMBUST.DEF`, AstroEngine severity policy |
-| Out-of-Bounds | `declination_bounds(body, profile)` | Declination series, ecliptic obliquity, natal declination | `oob_flag`, `max_declination`, `entry_time`, `exit_time` | Declination |δ| > ε (23°26′21″) + 0°30′ margin | `mundane_profile`: record daily maxima | Swiss Ephemeris declination output |
-| Midpoint Activation | `midpoint_trigger(pair, body, profile)` | Pair midpoints, transit longitude, orb policy | `midpoint_id`, `orb`, `applying_flag` | Orb defaults from `core-transit-math` midpoint rule | `synastry_profile`: add midpoint weighting | Solar Fire midpoint report, AstroEngine orb table |
-| Fixed Star Contact | `fixed_star_contact(body, star_id, profile)` | Star RA/Dec, transit RA/Dec, parallax correction | `star_id`, `contact_type`, `orb`, `magnitude` | Longitude orb 1° and declination orb 0°30′ | `vca_support`: widen longitude orb to 1°15′ | FK6 bright star catalogue, Solar Fire fixed star module |
-| Declination Parallels | `declination_aspect(body, target, profile)` | Declination of bodies, orb policy table | `aspect_type`, `orb`, `applying_flag` | Orb defaults from declination row in severity matrix | `tight_profile`: reduce orb by 0°10′ | Solar Fire declination aspect export |
-| Vertex/Anti-Vertex | `vertex_contact(body, profile)` | Local sidereal time, house system, natal coordinates | `contact_type`, `orb`, `angular_speed` | Orb 2° for conjunctions, 1°30′ for oppositions | `relocation_profile`: include relocated vertex | Solar Fire relocation module, Atlas/TZ dataset |
-| Progressions | `progressed_event(kind, profile)` | Secondary progression algorithm, natal chart, ephemeris | `progression_kind`, `exact_time`, `orb`, `profile_id` | Standard day-for-a-year mapping, orb equals natal orb defaults | `synastry_profile`: adds composite triggers | Solar Fire progression tables, AstroEngine natal index |
-| Directions | `direction_event(kind, profile)` | Primary direction algorithm, promissor/significator pairs | `direction_kind`, `arc`, `promissor`, `significator` | Semi-arc method, orbs < 1° | `traditional_profile`: prohibits minor aspects | Traditional sources (Sepharial), Solar Fire primary directions |
-| Relocation/Astrocartography | `relocation_contact(body, coordinate, profile)` | Relocated chart data, meridian/ascendant lines, atlas index | `contact_type`, `geo_path`, `magnitude`, `profile_id` | Angular lines triggered within 100 km of target coordinate | `travel_profile`: add parans evaluation | Solar Fire astrocartography exports, Atlas/TZ dataset |
+| Detector | Inputs & thresholds | Profile toggle / data source | Design reference |
+| --- | --- | --- | --- |
+| Stations (retrograde/direct) | Requires longitudinal speed sign changes and natal orb gating defined under `orb_policies.transit_orbs_deg` and `feature_flags.stations`. | `profiles/base_profile.yaml` → `feature_flags.stations.*` and `orb_policies.transit_orbs_deg`. | `rulesets/transit/stations.ruleset.md` |
+| Sign ingresses | Uses the same transit orbs with the `ingresses` toggle controlling Moon inclusion and angular gating. | `profiles/base_profile.yaml` → `feature_flags.ingresses.*`. | `rulesets/transit/ingresses.ruleset.md` |
+| Lunations & eclipses | Depends on Sun/Moon orbs plus the lunation severity modifiers. Toggle lives under `feature_flags.lunations` and `feature_flags.eclipses`. | `profiles/base_profile.yaml` → `feature_flags.lunations`, `feature_flags.eclipses`. | `rulesets/transit/lunations.ruleset.md` |
+| Declination aspects & out-of-bounds | Applies declination orb defaults from `orb_policies.declination_aspect_orb_deg`. | `profiles/base_profile.yaml` → `feature_flags.declination_aspects`, `feature_flags.out_of_bounds`. | `rulesets/transit/scan.ruleset.md` (declination sections) |
+| Midpoints & overlays | Use midpoint orb entries and optional lists such as `feature_flags.midpoints.base_pairs`. | `profiles/base_profile.yaml` → `feature_flags.midpoints`, `orb_policies.midpoint_orb_deg`. | `rulesets/transit/scan.ruleset.md` |
+| Fixed-star contacts | Draw positions and orbs from `profiles/fixed_stars.csv`; enabled when `feature_flags.fixed_stars.enabled` is true. Requires FK6-derived coordinates and Solar Fire orb defaults. | `profiles/base_profile.yaml`, `profiles/fixed_stars.csv`. | `rulesets/transit/scan.ruleset.md` |
+| Returns & profections | Secondary overlays referencing the same profile toggles and natal ephemeris caches. Runtime must point at indexed Solar Fire return tables before emitting events. | `profiles/base_profile.yaml` → `feature_flags.returns`, `feature_flags.profections`. | `rulesets/transit/scan.ruleset.md` |
 
-## Observability & Provenance
+## Module → submodule → channel placeholders
 
-- Every detector emits structured logs containing `detector_id`, `profile_id`, dataset checksum(s), and Solar Fire source URNs (`sf9://detectors_venus_cycle.sf#row=<n>`).
-- Metrics publish counts per detector channel and severity band so regressions surface quickly.
-- When external datasets (e.g., NASA eclipse tables) update, record the new checksum in `docs/burndown.md` and update the provenance appendix below.
+Until the detector runtime lands, documentation keeps track of the intended registry layout:
 
-## Provenance Appendix
+- `event-detectors/stations` → channels `stations.direct`, `stations.shadow`.
+- `event-detectors/ingresses` → channels `ingresses.sign`, `ingresses.house` (house gating will reuse the provider contract documented in `docs/module/providers_and_frames.md`).
+- `event-detectors/lunations` → channels `lunations.solar`, `lunations.lunar`.
+- `event-detectors/declination` → channels `declination.oob`, `declination.parallel`.
+- `event-detectors/overlays` → channels `overlays.midpoints`, `overlays.fixed_stars`, `overlays.returns`, `overlays.profections`.
 
-| Dataset | SHA256 | Maintainer | Last verified |
-| ------- | ------ | ---------- | ------------- |
-| `detectors_venus_cycle.sf` | `ab3ac3dfc2b540c548c1d864f9ec5c8364cc8614a93f0d81ed8bb1e22c65e4e7` | VCA team | 2024-05-18 |
-| Swiss Ephemeris DE441 binaries | `b58f1f7c715142995c3a0c552aa2a2140a7f12225232b3f3f9ee298a045bdd2a` | AstroDienst | 2024-04-30 |
-| `profiles/natal_index.csv` | `1fb86e5a8ee86ab1f36ee420d0a55b1ce3ba6e58356f9f79a4e17e45e1a533f3` | AstroEngine data stewardship | 2024-05-15 |
-| NASA GSFC eclipse canon 2021–2100 | `d0c8b212cb0f8fd0f070ef569731f4b0a3dbe613e06b9b7f04fbcadd3a5ffb0c` | NASA GSFC | 2024-03-11 |
+These placeholders ensure that the registry retains a deterministic path for each detector and that downstream references (schemas, exporters) can reserve identifiers ahead of implementation.
 
-All detectors remain registered under the `event-detectors` module to prevent accidental removal. Future channel additions should extend this table rather than replace existing rows.
+## Data alignment requirements
+
+- **Solar Fire verification**: Before activating a detector, reproduce the scenario in Solar Fire (or equivalent Swiss Ephemeris
+  scripts) and attach the export hash to the detector’s release notes. The runtime should log the provenance URI with every event.
+- **Indexed lookups**: Stations, ingresses, and lunations must query indexed ephemeris datasets (SQLite or parquet) rather than raw
+  CSV exports to guarantee timely responses during live tracking. Record the index build command in the data revision log.
+- **Profile parity**: When toggles in `profiles/base_profile.yaml` change, update the table above and the Markdown rulesets so the
+  module → submodule → channel mapping never diverges from the runtime behaviour.
+- **Schema coverage**: New detectors should register payload schemas in `docs/module/interop.md` and add validation tests to
+  `tests/` so downstream consumers can prove that every emitted event is grounded in real data.
+
+## Outstanding work
+
+- The Markdown rulesets reference schema stubs such as `schemas/events/transit_station.schema.json` that are not yet checked into the repository. When those schemas are authored they must be added to `docs/module/interop.md`, tracked in `docs/burndown.md`, and covered by `astroengine.validation` tests.
+- Detector implementations will need to import the body catalogues from `astroengine/modules/vca/catalogs.py` so the module/submodule/channel hierarchy stays consistent with the existing registry.
+- Once code lands, add integration tests under `tests/` that exercise each channel using the orbs and toggles documented here.
+
+Documenting these details up front keeps the detector plan aligned with the current environment configuration and prevents accidental loss of module paths during future edits.

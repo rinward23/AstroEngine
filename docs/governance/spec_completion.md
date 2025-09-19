@@ -1,63 +1,51 @@
-# Definition of "Spec Complete"
+# Specification Completion Definition
 
 - **Author**: AstroEngine Governance Board
-- **Date**: 2024-05-27
-- **Scope**: Applies to AstroEngine modules, submodules, channels, and subchannels registered in `astroengine.modules.registry`.
+- **Date**: 2024-05-27 (updated to align with repository state)
+- **Scope**: Applies to modules and documentation maintained under `docs/module/`, `docs/governance/`, and the runtime registry in `astroengine/modules`.
 
-Achieving "spec complete" status requires satisfying the criteria below. Each section references real datasets and documents to ensure no requirement is fulfilled with synthetic information.
+The items below describe what "spec complete" means for the assets currently tracked in git. Update the checklist whenever new modules or datasets are introduced.
 
-## A. Scope & Intent
+## A. Documentation coverage
 
-- Enumerate every module/submodule/channel/subchannel and map them to documentation under `docs/module/`.
-- Record intent statements summarizing functionality and dataset dependencies. Example: `event-detectors/stations/direct` → uses Swiss Ephemeris DE441 and Solar Fire station exports.
-- Any new module must append to this mapping; removal requires governance vote recorded in meeting minutes.
+- Map every registry node to a document under `docs/module/`. The current mapping includes:
+  - `vca/catalogs` → `docs/module/core-transit-math.md` and `docs/module/data-packs.md`
+  - `vca/profiles` → `docs/module/core-transit-math.md`, `docs/module/data-packs.md`, `docs/module/qa_acceptance.md`
+  - `vca/rulesets` → `docs/module/core-transit-math.md` and `docs/module/ruleset_dsl.md`
+  - Planned `event-detectors/*` → `docs/module/event-detectors/overview.md`
+- Any future module must be added to this list before merging so governance can track it.
 
-## B. Inputs, Outputs & Units
+## B. Inputs, outputs & provenance
 
-- Document inputs (e.g., ephemeris state vectors, natal chart metadata) with explicit units (degrees, arcminutes, arcseconds, UTC timestamps).
-- Reference actual data sources such as Solar Fire exports (`exports/`), NASA eclipse tables, or Swiss Ephemeris binaries. Synthetic placeholders are prohibited.
-- Ensure outputs specify their serialization format (`astrojson.event_v1`, CSV, SQLite) with field units described in `docs/module/interop.md`.
+- All constants referenced by detectors or scoring must point to real files (`profiles/base_profile.yaml`, `profiles/dignities.csv`, `profiles/fixed_stars.csv`, `schemas/orbs_policy.json`) with Solar Fire or Swiss Ephemeris provenance recorded in the dataset.
+- Schemas must live under `schemas/` and be documented in `docs/module/interop.md`.
+- When additional datasets are added, include provenance columns (e.g., `source`, `provenance`) similar to the existing CSV files and log the change in `docs/governance/data_revision_policy.md`.
 
-## C. Default Constants & Profile Toggles
+## C. QA gates
 
-- Consolidate default values (orbs, severity weights, house system fallbacks) using tables from `docs/module/core-transit-math.md`, `docs/module/data-packs.md`, and `docs/module/providers_and_frames.md`.
-- Profile toggles (e.g., `vca_tight`, `mundane_profile`) must cite underlying dataset references and appear in registry manifests.
-- Changes to defaults require governance approval and an update to provenance tables with new checksums.
+- The automated tests listed in `docs/module/qa_acceptance.md` must pass on the reference environment (Python ≥3.10 with `numpy`, `pandas`, `scipy`). Solar Fire comparison artefacts required by the QA plan must be present for any scoring or detector changes.
+- The environment report produced by `python -m astroengine.infrastructure.environment numpy pandas scipy` should accompany release notes.
+- Changes to orb or severity tables require updates to `tests/test_orbs_policy.py`, `tests/test_vca_ruleset.py`, associated documentation, and revision entries per `docs/governance/data_revision_policy.md`.
 
-## D. Gate/Rules Phrases
+## D. Governance artefacts
 
-- Maintain canonical phrasing for user-facing gate descriptions (e.g., "when Mars enters Leo") and DSL tokens documented in `docs/module/ruleset_dsl.md`.
-- Phrases must align with Solar Fire vocabulary to guarantee user familiarity and accurate localization.
-- Store phrase templates alongside localization pack entries (`rulesets/i18n/sign_labels.csv`).
+- Keep `docs/module/` files in sync with the runtime registry to avoid module loss.
+- Update `docs/burndown.md` when new deliverables are created or completed.
+- Record review outcomes and evidence in `docs/governance/acceptance_checklist.md` during sign-off.
+- Maintain the dataset log in `docs/governance/data_revision_policy.md` whenever schemas or profiles change, including Solar Fire export hashes and index build commands.
 
-## E. Acceptance Checks
+## E. Interoperability
 
-- Each module references deterministic QA scenarios defined in `docs/module/qa_acceptance.md` and golden datasets.
-- Acceptance requires passing `pytest` suites (functional, property, parity) on the approved environment (Python ≥3.10 with `numpy`, `pandas`, `scipy`).
-- Severity thresholds must match Solar Fire exports within documented tolerances.
+- Every exported payload must validate against the schemas documented in `docs/module/interop.md` using `astroengine.validation.validate_payload`.
+- Orb policy data (`schemas/orbs_policy.json`) should remain consistent with the numbers documented in `docs/module/core-transit-math.md` and the revision log.
 
-## F. Interoperability & Exports
+## F. Future work tracking
 
-- Confirm export formats (AstroJSON, CSV, Parquet, SQLite, ICS) match definitions in `docs/module/interop.md`.
-- Every export route includes dataset URNs and checksum validation to prove data lineage.
-- Upgrades must be backward compatible; deprecation requires migration documentation and timeline.
+- Planned detectors and provider implementations are documented but not yet shipped. Leave placeholders in the documentation and update this definition once the corresponding code and tests land.
+- Any newly introduced feature must add:
+  1. Documentation under `docs/module/`.
+  2. QA coverage under `tests/`.
+  3. An entry in `docs/burndown.md` capturing status and evidence.
+  4. A revision entry summarised in `docs/governance/data_revision_policy.md` when datasets are involved.
 
-## G. Observability Hooks
-
-- Modules must emit structured logs and metrics fields enumerated in their documentation (e.g., `core-transit-math` severity logs, `event-detectors` detector events).
-- Observability payloads include dataset checksums and registry identifiers for audit trails.
-- Alerting thresholds (e.g., missing peak events) align with `docs/module/release_ops.md`.
-
-## H. Edge Cases
-
-- Edge case catalogs maintained in module docs (retrograde loops, DST transitions, high-latitude charts, eclipse visibility) must link to real datasets from Solar Fire, NASA, or atlas databases.
-- Governance board verifies each edge case has reproducible data and QA coverage.
-
-## Verification & Sign-Off Process
-
-1. Module owners submit documentation updates and link to relevant datasets.
-2. QA guild confirms deterministic tests, parity, and performance metrics met.
-3. Governance board reviews changes, ensuring registry integrity (no module loss) and provenance completeness.
-4. Once all criteria satisfied, board records approval in `docs/governance/acceptance_checklist.md` with signatures and dates.
-
-Spec complete status expires if datasets lose provenance, critical tests fail, or modules are removed without board approval.
+Following this definition keeps the documentation, runtime registry, and governance artefacts aligned with the actual repository state.

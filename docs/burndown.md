@@ -1,24 +1,18 @@
 # Specification Burndown Tracker
 
 - **Author**: AstroEngine Program Management Office
-- **Date**: 2024-05-27
-- **Scope**: Tracks completion of Section I tasks from `SPEC_COMPLETION_PLAN.md`.
+- **Updated**: 2024-05-27 (reflects rewritten documentation)
 
 | ID | Task | Owner | Status | Due date | Dependencies | Evidence |
 | -- | ---- | ----- | ------ | -------- | ------------ | -------- |
-| I-1 | Publish Ruleset DSL grammar, error taxonomy, and linter rules | Ruleset Committee | ✅ Complete | 2024-05-27 | `docs/module/ruleset_dsl.md` | Commit SHA + QA lint report |
-| I-2 | Document full orbs severity matrix with overrides and profiles | Severity Working Group | ✅ Complete | 2024-05-27 | `docs/module/core-transit-math.md` | Solar Fire export checksum log |
-| I-3 | Finalize provider spec (houses, ayanamsha, cache policy) | Providers Guild | ✅ Complete | 2024-05-27 | `docs/module/providers_and_frames.md` | Provider contract review minutes |
-| I-4 | Publish detector coverage (stations → astrocartography) | Event Detector Team | ✅ Complete | 2024-05-27 | `docs/module/event-detectors/overview.md` | Detector parity test summary |
-| I-5 | Document data packs (stars, dignities, rulers, minor planets) | Data Stewardship | ✅ Complete | 2024-05-27 | `docs/module/data-packs.md` | Dataset checksum attestations |
-| I-6 | Define interop schemas and export conventions | Integration Guild | ✅ Complete | 2024-05-27 | `docs/module/interop.md` | Schema validation run |
-| I-7 | Record QA plan (determinism, property tests, performance, edge cases) | QA Guild | ✅ Complete | 2024-05-27 | `docs/module/qa_acceptance.md` | pytest CI log |
-| I-8 | Summarize release/ops strategy (compatibility matrix, packaging, observability) | Release Guild | ✅ Complete | 2024-05-27 | `docs/module/release_ops.md` | Release dry-run checklist |
+| I-1 | Publish transit math and severity tables | Runtime & Scoring Guild | ✅ Complete | 2024-05-27 | `astroengine/modules/vca/rulesets.py`, `profiles/base_profile.yaml` | `docs/module/core-transit-math.md`, Solar Fire verification notes, `pytest` (`tests/test_vca_ruleset.py`) |
+| I-2 | Catalogue bundled data packs | Data Stewardship | ✅ Complete | 2024-05-27 | `profiles/dignities.csv`, `profiles/fixed_stars.csv`, `schemas/orbs_policy.json` | `docs/module/data-packs.md`, `tests/test_orbs_policy.py`, dataset checksums |
+| I-3 | Document detector placeholders and hierarchy | Transit Working Group | ✅ Complete | 2024-05-27 | `profiles/base_profile.yaml`, `rulesets/transit/*.ruleset.md` | `docs/module/event-detectors/overview.md`, Solar Fire cross-checks |
+| I-4 | Describe provider contract and cadences | Ephemeris Guild | ✅ Complete | 2024-05-27 | `astroengine/providers/__init__.py`, provider design notes | `docs/module/providers_and_frames.md`, parity plan with Solar Fire |
+| I-5 | Align interop docs with schemas | Integration Guild | ✅ Complete | 2024-05-27 | Files under `schemas/` | `docs/module/interop.md`, `tests/test_result_schema.py`, `tests/test_contact_gate_schema.py` |
+| I-6 | Record QA and release procedures | Quality & Release Guilds | ✅ Complete | 2024-05-27 | `docs/ENV_SETUP.md`, automated test suite | `docs/module/qa_acceptance.md`, `docs/module/release_ops.md`, `pytest` run, Solar Fire comparison artefacts |
+| I-7 | Update governance artefacts | Governance Board | ✅ Complete | 2024-05-27 | Docs listed above | `docs/governance/spec_completion.md`, `docs/governance/acceptance_checklist.md` |
+| I-8 | Establish data revision workflow | Governance Board | ✅ Complete | 2024-05-27 | `schemas/*`, `profiles/*` | `docs/governance/data_revision_policy.md`, revision log entries |
+| I-9 | Capture Solar Fire dataset provenance for runtime outputs | Data Stewardship | 🚧 In progress | 2024-06-15 | Solar Fire exports (transits, returns), planned SQLite indexes | Pending ingestion scripts, checksums to be logged |
 
-## Governance Notes
-
-- Future updates must append new rows rather than altering completed entries to preserve history.
-- Evidence links should reference immutable resources (git commit hashes, signed reports) stored alongside datasets.
-- Any regression or dataset integrity alert reopens the relevant task with status `⛔ Blocked` until remediation documented.
-
-This tracker demonstrates that every deliverable from the specification plan is documented with traceable evidence tied to real data sources.
+Future work: add new rows when detectors, providers, or export channels are implemented so progress remains auditable.

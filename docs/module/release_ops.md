@@ -1,74 +1,49 @@
 # Release & Operations Plan
 
 - **Module**: `release_ops`
-- **Author**: AstroEngine Release Guild
-- **Date**: 2024-05-27
-- **Source datasets**: `pyproject.toml` extras definitions, Dockerfiles (`docker/`), observability templates (`observability/*.json`), compatibility matrices from Solar Fire deployment guides, conda-forge packaging notes.
-- **Downstream links**: QA acceptance (`docs/module/qa_acceptance.md`), interop spec (`docs/module/interop.md`), governance checklist (`docs/governance/acceptance_checklist.md`).
+- **Maintainer**: Release Guild
+- **Source artifacts**:
+  - `pyproject.toml`
+  - `docs/ENV_SETUP.md`
+  - `docs/module/qa_acceptance.md`
+  - Registry snapshot (`astroengine/modules/__init__.py`)
 
-This plan covers packaging extras, compatibility tracking, containerization, and observability requirements so production deployments remain reproducible.
+This plan documents the concrete release steps supported by the repository today. Update it whenever packaging options or registry modules change so downstream teams can audit the process.
 
-## Packaging Extras
+## Packaging & extras
 
-| Extra | Dependencies | Purpose | Notes |
-| ----- | ------------ | ------- | ----- |
-| `skyfield` | `skyfield`, `jplephem` | Alternate ephemeris backend | Keep pinned to JPL DE441 release |
-| `swe` | `pyswisseph` | Primary high-precision ephemeris | Requires Swiss Ephemeris license acceptance |
-| `parquet` | `pyarrow`, `fastparquet` | Parquet export support | Align version with interop schema tests |
-| `cli` | `click`, `rich` | Command-line tooling | CLI commands documented in README |
-| `dev` | `pytest`, `black`, `ruff`, `mypy` | Developer workflow | Matches CI configuration |
-| `maps` | `cartopy`, `shapely`, `pyproj` | Astrocartography and map exports | Requires system GEOS/PROJ dependencies |
+| Extra | Dependencies | Purpose |
+| --- | --- | --- |
+| `dev` | `pytest`, `black`, `ruff` | Local development and CI tooling. |
 
-Extras must stay additive—no removal without governance approval. Update `pyproject.toml` and this table simultaneously.
+The core package depends on `numpy`, `pandas`, and `scipy` as declared in `pyproject.toml`. Additional extras (e.g., provider-specific dependencies) should be added alongside documentation updates once implementations land.
 
-## Compatibility Matrix Skeleton
+## Registry compatibility snapshot
 
-| Module | Submodule | Channel | Profiles | Providers | Exports |
-| ------ | --------- | ------- | -------- | --------- | ------- |
-| `core-transit-math` | `severity` | `default` | `vca_default`, `vca_tight`, `vca_support` | `swe`, `skyfield` | `astrojson.event_v1`, `csv.transits_events` |
-| `event-detectors` | `stations` | `direct` | `vca_default`, `mundane_profile` | `swe` | `astrojson.event_v1`, `ics.station_alert` |
-| `event-detectors` | `eclipses` | `solar` | `mundane_profile` | `swe` | `astrojson.event_v1`, `ics.eclipse_path` |
-| `providers` | `houses` | `placidus` | `all` | `swe` | `n/a` (runtime service) |
-| `ruleset_dsl` | `compiler` | `linter` | `all` | `n/a` | `json.lint_report` |
-| `data-packs` | `fixed_stars` | `bright_list_v1` | `all` | `n/a` | `n/a` |
+The default registry currently exposes a single module:
 
-Future modules should continue to respect module integrity, but rows may be
-edited when necessary as long as the change is logged per the
-[Data Revision Policy](../governance/data_revision_policy.md).
+| Module | Submodules | Channels | Source |
+| --- | --- | --- | --- |
+| `vca` | `catalogs`, `profiles`, `rulesets` | `catalogs.bodies.{core,extended,centaurs,tnos,sensitive_points}`, `profiles.domain.{vca_neutral,vca_mind_plus,vca_body_plus,vca_spirit_plus}`, `rulesets.aspects.definitions` | `astroengine/modules/vca/__init__.py` |
 
-## Docker Strategy
+When new modules are registered, update this table and the documentation in `docs/module/event-detectors/overview.md` to preserve the module → submodule → channel → subchannel hierarchy.
 
-- Maintain two Dockerfiles: `docker/runtime.Dockerfile` (minimal runtime) and `docker/lab.Dockerfile` (includes dev extras and datasets).
-- Base image: `python:3.11-slim`. Install system dependencies for maps extra (GEOS, PROJ) only in lab image.
-- Volume mount ephemeris cache at `/var/lib/astroengine/ephemeris` with checksum verification on container start via entrypoint script.
-- Include healthcheck running `python -m astroengine.infrastructure.environment numpy pandas scipy --as-json`.
+## Release checklist
 
-## Conda-Forge Plan (Post-0.1.0)
+1. Ensure a clean environment by running the commands in `docs/ENV_SETUP.md`.
+2. Capture an environment report with `python -m astroengine.infrastructure.environment numpy pandas scipy`.
+3. Execute `pytest` and confirm all tests pass.
+4. Review the documentation updates in `docs/module/*.md`, `docs/governance/*.md`, and `docs/burndown.md` to make sure they reference real files. Note any schema or dataset edits in `docs/governance/data_revision_policy.md`.
+5. Verify Solar Fire comparison reports and dataset indexes referenced by the release (e.g., natal return tables, transit exports). Record the checksums in the release notes so future audits can reproduce the run.
+6. Tag the release (`git tag vX.Y.Z`) and push the tag after tests succeed.
+7. Build distribution artifacts using `python -m build` (add the build dependency when publishing to PyPI).
+8. Attach the environment report, pytest log, and Solar Fire verification artefacts to the release notes.
 
-- Create feedstock referencing PyPI tarball with extras disabled (wheel remains extras-free).
-- Use CI matrix: Linux x86_64, macOS arm64/x86_64, Python 3.10–3.12.
-- Patch recipe to download Swiss Ephemeris from official mirror and record checksum.
-- Tests: run `pytest -m "not perf"` with Swiss Ephemeris stub to confirm packaging integrity.
+## Observability & support
 
-## Observability Stack
+- Keep the compatibility table above in sync with the registry to ensure no module paths disappear between releases.
+- Record any manual steps (e.g., dataset checksum verification) in `docs/burndown.md` under the relevant task.
+- When new operational tooling (Docker images, monitoring hooks) is introduced, link the documentation here and add automated checks where possible.
+- If a release consumes new Solar Fire datasets or indexes, ensure the raw exports (or access instructions) are referenced from the release notes and the provenance log. Never claim support for a dataset unless the files are committed or their checksums are recorded.
 
-- Logging: JSON structured logs with fields `timestamp`, `module_path`, `event_id`, `severity_band`, `dataset_urn`, `profile_id`, `message`.
-- Metrics: Prometheus counters `astroengine_events_total{module_path,profile_id}`, histograms `astroengine_export_latency_seconds`.
-- Tracing: Optional OpenTelemetry instrumentation with `service.name=astroengine`.
-- Alerts: define alert rules for severity backlog (no peak events exported in >7 days) and dataset checksum mismatch.
-
-## PII & Security
-
-- Sensitive data (user names, email) stored in exports must be redacted or hashed before leaving system; apply to ICS descriptions.
-- Maintain license audit log in `docs/governance/acceptance_checklist.md` referencing Solar Fire and ACS Atlas entitlements.
-- Require OIDC tokens for publishing exports; tokens stored in HashiCorp Vault with rotation policy 90 days.
-
-## Release Workflow
-
-1. Tag release in git (`vX.Y.Z`) after QA acceptance sign-off.
-2. Build wheel and source distribution via `python -m build` inside clean virtualenv.
-3. Run `pytest` and `python -m astroengine.infrastructure.environment numpy pandas scipy` to capture environment report.
-4. Publish to PyPI and attach environment JSON to release notes.
-5. Update `docs/burndown.md` with release status and outstanding items.
-
-This operations plan ensures packaging, deployment, and observability adhere to governance requirements while safeguarding module integrity.
+Following this plan aligns releases with the validated environment and ensures the governance artefacts always reflect what shipped.

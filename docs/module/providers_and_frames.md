@@ -1,107 +1,53 @@
 # Providers & Frames Contract
 
 - **Module**: `providers`
-- **Author**: AstroEngine Ruleset Working Group
-- **Date**: 2024-05-27
-- **Source datasets**: Swiss Ephemeris DE441, Skyfield JPL ephemerides, Solar Fire `houses.def`, AstroEngine atlas (`data/atlas_tz.sqlite`).
-- **Downstream links**: `astroengine.modules.registry.providers`, schemas `schemas/providers_schema.json`, QA fixtures `tests/providers/test_provider_contracts.py`.
+- **Maintainer**: Ephemeris Guild
+- **Source artifacts**:
+  - `astroengine/providers/__init__.py` (protocol definitions used by plugins).
+  - `astroengine/providers/skyfield_provider.md` and `astroengine/providers/swe_provider.md` (design notes for the bundled providers).
+  - `profiles/base_profile.yaml` (`providers.*` and cadence settings).
+  - `docs/module/event-detectors/overview.md` (detectors that depend on provider outputs).
 
-This specification formalizes provider APIs, coordinate frames, and fallback rules so downstream modules can rely on identical inputs. Every tolerance derives from published ephemeris accuracy statements or Solar Fire exports; no constants are invented.
+AstroEngine resolves ephemeris data through provider plugins that implement the `EphemerisProvider` protocol. The goal of this document is to record the contract expected by the runtime so that future providers remain deterministic, expose provenance, and keep the module/submodule/channel hierarchy intact.
 
-## Provider API Surface
+## Provider protocol summary
 
-### `ecliptic_state`
+`astroengine/providers/__init__.py` defines the following structures:
 
-- **Signature**: `ecliptic_state(body: str, timestamp: datetime, frame: FrameSpec, location: Optional[Observer]) -> EphemerisState`
-- **Inputs**:
-  - `body`: enumerated value from Swiss Ephemeris body IDs (Sun=0, Moon=1, etc.).
-  - `timestamp`: UTC datetime (aware).
-  - `frame`: includes `center` (`geocentric` or `topocentric`), `reference_plane` (`ecliptic`, `equatorial`).
-  - `location`: required for `topocentric`, referencing atlas entry ID with recorded latitude, longitude, altitude.
-- **Outputs**: longitude λ (degrees), latitude β (degrees), distance Δ (AU), speed derivatives (°/day), flags for retrograde and illumination (for luminaries).
-- **Accuracy**: must match Swiss Ephemeris DE441 within 0.1 arcsecond for longitude, 0.2 arcsecond for latitude across 1900–2100.
-- **Fallback**: if Swiss Ephemeris binaries unavailable, switch to Skyfield JPL ephemerides with documented delta up to 0.4 arcsecond; log downgrade event.
+- **`ProviderMetadata`** — declares `provider_id`, `version`, supported bodies, supported frames, declination/light-time support, cache layout, and any extras required for installation.
+- **`CacheInfo` / `CacheStatus`** — track ephemeris cache provenance (path, checksum, generated timestamp, warm/cold/stale/invalid state).
+- **`EphemerisVector`** — holds the deterministic output of a provider query: position/velocity vectors, ecliptic longitude/latitude, right ascension/declination, distance (AU), longitudinal speed, and a provenance map.
+- **`EphemerisBatch`** — wraps a sequence of vectors with cache metadata and determinism inputs.
+- **`EphemerisProvider`** — protocol with methods `configure`, `prime_cache`, `query`, `query_window`, and `close`. All implementations must raise `ProviderError` with `provider_id`, `error_code`, and `retriable` fields so callers can react consistently.
 
-### `lunation`
+## Bundled provider plans
 
-- **Signature**: `lunation(kind: Literal["new","full","first_quarter","last_quarter"], month: datetime, location: Observer) -> LunationEvent`
-- **Inputs**: Sun/Moon ecliptic states, location for topocentric time adjustments.
-- **Outputs**: exact UTC time, phase angle, altitude at event, eclipse magnitude (if available).
-- **Tolerance**: event time must match Solar Fire lunation report within ±2 seconds for 1950–2050.
+Two provider designs ship in Markdown form to document expected behaviour:
 
-### `eclipse`
+- **Skyfield provider** (`astroengine/providers/skyfield_provider.md`): details cache warming for DE440s files, cadence policies (inners ≤6h, outers ≤24h, Moon 1h), light-time handling, and deterministic logging requirements. The notes also specify the metrics/events providers should emit.
+- **Swiss Ephemeris provider** (`astroengine/providers/swe_provider.md`): outlines licensing considerations, dependency checks, delta-T configuration, and parity expectations relative to Skyfield.
 
-- **Signature**: `eclipse(kind: Literal["solar","lunar"], scan_window: DateRange, location: Optional[Observer]) -> List[EclipseEvent]`
-- **Data sources**: NASA GSFC Besselian elements (for solar), Five Millennium Canon (for lunar).
-- **Outputs**: event type (partial/total/annular/penumbral), greatest eclipse time, magnitude, Saros number, path polygon URN.
-- **Validation**: magnitude difference ≤0.01 from NASA canonical values.
+Although the implementations are not yet checked in, the documentation establishes the provenance requirements and failure taxonomy that runtime code must follow. Any provider added to the registry must cite its design document and update this file.
 
-### `station`
+## Coordinate frames and cadences
 
-- **Signature**: `station(body: str, window: DateRange) -> StationEvent`
-- **Outputs**: station type (direct/retrograde), exact time, longitude, preceding and following speed samples.
-- **Accuracy**: compare to Solar Fire `STATIONS.RPT` export with Δtime ≤ 60 seconds.
+Profiles reference providers through the following keys in `profiles/base_profile.yaml`:
 
-### `houses`
+- `providers.default` selects the primary plugin (`skyfield` by default).
+- `providers.skyfield.cache_path` documents the expected ephemeris cache location (`${ASTROENGINE_CACHE}/skyfield/de440s`).
+- `providers.swe.enabled` and `providers.swe.delta_t` illustrate how optional providers expose toggles.
+- `providers.*.cadence_hours` define recommended sampling cadences by body class (`inner`, `outer`, `moon`, `minor`). Detectors should inherit these settings to keep the pipeline deterministic.
+- Cadence and cache settings must be cross-checked against Solar Fire export intervals; record any deviations in the provenance log so comparisons remain valid.
 
-- **Signature**: `houses(system: str, datetime: datetime, location: Observer) -> HouseSet`
-- **Supported systems**: Placidus, Koch, Regiomontanus, Campanus, Whole Sign, Equal, Porphyry.
-- **Tolerance**: Ecliptic longitude differences vs. Solar Fire must be ≤0.05° for Placidus, ≤0.1° for Campanus at latitudes |φ| ≤ 66°. For |φ| > 66°, fall back to Whole Sign if algorithm fails (documented by Solar Fire).
+House system and ayanamsha preferences are stored under `feature_flags.house_system` and `feature_flags.sidereal` in the same profile file. Detectors that rely on relocation/house calculations must combine those flags with provider metadata to select the correct frame.
 
-### `ayanamsha`
+## Provenance & testing expectations
 
-- **Signature**: `ayanamsha(name: str, datetime: datetime) -> float`
-- **Catalog**: Lahiri, Raman, Krishnamurti, Fagan/Bradley with coefficients from Astronomical Ephemeris 1950–2000.
-- **Accuracy**: difference vs. Solar Fire ayanamsha table ≤0.05 arcseconds.
+- Provider implementations must surface cache checksums through `CacheInfo` and attach `data_provenance` dictionaries to each `EphemerisVector`.
+- Structured logging should include `provider_id`, call type (`query`, `query_window`, `prime_cache`), cache status, and timing information as described in the Skyfield design notes.
+- Once implementations land, parity tests comparing providers (Skyfield vs. Swiss Ephemeris) should be added under `tests/` to guarantee positional differences stay within documented tolerances. Include Solar Fire export comparisons for representative charts and archive the export checksums.
+- Environment validation via `python -m astroengine.infrastructure.environment numpy pandas scipy` should precede provider parity runs to confirm dependency versions.
+- Record revisions to provider configurations and documentation according to `docs/governance/data_revision_policy.md` so provenance remains auditable.
+- Providers must never fabricate values. When a dataset is unavailable (e.g., Solar Fire export missing), raise a provenance error rather than falling back to synthetic numbers.
 
-### `ephemeris_info`
-
-- **Signature**: `ephemeris_info() -> EphemerisMetadata`
-- **Fields**: dataset name, version, checksum, build date, coverage range, source URL.
-- **Requirement**: must surface the exact checksum recorded in `docs/module/event-detectors/overview.md` to guarantee provenance alignment.
-
-## House System Coverage & Fallback
-
-| Latitude band | Primary system | Fallback | Notes |
-| ------------- | -------------- | -------- | ----- |
-| |φ| ≤ 60° | Placidus (default) | Equal | Verified with Solar Fire sample charts; all cusps within 0.03° |
-| 60° < |φ| ≤ 66° | Koch | Whole Sign | Document fallback reason in logs |
-| |φ| > 66° | Whole Sign | Equal | Per Solar Fire documentation when trigonometric systems fail |
-
-- When fallback occurs, record `house_fallback=true` with the attempted system and location URN referencing the atlas dataset row.
-- Atlas indices originate from `data/atlas_tz.sqlite`, referencing time zone offsets and DST rules derived from IANA tzdata 2024a.
-
-## Ayanamsha Definitions
-
-| Name | Reference epoch | Source | Formula |
-| ---- | --------------- | ------ | ------- |
-| Lahiri | 285 CE (sidereal) | Indian Calendar Reform Committee | Solar longitude at 0° Aries equals sidereal zero point |
-| Raman | 397 CE | Bangalore Astronomical Society | Lahiri base + 17′ difference per Raman’s correction |
-| Krishnamurti | 291 CE | K.S. Krishnamurti texts | Lahiri base − 6′ |
-| Fagan/Bradley | 221 CE | Fagan & Bradley, *A Primer of Sidereal Astrology* | Mean sidereal offset computed by Fagan |
-
-Coefficients follow Swiss Ephemeris `SE_SIDBITS.C` documentation. Store computed offsets as decimal degrees with 1e-9 precision.
-
-## Topocentric Switch Policy
-
-- Default center: geocentric. When natal chart or event requests topocentric, require location metadata (latitude, longitude, altitude) referenced by atlas ID.
-- Apply parallax corrections per Swiss Ephemeris `topocentric` mode and record the parallax vector in the event payload for traceability.
-- If atlas entry lacks altitude, use EGM96 geoid to fetch elevation; log source URN `egm96://<lat>,<lon>`.
-
-## Ephemeris Cache Policy
-
-- Cache root: `$ASTROENGINE_EPHEMERIS_CACHE`, default `~/.astroengine/ephemeris`.
-- Support packages: `de430`, `de431`, `de441`. Each directory stores `CHECKSUMS.txt` mirrored from AstroDienst distribution.
-- CLI commands:
-  - `astroengine ephem pull --set de441` downloads archives with checksum validation.
-  - `astroengine ephem list` prints available sets with coverage and checksum.
-  - `astroengine ephem verify` rehashes downloads; failures raise `EphemerisIntegrityError` and mark the cache offline.
-- When offline, runtime enters degraded mode and restricts detectors requiring high-precision speed derivatives (stations, eclipses).
-
-## Provenance & Audit
-
-- Provider implementations must expose `provider_id` strings matching registry entries so documentation can reference exact modules.
-- Observability events log `provider_id`, `frame`, `dataset_checksum`, and `fallback_used`.
-- Governance reviews verify that every provider maps to a maintained dataset; removal requires explicit committee approval recorded in `docs/governance/acceptance_checklist.md`.
-
-This contract ensures provider APIs remain stable, frames are correctly described, and dataset provenance is auditable, preventing accidental loss of modules or introduction of fabricated constants.
+Documenting the provider contract here ensures that future plugins remain compatible with the reworked environment while protecting the module hierarchy from accidental drift.

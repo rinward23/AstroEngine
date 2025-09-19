@@ -1,121 +1,135 @@
 # Core Transit Math Specification
 
 - **Module**: `core-transit-math`
-- **Author**: AstroEngine Ruleset Working Group
-- **Date**: 2024-05-27
-- **Source datasets**: Swiss Ephemeris DE441 ephemerides, Solar Fire export pack `transits_2023.sf`, AstroEngine ruleset CSV indices (`rulesets/venus_cycle/policy.csv`), fixed star catalogue `resources/fk6_bright_stars.csv`.
-- **Version control**: datasets validated against upstream SHA256 manifests recorded in `rulesets/index.yaml`.
-- **Downstream links**: severity policy JSON (`schemas/orbs_policy.json`), Venus Cycle Analytics runtime registry (`astroengine/modules/vca`).
+- **Maintainer**: Runtime & Scoring Guild
+- **Source artifacts**:
+  - `astroengine/modules/vca/rulesets.py` for the baked-in aspect catalogue and orb-class defaults.
+  - `profiles/base_profile.yaml` for transit orbs, severity weights, combustion windows, and feature toggles used by detectors.
+  - `profiles/vca_outline.json` for domain weighting presets that feed the scoring helpers in `astroengine/core/scoring.py`.
+  - `profiles/dignities.csv` and `profiles/fixed_stars.csv` for the dignity and fixed-star modifiers referenced by severity rules.
+  - `schemas/orbs_policy.json` for profile-specific orb multipliers exposed to downstream tooling.
 
-This document enumerates the calculations, parameters, and provenance needed to maintain deterministic transit scoring. All numeric defaults correspond to values published in Solar Fire 9 and cross-verified against Swiss Ephemeris where applicable. No synthetic coefficients are introduced: each value maps to a cited dataset or literature source so run sequences always reflect authentic astrometric data.
+AstroEngine exposes the transit mathematics through a registry-backed module → submodule → channel → subchannel structure. This document records the authoritative constants shipped in the repository so that run sequences remain reproducible and backed by real files. All values referenced below are validated in the automated suite (`tests/test_vca_ruleset.py`, `tests/test_orbs_policy.py`, `tests/test_domain_scoring.py`, `tests/test_domains.py`, and `tests/test_vca_profile.py`).
 
-## A1. Aspect Canon
+## Data provenance and lineage
 
-| Aspect family | Exact angle (°) | Harmonic | Alternate names | Symmetry notes | Primary sources |
-| ------------- | --------------- | -------- | ---------------- | -------------- | --------------- |
-| Conjunction | 0 | 1 | Conjunction | Symmetric around 0° and 360° | Solar Fire `aspectdefs.qpd`, Swiss Ephemeris aspect matrix |
-| Opposition | 180 | 2 | Opposition | Anti-parallel symmetry (θ, 180°−θ) | Same as above |
-| Trine | 120 | 3 | Trigon | Threefold symmetry, offsets at 120° increments | Solar Fire definitions |
-| Square | 90 | 4 | Quadrature | Fourfold symmetry | Solar Fire definitions |
-| Sextile | 60 | 6 | Hexagon | Sixfold symmetry | Solar Fire definitions |
-| Quincunx | 150 | 12 | Inconjunct | Reflects 30° complement | Solar Fire optional aspects pack |
-| Semi-square | 45 | 8 | Octile | 45° increments | Ebertin, *Combination of Stellar Influences* |
-| Sesquiquadrate | 135 | 8 | Trioctile | Complement of semi-square | Ebertin |
-| Semi-sextile | 30 | 12 | Duodecile | 30° increments | Kepler College aspect catalog |
-| Novile | 40 | 9 | Nonagon | Ninth harmonic | Rudhyar, *Astrology of Personality* |
-| Septile | ~51.4286 | 7 | Heptile | Derived from 360°/7; rounding from Solar Fire | Solar Fire harmonic list |
-| Biquintile | 144 | 5 | Double quintile | Derived from fifth harmonic | Solar Fire |
-| Quintile | 72 | 5 | Quintile | 360°/5 increments | Solar Fire |
-| Bi-septile | ~102.8572 | 7 | | Mirror of septile | Solar Fire |
-| Tri-septile | ~154.2858 | 7 | | Completes 7th harmonic | Solar Fire |
-| Parallel | Declination match | — | Parallel of declination | Symmetric about celestial equator | Solar Fire declination aspects |
-| Contra-parallel | Declination sign inversion | — | | Anti-symmetric around equator | Solar Fire |
+Every numeric value in the Venus Cycle Analytics (VCA) ruleset is traceable to a concrete upstream dataset. The repository keeps
+Solar Fire 9 exports, Swiss Ephemeris state vectors, and AstroEngine’s curated CSV/JSON profiles under version control so no
+module relies on synthetic placeholders:
 
-**Exclusions**: The 11th harmonic series and synthetic midpoint-only harmonics are intentionally excluded until source data with verifiable observational backing is ingested. Deprecated items (biquintile-inverse, semi-octile) remain absent to preserve parity with Solar Fire defaults.
+- **Solar Fire aspect templates** underpin the canonical angles and orb defaults. The exported catalogue is normalised into
+  `astroengine/modules/vca/rulesets.py`, and the profile multipliers from Solar Fire’s `DEFAULT.ASF` preset are captured in
+  `schemas/orbs_policy.json`.
+- **Swiss Ephemeris (DE441)** calculations are used to verify angular velocity and applying/separating status whenever detectors
+  are prototyped. The provenance block in `profiles/base_profile.yaml` records the exact ephemeris build that was referenced when
+  calibrating the combustion and lunation gates.
+- **Solar Fire dignity/fixed star tables** are collapsed into `profiles/dignities.csv` and `profiles/fixed_stars.csv`. Their
+  checksums and revision dates live alongside the files so governance can confirm the shipped data has not drifted.
 
-### Visualization guidance
+When additional Solar Fire or third-party datasets are introduced, index them under the `profiles/` directory, append a
+`source`/`provenance` column, and log the update in `docs/governance/data_revision_policy.md`. The runtime refuses to load assets
+that are missing provenance metadata, ensuring the module hierarchy always resolves to verifiable inputs.
 
-- Circular diagrams should plot longitude on a polar axis, referencing `schemas/result_schema_v1.json` for sign glyph labels.
-- Angular separations must wrap continuously modulo 360°, using the `astroengine.core.geometry.angular_distance` helper for reproducible results.
-- Declination aspects render on a mirrored vertical axis with degrees of declination; parallel/contra-parallel thresholds draw directly from the orb matrix below.
+## Aspect canon
 
-## A2. Orbs Policy Matrix
+`VCA_RULESET` enumerates every aspect supported by the default Venus Cycle Analytics module. Runtime orb widths are governed by the orb-class defaults; the fallback column documents the literal `default_orb_deg` stored alongside each aspect for tooling that needs a per-aspect override.
 
-Default orb values come from Solar Fire “Default” profile exports and the internal Venus Cycle Analytics CSV. Overrides appear when profiles (e.g., `tight`, `wide`) require a narrower or wider gate. Values are degrees of arc unless otherwise noted.
+| Aspect | Angle (deg) | Class | Runtime orb (deg) | Declared fallback | Provenance |
+| --- | --- | --- | --- | --- | --- |
+| antiscia | 0.0 | mirror | 1.0 | 1.0 | Solar Fire declination pack (`DEFAULT.ASF`) |
+| binovile | 80.0 | harmonic | 1.0 | 1.0 | Solar Fire harmonic extensions |
+| biquintile | 144.0 | minor | 2.0 | 2.0 | Solar Fire harmonic extensions |
+| biseptile | 102.857 | harmonic | 1.0 | 1.0 | Solar Fire harmonic extensions |
+| conjunction | 0.0 | major | 8.0 | 10.0 | Solar Fire default aspect set |
+| contraantiscia | 180.0 | mirror | 1.0 | 1.0 | Solar Fire declination pack (`DEFAULT.ASF`) |
+| contraparallel | 180.0 | declination | 1.0 | 1.0 | Solar Fire declination pack (`DEFAULT.ASF`) |
+| fifteenth | 24.0 | harmonic | 1.0 | 1.0 | Solar Fire harmonic extensions |
+| novile | 40.0 | harmonic | 1.0 | 1.0 | Solar Fire harmonic extensions |
+| opposition | 180.0 | major | 8.0 | 10.0 | Solar Fire default aspect set |
+| parallel | 0.0 | declination | 1.0 | 1.0 | Solar Fire declination pack (`DEFAULT.ASF`) |
+| quattuordecile | 25.717 | harmonic | 1.0 | 1.0 | Solar Fire harmonic extensions |
+| quincunx | 150.0 | minor | 2.0 | 3.0 | Solar Fire optional aspect pack |
+| quindecile | 165.0 | harmonic | 1.0 | 2.0 | Noel Tyl quindecile catalogue, verified in Solar Fire |
+| quintile | 72.0 | minor | 2.0 | 2.0 | Solar Fire harmonic extensions |
+| semioctile | 22.5 | minor | 2.0 | 1.0 | Solar Fire minor aspect set |
+| semiquintile | 36.0 | minor | 2.0 | 2.0 | Solar Fire harmonic extensions |
+| semisextile | 30.0 | minor | 2.0 | 3.0 | Solar Fire minor aspect set |
+| semisquare | 45.0 | minor | 2.0 | 3.0 | Solar Fire minor aspect set |
+| septile | 51.428 | harmonic | 1.0 | 1.0 | Solar Fire harmonic extensions |
+| sesquiquadrate | 135.0 | minor | 2.0 | 3.0 | Solar Fire minor aspect set |
+| sextile | 60.0 | major | 8.0 | 6.0 | Solar Fire default aspect set |
+| square | 90.0 | major | 8.0 | 8.0 | Solar Fire default aspect set |
+| tredecile | 108.0 | harmonic | 1.0 | 2.0 | Solar Fire harmonic extensions |
+| trine | 120.0 | major | 8.0 | 8.0 | Solar Fire default aspect set |
+| triseptile | 154.286 | harmonic | 1.0 | 1.0 | Solar Fire harmonic extensions |
+| undecile | 32.717 | harmonic | 1.0 | 1.0 | Solar Fire harmonic extensions |
+| vigintile | 18.0 | harmonic | 1.0 | 1.0 | Solar Fire harmonic extensions |
 
-| Body class | Natal target | Aspect | Default orb | Tight profile (`vca_tight`) | Wide profile (`vca_support`) | Data provenance |
-| ---------- | ------------ | ------ | ----------- | --------------------------- | ---------------------------- | --------------- |
-| Luminary (Sun/Moon) | Planet | Conjunction | 10° | 8° | 12° | Solar Fire profile `DEFAULT.ASF` |
-| Luminary | Angle (ASC/MC) | Conjunction | 8° | 6° | 10° | Solar Fire |
-| Personal planet (Mercury/Venus/Mars) | Planet | Trine/Sextile | 6° | 5° | 7° | Solar Fire |
-| Personal planet | Angle | Square | 5° | 4° | 6° | Solar Fire |
-| Social planet (Jupiter/Saturn) | Planet | Conjunction | 5° | 4° | 6° | Solar Fire |
-| Outer planet (Uranus/Neptune/Pluto) | Planet | Opposition | 4° | 3° | 5° | Solar Fire |
-| Minor planet (Ceres, Pallas, Juno, Vesta) | Planet | Sextile | 3° | 2° | 4° | AstroEngine `data_packs/minor_planets.csv` |
-| Fixed star (bright list) | Planet | Parallel | 1° declination | 0°40′ | 1°20′ | `resources/fk6_bright_stars.csv` |
-| Lunar Node | Planet | Square | 4° | 3° | 5° | Solar Fire |
-| Partile trigger (exact) | Any | Any | 0°10′ | 0°05′ | 0°15′ | AstroEngine severity appendix |
+Notes:
 
-**Interpolation rules**:
+- The runtime orb is derived from `VCA_RULESET.orb_class_defaults`. If an aspect class is not listed in that map the engine falls back to `default_orb_deg`.
+- Declination contacts (`parallel`, `contraparallel`) share the same 1° class orb and are further bounded by the declination policy in the profile file.
 
-1. When multiple profiles apply, choose the narrowest orb to preserve deterministic scoring. Conflicts are logged via `astroengine.infrastructure.observability` with severity `WARNING` and the registry node identifier.
-2. Declination aspects apply orb limits symmetrically around the target declination; convert arcminutes to decimal degrees for storage.
-3. Midpoint contexts subtract 1° from the selected profile orb and clamp to a minimum of 0°20′.
+## Orb policies and combustion windows
 
-### Overrides and fallbacks
+`profiles/base_profile.yaml` captures the thresholds consumed by the detectors and severity scorer:
 
-- Retrograde stations add +0°30′ to conjunction and opposition orbs for the involved body class, acknowledging Solar Fire’s empirical settings.
-- Combust windows (Sun conjunction Mercury/Venus) enforce a dynamic orb using the Solar Fire combustion table; severity weighting increases quadratically as Δλ approaches zero.
-- If dataset provenance cannot be validated (checksum mismatch), the runtime refuses to evaluate the orb and raises `OrbsPolicyIntegrityError` to prevent synthetic substitution.
+- **Angular priority**: natal angles receive a 3° gate (`angular_priority_orb_deg`).
+- **Transit body orbs (degrees)**: Sun 8, Moon 6, Mercury–Mars 6, Jupiter–Pluto 6/5, Ceres–Vesta 4, Eris/Sedna 3.
+- **Fixed stars**: default longitude orb 0.333°, bright stars (<1 magnitude) tighten to 0.1667° (`fixed_star_orbs_deg`).
+- **Declination aspects**: 0.5° default, Moon 0.6667° (`declination_aspect_orb_deg`).
+- **Midpoints**: 1° default, 1.5° on angular pairs (`midpoint_orb_deg`).
+- **Combustion**: cazimi 0.2833°, under beams 15°, combust 8° (`combustion` block).
 
-## A3. Severity Model
+The JSON document in `schemas/orbs_policy.json` mirrors the major aspect families and exposes profile multipliers (`standard`, `tight`, `wide`) so downstream tooling can align with the engine. Keep the schema entry in sync with this document and note revisions in [`docs/governance/data_revision_policy.md`](../governance/data_revision_policy.md).
 
-Severity scoring multiplies harmonic weightings, orb falloff, dignity modifiers, and temporal flags. The canonical formula:
+## Severity weights and dignity hooks
 
-```
-score = base_weight(body, aspect) * orb_curve(Δλ) * dignity_modifier * phase_modifier * context_multiplier
-```
+`profiles/base_profile.yaml` also stores per-body severity multipliers used when the detectors emit events. Selected values:
 
-- **Base weights**: derived from Solar Fire `VCA_WEIGHTS.CSV`. Luminary conjunction = 1.0, trine = 0.75, square/opposition = 0.9, sextile = 0.6, quincunx = 0.5, minor aspect baseline = 0.35.
-- **Orb curve**: quadratic falloff `orb_curve(Δλ) = max(0, 1 - (Δλ / orb_limit)^2)`; Δλ uses shortest angular distance. For declination, substitute Δδ.
-- **Dignity modifier**: computed from `rulesets/venus_cycle/dignities.csv`, mapping essential dignity tiers: domicile +0.15, exaltation +0.1, detriment −0.15, fall −0.1. When conflicting dignities occur (e.g., day vs. night triplicity), apply the natal chart’s sect flag.
-- **Phase modifier**: applying aspect +0.05, separating −0.05; retrograde adds +0.07; station exactness multiplies by 1.1.
-- **Context multiplier**: angles ×1.15, fixed star alignment ×1.05, midpoint triggers ×0.9.
+| Body | Severity weight | Notes |
+| --- | --- | --- |
+| Sun | 1.00 | Baseline weight for luminary contacts |
+| Moon | 1.10 | Extra emphasis for rapid cycles |
+| Mercury | 1.00 | Neutral |
+| Venus | 0.95 | Slightly softened to avoid overstating supportive hits |
+| Mars | 1.15 | Elevated because of acute triggers |
+| Jupiter | 0.85 | Dialled back to avoid over-saturation |
+| Saturn | 1.05 | Emphasises structural events |
+| Uranus | 0.80 | Surprise events weighted modestly |
+| Neptune | 0.75 | Diffuse influence |
+| Pluto | 0.85 | Long-term pressure |
+| Ceres | 0.60 | Supportive overlays without dominating the score |
+| Pallas | 0.55 | Treated as a supplemental trigger |
+| Juno | 0.55 | Same weighting as other partnership asteroids |
+| Vesta | 0.55 | Keeps ritual/service themes proportional |
+| Eris | 0.65 | Allows disruptive contacts without overpowering majors |
+| Sedna | 0.60 | Reserved for deep background transits |
 
-Band thresholds:
+The dignity table (`profiles/dignities.csv`) lists the rulership/fall/triplicity modifiers that feed additional severity multipliers (e.g., benefic/malefic adjustments, essential dignity bonuses). Each record contains explicit source citations (Solar Fire export IDs and classical text references) and the table is indexed by `(planet, sign)` so profile loaders can join deterministically. Fixed-star bonuses originate from `profiles/fixed_stars.csv`, which includes longitude/declination positions, magnitudes, default orbs, and source manifest hashes for the FK6 reduction bundled with Solar Fire.
 
-| Band | Score range | Interpretation |
-| ---- | ----------- | -------------- |
-| Weak | 0.00–0.24 | Below reporting threshold; aggregated for analytics only |
-| Moderate | 0.25–0.49 | Report in summary streams |
-| Strong | 0.50–0.79 | Trigger notification channels |
-| Peak | ≥0.80 | High-priority alerts with detailed provenance |
+## Domain scoring
 
-All thresholds are validated against Solar Fire time-series exports dated 2023-01-01 through 2023-12-31 for Venus Cycle cases. Severity scores must log contributing factors (body weight, orb ratio, modifiers) to ensure traceability.
+Domain multipliers and weightings are defined in `profiles/vca_outline.json`. The helper `astroengine.core.scoring.compute_domain_factor` consumes those weights and the domain resolution emitted by `astroengine.domains.DomainResolver`. Tests in `tests/test_domain_scoring.py` and `tests/test_domains.py` assert the weighting functions behave deterministically across the supported methods (`weighted`, `top`, `softmax`).
 
-## A4. Applying vs. Separating & Δλ Continuity
+## Validation coverage
 
-**Definitions**:
+- `tests/test_vca_ruleset.py` verifies that key aspect angles and orb lookups exposed through `astroengine.rulesets` match the table above.
+- `tests/test_orbs_policy.py` loads `schemas/orbs_policy.json` via `astroengine.data.schemas.load_schema_document` and checks that the published multipliers and base orbs remain in sync with this document.
+- `tests/test_vca_profile.py` exercises the profile loader to ensure aspects and orb toggles from JSON/YAML inputs survive round-tripping before detectors consume them.
+- `tests/test_domain_scoring.py` and `tests/test_domains.py` confirm that the domain weighting utilities respect the multipliers distributed in `profiles/vca_outline.json` and the severity modifiers above.
 
-- `Δλ = λ_transiting - λ_natal`, normalized to (−180°, +180°].
-- An aspect is **applying** when the derivative of Δλ with respect to time tends toward zero with the absolute value decreasing, and **separating** otherwise. Retrograde motion uses instantaneous longitudinal velocity from Swiss Ephemeris `ephemeris_state` calls.
-- At 0°/360° crossings, wrap Δλ using `astroengine.core.geometry.wrap_delta_longitude` so continuity is preserved and no discontinuity occurs at Aries 0°.
+## Indexing and determinism guarantees
 
-**Retrograde loops**:
+- `profiles/vca_outline.json` exposes the module → submodule → channel → subchannel hierarchy used by the runtime registry. Each
+  node carries a `registry_path` so documentation updates cannot orphan modules.
+- The `astroengine.modules.registry` component stores metadata for every rule or lookup. Populate that metadata with provenance
+  URIs whenever detectors are added to the registry (e.g., `sf9://transits_2023.sf#row=5821`) so downstream audit tooling can
+  trace an emitted event back to primary data.
+- Large Solar Fire exports should be indexed before ingestion. Store the index either as SQLite (`*.sqlite`) or as adjacency
+  metadata in `profiles/` and record the build command in the revision log. The runtime only accepts indexed datasets to prevent
+  slow sequential scans during live transit monitoring.
 
-- When speed crosses zero within ±0°20′ of the exact aspect, classify as `stationary_applying` or `stationary_separating` based on forward/backward motion before the station.
-- Multi-body midpoint triggers compute Δλ relative to the midpoint longitude `(λ1 + λ2)/2`, normalized with the same wrapping rules. If the midpoint spans 360°, use the modular average defined in `astroengine.core.midpoints.modular_average`.
-
-**Edge cases**:
-
-- High latitude charts requiring topocentric adjustments must use the observer latitude/longitude stored in the natal dataset; fallback to geocentric if missing data is detected to avoid inferred values.
-- Declination aspects rely on continuous Δδ; when crossing the celestial equator, maintain sign continuity to avoid artificial discontinuities.
-
-**Observability hooks**:
-
-- Emit structured logs containing `aspect_family`, `delta_longitude`, `delta_declination`, `applying_flag`, `station_flag`, `profile_id`, and dataset checksums.
-- Attach provenance URNs referencing Solar Fire export rows (e.g., `sf9://transits_2023.sf#row=5821`) for every evaluation to prove data lineage.
-
----
-
-By codifying the canonical aspect list, orb policies, severity calculations, and continuity rules with explicit dataset references, this module ensures upgrades can extend the registry without ever removing modules or relying on fabricated coefficients.
+Keeping this specification aligned with the referenced files ensures future changes to the aspect canon or severity tables remain
+auditable and no module/submodule/channel entries are lost during edits. Every addition must cite real data and update the
+corresponding provenance blocks so user-facing output always reflects verifiable sources.
