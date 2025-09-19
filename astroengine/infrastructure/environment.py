@@ -6,9 +6,9 @@ import argparse
 import json
 import platform
 import sys
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from importlib import metadata
-from typing import Dict, Iterable, Mapping, MutableMapping, Sequence, Tuple
 
 __all__ = [
     "EnvironmentReport",
@@ -21,7 +21,7 @@ __all__ = [
 class EnvironmentReport:
     """Snapshot of the local Python environment."""
 
-    python_version: Tuple[int, int, int]
+    python_version: tuple[int, int, int]
     executable: str
     platform: str
     packages: Mapping[str, str]
@@ -36,7 +36,7 @@ class EnvironmentReport:
 
 
 def _package_versions(package_names: Iterable[str]) -> MutableMapping[str, str]:
-    versions: Dict[str, str] = {}
+    versions: dict[str, str] = {}
     for name in package_names:
         try:
             versions[name] = metadata.version(name)

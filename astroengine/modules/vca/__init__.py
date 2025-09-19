@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 from ..registry import AstroModule, AstroRegistry
 from .catalogs import (
     VCA_CENTAURS,
@@ -18,7 +16,7 @@ from .rulesets import VCA_RULESET
 __all__ = ["register_vca_module", "serialize_vca_ruleset"]
 
 
-def serialize_vca_ruleset() -> Dict[str, object]:
+def serialize_vca_ruleset() -> dict[str, object]:
     """Return a serialisable representation of the bundled VCA ruleset."""
 
     aspects = {

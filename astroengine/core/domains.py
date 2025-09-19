@@ -9,15 +9,15 @@ risking silent regressions.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, List, Mapping, Optional, Tuple
 
 # Canonical element labels (uppercase; stable public API)
-ELEMENTS: Tuple[str, str, str, str] = ("FIRE", "EARTH", "AIR", "WATER")
-DOMAINS: Tuple[str, str, str] = ("MIND", "BODY", "SPIRIT")
+ELEMENTS: tuple[str, str, str, str] = ("FIRE", "EARTH", "AIR", "WATER")
+DOMAINS: tuple[str, str, str] = ("MIND", "BODY", "SPIRIT")
 
 # Zodiac (0=Aries ... 11=Pisces) → Element
-ZODIAC_ELEMENT_MAP: Tuple[str, ...] = (
+ZODIAC_ELEMENT_MAP: tuple[str, ...] = (
     "FIRE",   # 0 Aries
     "EARTH",  # 1 Taurus
     "AIR",    # 2 Gemini
@@ -69,8 +69,8 @@ DEFAULT_HOUSE_DOMAIN_WEIGHTS: Mapping[int, Mapping[str, float]] = {
 
 @dataclass(frozen=True)
 class DomainResolution:
-    elements: List[str]            # e.g., ["FIRE"] (sign-derived)
-    domains: Dict[str, float]      # merged weights {"MIND": w, ...}
+    elements: list[str]            # e.g., ["FIRE"] (sign-derived)
+    domains: dict[str, float]      # merged weights {"MIND": w, ...}
 
 
 class DomainResolver:
@@ -78,8 +78,8 @@ class DomainResolver:
 
     def __init__(
         self,
-        planet_weights: Optional[Mapping[str, Mapping[str, float]]] = None,
-        house_weights: Optional[Mapping[int, Mapping[str, float]]] = None,
+        planet_weights: Mapping[str, Mapping[str, float]] | None = None,
+        house_weights: Mapping[int, Mapping[str, float]] | None = None,
     ) -> None:
         self._planet = planet_weights or DEFAULT_PLANET_DOMAIN_WEIGHTS
         self._house = house_weights or DEFAULT_HOUSE_DOMAIN_WEIGHTS
@@ -88,8 +88,8 @@ class DomainResolver:
         self,
         sign_index: int,
         planet_key: str,
-        house_index: Optional[int] = None,
-        overrides: Optional[Mapping[str, Mapping]] = None,
+        house_index: int | None = None,
+        overrides: Mapping[str, Mapping] | None = None,
     ) -> DomainResolution:
         if not (0 <= sign_index <= 11):
             raise ValueError("sign_index must be 0..11")
@@ -106,7 +106,7 @@ class DomainResolver:
             if house_over and house_index in house_over:
                 h = dict(house_over[house_index])
 
-        merged: Dict[str, float] = {}
+        merged: dict[str, float] = {}
         for src in (p, h):
             for key, value in src.items():
                 merged[key] = merged.get(key, 0.0) + float(value)
@@ -119,7 +119,7 @@ class DomainResolver:
 def natal_domain_factor(
     sign_index: int,
     planet_key: str,
-    house_index: Optional[int],
+    house_index: int | None,
     multipliers: Mapping[str, float],
     method: str = "weighted",
     temperature: float = 8.0,

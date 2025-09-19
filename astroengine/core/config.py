@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
-def load_profile_json(path: str | Path) -> Dict[str, Any]:
+def load_profile_json(path: str | Path) -> dict[str, Any]:
     """Load a profile JSON document and return a dictionary."""
 
     profile_path = Path(path)
@@ -17,7 +17,7 @@ def load_profile_json(path: str | Path) -> Dict[str, Any]:
     return data
 
 
-def profile_into_ctx(ctx: Dict[str, Any], profile: Dict[str, Any]) -> Dict[str, Any]:
+def profile_into_ctx(ctx: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
     """Merge profile keys into an engine context dictionary."""
 
     ctx = dict(ctx or {})

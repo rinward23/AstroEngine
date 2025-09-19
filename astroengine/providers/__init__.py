@@ -22,10 +22,11 @@ respecting the schema contracts enforced by the engine.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Mapping, Optional, Protocol, Sequence
+from typing import Protocol
 
 
 class ProviderError(RuntimeError):
@@ -78,7 +79,7 @@ class ProviderMetadata:
     supports_light_time: bool
     cache_layout: Mapping[str, str]
     extras_required: Sequence[str]
-    documentation_url: Optional[str] = None
+    documentation_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -113,7 +114,7 @@ class EphemerisProvider(Protocol):
 
     metadata: ProviderMetadata
 
-    def configure(self, *, profile_flags: Mapping[str, object], options: Optional[Mapping[str, object]] = None) -> None:
+    def configure(self, *, profile_flags: Mapping[str, object], options: Mapping[str, object] | None = None) -> None:
         """Apply profile-specific configuration.
 
         Implementations MUST be idempotent and only mutate internal caches.

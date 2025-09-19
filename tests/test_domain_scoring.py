@@ -1,6 +1,5 @@
 from astroengine.scoring import compute_domain_factor
 
-
 MULTIPLIERS = {"MIND": 1.25, "BODY": 1.0, "SPIRIT": 1.0}
 
 

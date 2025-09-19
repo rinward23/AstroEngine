@@ -1,4 +1,4 @@
-from astroengine.domains import DomainResolver, ZODIAC_ELEMENT_MAP
+from astroengine.domains import ZODIAC_ELEMENT_MAP, DomainResolver
 
 
 def test_elements_triplicity_mapping():
