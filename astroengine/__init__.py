@@ -11,6 +11,7 @@ from .catalogs import (
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
 )
+from .chart import ChartConfig, VALID_HOUSE_SYSTEMS, VALID_ZODIAC_SYSTEMS
 from .core import (
     DOMAINS,
     ELEMENTS,
@@ -33,6 +34,14 @@ from .core import (
     profile_into_ctx,
     to_tt,
 )
+from .ephemeris import (
+    EphemerisAdapter,
+    EphemerisConfig,
+    EphemerisSample,
+    RefinementBracket,
+    RefinementError,
+    refine_event,
+)
 from .infrastructure.environment import (
     collect_environment_report,
 )
@@ -54,6 +63,7 @@ from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
 
 __all__ = [
     "__version__",
+    "ChartConfig",
     "TransitEvent",
     "TransitScanConfig",
     "TransitEngine",
@@ -73,6 +83,9 @@ __all__ = [
     "load_profile_json",
     "profile_into_ctx",
     "apply_profile_if_any",
+    "EphemerisAdapter",
+    "EphemerisConfig",
+    "EphemerisSample",
     "get_active_aspect_angles",
     "get_feature_flag",
     "maybe_attach_domain_fields",
@@ -89,11 +102,16 @@ __all__ = [
     "environment_report_main",
     "get_vca_aspect",
     "vca_orb_for",
+    "RefinementBracket",
+    "RefinementError",
+    "refine_event",
     "VCA_CORE_BODIES",
     "VCA_EXT_ASTEROIDS",
     "VCA_CENTAURS",
     "VCA_TNOS",
     "VCA_SENSITIVE_POINTS",
+    "VALID_ZODIAC_SYSTEMS",
+    "VALID_HOUSE_SYSTEMS",
 ]
 
 try:  # pragma: no cover - package metadata not available during tests
