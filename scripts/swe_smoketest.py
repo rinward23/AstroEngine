@@ -6,10 +6,10 @@ Swiss Ephemeris smoketest:
 - Lists major aspect hits (0/60/90/120/180) within default orbs
 - Finds ephemeris via SE_EPHE_PATH or common system dirs
 """
-import os
 import argparse
 import datetime as dt
-import itertools
+import os
+
 import swisseph as swe
 
 SIGNS = [
@@ -54,15 +54,17 @@ if not ephe:
 if ephe:
     swe.set_ephe_path(ephe)
 
+
 def jd_from_iso(s: str) -> float:
     s = s.replace("Z", "+00:00")
     t = dt.datetime.fromisoformat(s)
     if t.tzinfo is None:
-        t = t.replace(tzinfo=dt.timezone.utc)
+        t = t.replace(tzinfo=dt.UTC)
     else:
-        t = t.astimezone(dt.timezone.utc)
+        t = t.astimezone(dt.UTC)
     hour = t.hour + t.minute / 60 + t.second / 3600 + t.microsecond / 3.6e9
     return swe.julday(t.year, t.month, t.day, hour)
+
 
 def calc_lon_deg(jd: float, body: int) -> float:
     try:
@@ -71,6 +73,7 @@ def calc_lon_deg(jd: float, body: int) -> float:
         xx, _ = swe.calc_ut(jd, body, swe.FLG_MOSEPH)  # may not cover Node/Chiron
     return xx[0]  # longitude degrees
 
+
 def fmt_lon(lon: float) -> str:
     lon %= 360.0
     s = int(lon // 30)
@@ -78,12 +81,15 @@ def fmt_lon(lon: float) -> str:
     m = int((lon - (s * 30 + d)) * 60)
     return f"{SIGNS[s]} {d:02d}°{m:02d}′"
 
+
 def circ_delta(a: float, b: float) -> float:
     return abs((a - b + 180.0) % 360.0 - 180.0)
+
 
 def nearest_major_aspect(sep: float):
     best = min(((circ_delta(sep, a), a) for a in MAJORS), key=lambda x: x[0])
     return best[1], best[0]
+
 
 def orb_policy(a: str, b: str, angle: int) -> float:
     def bucket(n):
@@ -99,8 +105,9 @@ def orb_policy(a: str, b: str, angle: int) -> float:
 
     return min(bucket(a), bucket(b))
 
+
 def main():
-    now_utc = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+    now_utc = dt.datetime.now(dt.UTC).replace(microsecond=0)
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "--utc",
@@ -141,6 +148,7 @@ def main():
             print(line)
     else:
         print("(none within default orbs)")
+
 
 if __name__ == "__main__":
     main()
