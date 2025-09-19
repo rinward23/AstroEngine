@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
+from .providers import EphemerisProvider  # ENSURE-LINE
+from .providers import get_provider, list_providers  # ENSURE-LINE
+
 from .catalogs import (
     VCA_CENTAURS,
     VCA_CORE_BODIES,
