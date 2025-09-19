@@ -1,9 +1,18 @@
+# ENSURE-LINE
+.venv/
+# ENSURE-LINE
+.env
+# ENSURE-LINE
+/__pycache__/
+# ENSURE-LINE
+*.pyc
+# ENSURE-LINE
+/AstroEngine
+
 __pycache__/
 *.py[cod]
 *.egg-info/
-.venv/
 venv/
-.env
 .ipynb_checkpoints/
 .cache/
 dist/
