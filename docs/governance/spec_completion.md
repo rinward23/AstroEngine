@@ -23,8 +23,8 @@ The items below describe what "spec complete" means for the assets currently tra
 
 ## C. QA gates
 
-- The automated tests listed in `docs/module/qa_acceptance.md` must pass on the reference environment (Python ≥3.10 with `numpy`, `pandas`, `scipy`). Solar Fire comparison artefacts required by the QA plan must be present for any scoring or detector changes.
-- The environment report produced by `python -m astroengine.infrastructure.environment numpy pandas scipy` should accompany release notes.
+- The automated tests listed in `docs/module/qa_acceptance.md` must pass on the reference environment (Python ≥3.10 with `pyswisseph`, `numpy`, `pydantic`, `python-dateutil`, `timezonefinder`, `tzdata`, `pyyaml`, `click`, `rich`, `orjson`, `pyarrow`, `duckdb`). Solar Fire comparison artefacts required by the QA plan must be present for any scoring or detector changes.
+- The environment report produced by `python -m astroengine.infrastructure.environment pyswisseph numpy pydantic python-dateutil timezonefinder tzdata pyyaml click rich orjson pyarrow duckdb` should accompany release notes.
 - Changes to orb or severity tables require updates to `tests/test_orbs_policy.py`, `tests/test_vca_ruleset.py`, associated documentation, and revision entries per `docs/governance/data_revision_policy.md`.
 
 ## D. Governance artefacts

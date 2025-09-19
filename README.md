@@ -19,7 +19,9 @@ source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
 pip install -e .[dev]
 
 # Verify the Python environment without relying on Conda
-python -m astroengine.infrastructure.environment numpy pandas scipy
+python -m astroengine.infrastructure.environment \
+  pyswisseph numpy pydantic python-dateutil timezonefinder tzdata \
+  pyyaml click rich orjson pyarrow duckdb
 ```
 
 The package exposes a registry-based API for discovering datasets and

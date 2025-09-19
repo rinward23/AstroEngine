@@ -14,9 +14,10 @@ This plan documents the concrete release steps supported by the repository today
 
 | Extra | Dependencies | Purpose |
 | --- | --- | --- |
-| `dev` | `pytest`, `black`, `ruff` | Local development and CI tooling. |
+| `dev` | `pytest`, `pytest-cov`, `hypothesis`, `ruff`, `black`, `isort`, `mypy`, `pre-commit`, `mkdocs-material`, `mkdocs-gen-files` | Local development, typing, and documentation tooling. |
+| `optional` | `skyfield`, `fastapi`, `uvicorn`, `jinja2`, `numba`, `ics`, `pandas` | Optional runtime providers, web API surface, and export helpers. |
 
-The core package depends on `numpy`, `pandas`, and `scipy` as declared in `pyproject.toml`. Additional extras (e.g., provider-specific dependencies) should be added alongside documentation updates once implementations land.
+The core package depends on `pyswisseph`, `numpy`, `pydantic>=2`, `python-dateutil`, `timezonefinder`, `tzdata`, `pyyaml`, `click`, `rich`, `orjson`, `pyarrow`, and `duckdb` as declared in `pyproject.toml`. Additional extras (e.g., provider-specific dependencies) should be added alongside documentation updates once implementations land.
 
 ## Registry compatibility snapshot
 
@@ -31,7 +32,7 @@ When new modules are registered, update this table and the documentation in `doc
 ## Release checklist
 
 1. Ensure a clean environment by running the commands in `docs/ENV_SETUP.md`.
-2. Capture an environment report with `python -m astroengine.infrastructure.environment numpy pandas scipy`.
+2. Capture an environment report with `python -m astroengine.infrastructure.environment pyswisseph numpy pydantic python-dateutil timezonefinder tzdata pyyaml click rich orjson pyarrow duckdb`.
 3. Execute `pytest` and confirm all tests pass.
 4. Review the documentation updates in `docs/module/*.md`, `docs/governance/*.md`, and `docs/burndown.md` to make sure they reference real files. Note any schema or dataset edits in `docs/governance/data_revision_policy.md`.
 5. Verify Solar Fire comparison reports and dataset indexes referenced by the release (e.g., natal return tables, transit exports). Record the checksums in the release notes so future audits can reproduce the run.
