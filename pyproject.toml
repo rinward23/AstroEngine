@@ -13,16 +13,42 @@ authors = [
   {name = "AstroEngine Maintainers"}
 ]
 dependencies = [
+  "pyswisseph",
   "numpy",
-  "pandas",
-  "scipy",
+  "pydantic>=2",
+  "python-dateutil",
+  "timezonefinder",
+  "tzdata",
+  "pyyaml",
+  "click",
+  "rich",
+  "orjson",
+  "pyarrow",
+  "duckdb",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest",
-  "black",
+  "pytest-cov",
+  "hypothesis",
   "ruff",
+  "black",
+  "isort",
+  "mypy",
+  "pre-commit",
+  "mkdocs-material",
+  "mkdocs-gen-files",
+]
+
+optional = [
+  "skyfield",
+  "fastapi",
+  "uvicorn",
+  "jinja2",
+  "numba",
+  "ics",
+  "pandas",
 ]
 
 [tool.setuptools.packages.find]
