@@ -32,7 +32,9 @@ Extras must stay additive—no removal without governance approval. Update `pypr
 | `ruleset_dsl` | `compiler` | `linter` | `all` | `n/a` | `json.lint_report` |
 | `data-packs` | `fixed_stars` | `bright_list_v1` | `all` | `n/a` | `n/a` |
 
-Future modules append rows; existing rows remain immutable to prove no module loss.
+Future modules should continue to respect module integrity, but rows may be
+edited when necessary as long as the change is logged per the
+[Data Revision Policy](../governance/data_revision_policy.md).
 
 ## Docker Strategy
 

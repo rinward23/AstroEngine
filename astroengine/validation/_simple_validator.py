@@ -101,9 +101,7 @@ class SimpleValidator:
                 return
             min_items = schema.get("minItems")
             if min_items is not None and len(value) < min_items:
-                yield SimpleValidationError(
-                    path, f"Expected at least {min_items} items"
-                )
+                yield SimpleValidationError(path, f"Expected at least {min_items} items")
             item_schema = schema.get("items")
             if item_schema:
                 for idx, item in enumerate(value):

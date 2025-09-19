@@ -165,7 +165,10 @@ class AstroRegistry:
 
         snapshot: dict[str, Mapping[str, object]] = {}
         for module_name, module in self._modules.items():
-            module_payload: dict[str, object] = {"metadata": dict(module.metadata), "submodules": {}}
+            module_payload: dict[str, object] = {
+                "metadata": dict(module.metadata),
+                "submodules": {},
+            }
             for submodule_name, submodule in module.submodules.items():
                 submodule_payload: dict[str, object] = {
                     "metadata": dict(submodule.metadata),

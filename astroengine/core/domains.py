@@ -18,46 +18,46 @@ DOMAINS: tuple[str, str, str] = ("MIND", "BODY", "SPIRIT")
 
 # Zodiac (0=Aries ... 11=Pisces) → Element
 ZODIAC_ELEMENT_MAP: tuple[str, ...] = (
-    "FIRE",   # 0 Aries
+    "FIRE",  # 0 Aries
     "EARTH",  # 1 Taurus
-    "AIR",    # 2 Gemini
+    "AIR",  # 2 Gemini
     "WATER",  # 3 Cancer
-    "FIRE",   # 4 Leo
+    "FIRE",  # 4 Leo
     "EARTH",  # 5 Virgo
-    "AIR",    # 6 Libra
+    "AIR",  # 6 Libra
     "WATER",  # 7 Scorpio
-    "FIRE",   # 8 Sagittarius
+    "FIRE",  # 8 Sagittarius
     "EARTH",  # 9 Capricorn
-    "AIR",    # 10 Aquarius
+    "AIR",  # 10 Aquarius
     "WATER",  # 11 Pisces
 )
 
 # Planet → default Domain weights (VCA-ish sensible defaults; overridable by profiles)
 # Keys use engine’s canonical planet ids: sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto, north_node, south_node, chiron
 DEFAULT_PLANET_DOMAIN_WEIGHTS: Mapping[str, Mapping[str, float]] = {
-    "sun":     {"SPIRIT": 1.0, "MIND": 0.25, "BODY": 0.25},
-    "moon":    {"BODY": 1.0,   "MIND": 0.25},
+    "sun": {"SPIRIT": 1.0, "MIND": 0.25, "BODY": 0.25},
+    "moon": {"BODY": 1.0, "MIND": 0.25},
     "mercury": {"MIND": 1.0},
-    "venus":   {"BODY": 0.6,   "SPIRIT": 0.4},
-    "mars":    {"BODY": 1.0,   "SPIRIT": 0.3},
+    "venus": {"BODY": 0.6, "SPIRIT": 0.4},
+    "mars": {"BODY": 1.0, "SPIRIT": 0.3},
     "jupiter": {"SPIRIT": 1.0, "MIND": 0.4},
-    "saturn":  {"BODY": 0.7,   "MIND": 0.5},
-    "uranus":  {"MIND": 0.9,   "SPIRIT": 0.4},
+    "saturn": {"BODY": 0.7, "MIND": 0.5},
+    "uranus": {"MIND": 0.9, "SPIRIT": 0.4},
     "neptune": {"SPIRIT": 1.0},
-    "pluto":   {"SPIRIT": 0.7, "BODY": 0.7},
+    "pluto": {"SPIRIT": 0.7, "BODY": 0.7},
     "north_node": {"SPIRIT": 0.8, "MIND": 0.4},
     "south_node": {"SPIRIT": 0.8, "BODY": 0.4},
-    "chiron":  {"BODY": 0.8,   "SPIRIT": 0.5},
+    "chiron": {"BODY": 0.8, "SPIRIT": 0.5},
 }
 
 # House index (1..12) → Domain weights (kept light; debated houses marked TODO for profiles)
 DEFAULT_HOUSE_DOMAIN_WEIGHTS: Mapping[int, Mapping[str, float]] = {
-    1: {"BODY": 1.0},             # Vitality, soma
+    1: {"BODY": 1.0},  # Vitality, soma
     2: {"BODY": 0.7, "MIND": 0.3},
-    3: {"MIND": 1.0},             # Communication
+    3: {"MIND": 1.0},  # Communication
     4: {"BODY": 0.6, "SPIRIT": 0.4},
     5: {"SPIRIT": 0.9, "BODY": 0.3},
-    6: {"BODY": 1.0},             # Health/routines
+    6: {"BODY": 1.0},  # Health/routines
     7: {"MIND": 0.6, "SPIRIT": 0.4},
     8: {"SPIRIT": 0.9, "BODY": 0.4},
     9: {"SPIRIT": 0.9, "MIND": 0.6},
@@ -69,8 +69,8 @@ DEFAULT_HOUSE_DOMAIN_WEIGHTS: Mapping[int, Mapping[str, float]] = {
 
 @dataclass(frozen=True)
 class DomainResolution:
-    elements: list[str]            # e.g., ["FIRE"] (sign-derived)
-    domains: dict[str, float]      # merged weights {"MIND": w, ...}
+    elements: list[str]  # e.g., ["FIRE"] (sign-derived)
+    domains: dict[str, float]  # merged weights {"MIND": w, ...}
 
 
 class DomainResolver:
@@ -132,7 +132,9 @@ def natal_domain_factor(
 
     try:
         resolver = DomainResolver()
-        resolution = resolver.resolve(sign_index=sign_index, planet_key=planet_key, house_index=house_index)
+        resolution = resolver.resolve(
+            sign_index=sign_index, planet_key=planet_key, house_index=house_index
+        )
     except Exception:
         return 1.0
     from .scoring import compute_domain_factor

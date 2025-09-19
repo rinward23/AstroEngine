@@ -12,8 +12,14 @@ from .engine import apply_profile_if_any, maybe_attach_domain_fields
 
 
 def _add_domain_args(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--emit-domains", action="store_true", help="Include elements/domains on each TransitEvent.")
-    p.add_argument("--domain-profile", default="vca_neutral", help="Domain profile key (see VCA_DOMAIN_PROFILES).")
+    p.add_argument(
+        "--emit-domains", action="store_true", help="Include elements/domains on each TransitEvent."
+    )
+    p.add_argument(
+        "--domain-profile",
+        default="vca_neutral",
+        help="Domain profile key (see VCA_DOMAIN_PROFILES).",
+    )
     p.add_argument(
         "--domain-scorer",
         default="weighted",
@@ -34,13 +40,19 @@ def _add_profile_args(p: argparse.ArgumentParser) -> None:
 
 def _add_ruleset_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--ruleset", default="vca_core", help="Aspect ruleset id (default: vca_core)")
-    p.add_argument("--no-declination", action="store_true", help="Disable declination aspects (parallel/contra-parallel)")
+    p.add_argument(
+        "--no-declination",
+        action="store_true",
+        help="Disable declination aspects (parallel/contra-parallel)",
+    )
     p.add_argument("--no-mirrors", action="store_true", help="Disable antiscia/contra-antiscia")
     p.add_argument("--no-harmonics", action="store_true", help="Disable harmonic-derived aspects")
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="astroengine", description="AstroEngine command line interface")
+    parser = argparse.ArgumentParser(
+        prog="astroengine", description="AstroEngine command line interface"
+    )
     _add_profile_args(parser)
     _add_domain_args(parser)
     _add_ruleset_args(parser)

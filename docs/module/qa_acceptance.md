@@ -19,7 +19,7 @@ This document defines the QA controls required before marking the specification 
 
 | Property | Test file | Description | Data source |
 | -------- | --------- | ----------- | ----------- |
-| Angular wrapping | `tests/property/test_transit_symmetry.py::test_longitude_wrapping` | Ensures Δλ remains continuous across 0°/360° | Solar Fire aspect series | 
+| Angular wrapping | `tests/property/test_transit_symmetry.py::test_longitude_wrapping` | Ensures Δλ remains continuous across 0°/360° | Solar Fire aspect series |
 | Severity symmetry | `tests/property/test_transit_symmetry.py::test_severity_symmetry` | Applying vs separating produce mirrored scores | Solar Fire severity table |
 | Declination parity | `tests/property/test_declination_parity.py` | Parallel and contra-parallel produce equal magnitude opposite sign | FK6 declination aspects |
 | Midpoint invariants | `tests/property/test_midpoint_invariants.py` | Midpoint longitudes remain consistent across wrap boundaries | Solar Fire midpoint exports |

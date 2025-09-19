@@ -30,8 +30,11 @@ rulesets.  See `astroengine/modules` for details.
 ## Schemas
 
 All JSON schema payloads live under [`./schemas`](./schemas).  They are
-kept outside the Python package namespace to honour the append-only data
-workflow.
+kept outside the Python package namespace so versioned edits can happen
+without risking accidental module loss.  When a schema needs to change,
+update the existing file with a new `revision` entry (see
+[`docs/governance/data_revision_policy.md`](docs/governance/data_revision_policy.md))
+instead of cloning the entire document into a new append-only record.
 
 > **Schema registry keys**
 > - `result_v1` → `schemas/result_schema_v1.json`
@@ -66,3 +69,28 @@ pytest
 
 Schema validation helpers reside in `astroengine/validation` and operate
 on the JSON documents stored in `./schemas`.
+
+---
+
+## Contribution workflow
+
+Follow the [branch hygiene guide](docs/governance/branching_policy.md) to keep
+pull requests conflict-free. In summary:
+
+- Start each feature branch from the latest `main`, keep it short-lived, and
+  rebase before opening or updating a pull request.
+- Scope documentation and dataset changes by module/submodule/channel to respect
+  the repository hierarchy and avoid accidental module removals.
+- Install the developer extras and run `black`, `ruff --fix`, and `pytest`
+  locally (or via `pre-commit run --all-files`) before pushing.
+
+Install the repo’s pre-commit hooks once per clone to enforce formatting and
+baseline hygiene automatically:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+These hooks run Black, Ruff, and whitespace fixers using the configuration in
+`.pre-commit-config.yaml`.
