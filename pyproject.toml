@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astroengine"
+version = "0.2.0"
+description = "Astrology engine runtimes and schema contracts"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Proprietary"}
+authors = [
+  {name = "AstroEngine Maintainers"}
+]
+dependencies = [
+  "numpy",
+  "pandas",
+  "scipy",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "black",
+  "ruff",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["astroengine*"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.black]
+target-version = ["py311"]
+line-length = 100
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.isort]
+known-first-party = ["astroengine"]

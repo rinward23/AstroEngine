@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
-from .api import TransitEvent, TransitScanConfig
 from .catalogs import (
     VCA_CENTAURS,
     VCA_CORE_BODIES,
@@ -12,25 +11,39 @@ from .catalogs import (
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
 )
-from .config import load_profile_json, profile_into_ctx
-from .domains import (
+from .core import (
     DOMAINS,
     ELEMENTS,
     ZODIAC_ELEMENT_MAP,
     DomainResolution,
     DomainResolver,
-    natal_domain_factor,
-)
-from .engine import (
+    TransitEvent,
+    TransitScanConfig,
     apply_profile_if_any,
+    compute_domain_factor,
     get_active_aspect_angles,
     get_feature_flag,
+    load_profile_json,
     maybe_attach_domain_fields,
+    natal_domain_factor,
+    profile_into_ctx,
 )
+from .infrastructure.environment import (
+    collect_environment_report,
+    main as environment_report_main,
+)
+from .modules import (
+    DEFAULT_REGISTRY,
+    AstroChannel,
+    AstroModule,
+    AstroRegistry,
+    AstroSubchannel,
+    AstroSubmodule,
+    bootstrap_default_registry,
+)
+from .modules.vca import serialize_vca_ruleset
 from .profiles import DomainScoringProfile, VCA_DOMAIN_PROFILES
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
-from .scoring import compute_domain_factor
-from .doctor_conda import main as conda_doctor_main  # ENSURE-LINE
 
 __all__ = [
     "__version__",
@@ -52,6 +65,16 @@ __all__ = [
     "get_feature_flag",
     "maybe_attach_domain_fields",
     "VCA_RULESET",
+    "serialize_vca_ruleset",
+    "bootstrap_default_registry",
+    "DEFAULT_REGISTRY",
+    "AstroRegistry",
+    "AstroModule",
+    "AstroSubmodule",
+    "AstroChannel",
+    "AstroSubchannel",
+    "collect_environment_report",
+    "environment_report_main",
     "get_vca_aspect",
     "vca_orb_for",
     "VCA_CORE_BODIES",
@@ -59,7 +82,6 @@ __all__ = [
     "VCA_CENTAURS",
     "VCA_TNOS",
     "VCA_SENSITIVE_POINTS",
-    "conda_doctor_main",
 ]
 
 try:  # pragma: no cover - package metadata not available during tests
