@@ -80,6 +80,12 @@ The JSON document in `schemas/orbs_policy.json` mirrors the major aspect familie
 | Uranus | 0.80 | Surprise events weighted modestly |
 | Neptune | 0.75 | Diffuse influence |
 | Pluto | 0.85 | Long-term pressure |
+| Ceres | 0.60 | Supportive overlays without dominating the score |
+| Pallas | 0.55 | Treated as a supplemental trigger |
+| Juno | 0.55 | Same weighting as other partnership asteroids |
+| Vesta | 0.55 | Keeps ritual/service themes proportional |
+| Eris | 0.65 | Allows disruptive contacts without overpowering majors |
+| Sedna | 0.60 | Reserved for deep background transits |
 
 The dignity table (`profiles/dignities.csv`) lists the rulership/fall/triplicity modifiers that feed additional severity multipliers (e.g., benefic/malefic adjustments, essential dignity bonuses). Fixed-star bonuses originate from `profiles/fixed_stars.csv`, which includes longitude/declination positions, magnitudes, and default orbs for each entry.
 

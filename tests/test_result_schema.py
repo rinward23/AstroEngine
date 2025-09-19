@@ -12,10 +12,10 @@ def _valid_result_payload() -> dict:
         "schema": {"id": "astroengine.result", "version": "v1.0.0"},
         "run": {
             "id": "RUN-AB12CD",
-            "profile": "AP-SUPER",
+            "profile": "base",
             "generated_at": "2025-09-03T12:00:00Z",
-            "engine_version": "2025.9",
-            "ruleset_version": "v2.18.13",
+            "engine_version": "0.2.0",
+            "ruleset_version": "2025-09-03",
             "seed": 42,
             "timezone": "America/New_York",
         },

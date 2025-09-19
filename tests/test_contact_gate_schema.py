@@ -13,8 +13,8 @@ def _valid_gate_payload() -> dict:
         "run": {
             "id": "RUN-XY34ZT",
             "generated_at": "2025-09-03T12:05:00Z",
-            "profile": "AP-SUPER",
-            "ruleset_version": "v2.18.13",
+            "profile": "base",
+            "ruleset_version": "2025-09-03",
         },
         "gates": [
             {
