@@ -1,17 +1,14 @@
+# >>> AUTO-GEN BEGIN: AstroEngine Conda Env v1.0
 name: astroengine
-channels:
-  - conda-forge
+channels: [conda-forge]
 dependencies:
-  - python=3.11.*
+  - python=3.11
   - pip
-  - numpy=1.26.4
-  - pandas=2.2.2
-  - scipy=1.13.1
-  - python-dateutil=2.9.0post0
-  - pytz=2024.1
-  - click=8.1.7
-  - rich=13.7.1
-  - pytest=8.2.2
   - pip:
-      - pyswisseph==2.10.3.2
-      - PyYAML==6.0.2
+      - -e .
+      - .[api]
+      - .[charts]
+      - .[locational]
+      - .[fallback-ephemeris]
+      - .[dev]
+# >>> AUTO-GEN END: AstroEngine Conda Env v1.0

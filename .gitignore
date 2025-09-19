@@ -1,26 +1,17 @@
-# ENSURE-LINE
-.venv/
-# ENSURE-LINE
-.env
-# ENSURE-LINE
-/__pycache__/
-# ENSURE-LINE
-*.pyc
-# ENSURE-LINE
-/AstroEngine
+# >>> AUTO-GEN BEGIN: AstroEngine Gitignore v1.0
 
-__pycache__/
-*.py[cod]
-*.egg-info/
-venv/
-.ipynb_checkpoints/
-.cache/
-dist/
-build/
+.venv/
+.env
+**pycache**/
 .pytest_cache/
-/pycache/
-*.pyc
-/site/
 .mypy_cache/
-/.ruff_cache/
-/.pytest_cache/
+.ruff_cache/
+.idea/
+.vscode/
+.DS_Store
+build/
+dist/
+*.parquet
+*.sqlite
+
+# >>> AUTO-GEN END: AstroEngine Gitignore v1.0
