@@ -11,7 +11,7 @@ from .catalogs import (
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
 )
-from .chart import ChartConfig, VALID_HOUSE_SYSTEMS, VALID_ZODIAC_SYSTEMS
+
 from .core import (
     DOMAINS,
     ELEMENTS,
@@ -42,12 +42,9 @@ from .ephemeris import (
     RefinementError,
     refine_event,
 )
-from .infrastructure.environment import (
-    collect_environment_report,
-)
-from .infrastructure.environment import (
-    main as environment_report_main,
-)
+from .ephemeris import SwissEphemerisAdapter
+from .infrastructure.environment import collect_environment_report
+from .infrastructure.environment import main as environment_report_main
 from .modules import (
     DEFAULT_REGISTRY,
     AstroChannel,
@@ -58,16 +55,25 @@ from .modules import (
     bootstrap_default_registry,
 )
 from .modules.vca import serialize_vca_ruleset
-from .profiles import VCA_DOMAIN_PROFILES, DomainScoringProfile
+from .profiles import (
+    VCA_DOMAIN_PROFILES,
+    DomainScoringProfile,
+    load_base_profile,
+    load_vca_outline,
+)
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
+from .scoring import (
+    DEFAULT_ASPECTS,
+    OrbCalculator,
+    load_dignities,
+    lookup_dignities,
+)
 
 __all__ = [
     "__version__",
     "ChartConfig",
     "TransitEvent",
     "TransitScanConfig",
-    "TransitEngine",
-    "to_tt",
     "DomainResolver",
     "DomainResolution",
     "ELEMENTS",
@@ -98,13 +104,11 @@ __all__ = [
     "AstroSubmodule",
     "AstroChannel",
     "AstroSubchannel",
+    "SwissEphemerisAdapter",
     "collect_environment_report",
     "environment_report_main",
     "get_vca_aspect",
     "vca_orb_for",
-    "RefinementBracket",
-    "RefinementError",
-    "refine_event",
     "VCA_CORE_BODIES",
     "VCA_EXT_ASTEROIDS",
     "VCA_CENTAURS",

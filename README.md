@@ -18,17 +18,7 @@ source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
 # Install AstroEngine and optional developer tooling via the Makefile helper
 make env
 
-# Verify the Python environment and ephemeris setup
-make preflight
 
-# Optionally exercise the Swiss Ephemeris smoke test for data sanity
-make smoke
-
-# Generate a sample transit report (Mars conjunct natal Venus)
-python -m astroengine.cli transits \
-  --target-longitude 240.9623186447056 \
-  --start 2025-10-20T00:00:00Z \
-  --end 2025-11-20T00:00:00Z
 ```
 
 ````
@@ -115,11 +105,19 @@ instead of cloning the entire document into a new append-only record.
 
 - `astroengine/core` — fundamental runtime helpers (domains, scoring,
   transit event dataclasses).
+- `astroengine/ephemeris` — Swiss Ephemeris adapter emitting deterministic
+  position/house payloads for chart modules.
+- `astroengine/chart` — natal and transit calculators that lean on the
+  Swiss adapter and orb policy to stay deterministic.
 - `astroengine/modules` — registry classes for organising datasets.
 - `astroengine/modules/vca` — bundled Venus Cycle Analytics assets
   registered under module/submodule/channel/subchannel nodes.
 - `astroengine/infrastructure` — environment diagnostics and other
   operational utilities.
+
+The transit/natal calculators ship with golden regression tests covering
+three Solar Fire reference charts so future changes stay anchored to real
+ephemeris data.
 
 The default registry can be inspected by importing
 `astroengine.DEFAULT_REGISTRY` or calling
