@@ -9,3 +9,9 @@ venv/
 dist/
 build/
 .pytest_cache/
+/pycache/
+*.pyc
+/site/
+.mypy_cache/
+/.ruff_cache/
+/.pytest_cache/

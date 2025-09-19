@@ -1,0 +1,15 @@
+# >>> AUTO-GEN BEGIN: Core Runtime Requirements v1.0
+# Core runtime (engine + CLI + export)
+pyswisseph
+numpy
+pydantic>=2
+python-dateutil
+timezonefinder
+tzdata
+pyyaml
+click
+rich
+orjson
+pyarrow
+duckdb
+# >>> AUTO-GEN END: Core Runtime Requirements v1.0

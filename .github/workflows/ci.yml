@@ -1,0 +1,36 @@
+# >>> AUTO-GEN BEGIN: CI Lint & Test v1.0
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt -r dev-requirements.txt
+      - name: Install optional deps (non-fatal)
+        continue-on-error: true
+        run: |
+          pip install -r requirements-optional.txt
+      - name: Install Swiss data
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y swe-data
+          echo "SE_EPHE_PATH=/usr/share/sweph" >> $GITHUB_ENV
+      - name: Lint
+        run: |
+          ruff check .
+          black --check .
+          isort --check-only .
+          mypy .
+      - name: Tests
+        run: pytest -q
+# >>> AUTO-GEN END: CI Lint & Test v1.0
