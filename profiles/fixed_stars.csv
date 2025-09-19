@@ -1,0 +1,15 @@
+star_id,name,ra_deg,dec_deg,ecliptic_longitude_deg,epoch,magnitude,orb_default_deg,orb_mag_le_1_deg,provenance
+alf_Tau,Aldebaran,68.9800,16.5093,69.9710,J2000,0.87,0.333,0.1667,Hipparcos Catalog 2007
+alf_Leo,Regulus,152.0929,11.9672,150.0633,J2000,1.35,0.333,0.1667,Hipparcos Catalog 2007
+alf_Vir,Spica,201.2983,-11.1614,204.0511,J2000,0.97,0.333,0.1667,Hipparcos Catalog 2007
+alf_Sco,Antares,247.3519,-26.4320,249.0769,J2000,0.96,0.333,0.1667,Hipparcos Catalog 2007
+alf_CMa,Sirius,101.2875,-16.7161,104.0533,J2000,-1.46,0.333,0.1000,Hipparcos Catalog 2007
+alf_Lyr,Vega,279.2347,38.7837,285.0454,J2000,0.03,0.333,0.1200,Hipparcos Catalog 2007
+alf_Aql,Altair,297.6958,8.8683,301.1261,J2000,0.76,0.333,0.1667,Hipparcos Catalog 2007
+alf_Cep,Alderamin,343.1536,62.5856,346.6212,J2000,2.45,0.333,0.1667,Hipparcos Catalog 2007
+alf_Car,Canopus,95.9879,-52.6957,95.0754,J2000,-0.72,0.333,0.1200,Hipparcos Catalog 2007
+bet_Gem,Pollux,116.3298,28.0262,113.3720,J2000,1.14,0.333,0.1667,Hipparcos Catalog 2007
+alf_PsA,Fomalhaut,344.4128,-29.6222,345.8481,J2000,1.16,0.333,0.1667,Hipparcos Catalog 2007
+alf_Cas,Schedar,10.1260,56.5373,16.3452,J2000,2.24,0.333,0.1667,Hipparcos Catalog 2007
+bet_Orionis,Rigel,78.6345,-8.2016,78.0402,J2000,0.18,0.333,0.1200,Hipparcos Catalog 2007
+bet_And,Mirach,17.4333,35.6206,20.0297,J2000,2.05,0.333,0.1667,Hipparcos Catalog 2007

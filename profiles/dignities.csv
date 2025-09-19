@@ -1,0 +1,175 @@
+planet,sign,dignity_type,sect,start_deg,end_deg,modifier,source
+sun,leo,rulership,neutral,,,1.10,Skyscript Rulership Tables
+moon,cancer,rulership,neutral,,,1.10,Skyscript Rulership Tables
+mercury,gemini,rulership,neutral,,,1.10,Skyscript Rulership Tables
+mercury,virgo,rulership,neutral,,,1.10,Skyscript Rulership Tables
+venus,taurus,rulership,neutral,,,1.10,Skyscript Rulership Tables
+venus,libra,rulership,neutral,,,1.10,Skyscript Rulership Tables
+mars,aries,rulership,neutral,,,1.10,Skyscript Rulership Tables
+mars,scorpio,rulership,neutral,,,1.10,Skyscript Rulership Tables
+jupiter,sagittarius,rulership,neutral,,,1.10,Skyscript Rulership Tables
+jupiter,pisces,rulership,neutral,,,1.10,Skyscript Rulership Tables
+saturn,capricorn,rulership,neutral,,,1.10,Skyscript Rulership Tables
+saturn,aquarius,rulership,neutral,,,1.10,Skyscript Rulership Tables
+sun,aquarius,detriment,neutral,,,0.90,Skyscript Rulership Tables
+sun,libra,detriment,neutral,,,0.90,Skyscript Rulership Tables
+moon,capricorn,detriment,neutral,,,0.90,Skyscript Rulership Tables
+moon,scorpio,detriment,neutral,,,0.90,Skyscript Rulership Tables
+mercury,sagittarius,detriment,neutral,,,0.90,Skyscript Rulership Tables
+mercury,pisces,detriment,neutral,,,0.90,Skyscript Rulership Tables
+venus,aries,detriment,neutral,,,0.90,Skyscript Rulership Tables
+venus,scorpio,detriment,neutral,,,0.90,Skyscript Rulership Tables
+mars,taurus,detriment,neutral,,,0.90,Skyscript Rulership Tables
+mars,libra,detriment,neutral,,,0.90,Skyscript Rulership Tables
+jupiter,gemini,detriment,neutral,,,0.90,Skyscript Rulership Tables
+jupiter,virgo,detriment,neutral,,,0.90,Skyscript Rulership Tables
+saturn,cancer,detriment,neutral,,,0.90,Skyscript Rulership Tables
+saturn,leo,detriment,neutral,,,0.90,Skyscript Rulership Tables
+sun,aries,exaltation,neutral,,,1.05,Skyscript Essential Dignities
+moon,taurus,exaltation,neutral,,,1.05,Skyscript Essential Dignities
+mercury,virgo,exaltation,neutral,,,1.05,Skyscript Essential Dignities
+venus,pisces,exaltation,neutral,,,1.05,Skyscript Essential Dignities
+mars,capricorn,exaltation,neutral,,,1.05,Skyscript Essential Dignities
+jupiter,cancer,exaltation,neutral,,,1.05,Skyscript Essential Dignities
+saturn,libra,exaltation,neutral,,,1.05,Skyscript Essential Dignities
+sun,libra,fall,neutral,,,0.90,Skyscript Essential Dignities
+moon,scorpio,fall,neutral,,,0.90,Skyscript Essential Dignities
+mercury,pisces,fall,neutral,,,0.90,Skyscript Essential Dignities
+venus,virgo,fall,neutral,,,0.90,Skyscript Essential Dignities
+mars,cancer,fall,neutral,,,0.90,Skyscript Essential Dignities
+jupiter,capricorn,fall,neutral,,,0.90,Skyscript Essential Dignities
+saturn,aries,fall,neutral,,,0.90,Skyscript Essential Dignities
+sun,aries,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+sun,leo,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+sun,sagittarius,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+jupiter,aries,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+jupiter,leo,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+jupiter,sagittarius,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+saturn,aries,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+saturn,leo,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+saturn,sagittarius,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+venus,taurus,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+venus,virgo,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+venus,capricorn,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+moon,taurus,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+moon,virgo,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+moon,capricorn,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+mars,taurus,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+mars,virgo,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+mars,capricorn,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+saturn,gemini,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+saturn,libra,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+saturn,aquarius,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+mercury,gemini,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+mercury,libra,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+mercury,aquarius,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+jupiter,gemini,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+jupiter,libra,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+jupiter,aquarius,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+venus,cancer,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+venus,scorpio,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+venus,pisces,triplicity_day,day,,,1.05,Dorothean Triplicity Rulers
+mars,cancer,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+mars,scorpio,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+mars,pisces,triplicity_night,night,,,1.05,Dorothean Triplicity Rulers
+moon,cancer,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+moon,scorpio,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+moon,pisces,triplicity_participating,neutral,,,1.02,Dorothean Triplicity Rulers
+jupiter,aries,bounds_egyptian,neutral,0,6,1.03,Skyscript Egyptian Terms
+venus,aries,bounds_egyptian,neutral,6,14,1.02,Skyscript Egyptian Terms
+mercury,aries,bounds_egyptian,neutral,14,21,1.02,Skyscript Egyptian Terms
+mars,aries,bounds_egyptian,neutral,21,26,1.05,Skyscript Egyptian Terms
+saturn,aries,bounds_egyptian,neutral,26,30,0.97,Skyscript Egyptian Terms
+venus,taurus,bounds_egyptian,neutral,0,8,1.03,Skyscript Egyptian Terms
+mercury,taurus,bounds_egyptian,neutral,8,15,1.02,Skyscript Egyptian Terms
+jupiter,taurus,bounds_egyptian,neutral,15,22,1.03,Skyscript Egyptian Terms
+saturn,taurus,bounds_egyptian,neutral,22,27,0.97,Skyscript Egyptian Terms
+mars,taurus,bounds_egyptian,neutral,27,30,0.97,Skyscript Egyptian Terms
+mercury,gemini,bounds_egyptian,neutral,0,7,1.02,Skyscript Egyptian Terms
+jupiter,gemini,bounds_egyptian,neutral,7,14,1.03,Skyscript Egyptian Terms
+venus,gemini,bounds_egyptian,neutral,14,21,1.02,Skyscript Egyptian Terms
+saturn,gemini,bounds_egyptian,neutral,21,26,0.97,Skyscript Egyptian Terms
+mars,gemini,bounds_egyptian,neutral,26,30,0.97,Skyscript Egyptian Terms
+moon,cancer,bounds_egyptian,neutral,0,7,1.05,Skyscript Egyptian Terms
+venus,cancer,bounds_egyptian,neutral,7,13,1.03,Skyscript Egyptian Terms
+mercury,cancer,bounds_egyptian,neutral,13,19,1.02,Skyscript Egyptian Terms
+jupiter,cancer,bounds_egyptian,neutral,19,26,1.03,Skyscript Egyptian Terms
+mars,cancer,bounds_egyptian,neutral,26,30,0.97,Skyscript Egyptian Terms
+saturn,leo,bounds_egyptian,neutral,0,6,0.97,Skyscript Egyptian Terms
+mercury,leo,bounds_egyptian,neutral,6,13,1.02,Skyscript Egyptian Terms
+venus,leo,bounds_egyptian,neutral,13,20,1.03,Skyscript Egyptian Terms
+jupiter,leo,bounds_egyptian,neutral,20,26,1.03,Skyscript Egyptian Terms
+mars,leo,bounds_egyptian,neutral,26,30,1.05,Skyscript Egyptian Terms
+mercury,virgo,bounds_egyptian,neutral,0,7,1.02,Skyscript Egyptian Terms
+venus,virgo,bounds_egyptian,neutral,7,13,1.03,Skyscript Egyptian Terms
+jupiter,virgo,bounds_egyptian,neutral,13,17,1.02,Skyscript Egyptian Terms
+mercury,virgo,bounds_egyptian,neutral,17,21,1.02,Skyscript Egyptian Terms
+saturn,virgo,bounds_egyptian,neutral,21,24,0.97,Skyscript Egyptian Terms
+venus,virgo,bounds_egyptian,neutral,24,27,1.03,Skyscript Egyptian Terms
+mercury,virgo,bounds_egyptian,neutral,27,30,1.02,Skyscript Egyptian Terms
+saturn,libra,bounds_egyptian,neutral,0,6,0.97,Skyscript Egyptian Terms
+mercury,libra,bounds_egyptian,neutral,6,14,1.02,Skyscript Egyptian Terms
+jupiter,libra,bounds_egyptian,neutral,14,21,1.03,Skyscript Egyptian Terms
+venus,libra,bounds_egyptian,neutral,21,28,1.05,Skyscript Egyptian Terms
+mars,libra,bounds_egyptian,neutral,28,30,0.97,Skyscript Egyptian Terms
+mars,scorpio,bounds_egyptian,neutral,0,7,1.05,Skyscript Egyptian Terms
+venus,scorpio,bounds_egyptian,neutral,7,13,1.03,Skyscript Egyptian Terms
+mercury,scorpio,bounds_egyptian,neutral,13,19,1.02,Skyscript Egyptian Terms
+jupiter,scorpio,bounds_egyptian,neutral,19,24,1.03,Skyscript Egyptian Terms
+saturn,scorpio,bounds_egyptian,neutral,24,30,0.97,Skyscript Egyptian Terms
+jupiter,sagittarius,bounds_egyptian,neutral,0,12,1.03,Skyscript Egyptian Terms
+venus,sagittarius,bounds_egyptian,neutral,12,17,1.03,Skyscript Egyptian Terms
+mercury,sagittarius,bounds_egyptian,neutral,17,21,1.02,Skyscript Egyptian Terms
+saturn,sagittarius,bounds_egyptian,neutral,21,26,0.97,Skyscript Egyptian Terms
+mars,sagittarius,bounds_egyptian,neutral,26,30,1.05,Skyscript Egyptian Terms
+mercury,capricorn,bounds_egyptian,neutral,0,7,1.02,Skyscript Egyptian Terms
+jupiter,capricorn,bounds_egyptian,neutral,7,14,1.03,Skyscript Egyptian Terms
+venus,capricorn,bounds_egyptian,neutral,14,22,1.03,Skyscript Egyptian Terms
+saturn,capricorn,bounds_egyptian,neutral,22,26,1.05,Skyscript Egyptian Terms
+mercury,capricorn,bounds_egyptian,neutral,26,30,1.02,Skyscript Egyptian Terms
+saturn,aquarius,bounds_egyptian,neutral,0,7,1.05,Skyscript Egyptian Terms
+mercury,aquarius,bounds_egyptian,neutral,7,13,1.02,Skyscript Egyptian Terms
+venus,aquarius,bounds_egyptian,neutral,13,20,1.03,Skyscript Egyptian Terms
+mercury,aquarius,bounds_egyptian,neutral,20,25,1.02,Skyscript Egyptian Terms
+moon,aquarius,bounds_egyptian,neutral,25,30,1.05,Skyscript Egyptian Terms
+venus,pisces,bounds_egyptian,neutral,0,12,1.03,Skyscript Egyptian Terms
+jupiter,pisces,bounds_egyptian,neutral,12,19,1.03,Skyscript Egyptian Terms
+mercury,pisces,bounds_egyptian,neutral,19,24,1.02,Skyscript Egyptian Terms
+venus,pisces,bounds_egyptian,neutral,24,27,1.03,Skyscript Egyptian Terms
+mercury,pisces,bounds_egyptian,neutral,27,30,1.02,Skyscript Egyptian Terms
+mars,aries,decans_chaldean,neutral,0,10,1.05,Chaldean Decans
+sun,aries,decans_chaldean,neutral,10,20,1.05,Chaldean Decans
+venus,aries,decans_chaldean,neutral,20,30,1.03,Chaldean Decans
+mercury,taurus,decans_chaldean,neutral,0,10,1.02,Chaldean Decans
+moon,taurus,decans_chaldean,neutral,10,20,1.05,Chaldean Decans
+saturn,taurus,decans_chaldean,neutral,20,30,0.97,Chaldean Decans
+jupiter,gemini,decans_chaldean,neutral,0,10,1.03,Chaldean Decans
+mars,gemini,decans_chaldean,neutral,10,20,1.05,Chaldean Decans
+sun,gemini,decans_chaldean,neutral,20,30,1.05,Chaldean Decans
+venus,cancer,decans_chaldean,neutral,0,10,1.03,Chaldean Decans
+mercury,cancer,decans_chaldean,neutral,10,20,1.02,Chaldean Decans
+moon,cancer,decans_chaldean,neutral,20,30,1.05,Chaldean Decans
+jupiter,leo,decans_chaldean,neutral,0,10,1.03,Chaldean Decans
+venus,leo,decans_chaldean,neutral,10,20,1.03,Chaldean Decans
+saturn,leo,decans_chaldean,neutral,20,30,0.97,Chaldean Decans
+mercury,virgo,decans_chaldean,neutral,0,10,1.02,Chaldean Decans
+venus,virgo,decans_chaldean,neutral,10,20,1.03,Chaldean Decans
+moon,virgo,decans_chaldean,neutral,20,30,1.05,Chaldean Decans
+saturn,libra,decans_chaldean,neutral,0,10,0.97,Chaldean Decans
+jupiter,libra,decans_chaldean,neutral,10,20,1.03,Chaldean Decans
+mercury,libra,decans_chaldean,neutral,20,30,1.02,Chaldean Decans
+mars,scorpio,decans_chaldean,neutral,0,10,1.05,Chaldean Decans
+sun,scorpio,decans_chaldean,neutral,10,20,1.05,Chaldean Decans
+venus,scorpio,decans_chaldean,neutral,20,30,1.03,Chaldean Decans
+jupiter,sagittarius,decans_chaldean,neutral,0,10,1.03,Chaldean Decans
+mars,sagittarius,decans_chaldean,neutral,10,20,1.05,Chaldean Decans
+sun,sagittarius,decans_chaldean,neutral,20,30,1.05,Chaldean Decans
+venus,capricorn,decans_chaldean,neutral,0,10,1.03,Chaldean Decans
+mercury,capricorn,decans_chaldean,neutral,10,20,1.02,Chaldean Decans
+moon,capricorn,decans_chaldean,neutral,20,30,1.05,Chaldean Decans
+saturn,aquarius,decans_chaldean,neutral,0,10,0.97,Chaldean Decans
+mercury,aquarius,decans_chaldean,neutral,10,20,1.02,Chaldean Decans
+venus,aquarius,decans_chaldean,neutral,20,30,1.03,Chaldean Decans
+jupiter,pisces,decans_chaldean,neutral,0,10,1.03,Chaldean Decans
+mars,pisces,decans_chaldean,neutral,10,20,1.05,Chaldean Decans
+moon,pisces,decans_chaldean,neutral,20,30,1.05,Chaldean Decans
