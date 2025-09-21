@@ -32,6 +32,11 @@ def jd_to_iso(jd_ut: float) -> str:
     return dt.replace(microsecond=0).isoformat().replace('+00:00', 'Z')
 
 
+def iso_to_jd(iso_ts: str) -> float:
+    dt = datetime.fromisoformat(iso_ts.replace('Z', '+00:00')).astimezone(timezone.utc)
+    return (dt.timestamp() / 86400.0) + UNIX_EPOCH_JD
+
+
 # --- Swiss Ephemeris access --------------------------------------------------
 @dataclass
 class _SwissCtx:
