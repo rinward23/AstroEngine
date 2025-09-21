@@ -1,0 +1,21 @@
+# >>> AUTO-GEN BEGIN: Dev Requirements v1.0
+# runtime (optional)
+pyswisseph>=2.10
+numpy>=1.23
+pandas>=1.5
+pyarrow>=14
+python-dateutil>=2.8
+
+# testing
+pytest>=7
+pytest-cov>=4
+
+# lint/format
+black>=24.3
+ruff>=0.5
+isort>=5.13
+
+# typing (optional)
+mypy>=1.8
+types-python-dateutil>=2.8
+# >>> AUTO-GEN END: Dev Requirements v1.0

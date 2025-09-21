@@ -10,37 +10,27 @@ can be indexed safely without losing any modules during future edits.
 
 ## Quick start
 
+# >>> AUTO-GEN BEGIN: README Quick Start v1.1
+## Quick start (devs)
 ```bash
-# Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
-
-# Install AstroEngine and optional developer tooling via the Makefile helper
-make env
-
-
+# one-liners
+make setup    # or follow docs/DEV_ENV.md
+make doctor   # environment sanity (strict)
+make test     # run unit tests
 ```
 
-The CI workflow `.github/workflows/swe-smoketest.yml` runs the same on every push/PR.
-
-# >>> AUTO-GEN END: Ephemeris Smoketest How-To v1.0
-````
-
-# >>> AUTO-GEN BEGIN: AE README CLI Addendum v1.1
-### CLI quickstart
-```bash
-python -m astroengine env   # prints imports + ephemeris path hint
-```
-
-### Local dev bootstrap
+### One-command usability check
 
 ```bash
-bash scripts/dev_setup.sh   # macOS/Linux
-# or
-powershell -ExecutionPolicy Bypass -File scripts/dev_setup.ps1
+python -m astroengine.maint --full --strict
+# or, to auto-install declared dev deps:
+python -m astroengine.maint --full --strict --auto-install all --yes
 ```
 
-# >>> AUTO-GEN END: AE README CLI Addendum v1.1
+See `docs/DIAGNOSTICS.md`, `docs/SWISS_EPHEMERIS.md`, and `docs/QUALITY_GATE.md` for details.
+# >>> AUTO-GEN END: README Quick Start v1.1
+
+The CI workflow `.github/workflows/ci.yml` covers Python 3.10–3.12 and archives diagnostics output for each run.
 
 The package exposes a registry-based API for discovering datasets and
 rulesets.  See `astroengine/modules` for details.
@@ -222,7 +212,7 @@ pull requests conflict-free. In summary:
   rebase before opening or updating a pull request.
 - Scope documentation and dataset changes by module/submodule/channel to respect
   the repository hierarchy and avoid accidental module removals.
-- Install the developer extras and run `black`, `ruff --fix`, and `pytest`
+- Install the developer extras and run `black`, `ruff check --fix`, and `pytest`
   locally (or via `pre-commit run --all-files`) before pushing.
 
 Install the repo’s pre-commit hooks once per clone to enforce formatting and

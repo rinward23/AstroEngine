@@ -1,5 +1,6 @@
 # >>> AUTO-GEN BEGIN: AE Skyfield Fixed Stars v1.0
 from __future__ import annotations
+
 import csv
 from pathlib import Path
 from typing import Tuple
@@ -39,7 +40,8 @@ def _lookup_ra_dec(name: str) -> Tuple[float, float]:
 def star_lonlat(name: str, iso_utc: str) -> Tuple[float, float]:
     """Return ecliptic longitude/latitude (deg) true-of-date using Skyfield.
 
-    Requires a local JPL kernel (e.g., de440s.bsp). Uses our CSV to get RA/Dec (J2000) for named stars.
+    Requires a local JPL kernel (e.g., de440s.bsp) and uses the bundled CSV to
+    map star names to RA/Dec (J2000) values.
     """
     if Star is None or load is None:
         raise ImportError("skyfield/jplephem not installed")
@@ -52,4 +54,6 @@ def star_lonlat(name: str, iso_utc: str) -> Tuple[float, float]:
     ecl = earth.at(t).observe(s).apparent().ecliptic_position()
     lon, lat, _ = ecl.spherical_latlon()
     return float(lon.degrees % 360.0), float(lat.degrees)
+
+
 # >>> AUTO-GEN END: AE Skyfield Fixed Stars v1.0

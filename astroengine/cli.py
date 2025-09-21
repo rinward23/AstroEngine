@@ -2,7 +2,29 @@
 
 from __future__ import annotations
 
+import argparse
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Iterable
 
+from .engine import events_to_dicts, scan_contacts
+from .exporters import ParquetExporter, SQLiteExporter
+from .providers import list_providers
+from .validation import (
+    SchemaValidationError,
+    available_schema_keys,
+    validate_payload,
+)
+
+__all__ = ["build_parser", "main", "serialize_events_to_json", "json"]
+
+
+def serialize_events_to_json(events: Iterable) -> str:
+    """Serialize events into a pretty-printed JSON string."""
+
+    return json.dumps(events_to_dicts(events), indent=2)
 
 
 def cmd_env(_: argparse.Namespace) -> int:
@@ -11,7 +33,7 @@ def cmd_env(_: argparse.Namespace) -> int:
     return 0
 
 
-
+def cmd_transits(args: argparse.Namespace) -> int:
     events = scan_contacts(
         start_iso=args.start,
         end_iso=args.end,
@@ -56,8 +78,9 @@ def cmd_env(_: argparse.Namespace) -> int:
     return 0
 
 
-
-
+def cmd_validate(args: argparse.Namespace) -> int:
+    payload_path = Path(args.path)
+    payload = json.loads(payload_path.read_text(encoding="utf-8"))
     try:
         validate_payload(args.schema, payload)
     except SchemaValidationError as exc:
@@ -87,7 +110,7 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--mirror-orb", type=float, default=2.0)
     transits.add_argument("--step", type=int, default=60)
     transits.add_argument("--aspects-policy")
-    transits.add_argument("--target-longitude", type=float)
+    transits.add_argument("--target-longitude", type=float, default=None)
     transits.add_argument("--json")
     transits.add_argument("--sqlite")
     transits.add_argument("--parquet")

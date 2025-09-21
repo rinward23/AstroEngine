@@ -1,24 +1,24 @@
-# >>> AUTO-GEN BEGIN: AstroEngine Gitignore v1.0
-
-.venv/
-.env
-**pycache**/
+# >>> AUTO-GEN BEGIN: Gitignore Additions v1.0
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
 .pytest_cache/
-.mypy_cache/
 .ruff_cache/
-.idea/
-.vscode/
-.DS_Store
+.mypy_cache/
+
+# Build
 build/
 dist/
-*.parquet
-*.sqlite
 
-# >>> AUTO-GEN BEGIN: AE Gitignore Additions v1.1
-.env  # local secrets (use .env.example)
-# Editor/OS extras (safety)
-*.swp
-*.bak
-# >>> AUTO-GEN END: AE Gitignore Additions v1.1
+# Envs
+.venv/
+.env
 
-# >>> AUTO-GEN END: AstroEngine Gitignore v1.0
+# OS
+.DS_Store
+Thumbs.db
+
+# Local artifacts
+diagnostics.json
+# >>> AUTO-GEN END: Gitignore Additions v1.0

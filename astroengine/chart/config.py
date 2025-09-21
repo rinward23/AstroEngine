@@ -28,14 +28,14 @@ class ChartConfig:
     def __post_init__(self) -> None:
         zodiac_normalized = self.zodiac.lower()
         if zodiac_normalized not in VALID_ZODIAC_SYSTEMS:
-            raise ValueError(
-                f"Unknown zodiac mode '{self.zodiac}'. Valid options: {sorted(VALID_ZODIAC_SYSTEMS)}"
-            )
+            options = ", ".join(sorted(VALID_ZODIAC_SYSTEMS))
+            raise ValueError(f"Unknown zodiac mode '{self.zodiac}'. Valid options: {options}")
 
         house_normalized = self.house_system.lower()
         if house_normalized not in VALID_HOUSE_SYSTEMS:
+            options = ", ".join(sorted(VALID_HOUSE_SYSTEMS))
             raise ValueError(
-                f"Unknown house system '{self.house_system}'. Valid options: {sorted(VALID_HOUSE_SYSTEMS)}"
+                f"Unknown house system '{self.house_system}'. Valid options: {options}"
             )
 
         if zodiac_normalized == "tropical" and self.ayanamsha is not None:

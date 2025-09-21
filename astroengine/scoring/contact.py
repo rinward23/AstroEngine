@@ -12,7 +12,19 @@ from ..core.bodies import body_class
 
 __all__ = ["ScoreInputs", "ScoreResult", "compute_score"]
 
-_DEF_POLICY = Path(__file__).resolve().parent.parent / "profiles" / "scoring_policy.json"
+
+def _repository_root() -> Path:
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / "profiles" / "scoring_policy.json"
+        if candidate.exists():
+            return parent
+    raise FileNotFoundError(
+        "Unable to locate 'profiles/scoring_policy.json' in repository parents."
+    )
+
+
+_DEF_POLICY = _repository_root() / "profiles" / "scoring_policy.json"
 
 
 @dataclass(frozen=True)
@@ -76,7 +88,9 @@ def compute_score(inputs: ScoreInputs, *, policy_path: str | None = None) -> Sco
         score *= float(applying_cfg.get("factor", 1.0))
 
     partile_cfg = policy.get("partile", {})
-    if partile_cfg.get("enabled") and inputs.orb_abs_deg <= float(partile_cfg.get("threshold_deg", 0.0)):
+    if partile_cfg.get("enabled") and inputs.orb_abs_deg <= float(
+        partile_cfg.get("threshold_deg", 0.0)
+    ):
         score *= float(partile_cfg.get("boost_factor", 1.0))
 
     score = max(min(score, max_score), min_score)
