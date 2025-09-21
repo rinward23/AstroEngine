@@ -6,6 +6,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from .providers import EphemerisProvider  # ENSURE-LINE
 from .providers import get_provider, list_providers  # ENSURE-LINE
+from .core.bodies import body_class  # ENSURE-LINE
 
 from .catalogs import (
     VCA_CENTAURS,
@@ -68,6 +69,9 @@ from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
 from .scoring import (
     DEFAULT_ASPECTS,
     OrbCalculator,
+    ScoreInputs,
+    ScoreResult,
+    compute_score,
     load_dignities,
     lookup_dignities,
 )
@@ -84,6 +88,7 @@ __all__ = [
     "ZODIAC_ELEMENT_MAP",
     "natal_domain_factor",
     "AngleTracker",
+    "body_class",
     "classify_relative_motion",
     "normalize_degrees",
     "DomainScoringProfile",
@@ -101,12 +106,19 @@ __all__ = [
     "VCA_RULESET",
     "serialize_vca_ruleset",
     "bootstrap_default_registry",
+    "DEFAULT_ASPECTS",
     "DEFAULT_REGISTRY",
     "AstroRegistry",
     "AstroModule",
     "AstroSubmodule",
     "AstroChannel",
     "AstroSubchannel",
+    "compute_score",
+    "ScoreInputs",
+    "ScoreResult",
+    "OrbCalculator",
+    "load_dignities",
+    "lookup_dignities",
     "SwissEphemerisAdapter",
     "collect_environment_report",
     "environment_report_main",

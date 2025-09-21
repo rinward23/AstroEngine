@@ -174,3 +174,19 @@ pre-commit install
 
 These hooks run Black, Ruff, and whitespace fixers using the configuration in
 `.pre-commit-config.yaml`.
+
+# >>> AUTO-GEN BEGIN: AE README Scoring Addendum v1.0
+### Scoring
+- Policy lives in `profiles/scoring_policy.json`. You can tweak curve kind (gaussian|cosine|linear|logistic), applying bias, partile boost, base weights per contact kind, and body class pair weights.
+- `scan` prints a `score` for each coarse hit. Exporters include `score` in SQLite/Parquet outputs.
+
+```bash
+python -m astroengine scan \
+  --start 2024-06-01T00:00:00Z \
+  --end   2024-06-07T00:00:00Z \
+  --moving mars --target venus \
+  --provider swiss --decl-orb 0.5 --mirror-orb 2.0
+````
+
+# >>> AUTO-GEN END: AE README Scoring Addendum v1.0
+

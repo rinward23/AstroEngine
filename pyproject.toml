@@ -23,7 +23,8 @@ dependencies = [
   "PyYAML>=6.0",
   "pluggy>=1.5",
   "click>=8.1",
-  "rich>=13.7"
+  "rich>=13.7",
+  "hypothesis>=6.112"        # Property-based tests exercised in CI
 ]
 
 [project.optional-dependencies]

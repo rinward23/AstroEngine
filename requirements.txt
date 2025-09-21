@@ -9,6 +9,8 @@ PyYAML>=6.0
 pluggy>=1.5
 click>=8.1
 rich>=13.7
+# QA / property-based testing (used by tests)
+hypothesis>=6.112
 # Optional groups (comment in as needed):
 # fastapi>=0.115
 # uvicorn[standard]>=0.30
