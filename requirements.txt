@@ -1,5 +1,6 @@
 # >>> AUTO-GEN BEGIN: AstroEngine Requirements v1.0
 pyswisseph>=2.10.3.2
+pymeeus>=0.5.12
 numpy>=1.26
 pandas>=2.2
 pyarrow>=16.0

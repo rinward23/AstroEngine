@@ -1,0 +1,43 @@
+# >>> AUTO-GEN BEGIN: AE Valence Policy v1.0
+{
+  "scale": {"positive": 1, "neutral": 0, "negative": -1},
+  "neutral_effects": {"amplify_factor": 1.15, "attenuate_factor": 0.85},
+  "bodies": {
+    "sun":     {"valence": "positive", "weight": 1.00},
+    "moon":    {"valence": "positive", "weight": 0.95},
+    "mercury": {"valence": "neutral",  "weight": 0.85, "neutral_mode": "amplify"},
+    "venus":   {"valence": "positive", "weight": 0.95},
+    "mars":    {"valence": "negative", "weight": 0.95},
+    "jupiter": {"valence": "positive", "weight": 1.05},
+    "saturn":  {"valence": "negative", "weight": 1.00},
+    "uranus":  {"valence": "neutral",  "weight": 0.90, "neutral_mode": "amplify"},
+    "neptune": {"valence": "neutral",  "weight": 0.90, "neutral_mode": "attenuate"},
+    "pluto":   {"valence": "neutral",  "weight": 1.00, "neutral_mode": "amplify"}
+  },
+  "aspects": {
+    "conjunction":   {"valence": "neutral",  "weight": 1.00, "neutral_mode": "amplify"},
+    "sextile":       {"valence": "positive", "weight": 0.90},
+    "square":        {"valence": "negative", "weight": 1.00},
+    "trine":         {"valence": "positive", "weight": 1.00},
+    "opposition":    {"valence": "negative", "weight": 1.05},
+    "semisextile":   {"valence": "neutral",  "weight": 0.60, "neutral_mode": "amplify"},
+    "semisquare":    {"valence": "negative", "weight": 0.70},
+    "sesquisquare":  {"valence": "negative", "weight": 0.70},
+    "quincunx":      {"valence": "neutral",  "weight": 0.75, "neutral_mode": "attenuate"}
+  },
+  "contacts": {
+    "decl_parallel":     {"valence": "positive", "weight": 0.90},
+    "decl_contra":       {"valence": "negative", "weight": 0.90},
+    "antiscia":          {"valence": "neutral",  "weight": 0.80, "neutral_mode": "amplify"},
+    "contra_antiscia":   {"valence": "negative", "weight": 0.85}
+  },
+  "overrides": {
+    "conjunction_body_bias": {
+      "venus":   "positive",
+      "jupiter": "positive",
+      "mars":    "negative",
+      "saturn":  "negative"
+    }
+  }
+}
+# >>> AUTO-GEN END: AE Valence Policy v1.0

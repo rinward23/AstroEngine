@@ -85,6 +85,14 @@ python -m astroengine provider check swiss
 
 > **Licensing note:** Swiss Ephemeris is AGPL/commercial for distribution. Keep data files outside the wheel; users should provide `SWE_EPH_PATH/SE_EPHE_PATH`.
 
+When `pyswisseph` is unavailable the engine automatically registers a
+**Swiss fallback provider** powered by PyMeeus analytical series.  The
+fallback keeps the Swiss handle usable inside this repository’s test
+environment while still producing real geocentric ecliptic longitudes,
+latitudes, and longitudinal speeds for the visible planets and Pluto.
+Install `pyswisseph` alongside the official ephemeris files for
+production deployments to regain full Swiss Ephemeris precision.
+
 # >>> AUTO-GEN END: AE README Providers Addendum v1.2
 
 # >>> AUTO-GEN BEGIN: AE README Aspects + Domain Report v1.0
@@ -239,3 +247,16 @@ python -m astroengine scan \
 ```
 # >>> AUTO-GEN END: AE README Scan Addendum v1.0
 
+# >>> AUTO-GEN BEGIN: AE README Valence Addendum v1.0
+### Universal valence model
+- Configure intrinsic valence for **bodies**, **aspects**, and **contacts** in `profiles/valence_policy.json`.
+- Neutral entries specify a `neutral_mode`: `amplify` or `attenuate`; global factors live under `neutral_effects`.
+- Each event now carries:
+  - `score` (base 0..1), `valence` (`positive|neutral|negative`), `valence_factor` (>=0), and `signed_score` (may be negative).
+- Domain rollups split **neutral** events 50/50 (after factor), push **positive** to positive subchannels, **negative** to negative.
+
+```bash
+python -m astroengine scan --start 2024-06-01T00:00:00Z --end 2024-06-07T00:00:00Z \
+  --moving mars --target venus --provider swiss --decl-orb 0.5 --mirror-orb 2.0
+```
+# >>> AUTO-GEN END: AE README Valence Addendum v1.0

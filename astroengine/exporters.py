@@ -25,7 +25,7 @@ class TransitEvent:
     target: str
     orb_abs: float
     applying_or_separating: str
-    score: float
+
 
 
 class SQLiteExporter:
@@ -39,7 +39,7 @@ class SQLiteExporter:
         con = sqlite3.connect(self.path)
         con.execute(
             "CREATE TABLE IF NOT EXISTS transits_events (\n"
-            "  kind TEXT, when_iso TEXT, moving TEXT, target TEXT, orb_abs REAL, applying TEXT, score REAL\n"
+
             ")"
         )
         con.commit()
@@ -48,19 +48,7 @@ class SQLiteExporter:
     def write(self, events: Iterable[TransitEvent]) -> None:
         con = sqlite3.connect(self.path)
         con.executemany(
-            "INSERT INTO transits_events VALUES (?,?,?,?,?,?,?)",
-            [
-                (
-                    e.kind,
-                    e.when_iso,
-                    e.moving,
-                    e.target,
-                    e.orb_abs,
-                    e.applying_or_separating,
-                    e.score,
-                )
-                for e in events
-            ],
+
         )
         con.commit()
         con.close()
