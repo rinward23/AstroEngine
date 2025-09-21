@@ -18,6 +18,57 @@ from .validation import (
     validate_payload,
 )
 
+# >>> AUTO-GEN BEGIN: cli-run-experimental v1.1
+from .detectors import (
+    find_lunations,
+    find_stations,
+    secondary_progressions,
+    solar_arc_directions,
+    solar_lunar_returns,
+)
+from .detectors.common import iso_to_jd
+
+
+def run_experimental(args) -> None:
+    if not any(
+        [
+            args.lunations,
+            args.stations,
+            args.returns,
+            args.progressions,
+            args.directions,
+        ]
+    ):
+        return
+    start_jd = iso_to_jd(args.start_utc)
+    end_jd = iso_to_jd(args.end_utc)
+    if args.lunations:
+        ev = find_lunations(start_jd, end_jd)
+        print(f"lunations: {len(ev)} events")
+    if args.stations:
+        ev = find_stations(start_jd, end_jd, None)
+        print(f"stations: {len(ev)} events")
+    if args.returns:
+        if not getattr(args, "natal_utc", None):
+            print("returns: missing --natal-utc; skipping")
+        else:
+            which = getattr(args, "return_kind", "solar")
+            ev = solar_lunar_returns(iso_to_jd(args.natal_utc), start_jd, end_jd, which)
+            print(f"{which}-returns: {len(ev)} events")
+    if args.progressions:
+        if not getattr(args, "natal_utc", None):
+            print("progressions: missing --natal-utc; skipping")
+        else:
+            ev = secondary_progressions(args.natal_utc, args.start_utc, args.end_utc)
+            print(f"progressions: {len(ev)} events")
+    if args.directions:
+        if not getattr(args, "natal_utc", None):
+            print("directions: missing --natal-utc; skipping")
+        else:
+            ev = solar_arc_directions(args.natal_utc, args.start_utc, args.end_utc)
+            print(f"solar-arc directions: {len(ev)} events")
+# >>> AUTO-GEN END: cli-run-experimental v1.1
+
 __all__ = ["build_parser", "main", "serialize_events_to_json", "json"]
 
 
@@ -25,6 +76,11 @@ def serialize_events_to_json(events: Iterable) -> str:
     """Serialize events into a pretty-printed JSON string."""
 
     return json.dumps(events_to_dicts(events), indent=2)
+
+
+def cmd_experimental(args: argparse.Namespace) -> int:
+    run_experimental(args)
+    return 0
 
 
 def cmd_env(_: argparse.Namespace) -> int:
@@ -115,6 +171,18 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--sqlite")
     transits.add_argument("--parquet")
     transits.set_defaults(func=cmd_transits)
+
+    experimental = sub.add_parser("experimental", help="Run experimental detectors")
+    experimental.add_argument("--start-utc", required=True)
+    experimental.add_argument("--end-utc", required=True)
+    experimental.add_argument("--natal-utc")
+    experimental.add_argument("--return-kind", default="solar")
+    experimental.add_argument("--lunations", action="store_true")
+    experimental.add_argument("--stations", action="store_true")
+    experimental.add_argument("--returns", action="store_true")
+    experimental.add_argument("--progressions", action="store_true")  # ENSURE-LINE
+    experimental.add_argument("--directions", action="store_true")  # ENSURE-LINE
+    experimental.set_defaults(func=cmd_experimental)
 
     validate = sub.add_parser("validate", help="Validate a JSON payload against a schema")
     validate.add_argument("schema", choices=list(available_schema_keys("jsonschema")))
