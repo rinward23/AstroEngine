@@ -1,20 +1,17 @@
+"""Command line interface for AstroEngine."""
+
+from __future__ import annotations
 
 
 
-def cmd_env(args: argparse.Namespace) -> int:
-    import importlib, os
-    mods = ["pyswisseph", "numpy", "pandas"]
-    missing = [m for m in mods if importlib.util.find_spec(m) is None]
-    print("imports:", "ok" if not missing else f"missing={missing}")
-    eph = os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH")
-    print("ephemeris:", eph or "(unset)")
-    print("providers:", ", ".join(list_providers()) or "(none)")
+
+def cmd_env(_: argparse.Namespace) -> int:
+    providers = ", ".join(list_providers()) or "(none)"
+    print("Registered providers:", providers)
     return 0
 
 
 
-
-def cmd_scan(args: argparse.Namespace) -> int:
     events = scan_contacts(
         start_iso=args.start,
         end_iso=args.end,
@@ -26,36 +23,89 @@ def cmd_scan(args: argparse.Namespace) -> int:
         antiscia_orb=args.mirror_orb,
         contra_antiscia_orb=args.mirror_orb,
         step_minutes=args.step,
+        aspects_policy_path=args.aspects_policy,
+    )
+
+    if args.json:
+        payload = {
+            "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "parameters": {
+                "start_timestamp": args.start,
+                "end_timestamp": args.end,
+                "moving": args.moving,
+                "target": args.target,
+                "provider": args.provider,
+                "target_longitude": args.target_longitude,
+            },
+            "events": events_to_dicts(events),
+        }
+        Path(args.json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"Wrote {len(events)} events to {args.json}")
 
     if args.sqlite:
         SQLiteExporter(args.sqlite).write(events)
+        print(f"SQLite export complete: {args.sqlite}")
+
     if args.parquet:
         ParquetExporter(args.parquet).write(events)
+        print(f"Parquet export complete: {args.parquet}")
+
+    if not any((args.json, args.sqlite, args.parquet)):
+        print(serialize_events_to_json(events))
+
     return 0
 
 
 
+
+    try:
+        validate_payload(args.schema, payload)
+    except SchemaValidationError as exc:
+        print("Validation failed:", file=sys.stderr)
+        for message in exc.errors:
+            print("  -", message, file=sys.stderr)
+        return 1
+
+    print(f"Payload validated against {args.schema}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="astroengine", description="AstroEngine CLI")
-    sub = ap.add_subparsers(dest="cmd", required=True)
+    parser = argparse.ArgumentParser(prog="astroengine", description="AstroEngine CLI")
+    sub = parser.add_subparsers(dest="command", required=True)
 
-    p_env = sub.add_parser("env", help="Print environment diagnostics")
+    env_parser = sub.add_parser("env", help="List registered providers")
+    env_parser.set_defaults(func=cmd_env)
 
-    p_scan.add_argument("--moving", default="mars")
-    p_scan.add_argument("--target", default="venus")
-    p_scan.add_argument("--provider", default="swiss", choices=["swiss", "skyfield"])
-    p_scan.add_argument("--decl-orb", type=float, default=0.5)
-    p_scan.add_argument("--mirror-orb", type=float, default=2.0)
+    transits = sub.add_parser("transits", help="Scan for transit contacts")
+    transits.add_argument("--start", required=True)
+    transits.add_argument("--end", required=True)
+    transits.add_argument("--moving", default="sun")
+    transits.add_argument("--target", default="moon")
+    transits.add_argument("--provider", default="swiss")
+    transits.add_argument("--decl-orb", type=float, default=0.5)
+    transits.add_argument("--mirror-orb", type=float, default=2.0)
+    transits.add_argument("--step", type=int, default=60)
+    transits.add_argument("--aspects-policy")
+    transits.add_argument("--target-longitude", type=float)
+    transits.add_argument("--json")
+    transits.add_argument("--sqlite")
+    transits.add_argument("--parquet")
+    transits.set_defaults(func=cmd_transits)
+
+    validate = sub.add_parser("validate", help="Validate a JSON payload against a schema")
+    validate.add_argument("schema", choices=list(available_schema_keys("jsonschema")))
+    validate.add_argument("path")
+    validate.set_defaults(func=cmd_validate)
+
+    return parser
 
 
-    return ap
+def main(argv: Iterable[str] | None = None) -> int:
+    parser = build_parser()
+    namespace = parser.parse_args(list(argv) if argv is not None else None)
+    return namespace.func(namespace)
 
 
-def main(argv: list[str] | None = None) -> int:
-    ap = build_parser()
-    ns = ap.parse_args(argv if argv is not None else sys.argv[1:])
-    return int(ns.fn(ns))
-
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())
-

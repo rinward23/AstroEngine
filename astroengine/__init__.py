@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
+from .diagnostics import collect_diagnostics  # ENSURE-LINE
 from .providers import EphemerisProvider  # ENSURE-LINE
 from .providers import get_provider, list_providers  # ENSURE-LINE
 

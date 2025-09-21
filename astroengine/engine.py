@@ -1,6 +1,7 @@
+"""High level transit scanning helpers used by the CLI."""
 
 
 
-def resolve_provider(name: str | None) -> object:
-    """Compatibility shim for legacy callers."""
-    return get_provider(name or "swiss")
+
+def events_to_dicts(events: Iterable[TransitEvent]) -> List[dict]:
+    return [e.to_dict() for e in events]
