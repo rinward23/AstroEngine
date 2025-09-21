@@ -32,6 +32,11 @@ def jd_to_iso(jd_ut: float) -> str:
     return dt.replace(microsecond=0).isoformat().replace('+00:00', 'Z')
 
 
+def iso_to_jd(iso_ts: str) -> float:
+    dt = datetime.fromisoformat(iso_ts.replace('Z', '+00:00')).astimezone(timezone.utc)
+    return (dt.timestamp() / 86400.0) + UNIX_EPOCH_JD
+
+
 
 # --- Swiss Ephemeris access --------------------------------------------------
 @dataclass
@@ -40,6 +45,22 @@ class _SwissCtx:
 
 
 _SWISS = _SwissCtx(ok=False)
+
+# >>> AUTO-GEN BEGIN: detector-common-cache-toggle v1.0
+USE_CACHE = False
+
+
+def enable_cache(flag: bool = True) -> None:
+    global USE_CACHE
+    USE_CACHE = bool(flag)
+# >>> AUTO-GEN END: detector-common-cache-toggle v1.0
+
+# >>> AUTO-GEN BEGIN: detector-common-cached-body v1.0
+try:
+    from ..cache.positions_cache import get_lon_daily  # type: ignore
+except Exception:  # pragma: no cover
+    get_lon_daily = None  # type: ignore
+# >>> AUTO-GEN END: detector-common-cached-body v1.0
 
 
 def _ensure_swiss() -> bool:
@@ -74,20 +95,18 @@ def moon_lon(jd_ut: float) -> float:
 
 
 
-def body_lon(jd_ut: float, body_name: str) -> float:
+def body_lon(jd_ut: float, body_name: str) -> float:  # replace previous block if present
+    if USE_CACHE and get_lon_daily is not None and body_name.lower() in {"sun","moon","mercury","venus","mars","jupiter","saturn","uranus","neptune","pluto"}:
+        return float(get_lon_daily(jd_ut, body_name))
+    # fallback to strict Swiss path below
     if not _ensure_swiss():
-        raise RuntimeError("pyswisseph unavailable; install extras: astroengine[ephem]")
+        raise RuntimeError("Swiss ephemeris unavailable (data files required)")
     import swisseph as swe  # type: ignore
     name = body_name.lower()
     code = {
-        'mercury': swe.MERCURY,
-        'venus': swe.VENUS,
-        'mars': swe.MARS,
-        'jupiter': swe.JUPITER,
-        'saturn': swe.SATURN,
-        'uranus': swe.URANUS,
-        'neptune': swe.NEPTUNE,
-        'pluto': swe.PLUTO,
+        'sun': swe.SUN, 'moon': swe.MOON,
+        'mercury': swe.MERCURY, 'venus': swe.VENUS, 'mars': swe.MARS,
+        'jupiter': swe.JUPITER, 'saturn': swe.SATURN, 'uranus': swe.URANUS, 'neptune': swe.NEPTUNE, 'pluto': swe.PLUTO,
     }[name]
     lon, lat, dist, speed_lon = swe.calc_ut(jd_ut, code)
     return float(lon)

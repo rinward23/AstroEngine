@@ -18,6 +18,7 @@ from .validation import (
     available_schema_keys,
     validate_payload,
 )
+from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
 
 # >>> AUTO-GEN BEGIN: cli-run-experimental v1.1
 from .detectors import (
@@ -28,6 +29,9 @@ from .detectors import (
     solar_lunar_returns,
 )
 from .detectors.common import iso_to_jd
+from .detectors.common import enable_cache  # ENSURE-LINE
+from .cache.positions_cache import warm_daily  # ENSURE-LINE
+from .exporters_batch import export_parquet_dataset  # ENSURE-LINE
 
 
 def run_experimental(args) -> None:
@@ -89,6 +93,98 @@ def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:
         g.add_argument("--profections", action="store_true", help="Enable annual profections")
         target._ae_features_added = True
 # >>> AUTO-GEN END: cli-new-detector-flags v1.0
+
+# >>> AUTO-GEN BEGIN: cli-natals-crud v1.0
+def _augment_parser_with_natals(p):
+    existing = {opt for action in getattr(p, "_actions", []) for opt in getattr(action, "option_strings", [])}
+    g = p.add_argument_group("Natals Vault")
+    if "--save-natal" not in existing:
+        g.add_argument("--save-natal", action="store_true", help="Save/update a natal record into the vault")
+    if "--delete-natal" not in existing:
+        g.add_argument("--delete-natal", action="store_true", help="Delete a natal record from the vault")
+    if "--list-natals" not in existing:
+        g.add_argument("--list-natals", action="store_true", help="List natal ids in the vault")
+    if "--load-natal" not in existing:
+        g.add_argument("--load-natal", type=str, default=None, help="Load natal by id and inject into args (sets --natal-utc/--lat/--lon)")
+    if "--natal-name" not in existing:
+        g.add_argument("--natal-name", type=str, default=None)
+    if "--natal-utc" not in existing:
+        g.add_argument("--natal-utc", type=str, default=None)
+    if "--lat" not in existing:
+        g.add_argument("--lat", type=float, default=None)
+    if "--lon" not in existing:
+        g.add_argument("--lon", type=float, default=None)
+    if "--tz" not in existing:
+        g.add_argument("--tz", type=str, default=None)
+    if "--place" not in existing:
+        g.add_argument("--place", type=str, default=None)
+
+
+def run_natals_crud(args) -> None:
+    if args.list_natals:
+        ids = list_natals()
+        print("natals:", ", ".join(ids))
+    if args.save_natal:
+        if not (args.natal_id and args.natal_utc is not None and args.lat is not None and args.lon is not None):
+            raise SystemExit("--save-natal requires --natal-id --natal-utc --lat --lon")
+        p = save_natal(Natal(natal_id=args.natal_id, name=args.natal_name, utc=args.natal_utc, lat=args.lat, lon=args.lon, tz=args.tz, place=args.place))
+        print(f"saved natal → {p}")
+    if args.delete_natal:
+        if not args.natal_id:
+            raise SystemExit("--delete-natal requires --natal-id")
+        ok = delete_natal(args.natal_id)
+        print("deleted" if ok else "not found")
+    if args.load_natal:
+        n = load_natal(args.load_natal)
+        # inject fields
+        args.natal_id = n.natal_id
+        args.natal_utc = n.utc
+        args.lat = n.lat
+        args.lon = n.lon
+        if getattr(args, 'tz', None) is None:
+            args.tz = n.tz
+        if getattr(args, 'place', None) is None:
+            args.place = n.place
+        print(f"loaded natal {n.natal_id}")
+# >>> AUTO-GEN END: cli-natals-crud v1.0
+
+# >>> AUTO-GEN BEGIN: cli-cache v1.0
+def _augment_parser_with_cache(p):
+    g = p.add_argument_group("Positions Cache")
+    g.add_argument("--use-cache", action="store_true", help="Enable positions cache for Sun..Pluto+Moon (daily)")
+    g.add_argument("--cache-warm", action="store_true", help="Precompute daily positions for window")
+    g.add_argument("--cache-bodies", type=str, default="Sun,Moon,Mercury,Venus,Mars,Jupiter,Saturn,Uranus,Neptune,Pluto")
+
+
+def run_cache_ops(args) -> None:
+    if args.use_cache:
+        enable_cache(True)
+    if args.cache_warm:
+        bodies = [b for b in args.cache_bodies.split(',') if b]
+        n = warm_daily(bodies, iso_to_jd(args.start_utc), iso_to_jd(args.end_utc))
+        print(f"cache warmed entries={n}")
+# >>> AUTO-GEN END: cli-cache v1.0
+
+# >>> AUTO-GEN BEGIN: cli-parquet-dataset-flag v1.0
+def _augment_parser_with_parquet_dataset(p):
+    g = p.add_argument_group("Parquet Dataset")
+    g.add_argument("--export-parquet-dataset", type=str, default=None, help="Write a partitioned Parquet dataset (partition_cols: natal_id/year)")
+
+
+def run_parquet_dataset_if_any(args) -> None:
+    if not args.export_parquet_dataset:
+        return
+    from .pipeline.collector import collect_events
+    ev = collect_events(args)
+    meta = {
+        'natal_id': getattr(args, 'natal_id', None),
+        'profile': getattr(args, 'profile', None),
+        'window_start': args.start_utc,
+        'window_end': args.end_utc,
+    }
+    path = export_parquet_dataset(ev, args.export_parquet_dataset, meta=meta)
+    print(f"parquet dataset → {path}")
+# >>> AUTO-GEN END: cli-parquet-dataset-flag v1.0
 
 def serialize_events_to_json(events: Iterable) -> str:
     """Serialize events into a pretty-printed JSON string."""
@@ -210,6 +306,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--start-utc", help="Start timestamp (ISO-8601) for experimental detectors")  # ENSURE-LINE
     parser.add_argument("--end-utc", help="End timestamp (ISO-8601) for experimental detectors")  # ENSURE-LINE
     parser.add_argument("--natal-utc", help="Natal timestamp (ISO-8601) for return calculations")  # ENSURE-LINE
+    parser.add_argument("--natal-id", help="Natal identifier for provenance and vault operations")  # ENSURE-LINE
     parser.add_argument("--return-kind", default="solar", help="Return kind: solar or lunar")  # ENSURE-LINE
     parser.add_argument("--lunations", action="store_true", help="Run lunation detector")
     parser.add_argument("--stations", action="store_true", help="Run planetary station detector")
@@ -255,6 +352,9 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("path")
     validate.set_defaults(func=cmd_validate)
 
+    _augment_parser_with_natals(parser)  # ENSURE-LINE
+    _augment_parser_with_cache(parser)  # ENSURE-LINE
+    _augment_parser_with_parquet_dataset(parser)  # ENSURE-LINE
     _augment_parser_with_features(parser)
     return parser
 
@@ -263,6 +363,9 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
     _augment_parser_with_features(parser)
     namespace = parser.parse_args(list(argv) if argv is not None else None)
+    run_natals_crud(namespace)  # ENSURE-LINE
+    run_cache_ops(namespace)  # ENSURE-LINE
+    run_parquet_dataset_if_any(namespace)  # ENSURE-LINE
     run_experimental(namespace)
     func = getattr(namespace, "func", None)
     if func is not None:
