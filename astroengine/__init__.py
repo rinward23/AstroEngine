@@ -11,6 +11,7 @@ from .utils.angles import delta_angle  # ENSURE-LINE
 from .utils.angles import classify_applying_separating  # ENSURE-LINE
 from .exporters import TransitEvent  # ENSURE-LINE
 from .exporters import SQLiteExporter, ParquetExporter  # ENSURE-LINE
+from .domains import rollup_domain_scores  # ENSURE-LINE
 
 from .catalogs import (
     VCA_CENTAURS,
@@ -23,6 +24,15 @@ from .catalogs import sbdb  # ENSURE-LINE
 from .fixedstars import skyfield_stars  # ENSURE-LINE
 from .astro import declination  # ENSURE-LINE
 
+from .ephemeris import (
+    EphemerisAdapter,
+    EphemerisConfig,
+    EphemerisSample,
+    RefinementBracket,
+    RefinementError,
+    refine_event,
+)
+from .ephemeris import SwissEphemerisAdapter
 from .core import (
     DOMAINS,
     ELEMENTS,
@@ -45,15 +55,6 @@ from .core import (
     profile_into_ctx,
     to_tt,
 )
-from .ephemeris import (
-    EphemerisAdapter,
-    EphemerisConfig,
-    EphemerisSample,
-    RefinementBracket,
-    RefinementError,
-    refine_event,
-)
-from .ephemeris import SwissEphemerisAdapter
 from .infrastructure.environment import collect_environment_report
 from .infrastructure.environment import main as environment_report_main
 from .modules import (
@@ -100,6 +101,7 @@ __all__ = [
     "DomainScoringProfile",
     "VCA_DOMAIN_PROFILES",
     "compute_domain_factor",
+    "rollup_domain_scores",
     "load_profile_json",
     "profile_into_ctx",
     "apply_profile_if_any",

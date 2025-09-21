@@ -1,10 +1,7 @@
 # >>> AUTO-GEN BEGIN: AE Providers Registry v1.0
 from __future__ import annotations
 from dataclasses import dataclass
-
-
-from ..ephemeris import SwissEphemerisAdapter
-
+from typing import Dict, Iterable, Protocol
 
 class EphemerisProvider(Protocol):
     """Minimal provider interface used by AstroEngine internals.

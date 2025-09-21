@@ -1,0 +1,28 @@
+# >>> AUTO-GEN BEGIN: AE Aspects Policy v1.0
+{
+  "angles_deg": {
+    "conjunction": 0,
+    "sextile": 60,
+    "square": 90,
+    "trine": 120,
+    "opposition": 180,
+    "semisextile": 30,
+    "semisquare": 45,
+    "sesquisquare": 135,
+    "quincunx": 150
+  },
+  "enabled": ["conjunction", "sextile", "square", "trine", "opposition"],
+  "enabled_minors": [],
+  "orbs_deg": {
+    "conjunction": {"luminary": 8.0, "personal": 6.0, "social": 5.0, "outer": 4.0},
+    "opposition": {"luminary": 8.0, "personal": 6.0, "social": 5.0, "outer": 4.0},
+    "square":     {"luminary": 7.0, "personal": 5.0, "social": 4.5, "outer": 4.0},
+    "trine":      {"luminary": 7.0, "personal": 5.0, "social": 4.5, "outer": 4.0},
+    "sextile":    {"luminary": 5.0, "personal": 4.0, "social": 3.5, "outer": 3.0},
+    "semisextile":{"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
+    "semisquare": {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
+    "sesquisquare":{"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
+    "quincunx":   {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0}
+  }
+}
+# >>> AUTO-GEN END: AE Aspects Policy v1.0
