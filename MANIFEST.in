@@ -1,0 +1,5 @@
+# >>> AUTO-GEN BEGIN: astroengine manifest data v1.0
+recursive-include astroengine/registry *.yaml *.yml *.csv
+recursive-include astroengine/profiles *.yaml *.yml *.json
+recursive-include astroengine/datasets *.csv *.json
+# >>> AUTO-GEN END: astroengine manifest data v1.0

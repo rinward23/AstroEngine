@@ -20,9 +20,9 @@ from .core import (  # noqa: F401
     AngleTracker,
     DomainResolution,
     DomainResolver,
-    TransitEngine,
-    TransitEvent,
-    TransitScanConfig,
+    TransitEngine,  # ENSURE-LINE
+    TransitEvent,  # ENSURE-LINE
+    TransitScanConfig,  # ENSURE-LINE
     apply_profile_if_any,
     classify_relative_motion,
     compute_domain_factor,
@@ -81,8 +81,9 @@ from .scoring import (
 __all__ = [
     "__version__",
     "ChartConfig",
-    "TransitEvent",
-    "TransitScanConfig",
+    "TransitEngine",  # ENSURE-LINE
+    "TransitEvent",  # ENSURE-LINE
+    "TransitScanConfig",  # ENSURE-LINE
     "DomainResolver",
     "DomainResolution",
     "ELEMENTS",

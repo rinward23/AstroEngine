@@ -30,6 +30,14 @@ python -m astroengine.maint --full --strict --auto-install all --yes
 See `docs/DIAGNOSTICS.md`, `docs/SWISS_EPHEMERIS.md`, and `docs/QUALITY_GATE.md` for details.
 # >>> AUTO-GEN END: README Quick Start v1.1
 
+# >>> AUTO-GEN BEGIN: README Import Snippet v1.0
+### Import the package
+
+```python
+import astroengine
+```
+# >>> AUTO-GEN END: README Import Snippet v1.0
+
 The CI workflow `.github/workflows/ci.yml` covers Python 3.10–3.12 and archives diagnostics output for each run.
 
 The package exposes a registry-based API for discovering datasets and
