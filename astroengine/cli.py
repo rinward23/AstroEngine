@@ -10,8 +10,10 @@ from pathlib import Path
 from typing import Iterable
 
 
+from . import engine as engine_module
 from .engine import events_to_dicts, scan_contacts
 from .exporters import ParquetExporter, SQLiteExporter
+from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
 from .providers import list_providers
 from .validation import (
     SchemaValidationError,
@@ -87,8 +89,47 @@ def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:
         g.add_argument("--directions", action="store_true", help="Enable solar arc directions")
         g.add_argument("--returns", action="store_true", help="Enable solar/lunar returns")
         g.add_argument("--profections", action="store_true", help="Enable annual profections")
+        g.add_argument("--prog-aspects", action="store_true", help="Enable progressed natal aspects detector")
+        g.add_argument("--dir-aspects", action="store_true", help="Enable directed natal aspects detector")
         target._ae_features_added = True
 # >>> AUTO-GEN END: cli-new-detector-flags v1.0
+
+
+# >>> AUTO-GEN BEGIN: cli-provision-precompute v1.0
+def _augment_parser_with_provisioning(p):
+    g = p.add_argument_group("Provisioning")
+    g.add_argument("--provision-ephemeris", action="store_true", help="Verify Swiss ephemeris and record metadata")
+    g.add_argument("--require-provision", action="store_true", help="Block runs unless provisioning metadata exists")
+    g.add_argument("--precompute", action="store_true", help="Compute selected detectors for the given window and export via --export-* flags")
+
+
+def run_provisioning_and_precompute(args) -> None:
+    if args.provision_ephemeris:
+        meta = provision_ephemeris()
+        print(f"Provisioned ephemeris: ok={meta.get('ok')} swe_version={meta.get('swe_version')} path={meta.get('ephe_path')}")
+    if args.require_provision and not is_provisioned():
+        raise SystemExit("Provisioning required: run with --provision-ephemeris first")
+    if args.precompute:
+        if not args.start_utc or not args.end_utc:
+            raise SystemExit("precompute requires --start-utc and --end-utc")
+        if not any((args.export_sqlite, args.export_parquet, args.export_ics)):
+            raise SystemExit("precompute requires at least one export target via --export-sqlite/--export-parquet/--export-ics")
+        from .pipeline.collector import collect_events
+        from .exporters_batch import export_batch
+        ev = collect_events(args)
+        summary = export_batch(ev,
+                               sqlite_path=args.export_sqlite,
+                               parquet_path=args.export_parquet,
+                               ics_path=args.export_ics,
+                               ics_title=getattr(args, 'ics_title', "AstroEngine Events"),
+                               meta={
+                                   'natal_id': getattr(args, 'natal_id', None),
+                                   'profile': getattr(args, 'profile', None),
+                                   'window_start': args.start_utc,
+                                   'window_end': args.end_utc,
+                               })
+        print(f"precompute exported {summary.get('count', 0)} events → {summary}")
+# >>> AUTO-GEN END: cli-provision-precompute v1.0
 
 def serialize_events_to_json(events: Iterable) -> str:
     """Serialize events into a pretty-printed JSON string."""
@@ -211,9 +252,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--end-utc", help="End timestamp (ISO-8601) for experimental detectors")  # ENSURE-LINE
     parser.add_argument("--natal-utc", help="Natal timestamp (ISO-8601) for return calculations")  # ENSURE-LINE
     parser.add_argument("--return-kind", default="solar", help="Return kind: solar or lunar")  # ENSURE-LINE
+    parser.add_argument("--export-sqlite", help="Write precomputed events to this SQLite file")
+    parser.add_argument("--export-parquet", help="Write precomputed events to this Parquet file")
+    parser.add_argument("--export-ics", help="Write precomputed events to this ICS calendar file")
+    parser.add_argument("--ics-title", default="AstroEngine Events", help="Title to use for ICS export events")
+    parser.add_argument("--natal-id", help="Identifier for the natal chart driving precompute outputs")
+    parser.add_argument("--profile", help="Profile identifier to annotate export metadata")
+    parser.add_argument("--lat", type=float, help="Latitude for location-sensitive detectors")
+    parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")
+    parser.add_argument("--aspects", help="Comma-separated aspect angles for natal aspect detectors")
+    parser.add_argument("--orb", type=float, help="Orb allowance in degrees for natal aspect detectors")
     parser.add_argument("--lunations", action="store_true", help="Run lunation detector")
+    parser.add_argument("--eclipses", action="store_true", help="Run eclipse detector")
     parser.add_argument("--stations", action="store_true", help="Run planetary station detector")
+    parser.add_argument("--progressions", action="store_true", help="Run secondary progression detector")
+    parser.add_argument("--directions", action="store_true", help="Run solar arc direction detector")
     parser.add_argument("--returns", action="store_true", help="Run solar/lunar return detector")
+    parser.add_argument("--profections", action="store_true", help="Run annual profection timelord detector")
+    parser.add_argument("--prog-aspects", action="store_true", help="Run progressed natal aspect detector")
+    parser.add_argument("--dir-aspects", action="store_true", help="Run directed natal aspect detector")
     sub = parser.add_subparsers(dest="command")
 
     env_parser = sub.add_parser("env", help="List registered providers")
@@ -256,6 +313,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate.set_defaults(func=cmd_validate)
 
     _augment_parser_with_features(parser)
+    _augment_parser_with_provisioning(parser)  # ENSURE-LINE
     return parser
 
 
@@ -263,6 +321,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
     _augment_parser_with_features(parser)
     namespace = parser.parse_args(list(argv) if argv is not None else None)
+    run_provisioning_and_precompute(namespace)  # ENSURE-LINE
     run_experimental(namespace)
     func = getattr(namespace, "func", None)
     if func is not None:
