@@ -2,7 +2,33 @@ from __future__ import annotations
 
 import importlib
 import sys
+import types
+import warnings
 from pathlib import Path
+
+# >>> AUTO-GEN BEGIN: AliasGeneratedToAstroengine v1.0
+"""Pytest compatibility shim: route any `generated.*` imports to `astroengine`.
+Idempotent and safe to keep during the deprecation window.
+"""
+
+if "generated" not in sys.modules:
+    warnings.warn(
+        "Tests importing 'generated' are deprecated; using 'astroengine' instead.",
+        DeprecationWarning,
+        stacklevel=1,
+    )
+    gen = types.ModuleType("generated")
+    sys.modules["generated"] = gen
+
+# Always ensure the submodule alias exists
+try:
+    import astroengine as _ae  # noqa: F401
+
+    sys.modules.setdefault("generated.astroengine", _ae)
+except Exception:
+    # If astroengine is not importable here, let pytest show the normal error later.
+    pass
+# >>> AUTO-GEN END: AliasGeneratedToAstroengine v1.0
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT_STR = str(PROJECT_ROOT)
