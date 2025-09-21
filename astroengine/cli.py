@@ -2,17 +2,7 @@
 
 from __future__ import annotations
 
-import argparse
-import json
-import sys
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Iterable
 
-from .engine import events_to_dicts, scan_contacts
-from .exporters import ParquetExporter, SQLiteExporter, serialize_events_to_json
-from .providers import list_providers
-from .validation import SchemaValidationError, available_schema_keys, validate_payload
 
 
 def cmd_env(_: argparse.Namespace) -> int:
@@ -21,7 +11,7 @@ def cmd_env(_: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_transits(args: argparse.Namespace) -> int:
+
     events = scan_contacts(
         start_iso=args.start,
         end_iso=args.end,
@@ -66,12 +56,7 @@ def cmd_transits(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_validate(args: argparse.Namespace) -> int:
-    try:
-        payload = json.loads(Path(args.path).read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:  # pragma: no cover - defensive
-        print(f"Invalid JSON: {exc}", file=sys.stderr)
-        return 1
+
 
     try:
         validate_payload(args.schema, payload)

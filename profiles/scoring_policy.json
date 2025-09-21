@@ -1,22 +1,9 @@
-# >>> AUTO-GEN BEGIN: AE Scoring Policy v1.1
-{
-  "curve": {"kind": "gaussian", "sigma_frac_of_orb": 0.5, "min_score": 0.0, "max_score": 1.0},
-  "applying_bias": {"enabled": true, "factor": 1.10},
-  "partile": {"enabled": true, "threshold_deg": 0.1667, "boost_factor": 1.25},
+
   "base_weights": {
     "decl_parallel": 0.70,
     "decl_contra": 0.65,
     "antiscia": 0.55,
-    "contra_antiscia": 0.50,
-    "aspect_conjunction": 0.80,
-    "aspect_sextile": 0.70,
-    "aspect_square": 0.75,
-    "aspect_trine": 0.75,
-    "aspect_opposition": 0.80,
-    "aspect_semisextile": 0.40,
-    "aspect_semisquare": 0.45,
-    "aspect_sesquisquare": 0.45,
-    "aspect_quincunx": 0.50
+
   },
   "body_class_weights": {
     "luminary": 1.00,
@@ -36,4 +23,4 @@
     "outer-outer": 0.85
   }
 }
-# >>> AUTO-GEN END: AE Scoring Policy v1.1
+
