@@ -1,0 +1,40 @@
+# >>> AUTO-GEN BEGIN: AE Domain Tree v1.0
+{
+  "domains": [
+    {"id": "mind", "name": "Mind", "channels": [
+      {"id": "cognition", "name": "Cognition", "subchannels": [
+        {"id": "positive", "name": "Clarity", "valence": "positive"},
+        {"id": "negative", "name": "Confusion", "valence": "negative"}
+      ]},
+      {"id": "communication", "name": "Communication", "subchannels": [
+        {"id": "positive", "name": "Ease", "valence": "positive"},
+        {"id": "negative", "name": "Blocks", "valence": "negative"}
+      ]},
+      {"id": "relationships", "name": "Relationships", "subchannels": [
+        {"id": "positive", "name": "Harmony", "valence": "positive"},
+        {"id": "negative", "name": "Friction", "valence": "negative"}
+      ]}
+    ]},
+    {"id": "body", "name": "Body", "channels": [
+      {"id": "vitality", "name": "Vitality", "subchannels": [
+        {"id": "positive", "name": "Energy", "valence": "positive"},
+        {"id": "negative", "name": "Fatigue", "valence": "negative"}
+      ]},
+      {"id": "habits", "name": "Habits", "subchannels": [
+        {"id": "positive", "name": "Discipline", "valence": "positive"},
+        {"id": "negative", "name": "Disruption", "valence": "negative"}
+      ]}
+    ]},
+    {"id": "spirit", "name": "Spirit", "channels": [
+      {"id": "growth", "name": "Growth", "subchannels": [
+        {"id": "positive", "name": "Expansion", "valence": "positive"},
+        {"id": "negative", "name": "Excess", "valence": "negative"}
+      ]},
+      {"id": "transformation", "name": "Transformation", "subchannels": [
+        {"id": "positive", "name": "Renewal", "valence": "positive"},
+        {"id": "negative", "name": "Upheaval", "valence": "negative"}
+      ]}
+    ]}
+  ]
+}
+# >>> AUTO-GEN END: AE Domain Tree v1.0
