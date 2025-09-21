@@ -85,7 +85,38 @@ python -m astroengine provider check swiss
 
 > **Licensing note:** Swiss Ephemeris is AGPL/commercial for distribution. Keep data files outside the wheel; users should provide `SWE_EPH_PATH/SE_EPHE_PATH`.
 
+When `pyswisseph` is unavailable the engine automatically registers a
+**Swiss fallback provider** powered by PyMeeus analytical series.  The
+fallback keeps the Swiss handle usable inside this repository’s test
+environment while still producing real geocentric ecliptic longitudes,
+latitudes, and longitudinal speeds for the visible planets and Pluto.
+Install `pyswisseph` alongside the official ephemeris files for
+production deployments to regain full Swiss Ephemeris precision.
+
 # >>> AUTO-GEN END: AE README Providers Addendum v1.2
+
+# >>> AUTO-GEN BEGIN: AE README Aspects + Domain Report v1.0
+### Enable minor aspects (optional)
+Edit `profiles/aspects_policy.json` and add to `enabled_minors`, then:
+```bash
+python -m astroengine scan --start 2024-06-01T00:00:00Z --end 2024-06-07T00:00:00Z \
+  --moving mars --target venus --provider swiss
+````
+
+### Domain report
+
+```bash
+python -m astroengine report \
+  --start 2024-06-01T00:00:00Z \
+  --end   2024-06-07T00:00:00Z \
+  --moving mars --target venus \
+  --provider swiss --decl-orb 0.5 --mirror-orb 2.0 --step 60 \
+  --out domain_report.json
+```
+
+This prints and writes a JSON with domain/channel/subchannel scores and totals.
+
+# >>> AUTO-GEN END: AE README Aspects + Domain Report v1.0
 
 
 ---
@@ -139,6 +170,36 @@ working tree so downstream automation stays deterministic.
 
 ---
 
+# >>> AUTO-GEN BEGIN: AE README Stars/SBDB/Decl Addendum v1.0
+### Fixed stars (Skyfield & Swiss)
+- Dataset: `datasets/star_names_iau.csv` (replace with full WGSN list as needed).
+- Skyfield method requires a local JPL kernel (e.g., `de440s.bsp`).
+
+```bash
+python -m astroengine star Regulus --provider skyfield
+python -m astroengine star Regulus --provider swiss
+```
+
+### Declination & antiscia utilities
+
+```bash
+python -m astroengine decl decl --lon 123.4 --lat 0.0
+python -m astroengine decl mirror --type antiscia --lon 10
+python -m astroengine decl mirror --type contra --lon 10
+python -m astroengine decl parallel --dec1 12.0 --dec2 -11.7 --tol 0.5
+```
+
+### SBDB fetch (with cache)
+
+```python
+from astroengine.catalogs.sbdb import fetch_sbdb
+obj = fetch_sbdb("433 Eros")  # caches JSON under datasets/sbdb_cache/
+```
+
+> Tests will auto-skip when optional extras or kernels are not present.
+
+# >>> AUTO-GEN END: AE README Stars/SBDB/Decl Addendum v1.0
+
 ## Tests & validation
 
 Install the optional `dev` extras and run the test suite:
@@ -175,18 +236,9 @@ pre-commit install
 These hooks run Black, Ruff, and whitespace fixers using the configuration in
 `.pre-commit-config.yaml`.
 
-# >>> AUTO-GEN BEGIN: AE README Scoring Addendum v1.0
-### Scoring
-- Policy lives in `profiles/scoring_policy.json`. You can tweak curve kind (gaussian|cosine|linear|logistic), applying bias, partile boost, base weights per contact kind, and body class pair weights.
-- `scan` prints a `score` for each coarse hit. Exporters include `score` in SQLite/Parquet outputs.
-
 ```bash
 python -m astroengine scan \
   --start 2024-06-01T00:00:00Z \
   --end   2024-06-07T00:00:00Z \
   --moving mars --target venus \
-  --provider swiss --decl-orb 0.5 --mirror-orb 2.0
-````
-
-# >>> AUTO-GEN END: AE README Scoring Addendum v1.0
 

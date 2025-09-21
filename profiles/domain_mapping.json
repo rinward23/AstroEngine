@@ -1,0 +1,33 @@
+# >>> AUTO-GEN BEGIN: AE Domain Mapping v1.0
+{
+  "aspect_valence": {
+    "sextile": "positive",
+    "trine": "positive",
+    "square": "negative",
+    "opposition": "negative",
+    "conjunction": "neutral",
+    "semisextile": "neutral",
+    "semisquare": "negative",
+    "sesquisquare": "negative",
+    "quincunx": "neutral"
+  },
+  "planet_channels": {
+    "sun": {"spirit:growth": 0.3, "body:vitality": 0.3, "spirit:transformation": 0.4},
+    "moon": {"mind:cognition": 0.2, "body:habits": 0.3, "mind:relationships": 0.5},
+    "mercury": {"mind:cognition": 0.6, "mind:communication": 0.4},
+    "venus": {"mind:relationships": 0.7, "spirit:growth": 0.3},
+    "mars": {"body:vitality": 0.7, "mind:cognition": 0.3},
+    "jupiter": {"spirit:growth": 0.8, "mind:cognition": 0.2},
+    "saturn": {"body:habits": 0.5, "mind:cognition": 0.5},
+    "uranus": {"spirit:transformation": 0.7, "mind:cognition": 0.3},
+    "neptune": {"spirit:growth": 0.6, "mind:relationships": 0.4},
+    "pluto": {"spirit:transformation": 1.0}
+  },
+  "conjunction_valence_overrides": {
+    "venus": "positive",
+    "jupiter": "positive",
+    "mars": "negative",
+    "saturn": "negative"
+  }
+}
+# >>> AUTO-GEN END: AE Domain Mapping v1.0

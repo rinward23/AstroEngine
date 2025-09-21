@@ -1,0 +1,44 @@
+# >>> AUTO-GEN BEGIN: AE SBDB Catalog v1.0
+from __future__ import annotations
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict
+
+CACHE_DIR = Path(__file__).resolve().parent.parent / "datasets" / "sbdb_cache"
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+try:
+    from astroquery.jplsbdb import SBDB
+except Exception:  # pragma: no cover
+    SBDB = None  # type: ignore
+
+
+@dataclass
+class SBDBObject:
+    designation: str
+    data: Dict[str, Any]
+
+
+def fetch_sbdb(designation: str, use_cache: bool = True) -> SBDBObject:
+    """Fetch SBDB JSON for a small body by designation/number.
+    If offline or astroquery missing, will load from cache if available.
+    """
+    key = designation.replace(" ", "_")
+    fpath = CACHE_DIR / f"{key}.json"
+
+    if SBDB is not None:
+        try:
+            res = SBDB.query(designation, closest=True)
+            if isinstance(res, dict):
+                if use_cache:
+                    fpath.write_text(json.dumps(res, indent=2))
+                return SBDBObject(designation=designation, data=res)
+        except Exception:
+            pass  # fall back to cache
+
+    if use_cache and fpath.exists():
+        return SBDBObject(designation=designation, data=json.loads(fpath.read_text()))
+
+    raise RuntimeError("SBDB query failed and no cache available")
+# >>> AUTO-GEN END: AE SBDB Catalog v1.0

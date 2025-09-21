@@ -6,7 +6,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from .providers import EphemerisProvider  # ENSURE-LINE
 from .providers import get_provider, list_providers  # ENSURE-LINE
-from .core.bodies import body_class  # ENSURE-LINE
+
 
 from .catalogs import (
     VCA_CENTAURS,
@@ -15,7 +15,19 @@ from .catalogs import (
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
 )
+from .catalogs import sbdb  # ENSURE-LINE
+from .fixedstars import skyfield_stars  # ENSURE-LINE
+from .astro import declination  # ENSURE-LINE
 
+from .ephemeris import (
+    EphemerisAdapter,
+    EphemerisConfig,
+    EphemerisSample,
+    RefinementBracket,
+    RefinementError,
+    refine_event,
+)
+from .ephemeris import SwissEphemerisAdapter
 from .core import (
     DOMAINS,
     ELEMENTS,
@@ -38,15 +50,6 @@ from .core import (
     profile_into_ctx,
     to_tt,
 )
-from .ephemeris import (
-    EphemerisAdapter,
-    EphemerisConfig,
-    EphemerisSample,
-    RefinementBracket,
-    RefinementError,
-    refine_event,
-)
-from .ephemeris import SwissEphemerisAdapter
 from .infrastructure.environment import collect_environment_report
 from .infrastructure.environment import main as environment_report_main
 from .modules import (
@@ -91,9 +94,14 @@ __all__ = [
     "body_class",
     "classify_relative_motion",
     "normalize_degrees",
+    "norm360",
+    "delta_angle",
+    "classify_applying_separating",
+    "combine_valence",
     "DomainScoringProfile",
     "VCA_DOMAIN_PROFILES",
     "compute_domain_factor",
+    "rollup_domain_scores",
     "load_profile_json",
     "profile_into_ctx",
     "apply_profile_if_any",
@@ -129,6 +137,9 @@ __all__ = [
     "VCA_CENTAURS",
     "VCA_TNOS",
     "VCA_SENSITIVE_POINTS",
+    "sbdb",
+    "skyfield_stars",
+    "declination",
     "VALID_ZODIAC_SYSTEMS",
     "VALID_HOUSE_SYSTEMS",
 ]
