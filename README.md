@@ -38,6 +38,34 @@ import astroengine
 ```
 # >>> AUTO-GEN END: README Import Snippet v1.0
 
+# >>> AUTO-GEN BEGIN: Canonical Transit Types v1.0
+## Canonical types (stable API surface)
+
+Import once, use everywhere:
+
+```python
+from astroengine import TransitEvent, BodyPosition
+from astroengine.canonical import events_from_any
+```
+
+* **TransitEvent** is the single event model returned by scans and written by exporters.
+* **BodyPosition** is the provider position record (lon/lat/dec/speed_lon).
+
+### Export helpers
+
+```python
+from astroengine.exporters import write_sqlite_canonical, write_parquet_canonical
+
+rows = write_sqlite_canonical("events.db", events)     # accepts dicts/legacy/canonical
+rows = write_parquet_canonical("events.parquet", events)
+```
+
+### CLI integration (maintainers)
+
+Scan commands can call `_cli_export(args, events)` after adding `add_canonical_export_args(parser)` to gain `--sqlite/--parquet` switches.
+
+# >>> AUTO-GEN END: Canonical Transit Types v1.0
+
 The CI workflow `.github/workflows/ci.yml` covers Python 3.10–3.12 and archives diagnostics output for each run.
 
 The package exposes a registry-based API for discovering datasets and
