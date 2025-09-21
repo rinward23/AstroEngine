@@ -7,12 +7,11 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Sequence, Any
 
 
 from . import engine as engine_module
 from .engine import events_to_dicts, scan_contacts
-from .exporters import ParquetExporter, SQLiteExporter
 from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
 from .providers import list_providers
 from .validation import (
@@ -20,6 +19,32 @@ from .validation import (
     available_schema_keys,
     validate_payload,
 )
+
+# >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
+from .exporters import write_sqlite_canonical, write_parquet_canonical
+
+
+def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, int]:
+    """Standardized export helper accepting canonical or legacy events."""
+
+    written: dict[str, int] = {}
+    if getattr(args, "sqlite", None):
+        written["sqlite"] = write_sqlite_canonical(args.sqlite, events)
+    if getattr(args, "parquet", None):
+        written["parquet"] = write_parquet_canonical(args.parquet, events)
+    return written
+
+
+def add_canonical_export_args(p: argparse.ArgumentParser) -> None:
+    group = p.add_argument_group("canonical export")
+    group.add_argument("--sqlite", help="Path to SQLite DB; writes into table transits_events")
+    group.add_argument(
+        "--parquet",
+        help="Path to Parquet file or dataset directory",
+    )
+
+
+# >>> AUTO-GEN END: CLI Canonical Export Commands v1.0
 
 # >>> AUTO-GEN BEGIN: cli-run-experimental v1.1
 from .detectors import (
@@ -186,13 +211,11 @@ def cmd_transits(args: argparse.Namespace) -> int:
         Path(args.json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
         print(f"Wrote {len(events)} events to {args.json}")
 
-    if args.sqlite:
-        SQLiteExporter(args.sqlite).write(events)
-        print(f"SQLite export complete: {args.sqlite}")
-
-    if args.parquet:
-        ParquetExporter(args.parquet).write(events)
-        print(f"Parquet export complete: {args.parquet}")
+    written = _cli_export(args, events)
+    if args.sqlite and written.get("sqlite"):
+        print(f"SQLite export complete: {args.sqlite} ({written['sqlite']} rows)")
+    if args.parquet and written.get("parquet"):
+        print(f"Parquet export complete: {args.parquet} ({written['parquet']} rows)")
 
     if not any((args.json, args.sqlite, args.parquet)):
         print(serialize_events_to_json(events))
@@ -291,8 +314,7 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--aspects-policy")
     transits.add_argument("--target-longitude", type=float, default=None)
     transits.add_argument("--json")
-    transits.add_argument("--sqlite")
-    transits.add_argument("--parquet")
+    add_canonical_export_args(transits)
     transits.set_defaults(func=cmd_transits)
 
     experimental = sub.add_parser("experimental", help="Run experimental detectors")

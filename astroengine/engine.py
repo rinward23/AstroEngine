@@ -8,7 +8,7 @@ from typing import Iterable, List
 from .core.engine import get_active_aspect_angles
 from .detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
 from .detectors_aspects import AspectHit, detect_aspects
-from .exporters import TransitEvent
+from .exporters import LegacyTransitEvent
 from .providers import get_provider
 from .scoring import ScoreInputs, compute_score
 
@@ -26,8 +26,8 @@ FEATURE_PROFECTIONS = False
 __all__ = ["events_to_dicts", "scan_contacts", "get_active_aspect_angles", "resolve_provider"]
 
 
-def events_to_dicts(events: Iterable[TransitEvent]) -> List[dict]:
-    """Convert :class:`TransitEvent` objects into JSON-friendly dictionaries."""
+def events_to_dicts(events: Iterable[LegacyTransitEvent]) -> List[dict]:
+    """Convert :class:`LegacyTransitEvent` objects into JSON-friendly dictionaries."""
 
     return [event.to_dict() for event in events]
 
@@ -65,7 +65,7 @@ def _score_from_hit(
     return compute_score(score_inputs).score
 
 
-def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> TransitEvent:
+def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> LegacyTransitEvent:
     score = _score_from_hit(
         hit.kind,
         abs(hit.delta),
@@ -74,7 +74,7 @@ def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> TransitEvent:
         hit.target,
         hit.applying_or_separating,
     )
-    return TransitEvent(
+    return LegacyTransitEvent(
         kind=hit.kind,
         timestamp=hit.when_iso,
         moving=hit.moving,
@@ -92,7 +92,7 @@ def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> TransitEvent:
     )
 
 
-def _event_from_aspect(hit: AspectHit) -> TransitEvent:
+def _event_from_aspect(hit: AspectHit) -> LegacyTransitEvent:
     score = _score_from_hit(
         hit.kind,
         hit.orb_abs,
@@ -101,7 +101,7 @@ def _event_from_aspect(hit: AspectHit) -> TransitEvent:
         hit.target,
         hit.applying_or_separating,
     )
-    return TransitEvent(
+    return LegacyTransitEvent(
         kind=hit.kind,
         timestamp=hit.when_iso,
         moving=hit.moving,
@@ -129,13 +129,13 @@ def scan_contacts(
     contra_antiscia_orb: float = 2.0,
     step_minutes: int = 60,
     aspects_policy_path: str | None = None,
-) -> List[TransitEvent]:
+) -> List[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
 
     provider = get_provider(provider_name)
     ticks = list(_iso_ticks(start_iso, end_iso, step_minutes=step_minutes))
 
-    events: List[TransitEvent] = []
+    events: List[LegacyTransitEvent] = []
 
     for hit in detect_decl_contacts(
         provider,
