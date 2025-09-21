@@ -1,0 +1,6 @@
+# >>> AUTO-GEN BEGIN: plugins registry v1.0
+plugins:
+  - id: core.transits
+    entry: generated/astroengine/engine.py:TransitEngine
+    enabled: true
+# >>> AUTO-GEN END: plugins registry v1.0

@@ -1,0 +1,28 @@
+# >>> AUTO-GEN BEGIN: domains registry v1.0
+roots:
+  - id: mind
+    label: Mind
+  - id: body
+    label: Body
+  - id: spirit
+    label: Spirit
+
+elements:
+  - id: fire
+  - id: earth
+  - id: air
+  - id: water
+
+mappings:
+  points:
+    sun: [spirit, fire]
+    moon: [body, water]
+    mercury: [mind, air]
+    venus: [mind, earth]
+    mars: [body, fire]
+    jupiter: [spirit, fire]
+    saturn: [mind, earth]
+    uranus: [mind, air]
+    neptune: [spirit, water]
+    pluto: [spirit, water]
+# >>> AUTO-GEN END: domains registry v1.0
