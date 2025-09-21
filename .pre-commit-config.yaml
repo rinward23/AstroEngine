@@ -1,24 +1,20 @@
-# >>> AUTO-GEN BEGIN: Pre-commit v1.0
+# >>> AUTO-GEN BEGIN: pre-commit config v1.0
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    rev: v0.6.8
     hooks:
       - id: ruff
         args: ["--fix"]
-      - id: ruff-format
-  - repo: https://github.com/psf/black
-    rev: 24.8.0
+  - repo: local
     hooks:
-      - id: black
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        args: ["--profile=black"]
-# >>> AUTO-GEN END: Pre-commit v1.0
+      - id: validate-fences
+        name: validate-fences
+        entry: python scripts/validators/validate_fences.py
+        language: system
+        files: '(^generated/|^registry/|^docs/|^\.github/)'
+      - id: validate-registry
+        name: validate-registry
+        entry: python scripts/validators/validate_registry.py
+        language: system
+        files: '^registry/'
+# >>> AUTO-GEN END: pre-commit config v1.0

@@ -1,0 +1,3 @@
+# >>> AUTO-GEN BEGIN: pre-commit ci v1.0
+autoupdate_schedule: quarterly
+# >>> AUTO-GEN END: pre-commit ci v1.0

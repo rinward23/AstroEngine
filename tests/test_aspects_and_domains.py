@@ -72,3 +72,5 @@ def test_domain_rollup_has_three_domains():
     ]
     report = rollup_domain_scores(events)
     assert set(report.keys()) >= {"mind", "body", "spirit"}
+
+# >>> AUTO-GEN END: AE Aspects & Domains Tests v1.0

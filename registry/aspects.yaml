@@ -1,0 +1,23 @@
+# >>> AUTO-GEN BEGIN: aspects registry v1.0
+aspects:
+  - id: conj
+    name: conjunction
+    angle: 0
+    aliases: [conjunction, 0°]
+  - id: sext
+    name: sextile
+    angle: 60
+    aliases: [sextile, 60°]
+  - id: sqr
+    name: square
+    angle: 90
+    aliases: [square, 90°]
+  - id: tri
+    name: trine
+    angle: 120
+    aliases: [trine, 120°]
+  - id: opp
+    name: opposition
+    angle: 180
+    aliases: [opposition, 180°]
+# >>> AUTO-GEN END: aspects registry v1.0

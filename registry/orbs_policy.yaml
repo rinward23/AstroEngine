@@ -1,0 +1,14 @@
+# >>> AUTO-GEN BEGIN: orbs policy registry v1.0
+orbs_default:
+  luminaries: 8.0
+  personal: 6.0
+  social: 5.0
+  outer: 4.0
+  minors: 2.0
+  declination: 0.5
+  partile: 0.1667
+profiles:
+  - id: default
+    label: Default
+    overrides: {}
+# >>> AUTO-GEN END: orbs policy registry v1.0
