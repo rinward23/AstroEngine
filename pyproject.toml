@@ -20,8 +20,11 @@ package-dir = {"" = "generated"}
 [tool.setuptools.packages.find]
 where = ["generated"]
 include = ["astroengine*"]
+# >>> AUTO-GEN END: packaging config v1.0
 
+# >>> AUTO-GEN BEGIN: ruff target py311 v1.1
 [tool.ruff]
 line-length = 100
 select = ["E","F","I","UP","B"]
-# >>> AUTO-GEN END: packaging config v1.0
+target-version = "py311"
+# >>> AUTO-GEN END: ruff target py311 v1.1
