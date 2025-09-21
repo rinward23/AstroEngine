@@ -1,10 +1,5 @@
 
 
-from .providers import get_provider, list_providers
-from .engine import scan_contacts
-from .exporters import SQLiteExporter, ParquetExporter
-from .domains import rollup_domain_scores
-
 
 def cmd_env(args: argparse.Namespace) -> int:
     import importlib, os
@@ -15,6 +10,7 @@ def cmd_env(args: argparse.Namespace) -> int:
     print("ephemeris:", eph or "(unset)")
     print("providers:", ", ".join(list_providers()) or "(none)")
     return 0
+
 
 
 
@@ -45,16 +41,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_env = sub.add_parser("env", help="Print environment diagnostics")
 
-    p_scan.add_argument("--start", required=True)
-    p_scan.add_argument("--end", required=True)
     p_scan.add_argument("--moving", default="mars")
     p_scan.add_argument("--target", default="venus")
     p_scan.add_argument("--provider", default="swiss", choices=["swiss", "skyfield"])
     p_scan.add_argument("--decl-orb", type=float, default=0.5)
     p_scan.add_argument("--mirror-orb", type=float, default=2.0)
-    p_scan.add_argument("--step", type=int, default=60)
-    p_scan.add_argument("--sqlite")
-    p_scan.add_argument("--parquet")
+
 
     return ap
 

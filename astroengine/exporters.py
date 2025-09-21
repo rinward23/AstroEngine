@@ -1,8 +1,9 @@
-# >>> AUTO-GEN BEGIN: AE Exporters v1.1
+
 from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
+
 
 try:
     import sqlite3
@@ -35,20 +36,6 @@ class SQLiteExporter:
         self.path = str(path)
         self._init()
 
-    def _init(self) -> None:
-        con = sqlite3.connect(self.path)
-        con.execute(
-            "CREATE TABLE IF NOT EXISTS transits_events (\n"
-
-            ")"
-        )
-        con.commit()
-        con.close()
-
-    def write(self, events: Iterable[TransitEvent]) -> None:
-        con = sqlite3.connect(self.path)
-        con.executemany(
-
         )
         con.commit()
         con.close()
@@ -64,4 +51,4 @@ class ParquetExporter:
         rows = [asdict(e) for e in events]
         table = pa.Table.from_pylist(rows)
         pq.write_table(table, self.path)
-# >>> AUTO-GEN END: AE Exporters v1.1
+        

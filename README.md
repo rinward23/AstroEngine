@@ -235,28 +235,10 @@ pre-commit install
 
 These hooks run Black, Ruff, and whitespace fixers using the configuration in
 `.pre-commit-config.yaml`.
-# >>> AUTO-GEN BEGIN: AE README Scan Addendum v1.0
-### Scan for declination/mirror contacts
+
 ```bash
 python -m astroengine scan \
   --start 2024-06-01T00:00:00Z \
   --end   2024-06-07T00:00:00Z \
   --moving mars --target venus \
-  --provider swiss --decl-orb 0.5 --mirror-orb 2.0 \
-  --sqlite transits.sqlite
-```
-# >>> AUTO-GEN END: AE README Scan Addendum v1.0
 
-# >>> AUTO-GEN BEGIN: AE README Valence Addendum v1.0
-### Universal valence model
-- Configure intrinsic valence for **bodies**, **aspects**, and **contacts** in `profiles/valence_policy.json`.
-- Neutral entries specify a `neutral_mode`: `amplify` or `attenuate`; global factors live under `neutral_effects`.
-- Each event now carries:
-  - `score` (base 0..1), `valence` (`positive|neutral|negative`), `valence_factor` (>=0), and `signed_score` (may be negative).
-- Domain rollups split **neutral** events 50/50 (after factor), push **positive** to positive subchannels, **negative** to negative.
-
-```bash
-python -m astroengine scan --start 2024-06-01T00:00:00Z --end 2024-06-07T00:00:00Z \
-  --moving mars --target venus --provider swiss --decl-orb 0.5 --mirror-orb 2.0
-```
-# >>> AUTO-GEN END: AE README Valence Addendum v1.0
