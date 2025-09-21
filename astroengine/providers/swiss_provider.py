@@ -1,9 +1,10 @@
 # >>> AUTO-GEN BEGIN: AE Swiss Provider v1.0
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 from typing import Dict, Iterable
+
+from astroengine.ephemeris.utils import get_se_ephe_path
 
 try:
     import swisseph as swe  # pyswisseph imports the module name 'swisseph'
@@ -62,7 +63,7 @@ class SwissProvider:
     def __init__(self) -> None:
         if swe is None:
             raise ImportError("pyswisseph is not installed")
-        eph = os.environ.get("SWE_EPH_PATH") or os.environ.get("SE_EPHE_PATH")
+        eph = get_se_ephe_path()
         if eph:
             swe.set_ephe_path(eph)
 

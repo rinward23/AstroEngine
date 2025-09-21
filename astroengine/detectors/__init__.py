@@ -1,22 +1,31 @@
+"""Transit detectors and experimental modules."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Iterable, List
 
-from .astro.declination import (
+from ..astro.declination import (
     antiscia_lon,
     contra_antiscia_lon,
     ecl_to_dec,
     is_contraparallel,
     is_parallel,
 )
-from .utils.angles import (
+from ..utils.angles import (
     classify_applying_separating,
     delta_angle,
     is_within_orb,
 )
 
-__all__ = ["CoarseHit", "detect_decl_contacts", "detect_antiscia_contacts"]
+from .lunations import find_lunations
+from .eclipses import find_eclipses
+from .stations import find_stations
+from .progressions import secondary_progressions
+from .directions import solar_arc_directions
+from .returns import solar_lunar_returns
+
+__all__ = ["CoarseHit", "detect_decl_contacts", "detect_antiscia_contacts", "find_lunations", "find_eclipses", "find_stations", "secondary_progressions", "solar_arc_directions", "solar_lunar_returns"]
 
 
 @dataclass
