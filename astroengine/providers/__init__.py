@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Dict, Iterable, Protocol
 
+from .se_fixedstars import get_star_lonlat
 
 class EphemerisProvider(Protocol):
     """Minimal provider interface used by AstroEngine internals.

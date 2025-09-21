@@ -1,4 +1,4 @@
-# >>> AUTO-GEN BEGIN: detector-common v1.1
+
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
@@ -31,10 +31,6 @@ def jd_to_iso(jd_ut: float) -> str:
     dt = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=seconds)
     return dt.replace(microsecond=0).isoformat().replace('+00:00', 'Z')
 
-
-def iso_to_jd(iso_ts: str) -> float:
-    dt = datetime.fromisoformat(iso_ts.replace('Z', '+00:00')).astimezone(timezone.utc)
-    return (dt.timestamp() / 86400.0) + UNIX_EPOCH_JD
 
 
 # --- Swiss Ephemeris access --------------------------------------------------
@@ -77,13 +73,6 @@ def moon_lon(jd_ut: float) -> float:
     return float(lon)
 
 
-def moon_lat(jd_ut: float) -> float:
-    if not _ensure_swiss():
-        raise RuntimeError("pyswisseph unavailable; install extras: astroengine[ephem]")
-    import swisseph as swe  # type: ignore
-    lon, lat, dist, speed_lon = swe.calc_ut(jd_ut, swe.MOON)
-    return float(lat)
-
 
 def body_lon(jd_ut: float, body_name: str) -> float:
     if not _ensure_swiss():
@@ -106,15 +95,7 @@ def body_lon(jd_ut: float, body_name: str) -> float:
 
 # --- Root finding ------------------------------------------------------------
 
-def refine_zero_secant_bisect(
-    f: Callable[[float], float],
-    a: float,
-    b: float,
-    tol_deg: float = 1e-4,
-    max_iter: int = 24,
-) -> float:
-    """Find t in [a,b] where f(t)=0 in degrees. Angles allowed; uses secant then bisection."""
-    fa, fb = f(a), f(b)
+
     if abs(fa) <= tol_deg:
         return a
     if abs(fb) <= tol_deg:
@@ -122,19 +103,18 @@ def refine_zero_secant_bisect(
     x0, x1 = a, b
     f0, f1 = fa, fb
     for _ in range(max_iter):
+
         if (f1 - f0) == 0:
             xm = 0.5 * (x0 + x1)
         else:
             xm = x1 - f1 * (x1 - x0) / (f1 - f0)
         fm = f(xm)
-        if abs(fm) <= tol_deg:
-            return xm
+
         if (f0 > 0 and fm < 0) or (f0 < 0 and fm > 0):
             x1, f1 = xm, fm
         else:
             x0, f0 = xm, fm
-        if not (min(x0, x1) <= xm <= max(x0, x1)):
-            xm = 0.5 * (x0 + x1)
+
     for _ in range(32):
         xm = 0.5 * (x0 + x1)
         fm = f(xm)
@@ -145,4 +125,4 @@ def refine_zero_secant_bisect(
         else:
             x0, f0 = xm, fm
     return 0.5 * (x0 + x1)
-# >>> AUTO-GEN END: detector-common v1.1
+

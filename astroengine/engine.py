@@ -12,6 +12,17 @@ from .exporters import TransitEvent
 from .providers import get_provider
 from .scoring import ScoreInputs, compute_score
 
+# >>> AUTO-GEN BEGIN: engine-feature-flags v1.0
+# Feature flags (default OFF to preserve current behavior)
+FEATURE_LUNATIONS = False
+FEATURE_ECLIPSES = False
+FEATURE_STATIONS = False
+FEATURE_PROGRESSIONS = False
+FEATURE_DIRECTIONS = False
+FEATURE_RETURNS = False
+FEATURE_PROFECTIONS = False
+# >>> AUTO-GEN END: engine-feature-flags v1.0
+
 __all__ = ["events_to_dicts", "scan_contacts", "get_active_aspect_angles", "resolve_provider"]
 
 

@@ -1,0 +1,26 @@
+# >>> AUTO-GEN BEGIN: ci-optional-extras v1.0
+name: optional-extras
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  extras:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install core + selected extras
+        run: |
+          python -m pip install -U pip
+          pip install -e .[skyfield,catalogs,exporters]
+      - name: Run minimal tests
+        run: |
+          pytest -q
+# >>> AUTO-GEN END: ci-optional-extras v1.0
