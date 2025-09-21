@@ -1,24 +1,29 @@
-# >>> AUTO-GEN BEGIN: AE Longitudinal Aspect Detectors v1.0
-from __future__ import annotations
-from dataclasses import dataclass
-from typing import Dict, Iterable, List, Tuple
+"""Aspect detection utilities for longitudinal contacts."""
 
-from .utils.angles import norm360, delta_angle, classify_applying_separating
-from .core.bodies import body_class
+from __future__ import annotations
+
 import json
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Dict, Iterable, List
+
+from .core.bodies import body_class
+from .utils.angles import classify_applying_separating, delta_angle
 
 
 @dataclass
 class AspectHit:
-    kind: str               # e.g., 'aspect_trine'
+    """Represents a single longitudinal aspect detection."""
+
+    kind: str
     when_iso: str
     moving: str
     target: str
-    angle_deg: float        # exact aspect angle
+    angle_deg: float
     lon_moving: float
     lon_target: float
     orb_abs: float
+    orb_allow: float
     applying_or_separating: str
 
 
@@ -26,22 +31,17 @@ _DEF_PATH = Path(__file__).resolve().parent.parent / "profiles" / "aspects_polic
 
 
 def _load_policy(path: str | None = None) -> dict:
-    p = Path(path) if path else _DEF_PATH
-    raw = p.read_text().splitlines()
-    payload = "\n".join(line for line in raw if not line.strip().startswith("#"))
+    policy_path = Path(path) if path else _DEF_PATH
+    raw_lines = policy_path.read_text(encoding="utf-8").splitlines()
+    payload = "\n".join(line for line in raw_lines if not line.strip().startswith("#"))
     return json.loads(payload)
 
 
-def _aspect_name_for(angle: float, angles_map: Dict[str, float]) -> str:
-    for name, a in angles_map.items():
-        if abs(((a - angle + 180) % 360) - 180) < 1e-6:
-            return name
-    return f"angle_{angle:g}"
-
-
 def _orb_for(aspect_name: str, a_class: str, b_class: str, policy: dict) -> float:
-    orbs = policy["orbs_deg"][aspect_name]
-    return min(float(orbs.get(a_class, 2.0)), float(orbs.get(b_class, 2.0)))
+    orbs = policy.get("orbs_deg", {}).get(aspect_name, {})
+    allow_a = float(orbs.get(a_class, orbs.get("default", 2.0)))
+    allow_b = float(orbs.get(b_class, orbs.get("default", 2.0)))
+    return min(allow_a, allow_b)
 
 
 def detect_aspects(
@@ -54,33 +54,39 @@ def detect_aspects(
 ) -> List[AspectHit]:
     policy = _load_policy(policy_path)
     enabled = set(policy.get("enabled", [])) | set(policy.get("enabled_minors", []))
-    angles_map: Dict[str, float] = {k: float(v) for k, v in policy["angles_deg"].items() if k in enabled}
+    angles_map: Dict[str, float] = {
+        key: float(value) for key, value in policy.get("angles_deg", {}).items() if key in enabled
+    }
 
     out: List[AspectHit] = []
     cls_m = body_class(moving)
     cls_t = body_class(target)
 
-    for t in iso_ticks:
-        pos = provider.positions_ecliptic(t, [moving, target])
-        lm = pos[moving]["lon"]
-        lt = pos[target]["lon"]
-        spd = pos[moving].get("speed_lon", 0.0)
-        dmt = (lt - lm) % 360.0
-        for name, ang in angles_map.items():
-            target_point = (lt - ang) % 360.0
-            delta = delta_angle(dmt, ang)
-            orb_allow = _orb_for(name, cls_m, cls_t, policy)
-            if abs(delta) <= orb_allow:
-                out.append(AspectHit(
-                    kind=f"aspect_{name}",
-                    when_iso=t,
-                    moving=moving,
-                    target=target,
-                    angle_deg=float(ang),
-                    lon_moving=lm,
-                    lon_target=lt,
-                    orb_abs=abs(delta),
-                    applying_or_separating=classify_applying_separating(lm, spd, target_point),
-                ))
+    for iso in iso_ticks:
+        positions = provider.positions_ecliptic(iso, [moving, target])
+        lon_moving = positions[moving]["lon"]
+        lon_target = positions[target]["lon"]
+        speed = positions[moving].get("speed_lon", 0.0)
+        delta_mt = (lon_target - lon_moving) % 360.0
+
+        for aspect_name, angle in angles_map.items():
+            orb_allow = _orb_for(aspect_name, cls_m, cls_t, policy)
+            separation = delta_angle(delta_mt, angle)
+            if abs(separation) <= orb_allow:
+                ref_point = (lon_target - angle) % 360.0
+                motion = classify_applying_separating(lon_moving, speed, ref_point)
+                out.append(
+                    AspectHit(
+                        kind=f"aspect_{aspect_name}",
+                        when_iso=iso,
+                        moving=moving,
+                        target=target,
+                        angle_deg=float(angle),
+                        lon_moving=float(lon_moving),
+                        lon_target=float(lon_target),
+                        orb_abs=float(abs(separation)),
+                        orb_allow=float(orb_allow),
+                        applying_or_separating=motion,
+                    )
+                )
     return out
-# >>> AUTO-GEN END: AE Longitudinal Aspect Detectors v1.0

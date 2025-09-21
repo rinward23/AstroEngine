@@ -23,12 +23,10 @@ from .engine import (
 )
 from .scoring import compute_domain_factor
 from .time import TimeConversion, to_tt
-from .transit_engine import TransitEngine
 
 __all__ = [
     "TransitEvent",
     "TransitScanConfig",
-    "TransitEngine",
     "TimeConversion",
     "to_tt",
     "AngleTracker",
@@ -50,4 +48,13 @@ __all__ = [
     "get_feature_flag",
     "maybe_attach_domain_fields",
     "compute_domain_factor",
+    "TransitEngine",
 ]
+
+
+def __getattr__(name: str):
+    if name == "TransitEngine":
+        from .transit_engine import TransitEngine as _TransitEngine
+
+        return _TransitEngine
+    raise AttributeError(name)
