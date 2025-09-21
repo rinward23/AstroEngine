@@ -1,4 +1,4 @@
-# >>> AUTO-GEN BEGIN: issue-triage workflow v1.0
+# >>> AUTO-GEN BEGIN: issue-triage workflow v1.1
 name: Issue Triage & Health Report
 
 on:
@@ -6,7 +6,7 @@ on:
     branches: [ main, master ]
   pull_request:
   schedule:
-    - cron: '17 */6 * * *'  # every 6h
+    - cron: '17 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -30,6 +30,10 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
           pip install pytest pytest-cov ruff mypy PyGithub pydantic requests
+
+      - name: Export SE_EPHE_PATH if repo ephemeris folder exists
+        if: ${{ hashFiles('ephe/**') != '' }}
+        run: echo "SE_EPHE_PATH=${{ github.workspace }}/ephe" >> $GITHUB_ENV
 
       - name: Run repo scan & healthcheck
         env:
@@ -44,4 +48,4 @@ jobs:
         with:
           name: triage-report
           path: .github/triage/triage_report.md
-# >>> AUTO-GEN END: issue-triage workflow v1.0
+# >>> AUTO-GEN END: issue-triage workflow v1.1
