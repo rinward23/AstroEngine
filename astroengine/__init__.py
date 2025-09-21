@@ -11,6 +11,7 @@ from .utils.angles import delta_angle  # ENSURE-LINE
 from .utils.angles import classify_applying_separating  # ENSURE-LINE
 from .exporters import TransitEvent  # ENSURE-LINE
 from .exporters import SQLiteExporter, ParquetExporter  # ENSURE-LINE
+from .valence import combine_valence  # ENSURE-LINE
 
 from .catalogs import (
     VCA_CENTAURS,
@@ -97,6 +98,7 @@ __all__ = [
     "norm360",
     "delta_angle",
     "classify_applying_separating",
+    "combine_valence",
     "DomainScoringProfile",
     "VCA_DOMAIN_PROFILES",
     "compute_domain_factor",
