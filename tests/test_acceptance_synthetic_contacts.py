@@ -1,12 +1,15 @@
 # >>> AUTO-GEN BEGIN: AE Synthetic Acceptance v1.0
 import datetime as dt
-from types import SimpleNamespace
 
 from astroengine.detectors import detect_antiscia_contacts, detect_decl_contacts
 
 
 class StubProvider:
-    """Linear motion stub: moving starts near 160° and advances +1°/hour; target fixed at 10° Aries."""
+    """Linear motion stub with a moving point near 160°.
+
+    The target remains fixed at 10° Aries for deterministic contact tests.
+    """
+
     def __init__(self):
         self.base = dt.datetime(2024, 6, 1, 0, 0, 0, tzinfo=dt.timezone.utc)
 
@@ -47,4 +50,6 @@ def test_decl_parallel_coarse_detects():
     hits = detect_decl_contacts(prov, ticks, "moving", "target", 0.5, 0.5)
     # We used a simple dec model via ecl_to_dec; ensure function runs and returns list
     assert isinstance(hits, list)
+
+
 # >>> AUTO-GEN END: AE Synthetic Acceptance v1.0

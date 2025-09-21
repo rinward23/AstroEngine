@@ -9,8 +9,7 @@ from ..modules.vca.catalogs import (
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
 )
-
-from . import sbdb
+from . import sbdb  # noqa: F401
 
 __all__ = [
     "VCA_CORE_BODIES",

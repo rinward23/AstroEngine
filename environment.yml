@@ -1,10 +1,9 @@
-
+# >>> AUTO-GEN BEGIN: Conda Env v1.0
 name: astroengine
 channels: [conda-forge]
 dependencies:
-  - python=3.11
+  - python>=3.10,<3.13
   - pip
   - pip:
-      - -e .
-      - .[dev]
-
+      - -r requirements-dev.txt
+# >>> AUTO-GEN END: Conda Env v1.0

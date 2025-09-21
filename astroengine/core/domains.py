@@ -34,7 +34,8 @@ ZODIAC_ELEMENT_MAP: tuple[str, ...] = (
 )
 
 # Planet → default Domain weights (VCA-ish sensible defaults; overridable by profiles)
-# Keys use engine’s canonical planet ids: sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto, north_node, south_node, chiron
+# Keys use engine’s canonical planet ids: sun, moon, mercury, venus, mars, jupiter,
+# saturn, uranus, neptune, pluto, north_node, south_node, chiron
 DEFAULT_PLANET_DOMAIN_WEIGHTS: Mapping[str, Mapping[str, float]] = {
     "sun": {"SPIRIT": 1.0, "MIND": 0.25, "BODY": 0.25},
     "moon": {"BODY": 1.0, "MIND": 0.25},
