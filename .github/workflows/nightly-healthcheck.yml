@@ -1,0 +1,10 @@
+# >>> AUTO-GEN BEGIN: nightly healthcheck v1.0
+name: Nightly Healthcheck
+on:
+  schedule:
+    - cron: '11 4 * * *'
+  workflow_dispatch:
+jobs:
+  nightly:
+    uses: ./.github/workflows/issue-triage.yml
+# >>> AUTO-GEN END: nightly healthcheck v1.0

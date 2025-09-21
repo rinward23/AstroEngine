@@ -1,0 +1,22 @@
+# >>> AUTO-GEN BEGIN: issue template bug v1.0
+name: Bug report
+description: File a bug with reproducible steps
+labels: [bug, triage]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Include error messages, stack traces, and expected vs actual
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Commands, env vars, OS, Python version
+  - type: input
+    id: commit
+    attributes:
+      label: Commit SHA / tag
+# >>> AUTO-GEN END: issue template bug v1.0

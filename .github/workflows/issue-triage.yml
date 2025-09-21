@@ -1,0 +1,47 @@
+# >>> AUTO-GEN BEGIN: issue-triage workflow v1.0
+name: Issue Triage & Health Report
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  schedule:
+    - cron: '17 */6 * * *'  # every 6h
+  workflow_dispatch:
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dev deps
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          pip install pytest pytest-cov ruff mypy PyGithub pydantic requests
+
+      - name: Run repo scan & healthcheck
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python .github/triage/scan_repo.py --update-issues --write-index docs/ISSUE_INDEX.md
+
+      - name: Upload triage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triage-report
+          path: .github/triage/triage_report.md
+# >>> AUTO-GEN END: issue-triage workflow v1.0

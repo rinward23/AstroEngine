@@ -1,0 +1,14 @@
+# >>> AUTO-GEN BEGIN: issue template feature v1.0
+name: Feature request
+description: Suggest an improvement or new capability
+labels: [infra]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Problem / user need
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution / alternatives
+# >>> AUTO-GEN END: issue template feature v1.0
