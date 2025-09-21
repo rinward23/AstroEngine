@@ -1,11 +1,9 @@
-# >>> AUTO-GEN BEGIN: AE CLI v1.5
-from __future__ import annotations
-import sys
-import argparse
+
 
 from .providers import get_provider, list_providers
 from .engine import scan_contacts
 from .exporters import SQLiteExporter, ParquetExporter
+from .domains import rollup_domain_scores
 
 
 def cmd_env(args: argparse.Namespace) -> int:
@@ -17,6 +15,7 @@ def cmd_env(args: argparse.Namespace) -> int:
     print("ephemeris:", eph or "(unset)")
     print("providers:", ", ".join(list_providers()) or "(none)")
     return 0
+
 
 
 def cmd_scan(args: argparse.Namespace) -> int:
@@ -31,15 +30,7 @@ def cmd_scan(args: argparse.Namespace) -> int:
         antiscia_orb=args.mirror_orb,
         contra_antiscia_orb=args.mirror_orb,
         step_minutes=args.step,
-        valence_policy_path=args.valence_policy,
-    )
-    for e in events:
-        print({
-            "when": e.when_iso, "kind": e.kind, "pair": f"{e.moving}->{e.target}",
-            "orb": round(e.orb_abs, 4), "phase": e.applying_or_separating,
-            "base": round(e.score, 4), "valence": e.valence,
-            "factor": round(e.valence_factor, 4), "signed": round(e.signed_score, 4)
-        })
+
     if args.sqlite:
         SQLiteExporter(args.sqlite).write(events)
     if args.parquet:
@@ -47,14 +38,13 @@ def cmd_scan(args: argparse.Namespace) -> int:
     return 0
 
 
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="astroengine", description="AstroEngine CLI")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_env = sub.add_parser("env", help="Print environment diagnostics")
-    p_env.set_defaults(fn=lambda a: cmd_env(a))
 
-    p_scan = sub.add_parser("scan", help="Scan window for contacts (with valence & signed scores)")
     p_scan.add_argument("--start", required=True)
     p_scan.add_argument("--end", required=True)
     p_scan.add_argument("--moving", default="mars")
@@ -65,8 +55,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_scan.add_argument("--step", type=int, default=60)
     p_scan.add_argument("--sqlite")
     p_scan.add_argument("--parquet")
-    p_scan.add_argument("--valence-policy", help="custom valence_policy.json path")
-    p_scan.set_defaults(fn=cmd_scan)
 
     return ap
 
@@ -78,4 +66,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-# >>> AUTO-GEN END: AE CLI v1.5
+

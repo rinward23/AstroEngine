@@ -95,6 +95,29 @@ production deployments to regain full Swiss Ephemeris precision.
 
 # >>> AUTO-GEN END: AE README Providers Addendum v1.2
 
+# >>> AUTO-GEN BEGIN: AE README Aspects + Domain Report v1.0
+### Enable minor aspects (optional)
+Edit `profiles/aspects_policy.json` and add to `enabled_minors`, then:
+```bash
+python -m astroengine scan --start 2024-06-01T00:00:00Z --end 2024-06-07T00:00:00Z \
+  --moving mars --target venus --provider swiss
+````
+
+### Domain report
+
+```bash
+python -m astroengine report \
+  --start 2024-06-01T00:00:00Z \
+  --end   2024-06-07T00:00:00Z \
+  --moving mars --target venus \
+  --provider swiss --decl-orb 0.5 --mirror-orb 2.0 --step 60 \
+  --out domain_report.json
+```
+
+This prints and writes a JSON with domain/channel/subchannel scores and totals.
+
+# >>> AUTO-GEN END: AE README Aspects + Domain Report v1.0
+
 
 ---
 
