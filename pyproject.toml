@@ -1,28 +1,87 @@
-# >>> AUTO-GEN BEGIN: packaging config v1.1
+# >>> AUTO-GEN BEGIN: packaging-and-extras v1.0
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "astroengine"
-version = "0.0.0"
-description = "AstroEngine — generated-first transit engine"
-authors = [{ name = "AstroEngine" }]
+version = "0.1.0"
+description = "AstroEngine — modular transit engine and astrology toolkit"
 readme = "README.md"
-requires-python = ">=3.11"
-dependencies = [
-  "pyyaml>=6.0.2",
+requires-python = ">=3.10"
+authors = [{ name = "AstroEngine Maintainers" }]
+license = { text = "MIT" }
+keywords = ["astrology", "ephemeris", "transits", "astronomy"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
 ]
 
-[tool.setuptools]
-include-package-data = true
-package-dir = {"" = "."}
+# Core runtime deps kept lean. Everything else under extras.
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "python-dateutil>=2.8",
+  "PyYAML>=6.0",
+  "tzdata>=2023.3",
+]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["astroengine*"]
-exclude = ["generated*"]
-# >>> AUTO-GEN END: packaging config v1.1
+[project.optional-dependencies]
+# Swiss ephemeris stack
+ephem = [
+  "pyswisseph>=2.10",
+  "pymeeus>=0.5.12",
+]
+# Skyfield provider + kernels
+skyfield = [
+  "skyfield>=1.48",
+  "jplephem>=2.21",
+]
+# Catalog lookups
+catalogs = [
+  "astroquery>=0.4",
+]
+# Exporters
+exporters = [
+  "pyarrow>=15",
+  "ics>=0.7",
+]
+# API + narrative
+api = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.23",
+]
+
+narrative = [
+  "jinja2>=3.1",
+]
+# Performance (optional)
+perf = [
+  "numba>=0.58",
+]
+# CLI polish / plugins (optional)
+cli = [
+  "click>=8.1",
+  "rich>=13.7",
+  "pluggy>=1.3",
+]
+# All the things
+all = [
+  "astroengine[ephem,skyfield,catalogs,exporters,api,narrative,perf,cli]",
+]
+
+[project.urls]
+Homepage = "https://github.com/rinward23/AstroEngine"
+
+[project.scripts]
+astroengine = "astroengine.cli:main"
+astroengine-api = "astroengine.api_server:run"  # guarded import; only works with [api]
+
+[tool.setuptools]
+# Install the real package directory (not the generated skeleton only)
+packages = { find = { where = ["."], include = ["astroengine*"] } }
+include-package-data = true
+# >>> AUTO-GEN END: packaging-and-extras v1.0
 
 # >>> AUTO-GEN BEGIN: ruff target py311 v1.1
 [tool.ruff]

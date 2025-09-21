@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .utils import get_se_ephe_path
 import swisseph as swe
 
 __all__ = ["BodyPosition", "HousePositions", "SwissEphemerisAdapter"]
@@ -80,7 +81,7 @@ class SwissEphemerisAdapter:
             swe.set_ephe_path(str(ephemeris_path))
             return str(ephemeris_path)
 
-        env_path = os.environ.get("SE_EPHE_PATH")
+        env_path = get_se_ephe_path()
         if env_path:
             candidate = Path(env_path)
             if candidate.exists():

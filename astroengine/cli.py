@@ -9,8 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-from .detectors import find_lunations, find_stations, solar_lunar_returns  # type: ignore
-from .detectors.common import UNIX_EPOCH_JD
+
 from .engine import events_to_dicts, scan_contacts
 from .exporters import ParquetExporter, SQLiteExporter
 from .providers import list_providers
@@ -22,6 +21,23 @@ from .validation import (
 
 __all__ = ["build_parser", "main", "serialize_events_to_json", "json"]
 
+
+# >>> AUTO-GEN BEGIN: cli-new-detector-flags v1.0
+def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:
+    targets = getattr(p, "_ae_feature_parsers", [p])
+    for target in targets:
+        if getattr(target, "_ae_features_added", False):
+            continue
+        g = target.add_argument_group("Detectors (experimental)")
+        g.add_argument("--lunations", action="store_true", help="Enable lunations detector")
+        g.add_argument("--eclipses", action="store_true", help="Enable eclipses detector")
+        g.add_argument("--stations", action="store_true", help="Enable stations detector")
+        g.add_argument("--progressions", action="store_true", help="Enable secondary progressions")
+        g.add_argument("--directions", action="store_true", help="Enable solar arc directions")
+        g.add_argument("--returns", action="store_true", help="Enable solar/lunar returns")
+        g.add_argument("--profections", action="store_true", help="Enable annual profections")
+        target._ae_features_added = True
+# >>> AUTO-GEN END: cli-new-detector-flags v1.0
 
 def serialize_events_to_json(events: Iterable) -> str:
     """Serialize events into a pretty-printed JSON string."""
@@ -36,6 +52,13 @@ def cmd_env(_: argparse.Namespace) -> int:
 
 
 def cmd_transits(args: argparse.Namespace) -> int:
+    engine_module.FEATURE_LUNATIONS = args.lunations
+    engine_module.FEATURE_ECLIPSES = args.eclipses
+    engine_module.FEATURE_STATIONS = args.stations
+    engine_module.FEATURE_PROGRESSIONS = args.progressions
+    engine_module.FEATURE_DIRECTIONS = args.directions
+    engine_module.FEATURE_RETURNS = args.returns
+    engine_module.FEATURE_PROFECTIONS = args.profections
     events = scan_contacts(
         start_iso=args.start,
         end_iso=args.end,
@@ -141,6 +164,9 @@ def build_parser() -> argparse.ArgumentParser:
     env_parser.set_defaults(func=cmd_env)
 
     transits = sub.add_parser("transits", help="Scan for transit contacts")
+    feature_targets = getattr(parser, "_ae_feature_parsers", [])
+    feature_targets.append(transits)
+    parser._ae_feature_parsers = feature_targets
     transits.add_argument("--start", required=True)
     transits.add_argument("--end", required=True)
     transits.add_argument("--moving", default="sun")
@@ -161,11 +187,13 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("path")
     validate.set_defaults(func=cmd_validate)
 
+    _augment_parser_with_features(parser)
     return parser
 
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
+    _augment_parser_with_features(parser)
     namespace = parser.parse_args(list(argv) if argv is not None else None)
     run_experimental(namespace)
     func = getattr(namespace, "func", None)
