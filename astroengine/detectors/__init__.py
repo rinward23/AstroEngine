@@ -19,6 +19,7 @@ from ..utils.angles import (
 
 
 
+
 @dataclass
 class CoarseHit:
     kind: str  # 'decl_parallel', 'decl_contra', 'antiscia', 'contra_antiscia'
