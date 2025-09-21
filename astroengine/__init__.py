@@ -45,6 +45,15 @@ from .ephemeris import (  # noqa: F401
     SwissEphemerisAdapter,
     refine_event,
 )
+from .events import (
+    LunationEvent,
+    EclipseEvent,
+    StationEvent,
+    ReturnEvent,
+    ProgressionEvent,
+    DirectionEvent,
+    ProfectionEvent,
+)
 from .fixedstars import skyfield_stars  # ENSURE-LINE
 from .infrastructure.environment import collect_environment_report
 from .infrastructure.environment import main as environment_report_main
@@ -144,6 +153,13 @@ __all__ = [
     "VALID_HOUSE_SYSTEMS",
     "collect_diagnostics",
     "maint_main",
+    "LunationEvent",
+    "EclipseEvent",
+    "StationEvent",
+    "ReturnEvent",
+    "ProgressionEvent",
+    "DirectionEvent",
+    "ProfectionEvent",
 ]
 
 try:  # pragma: no cover - package metadata not available during tests

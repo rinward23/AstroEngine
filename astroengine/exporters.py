@@ -15,11 +15,13 @@ except Exception:  # pragma: no cover
 try:  # pragma: no cover - optional dependency
     import pyarrow as pa
     import pyarrow.parquet as pq
+    _PARQUET_OK = True
 except Exception:  # pragma: no cover
     pa = None  # type: ignore[assignment]
     pq = None  # type: ignore[assignment]
+    _PARQUET_OK = False
 
-__all__ = ["TransitEvent", "SQLiteExporter", "ParquetExporter"]
+__all__ = ["TransitEvent", "SQLiteExporter", "ParquetExporter", "parquet_available"]
 
 
 @dataclass
@@ -130,3 +132,7 @@ class ParquetExporter:
         assert pa is not None and pq is not None  # for mypy/pyright
         table = pa.Table.from_pylist([event.to_dict() for event in events])
         pq.write_table(table, self.path)
+
+
+def parquet_available() -> bool:
+    return _PARQUET_OK
