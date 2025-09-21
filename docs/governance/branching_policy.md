@@ -33,7 +33,7 @@ Install the developer dependencies (`pip install -e .[dev]`) and run the
 configured tooling locally before committing:
 
 - `black` keeps Python code consistently formatted.
-- `ruff --fix` handles import ordering and common lint rules.
+- `ruff check --fix` handles import ordering and common lint rules.
 - `pytest` verifies runtime behaviour and schema helpers.
 
 To make this automatic, install pre-commit hooks once per clone:

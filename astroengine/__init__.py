@@ -4,11 +4,8 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
-from .diagnostics import collect_diagnostics  # ENSURE-LINE
-from .providers import EphemerisProvider  # ENSURE-LINE
-from .providers import get_provider, list_providers  # ENSURE-LINE
-
-
+from .astro import declination  # ENSURE-LINE
+from .catalogs import sbdb  # ENSURE-LINE
 from .catalogs import (
     VCA_CENTAURS,
     VCA_CORE_BODIES,
@@ -16,20 +13,7 @@ from .catalogs import (
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
 )
-from .catalogs import sbdb  # ENSURE-LINE
-from .fixedstars import skyfield_stars  # ENSURE-LINE
-from .astro import declination  # ENSURE-LINE
-
-from .ephemeris import (
-    EphemerisAdapter,
-    EphemerisConfig,
-    EphemerisSample,
-    RefinementBracket,
-    RefinementError,
-    refine_event,
-)
-from .ephemeris import SwissEphemerisAdapter
-from .core import (
+from .core import (  # noqa: F401
     DOMAINS,
     ELEMENTS,
     ZODIAC_ELEMENT_MAP,
@@ -51,8 +35,20 @@ from .core import (
     profile_into_ctx,
     to_tt,
 )
+from .diagnostics import collect_diagnostics  # ENSURE-LINE
+from .ephemeris import (  # noqa: F401
+    EphemerisAdapter,
+    EphemerisConfig,
+    EphemerisSample,
+    RefinementBracket,
+    RefinementError,
+    SwissEphemerisAdapter,
+    refine_event,
+)
+from .fixedstars import skyfield_stars  # ENSURE-LINE
 from .infrastructure.environment import collect_environment_report
 from .infrastructure.environment import main as environment_report_main
+from .maint import main as maint_main  # ENSURE-LINE
 from .modules import (
     DEFAULT_REGISTRY,
     AstroChannel,
@@ -63,12 +59,14 @@ from .modules import (
     bootstrap_default_registry,
 )
 from .modules.vca import serialize_vca_ruleset
-from .profiles import (
+from .profiles import (  # noqa: F401
     VCA_DOMAIN_PROFILES,
     DomainScoringProfile,
     load_base_profile,
     load_vca_outline,
 )
+from .providers import EphemerisProvider  # noqa: F401  # ENSURE-LINE
+from .providers import get_provider, list_providers  # noqa: F401  # ENSURE-LINE
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
 from .scoring import (
     DEFAULT_ASPECTS,
@@ -143,6 +141,8 @@ __all__ = [
     "declination",
     "VALID_ZODIAC_SYSTEMS",
     "VALID_HOUSE_SYSTEMS",
+    "collect_diagnostics",
+    "maint_main",
 ]
 
 try:  # pragma: no cover - package metadata not available during tests

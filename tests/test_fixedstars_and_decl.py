@@ -1,8 +1,8 @@
 # >>> AUTO-GEN BEGIN: AE Fixed Stars & Decl Tests v1.0
-import importlib
 import datetime as dt
+import importlib
 import math
-import os
+
 import pytest
 
 
@@ -24,8 +24,13 @@ def test_skyfield_star_regulus_lon_lat_range():
 
 def test_declination_utils():
     from astroengine.astro.declination import (
-        ecl_to_dec, antiscia_lon, contra_antiscia_lon, is_parallel, is_contraparallel,
+        antiscia_lon,
+        contra_antiscia_lon,
+        ecl_to_dec,
+        is_contraparallel,
+        is_parallel,
     )
+
     # Equinox/solstice sanity
     assert abs(ecl_to_dec(0.0)) < 1e-6  # Aries 0 dec ~ 0
     assert abs(ecl_to_dec(180.0)) < 1e-6
@@ -38,4 +43,6 @@ def test_declination_utils():
     # Parallels
     assert is_parallel(10.0, 10.3, tol_deg=0.5)
     assert is_contraparallel(10.0, -10.3, tol_deg=0.5)
+
+
 # >>> AUTO-GEN END: AE Fixed Stars & Decl Tests v1.0

@@ -1,9 +1,7 @@
 # >>> AUTO-GEN BEGIN: AE Aspects & Domains Tests v1.0
 import datetime as dt
-import json
 
 from astroengine.detectors_aspects import detect_aspects
-from astroengine.engine import scan_contacts
 from astroengine.domains import rollup_domain_scores
 
 
@@ -42,12 +40,35 @@ def test_aspect_detector_finds_trine():
 
 
 def test_domain_rollup_has_three_domains():
-    # Glue: use engine.scan_contacts with stub-like parameters by monkeypatching provider if needed.
+    # Minimal glue: emulate engine.scan_contacts output with handcrafted events.
     events = [
         # Minimal event set to exercise rollup
-        type("E", (), {"kind": "aspect_trine", "when_iso": "2024-06-01T00:00:00Z", "moving": "venus", "target": "mars", "orb_abs": 0.5, "applying_or_separating": "applying", "score": 0.8})(),
-        type("E", (), {"kind": "aspect_square", "when_iso": "2024-06-01T01:00:00Z", "moving": "mars", "target": "saturn", "orb_abs": 0.5, "applying_or_separating": "separating", "score": 0.6})(),
+        type(
+            "E",
+            (),
+            {
+                "kind": "aspect_trine",
+                "when_iso": "2024-06-01T00:00:00Z",
+                "moving": "venus",
+                "target": "mars",
+                "orb_abs": 0.5,
+                "applying_or_separating": "applying",
+                "score": 0.8,
+            },
+        )(),
+        type(
+            "E",
+            (),
+            {
+                "kind": "aspect_square",
+                "when_iso": "2024-06-01T01:00:00Z",
+                "moving": "mars",
+                "target": "saturn",
+                "orb_abs": 0.5,
+                "applying_or_separating": "separating",
+                "score": 0.6,
+            },
+        )(),
     ]
     report = rollup_domain_scores(events)
     assert set(report.keys()) >= {"mind", "body", "spirit"}
-# >>> AUTO-GEN END: AE Aspects & Domains Tests v1.0

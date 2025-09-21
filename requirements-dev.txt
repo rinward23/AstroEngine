@@ -1,8 +1,1 @@
-PyGithub==1.59.1  # ENSURE-LINE
-ruff==0.6.8  # ENSURE-LINE
-mypy==1.11.2  # ENSURE-LINE
-pytest==8.3.3  # ENSURE-LINE
-pytest-cov==5.0.0  # ENSURE-LINE
-pydantic==2.9.2  # ENSURE-LINE
-requests==2.32.3  # ENSURE-LINE
-pyswisseph==2.10.3.2  # ENSURE-LINE
+

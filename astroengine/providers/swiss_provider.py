@@ -1,5 +1,6 @@
 # >>> AUTO-GEN BEGIN: AE Swiss Provider v1.0
 from __future__ import annotations
+
 import os
 from datetime import datetime, timezone
 from typing import Dict, Iterable
@@ -11,28 +12,49 @@ except Exception:  # pragma: no cover
 
 try:  # pragma: no cover - exercised via runtime fallback
     from pymeeus.Epoch import Epoch
-    from pymeeus.Mercury import Mercury as _Mercury
-    from pymeeus.Venus import Venus as _Venus
-    from pymeeus.Mars import Mars as _Mars
     from pymeeus.Jupiter import Jupiter as _Jupiter
-    from pymeeus.Saturn import Saturn as _Saturn
-    from pymeeus.Uranus import Uranus as _Uranus
+    from pymeeus.Mars import Mars as _Mars
+    from pymeeus.Mercury import Mercury as _Mercury
+    from pymeeus.Moon import Moon as _Moon
     from pymeeus.Neptune import Neptune as _Neptune
     from pymeeus.Pluto import Pluto as _Pluto
+    from pymeeus.Saturn import Saturn as _Saturn
     from pymeeus.Sun import Sun as _Sun
-    from pymeeus.Moon import Moon as _Moon
+    from pymeeus.Uranus import Uranus as _Uranus
+    from pymeeus.Venus import Venus as _Venus
+
     _PYMEEUS_AVAILABLE = True
 except Exception:  # pragma: no cover
     Epoch = None  # type: ignore[assignment]
-    _Mercury = _Venus = _Mars = _Jupiter = _Saturn = _Uranus = _Neptune = _Pluto = _Sun = _Moon = None  # type: ignore[assignment]
+    (
+        _Mercury,
+        _Venus,
+        _Mars,
+        _Jupiter,
+        _Saturn,
+        _Uranus,
+        _Neptune,
+        _Pluto,
+        _Sun,
+        _Moon,
+    ) = (
+        None,
+    ) * 10  # type: ignore[assignment]
     _PYMEEUS_AVAILABLE = False
 
-from . import EphemerisProvider, register_provider
-
+from . import register_provider
 
 _BODY_IDS = {
-    "sun": 0, "moon": 1, "mercury": 2, "venus": 3, "mars": 4,
-    "jupiter": 5, "saturn": 6, "uranus": 7, "neptune": 8, "pluto": 9,
+    "sun": 0,
+    "moon": 1,
+    "mercury": 2,
+    "venus": 3,
+    "mars": 4,
+    "jupiter": 5,
+    "saturn": 6,
+    "uranus": 7,
+    "neptune": 8,
+    "pluto": 9,
 }
 
 
@@ -44,10 +66,14 @@ class SwissProvider:
         if eph:
             swe.set_ephe_path(eph)
 
-    def positions_ecliptic(self, iso_utc: str, bodies: Iterable[str]) -> Dict[str, Dict[str, float]]:
+    def positions_ecliptic(
+        self, iso_utc: str, bodies: Iterable[str]
+    ) -> Dict[str, Dict[str, float]]:
         dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
         dt_utc = dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-        hour = dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0 + dt_utc.microsecond / 3.6e9
+        hour = (
+            dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0 + dt_utc.microsecond / 3.6e9
+        )
         jd_ut = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, hour)
         flags = swe.FLG_SWIEPH | swe.FLG_SPEED
         out: Dict[str, Dict[str, float]] = {}
@@ -85,7 +111,9 @@ class SwissFallbackProvider:
     def _to_epoch(iso_utc: str) -> "Epoch":
         dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
         dt_utc = dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-        hour = dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0 + dt_utc.microsecond / 3.6e9
+        hour = (
+            dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0 + dt_utc.microsecond / 3.6e9
+        )
         return Epoch(dt_utc.year, dt_utc.month, dt_utc.day, hour, utc=True)
 
     @staticmethod
@@ -132,7 +160,9 @@ class SwissFallbackProvider:
         diff = cls._wrap_deg(lon_next - lon_prev)
         return diff / (2.0 * delta)
 
-    def positions_ecliptic(self, iso_utc: str, bodies: Iterable[str]) -> Dict[str, Dict[str, float]]:
+    def positions_ecliptic(
+        self, iso_utc: str, bodies: Iterable[str]
+    ) -> Dict[str, Dict[str, float]]:
         epoch = self._to_epoch(iso_utc)
         out: Dict[str, Dict[str, float]] = {}
         for name in bodies:
