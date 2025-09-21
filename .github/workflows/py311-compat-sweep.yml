@@ -1,0 +1,58 @@
+# >>> AUTO-GEN BEGIN: py311 compat sweep workflow v1.0
+name: Py3.11 Compatibility Sweep
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '**/*.py'
+      - 'pyproject.toml'
+      - 'requirements*.txt'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dev deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run py311 sweep
+        run: |
+          python scripts/compat/py311_sweep.py
+
+      - name: Lint & format
+        run: |
+          python -m ruff check --fix . || true
+
+      - name: Generate py311 lockfile
+        run: |
+          chmod +x scripts/compat/lock_py311_requirements.sh
+          bash scripts/compat/lock_py311_requirements.sh
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: py311 compatibility sweep & lockfile"
+          title: "chore: py311 compatibility sweep & lockfile"
+          branch: chore/py311-compat-sweep
+          delete-branch: true
+          add-paths: |
+            .github/compat/py311_sweep_report.md
+            requirements.lock/**
+            **/*.py
+            pyproject.toml
+            requirements*.txt
+# >>> AUTO-GEN END: py311 compat sweep workflow v1.0

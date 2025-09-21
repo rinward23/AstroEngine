@@ -29,3 +29,5 @@ hypothesis>=6.112
 # black>=24.8
 # isort>=5.13
 # >>> AUTO-GEN END: AstroEngine Requirements v1.0
+
+pyswisseph==2.10.3.2; python_version < "3.12"  # ENSURE-LINE
