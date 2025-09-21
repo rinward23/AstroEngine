@@ -1,0 +1,16 @@
+# >>> AUTO-GEN BEGIN: labels catalog v1.0
+- name: bug
+  color: d73a4a
+- name: ephemeris
+  color: 0366d6
+- name: infra
+  color: 7057ff
+- name: automated
+  color: 0e8a16
+- name: meta
+  color: c5def5
+- name: tech-debt
+  color: b60205
+- name: triage
+  color: fbca04
+# >>> AUTO-GEN END: labels catalog v1.0

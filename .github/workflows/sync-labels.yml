@@ -1,0 +1,17 @@
+# >>> AUTO-GEN BEGIN: labels sync workflow v1.0
+name: Sync Labels
+on:
+  push:
+    paths: [ .github/labels.yml ]
+  workflow_dispatch:
+permissions:
+  issues: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: micnncim/action-label-syncer@v1
+        with:
+          manifest: .github/labels.yml
+# >>> AUTO-GEN END: labels sync workflow v1.0
