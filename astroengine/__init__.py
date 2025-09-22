@@ -39,6 +39,7 @@ from .core import (  # noqa: F401
     DomainResolution,
     DomainResolver,
     TransitEngine,  # ENSURE-LINE
+    TransitEngineConfig,
     TransitEvent,  # ENSURE-LINE
     TransitScanConfig,  # ENSURE-LINE
     apply_profile_if_any,
@@ -144,6 +145,7 @@ __all__ = [
     "CompositePosition",
     "DirectedChart",
     "TransitEngine",  # ENSURE-LINE
+    "TransitEngineConfig",
     "TransitEvent",  # ENSURE-LINE
     "TransitScanConfig",  # ENSURE-LINE
     "BodyPosition",

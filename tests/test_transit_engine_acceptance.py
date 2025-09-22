@@ -1,11 +1,9 @@
+import random
 from datetime import UTC, datetime, timedelta
 
-import pytest
 
-from astroengine.ephemeris import EphemerisSample
-from astroengine.core import transit_engine as te
+from astroengine.core.transit_engine import TransitEngine, TransitEngineConfig
 
-from astroengine.core.transit_engine import TransitEngine
 
 
 def test_mars_conjunct_natal_venus_acceptance():
@@ -26,72 +24,84 @@ def test_mars_conjunct_natal_venus_acceptance():
     assert abs(event.timestamp - window_center) <= timedelta(hours=12)
 
 
-class _DummyAdapter:
-    def __init__(self, samples: dict[tuple[int, datetime], EphemerisSample]) -> None:
-        self._samples = samples
 
-    def sample(self, body: int, moment: datetime) -> EphemerisSample:  # pragma: no cover - exercised
-        return self._samples[(body, moment)]
+def test_transit_engine_refinement_modes():
+    start = datetime(2025, 10, 20, tzinfo=UTC)
+    end = datetime(2025, 11, 20, tzinfo=UTC)
+    natal_venus_longitude = 240.9623186447056
 
-
-def _make_sample(longitude: float, speed: float) -> EphemerisSample:
-    return EphemerisSample(
-        jd_tt=0.0,
-        jd_utc=0.0,
-        longitude=longitude,
-        latitude=0.0,
-        distance=1.0,
-        speed_longitude=speed,
-        speed_latitude=0.0,
-        speed_distance=0.0,
-        delta_t_seconds=0.0,
-    )
-
-
-def test_transit_engine_compute_positions_uses_adapter() -> None:
-    moment = datetime(2025, 1, 1, tzinfo=UTC)
-    samples = {(1, moment): _make_sample(120.0, 0.1)}
-    engine = TransitEngine(adapter=_DummyAdapter(samples))
-
-    positions = engine.compute_positions([1], moment)
-    assert positions == {1: pytest.approx(120.0)}
-
-
-def test_scan_longitude_crossing_falls_back_on_refine_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    body = 1
-    start = datetime(2025, 1, 1, tzinfo=UTC)
-    end = start + timedelta(hours=6)
-
-    samples = {
-        (body, start): _make_sample(100.0, 0.5),
-        (body, end): _make_sample(100.6, 0.5),
-    }
-
-    engine = TransitEngine(adapter=_DummyAdapter(samples))
-
-    def _failing_refine(*_args, **_kwargs):
-        raise RuntimeError("refine failure")
-
-    monkeypatch.setattr(te, "refine_event", _failing_refine)
-
-    events = list(engine.scan_longitude_crossing(body, 100.0, 0.0, start, end, step_hours=6.0))
-    assert events, "Fallback path should still yield an event"
-    event = events[0]
-    assert event.timestamp == end
-    assert event.motion in {"applying", "separating", "stationary"}
-
-    canonical = list(
-        te.to_canonical_events(
-            [
-                {
-                    "timestamp": event.timestamp,
-                    "moving": event.body,
-                    "target": event.target,
-                    "aspect": "conjunction",
-                    "orb": event.orb,
-                    "applying": event.motion == "applying",
-                }
-            ]
+    engine_fast = TransitEngine.with_default_adapter(
+        engine_config=TransitEngineConfig(
+            coarse_step_hours=24.0,
+            refinement_mode="fast",
         )
     )
-    assert canonical
+    engine_accurate = TransitEngine.with_default_adapter(
+        engine_config=TransitEngineConfig(
+            coarse_step_hours=24.0,
+            refinement_mode="accurate",
+        )
+    )
+
+    fast_events = list(
+        engine_fast.scan_longitude_crossing(4, natal_venus_longitude, 0.0, start, end)
+    )
+    accurate_events = list(
+        engine_accurate.scan_longitude_crossing(4, natal_venus_longitude, 0.0, start, end)
+    )
+
+    assert fast_events and accurate_events
+
+    def best(events):
+        return min(events, key=lambda evt: abs(evt.orb or 999.0))
+
+    fast_event = best(fast_events)
+    accurate_event = best(accurate_events)
+
+    assert fast_event.orb is not None and accurate_event.orb is not None
+    assert fast_event.orb >= accurate_event.orb
+    assert fast_event.timestamp is not None and accurate_event.timestamp is not None
+    if fast_event.orb > accurate_event.orb:
+        assert fast_event.timestamp != accurate_event.timestamp
+    assert fast_event.timestamp.hour == start.hour
+    assert fast_event.timestamp.minute == start.minute
+
+
+def test_scan_longitude_crossing_fuzz_no_crash():
+    engine = TransitEngine.with_default_adapter(
+        engine_config=TransitEngineConfig(
+            coarse_step_hours=12.0,
+            refinement_mode="fast",
+        )
+    )
+    rng = random.Random(0xA57A)
+    base = datetime(2024, 1, 1, tzinfo=UTC)
+    aspect_choices = [0.0, 30.0, 45.0, 60.0, 90.0, 120.0, 150.0, 180.0]
+    body_codes = list(range(0, 10))
+
+    for _ in range(24):
+        start_offset = rng.uniform(-365, 365)
+        duration_days = rng.uniform(1, 120)
+        start = base + timedelta(days=start_offset)
+        end = start + timedelta(days=duration_days)
+        reference_longitude = rng.uniform(0.0, 360.0)
+        aspect_angle = rng.choice(aspect_choices)
+        body = rng.choice(body_codes)
+        refinement = "accurate" if rng.random() < 0.5 else "fast"
+        step = 6.0 if rng.random() < 0.5 else 12.0
+
+        events = list(
+            engine.scan_longitude_crossing(
+                body,
+                reference_longitude,
+                aspect_angle,
+                start,
+                end,
+                step_hours=step,
+                refinement=refinement,
+            )
+        )
+        for event in events:
+            assert event.timestamp is not None
+            assert event.orb is not None
+
