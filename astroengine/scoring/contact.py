@@ -11,6 +11,7 @@ from typing import Mapping
 from ..core.bodies import body_class
 from ..infrastructure.paths import profiles_dir
 from ..refine import fuzzy_membership
+from ..plugins import apply_score_extensions
 
 __all__ = [
     "ScoreInputs",
@@ -100,7 +101,8 @@ def compute_score(inputs: ScoreInputs, *, policy_path: str | None = None) -> Sco
             observers=inputs.observers,
             overlap_count=inputs.overlap_count,
         )
-        return ScoreResult(0.0, {"base_weight": base_weight}, confidence)
+        result = ScoreResult(0.0, {"base_weight": base_weight}, confidence)
+        return apply_score_extensions(inputs, result)
 
     curve = policy.get("curve", {})
     sigma_frac = float(curve.get("sigma_frac_of_orb", 0.5))
@@ -159,4 +161,5 @@ def compute_score(inputs: ScoreInputs, *, policy_path: str | None = None) -> Sco
         "resonance_factor": resonance_factor,
         "confidence": confidence,
     }
-    return ScoreResult(score=score, components=components, confidence=confidence)
+    result = ScoreResult(score=score, components=components, confidence=confidence)
+    return apply_score_extensions(inputs, result)

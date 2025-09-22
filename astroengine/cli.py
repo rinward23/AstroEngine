@@ -13,6 +13,7 @@ from typing import Iterable, Sequence, Any
 from . import engine as engine_module
 from .engine import events_to_dicts, scan_contacts
 from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
+from .plugins import ExportContext, get_plugin_manager
 from .providers import list_providers
 from .validation import (
     SchemaValidationError,
@@ -57,6 +58,14 @@ def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, in
         written["sqlite"] = write_sqlite_canonical(args.sqlite, events)
     if getattr(args, "parquet", None):
         written["parquet"] = write_parquet_canonical(args.parquet, events)
+    runtime = get_plugin_manager()
+    runtime.post_export(
+        ExportContext(
+            destinations=dict(written),
+            events=tuple(events),
+            arguments=dict(vars(args)),
+        )
+    )
     return written
 
 
