@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Mapping, Sequence
 
+from ..chart.config import ChartConfig
 from ..chart.natal import DEFAULT_BODIES
 from ..ephemeris import SwissEphemerisAdapter
 from ..events import DirectionEvent
@@ -44,6 +45,7 @@ def solar_arc_directions(
     end_iso: str,
     *,
     bodies: Sequence[str] | None = None,
+    config: ChartConfig | None = None,
 ) -> list[DirectionEvent]:
     """Return solar arc directions sampled annually between ``start`` and ``end``."""
 
@@ -53,7 +55,8 @@ def solar_arc_directions(
     if end_dt <= start_dt:
         return []
 
-    adapter = SwissEphemerisAdapter()
+    chart_config = config or ChartConfig()
+    adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
     body_map = _resolve_bodies(bodies)
 
     natal_jd = adapter.julian_day(natal_dt)

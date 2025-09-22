@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from ..ephemeris import BodyPosition, HousePositions, SwissEphemerisAdapter
+from .config import ChartConfig
 from ..utils.angles import delta_angle, norm360
 from .natal import ChartLocation, NatalChart, DEFAULT_BODIES, compute_natal_chart
 
@@ -215,11 +216,13 @@ def compute_composite_chart(
     method: str = "midpoint",
     include: Sequence[str] | None = None,
     body_codes: Mapping[str, int] | None = None,
+    config: ChartConfig | None = None,
     adapter: SwissEphemerisAdapter | None = None,
 ) -> CompositeChart:
     """Compute a relationship composite chart from two natal charts."""
 
     method_normalized = method.lower()
+    chart_config = config or ChartConfig()
     shared_names = _shared_body_names(chart_a, chart_b, include)
     if not shared_names:
         raise ValueError("No shared bodies available to build a composite chart")
@@ -240,7 +243,7 @@ def compute_composite_chart(
         }
         houses = _average_houses(chart_a.houses, chart_b.houses)
     elif method_normalized == "davison":
-        adapter = adapter or SwissEphemerisAdapter()
+        adapter = adapter or SwissEphemerisAdapter.from_chart_config(chart_config)
         mapping = body_codes or DEFAULT_BODIES
         body_map = {name: mapping[name] for name in shared_names if name in mapping}
         if len(body_map) != len(shared_names):
@@ -252,6 +255,7 @@ def compute_composite_chart(
             moment,
             location,
             bodies=body_map,
+            config=chart_config,
             adapter=adapter,
         )
         julian_day = natal.julian_day

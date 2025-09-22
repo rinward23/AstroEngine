@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Dict, Iterable
 
+from astroengine.ephemeris import SwissEphemerisAdapter
 from astroengine.ephemeris.utils import get_se_ephe_path
 
 try:
@@ -72,20 +73,20 @@ class SwissProvider:
     ) -> Dict[str, Dict[str, float]]:
         dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
         dt_utc = dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-        hour = (
-            dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0 + dt_utc.microsecond / 3.6e9
-        )
-        jd_ut = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, hour)
-        flags = swe.FLG_SWIEPH | swe.FLG_SPEED
+
+        adapter = SwissEphemerisAdapter.get_default_adapter()
+        jd_ut = adapter.julian_day(dt_utc)
         out: Dict[str, Dict[str, float]] = {}
         for name in bodies:
             if name.lower() not in _BODY_IDS:
                 continue
             ipl = _BODY_IDS[name.lower()]
-            values, retflag = swe.calc_ut(jd_ut, ipl, flags)
-            lon, lat, dist, lon_speed, lat_speed, dist_speed = values
-            lon_ecl, lat_ecl = lon % 360.0, lat
-            out[name] = {"lon": lon_ecl, "decl": lat_ecl, "speed_lon": lon_speed}
+            position = adapter.body_position(jd_ut, ipl, body_name=name)
+            out[name] = {
+                "lon": position.longitude,
+                "decl": position.latitude,
+                "speed_lon": position.speed_longitude,
+            }
         return out
 
 

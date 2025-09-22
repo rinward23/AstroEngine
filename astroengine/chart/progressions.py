@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Mapping, Sequence
 
+from .config import ChartConfig
 from .natal import (
     ChartLocation,
     NatalChart,
@@ -43,12 +44,14 @@ def compute_secondary_progressed_chart(
     bodies: Mapping[str, int] | None = None,
     aspect_angles: Sequence[int] | None = None,
     orb_profile: str = "standard",
+    config: ChartConfig | None = None,
     adapter: SwissEphemerisAdapter | None = None,
     orb_calculator: OrbCalculator | None = None,
 ) -> ProgressedChart:
     """Compute a secondary progressed chart for ``target_moment``."""
 
-    adapter = adapter or SwissEphemerisAdapter()
+    chart_config = config or ChartConfig()
+    adapter = adapter or SwissEphemerisAdapter.from_chart_config(chart_config)
     orb_calculator = orb_calculator or OrbCalculator()
     location = location or natal_chart.location
     body_map = bodies or DEFAULT_BODIES
@@ -66,6 +69,7 @@ def compute_secondary_progressed_chart(
         bodies=body_map,
         aspect_angles=angles,
         orb_profile=orb_profile,
+        config=chart_config,
         adapter=adapter,
         orb_calculator=orb_calculator,
     )

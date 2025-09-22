@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
+from ..ephemeris import SwissEphemerisAdapter
+
 __all__ = [
     "norm360",
     "delta_deg",
@@ -110,8 +112,8 @@ def sun_lon(jd_ut: float) -> float:
         raise RuntimeError("pyswisseph unavailable; install extras: astroengine[ephem]")
     import swisseph as swe  # type: ignore
 
-    result, _ = swe.calc_ut(jd_ut, swe.SUN)
-    return float(result[0])
+    adapter = SwissEphemerisAdapter.get_default_adapter()
+    return adapter.body_position(jd_ut, swe.SUN, body_name="Sun").longitude
 
 
 def moon_lon(jd_ut: float) -> float:
@@ -121,8 +123,8 @@ def moon_lon(jd_ut: float) -> float:
         raise RuntimeError("pyswisseph unavailable; install extras: astroengine[ephem]")
     import swisseph as swe  # type: ignore
 
-    result, _ = swe.calc_ut(jd_ut, swe.MOON)
-    return float(result[0])
+    adapter = SwissEphemerisAdapter.get_default_adapter()
+    return adapter.body_position(jd_ut, swe.MOON, body_name="Moon").longitude
 
 
 def body_lon(jd_ut: float, body_name: str) -> float:
@@ -140,7 +142,14 @@ def body_lon(jd_ut: float, body_name: str) -> float:
         "neptune",
         "pluto",
     }
-    if USE_CACHE and get_lon_daily is not None and body_name.lower() in cacheable_bodies:
+    adapter = SwissEphemerisAdapter.get_default_adapter()
+
+    if (
+        USE_CACHE
+        and get_lon_daily is not None
+        and body_name.lower() in cacheable_bodies
+        and not adapter.is_sidereal
+    ):
         return float(get_lon_daily(jd_ut, body_name))
 
     if not _ensure_swiss():
@@ -161,8 +170,7 @@ def body_lon(jd_ut: float, body_name: str) -> float:
         "neptune": swe.NEPTUNE,
         "pluto": swe.PLUTO,
     }[name]
-    result, _ = swe.calc_ut(jd_ut, code)
-    return float(result[0])
+    return adapter.body_position(jd_ut, code, body_name=body_name.title()).longitude
 
 
 # --- Root finding ------------------------------------------------------------

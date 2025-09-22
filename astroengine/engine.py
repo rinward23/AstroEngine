@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, List
 
+from .chart.config import ChartConfig
 from .core.engine import get_active_aspect_angles
 from .detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
 from .detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
@@ -15,6 +16,7 @@ from .detectors_aspects import AspectHit, detect_aspects
 from .exporters import LegacyTransitEvent
 from .providers import get_provider
 from .scoring import ScoreInputs, compute_score
+from .ephemeris import SwissEphemerisAdapter
 
 # >>> AUTO-GEN BEGIN: engine-feature-flags v1.0
 # Feature flags (default OFF to preserve current behavior)
@@ -162,8 +164,12 @@ def scan_contacts(
     contra_antiscia_orb: float = 2.0,
     step_minutes: int = 60,
     aspects_policy_path: str | None = None,
+    chart_config: ChartConfig | None = None,
 ) -> List[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
+
+    if chart_config is not None:
+        SwissEphemerisAdapter.configure_defaults(chart_config=chart_config)
 
     provider = get_provider(provider_name)
     ticks = list(_iso_ticks(start_iso, end_iso, step_minutes=step_minutes))
