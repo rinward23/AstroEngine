@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+remote="$1"
+url="${2:-}"
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+# Ensure upstream set
+if ! git rev-parse --abbrev-ref "@{u}" >/dev/null 2>&1; then
+  echo "[pre-push] No upstream set for $branch. Run: git push -u origin $branch"
+  exit 1
+fi
+
+# Block pushing if behind upstream (enforce rebase-first)
+ahead=$(git rev-list --count @{u}..HEAD)
+behind=$(git rev-list --count HEAD..@{u})
+if (( behind > 0 )); then
+  echo "[pre-push] Your branch is behind upstream by $behind commits. Rebase first:"
+  echo "  git fetch origin && git rebase --rebase-merges @{u}"
+  exit 1
+fi
+
+# Block conflict markers anywhere
+if git grep -n -E '^(<<<<<<<|=======|>>>>>>>)' -- . >/dev/null; then
+  echo "[pre-push] Merge conflict markers found. Resolve them before pushing."
+  git grep -n -E '^(<<<<<<<|=======|>>>>>>>)' -- .
+  exit 1
+fi
+
+exit 0
