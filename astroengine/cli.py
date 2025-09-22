@@ -8,16 +8,12 @@ import sys
 
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
-
 from pathlib import Path
 from typing import Any, Iterable, List, Mapping, Sequence
 
-
 from . import engine as engine_module
-
 from .app_api import canonicalize_events, run_scan_or_raise
-
-
+from .astro.declination import available_antiscia_axes
 from .chart.config import (
     ChartConfig,
     DEFAULT_SIDEREAL_AYANAMSHA,
@@ -26,28 +22,27 @@ from .chart.config import (
     VALID_ZODIAC_SYSTEMS,
 )
 from .detectors.ingress import find_ingresses
-
 from .engine import events_to_dicts, scan_contacts
-
+from .ephemeris import EphemerisConfig, ObserverLocation, SwissEphemerisAdapter, TimeScaleContext
 from .exporters_ics import (
     DEFAULT_DESCRIPTION_TEMPLATE as ICS_DEFAULT_DESCRIPTION_TEMPLATE,
     DEFAULT_SUMMARY_TEMPLATE as ICS_DEFAULT_SUMMARY_TEMPLATE,
     write_ics,
+    write_ics_canonical,
 )
+
 
 from .astro.declination import available_antiscia_axes
 from .ephemeris import EphemerisConfig, ObserverLocation, SwissEphemerisAdapter, TimeScaleContext
+
 from .narrative import summarize_top_events
-
-
-
-from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
-
+from .pipeline.provision import is_provisioned, provision_ephemeris  # ENSURE-LINE
 from .plugins import ExportContext, get_plugin_manager
-
 from .providers import list_providers
 
+
 from .exporters_ics import write_ics_canonical
+
 
 from .timelords import TimelordCalculator, active_timelords
 from .timelords.context import build_context
@@ -123,12 +118,21 @@ def cmd_natal_save(args: argparse.Namespace) -> int:
     return 0
 
 
+
 def cmd_natal_delete(args: argparse.Namespace) -> int:
     if delete_natal(args.natal_id):
         print(f"Deleted natal '{args.natal_id}'.")
         return 0
     print(f"natal '{args.natal_id}' not found", file=sys.stderr)
     return 1
+
+def _ensure_subparsers(parser: argparse.ArgumentParser) -> argparse._SubParsersAction:
+    subparsers = getattr(parser, "_ae_subparsers", None)
+    if subparsers is None:
+        subparsers = parser.add_subparsers(dest="command")
+        parser._ae_subparsers = subparsers
+    return subparsers
+
 
 
 def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
@@ -161,6 +165,7 @@ def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
     natal_delete.set_defaults(func=cmd_natal_delete)
 
     parser._ae_natals_added = True
+
 
 
 def cmd_plugins(args: argparse.Namespace) -> int:
@@ -219,6 +224,50 @@ def cmd_plugins(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(payload, indent=2))
     return 0
+
+
+
+def cmd_natal_list(_: argparse.Namespace) -> int:
+    natals = list_natals()
+    if not natals:
+        print("No natals stored.")
+        return 0
+    for natal_id in natals:
+        print(natal_id)
+    return 0
+
+
+def cmd_natal_show(args: argparse.Namespace) -> int:
+    try:
+        natal = load_natal(args.natal_id)
+    except FileNotFoundError:
+        print(f"natal '{args.natal_id}' not found", file=sys.stderr)
+        return 1
+    print(json.dumps(asdict(natal), indent=2))
+    return 0
+
+
+def cmd_natal_save(args: argparse.Namespace) -> int:
+    natal = Natal(
+        natal_id=args.natal_id,
+        name=args.name,
+        utc=args.utc,
+        lat=args.lat,
+        lon=args.lon,
+        tz=args.tz,
+        place=args.place,
+    )
+    path = save_natal(natal)
+    print(f"Saved natal '{args.natal_id}' to {path}")
+    return 0
+
+
+def cmd_natal_delete(args: argparse.Namespace) -> int:
+    if delete_natal(args.natal_id):
+        print(f"Deleted natal '{args.natal_id}'")
+        return 0
+    print(f"natal '{args.natal_id}' not found", file=sys.stderr)
+    return 1
 
 
 def cmd_cache_info(_: argparse.Namespace) -> int:
@@ -1347,6 +1396,41 @@ def cmd_timelords(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_timelord_compute_args(parser: argparse.ArgumentParser, *, required: bool) -> None:
+    parser.add_argument("--start", required=required, help="Start timestamp (ISO-8601)")
+    parser.add_argument("--vimshottari", action="store_true", help="Emit Vimśottarī dasha periods")
+    parser.add_argument("--moon-longitude", type=float, help="Moon longitude in degrees for Vimśottarī dashas")
+    parser.add_argument("--dasha-cycles", type=int, default=1, help="Number of Vimśottarī cycles to compute")
+    parser.add_argument(
+        "--timelord-levels",
+        default="maha,antar",
+        help="Comma-separated Vimśottarī levels to include",
+    )
+    parser.add_argument("--zr", action="store_true", help="Emit zodiacal releasing periods")
+    parser.add_argument("--fortune-longitude", type=float, help="Lot longitude in degrees for releasing")
+    parser.add_argument("--zr-periods", type=int, default=12, help="Number of releasing periods to compute")
+    parser.add_argument(
+        "--zr-levels",
+        default="l1,l2",
+        help="Comma-separated releasing levels to include",
+    )
+    parser.add_argument("--lot", default="fortune", help="Lot to use for zodiacal releasing")
+    parser.add_argument("--json", help="Write results to this JSON file")
+
+
+def _dispatch_timelords(args: argparse.Namespace) -> int:
+    command = getattr(args, "timelords_command", None)
+    if command not in (None, "periods"):
+        print(f"timelords: unknown sub-command '{command}'", file=sys.stderr)
+        return 1
+
+    if args.start is None:
+        print("timelords: --start is required", file=sys.stderr)
+        return 1
+
+    return cmd_timelords(args)
+
+
 def _iso_to_jd(iso_ts: str) -> float:
     dt = datetime.fromisoformat(iso_ts.replace('Z', '+00:00')).astimezone(timezone.utc)
     return (dt.timestamp() / 86400.0) + UNIX_EPOCH_JD
@@ -1392,6 +1476,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--ayanamsha",
         choices=sorted(SUPPORTED_AYANAMSHAS),
         help=f"Sidereal ayanamsha (required when --zodiac sidereal; default is '{DEFAULT_SIDEREAL_AYANAMSHA}')",
+    )
+    parser.add_argument(
+        "--house-system",
+        choices=sorted(VALID_HOUSE_SYSTEMS),
+        default="placidus",
+        help="Preferred house system for derived charts",
     )
     parser.add_argument("--start-utc", help="Start timestamp (ISO-8601) for experimental detectors")  # ENSURE-LINE
     parser.add_argument("--end-utc", help="End timestamp (ISO-8601) for experimental detectors")  # ENSURE-LINE
@@ -1456,6 +1546,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--aspects", help="Comma-separated aspect angles for natal aspect detectors")
     parser.add_argument("--orb", type=float, help="Orb allowance in degrees for natal aspect detectors")
+
     # --zodiac and --ayanamsha are defined above for the top-level CLI; avoid
     # redefining them here so argparse does not raise duplicate option errors.
     parser.add_argument(
@@ -1464,6 +1555,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="placidus",
         help="Preferred house system for derived charts",
     )
+
     parser.add_argument("--lunations", action="store_true", help="Run lunation detector")
     parser.add_argument("--eclipses", action="store_true", help="Run eclipse detector")
     parser.add_argument("--stations", action="store_true", help="Run planetary station detector")
@@ -1622,6 +1714,8 @@ def build_parser() -> argparse.ArgumentParser:
     experimental.set_defaults(func=cmd_experimental)
 
     timelords = sub.add_parser("timelords", help="Timelord utilities")
+    timelords.set_defaults(func=_dispatch_timelords)
+    _add_timelord_compute_args(timelords, required=False)
     tl_sub = timelords.add_subparsers(dest="timelords_command")
     tl_sub.required = True
     active = tl_sub.add_parser("active", help="Show active timelords")
@@ -1632,6 +1726,7 @@ def build_parser() -> argparse.ArgumentParser:
     active.add_argument("--fortune", action="store_true", help="Include Lot of Fortune releasing")
     active.add_argument("--horizon", help="Optional end timestamp for timeline precomputation")
     active.set_defaults(func=cmd_timelords_active)
+
 
     generate = tl_sub.add_parser("generate", help="Compute timelord periods")
     generate.add_argument("--start", required=True)
@@ -1654,6 +1749,11 @@ def build_parser() -> argparse.ArgumentParser:
     generate.add_argument("--lot", default="fortune")
     generate.add_argument("--json")
     generate.set_defaults(func=cmd_timelords)
+
+    periods = tl_sub.add_parser("periods", help="Compute timelord periods")
+    _add_timelord_compute_args(periods, required=True)
+    periods.set_defaults(func=_dispatch_timelords)
+
 
     validate = sub.add_parser("validate", help="Validate a JSON payload against a schema")
     validate.add_argument("schema", choices=list(available_schema_keys("jsonschema")))
@@ -1736,6 +1836,7 @@ def build_parser() -> argparse.ArgumentParser:
     ingresses.add_argument("--json")
     add_canonical_export_args(ingresses)
     ingresses.set_defaults(func=cmd_ingresses)
+
 
     _augment_parser_with_features(parser)
     setup_plugins(parser)

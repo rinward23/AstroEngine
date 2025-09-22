@@ -1,16 +1,12 @@
-# >>> AUTO-GEN BEGIN: AE Swiss Provider v1.0
 from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Dict, Iterable
 
-
-
 from astroengine.canonical import BodyPosition
 from astroengine.core.time import TimeConversion, to_tt
 from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation, TimeScaleContext
-
 from astroengine.ephemeris.utils import get_se_ephe_path
 
 try:
@@ -45,9 +41,7 @@ except Exception:  # pragma: no cover
         _Pluto,
         _Sun,
         _Moon,
-    ) = (
-        None,
-    ) * 10  # type: ignore[assignment]
+    ) = (None,) * 10  # type: ignore[assignment]
     _PYMEEUS_AVAILABLE = False
 
 from . import register_provider
@@ -120,7 +114,6 @@ class SwissProvider:
     ) -> Dict[str, Dict[str, float]]:
 
         conversion = self._time_conversion(iso_utc)
-
         out: Dict[str, Dict[str, float]] = {}
         for name in bodies:
             try:

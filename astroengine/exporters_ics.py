@@ -1,4 +1,6 @@
+
 """ICS exporters for canonical transit events and templated calendar output."""
+
 
 from __future__ import annotations
 
@@ -8,14 +10,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, Mapping, Sequence
 
+
 from ics.grammar.parse import ContentLine
+
 
 from .canonical import TransitEvent, event_from_legacy, events_from_any
 from .events import ReturnEvent
 
 __all__ = [
+    "DEFAULT_DESCRIPTION_TEMPLATE",
+    "DEFAULT_SUMMARY_TEMPLATE",
     "canonical_events_to_ics",
     "ics_bytes_from_events",
+    "write_ics",
     "write_ics_canonical",
     "DEFAULT_DESCRIPTION_TEMPLATE",
     "DEFAULT_SUMMARY_TEMPLATE",
@@ -194,11 +201,7 @@ def _context_from_transit(event: TransitEvent) -> Dict[str, Any]:
         type=kind,
         label=label,
         ingress_sign=ingress_sign,
-    )
-    ctx.setdefault(
-        "uid",
-        meta.get("uid")
-        or f"{event.ts}-{event.moving}-{ctx['target']}-{kind}-{abs(hash(json.dumps(meta, sort_keys=True)))%10_000}",
+        uid=meta.get("uid"),
     )
     return ctx
 
@@ -283,6 +286,7 @@ def write_ics(
 
     try:
         from ics import Calendar, Event
+        from ics.grammar.parse import ContentLine
     except Exception as exc:  # pragma: no cover - optional dependency guard
         raise RuntimeError("The 'ics' package is required for ICS export") from exc
 
@@ -305,4 +309,3 @@ def write_ics(
 
     Path(path).write_text(str(calendar), encoding="utf-8")
     return count
-

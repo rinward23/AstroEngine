@@ -1,10 +1,17 @@
+
 """Sign ingress detection utilities built on Swiss Ephemeris longitudes."""
+
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
 from typing import Iterable, Sequence
+
+try:  # pragma: no cover - exercised indirectly via Swiss-enabled tests
+    import swisseph as swe  # type: ignore
+except Exception:  # pragma: no cover - optional dependency at runtime
+    swe = None  # type: ignore
 
 from ..events import IngressEvent
 from .common import body_lon, jd_to_iso, norm360, solve_zero_crossing
@@ -43,6 +50,7 @@ _DEFAULT_BODIES: Sequence[str] = (
 
 @dataclass(frozen=True)
 class _Sample:
+
     jd: float
     longitude: float
 
@@ -56,7 +64,7 @@ def sign_index(longitude: float) -> int:
 def sign_name(index: int) -> str:
     """Return the canonical sign name for ``index`` (0 = Aries)."""
 
-    return ZODIAC_SIGNS[index % 12]
+    return ZODIAC_SIGNS[index % len(ZODIAC_SIGNS)]
 
 
 def _wrap_to_target(value: float, target: float) -> float:
@@ -80,22 +88,27 @@ def _estimate_speed(body: str, jd_ut: float, *, hours: float = 6.0) -> float:
     return span / (2.0 * delta_days)
 
 
+
 def _generate_samples(body: str, start_jd: float, end_jd: float, step_days: float) -> Iterable[_Sample]:
+    """Yield unwrapped longitude samples for ``body`` between ``start_jd`` and ``end_jd``."""
+
+
     jd = start_jd
     prev_unwrapped: float | None = None
     while jd <= end_jd + step_days:
         lon = body_lon(jd, body)
+        lon_norm = norm360(lon)
         if prev_unwrapped is None:
-            unwrapped = norm360(lon)
+            unwrapped = lon_norm
         else:
             base = prev_unwrapped % 360.0
-            delta = lon - base
+            delta = lon_norm - base
             while delta > 180.0:
-                lon -= 360.0
-                delta = lon - base
+                lon_norm -= 360.0
+                delta = lon_norm - base
             while delta < -180.0:
-                lon += 360.0
-                delta = lon - base
+                lon_norm += 360.0
+                delta = lon_norm - base
             unwrapped = prev_unwrapped + delta
         prev_unwrapped = unwrapped
         yield _Sample(jd=jd, longitude=unwrapped)
@@ -124,13 +137,16 @@ def find_sign_ingresses(
     start_jd: float,
     end_jd: float,
     *,
+
     bodies: Sequence[str] | None = None,
+
     step_hours: float = 6.0,
 ) -> list[IngressEvent]:
     """Detect sign ingress events between ``start_jd`` and ``end_jd`` inclusive."""
 
     if end_jd <= start_jd:
         return []
+
 
     body_list = tuple(bodies or _DEFAULT_BODIES)
     step_days = max(step_hours, 1.0) / 24.0
@@ -188,6 +204,100 @@ def find_sign_ingresses(
                 events.append(event)
                 left_sample = _Sample(jd=jd_root, longitude=boundary)
 
-    events.sort(key=lambda item: item.jd)
+    if step_hours <= 0:
+        raise ValueError("step_hours must be positive")
+    if swe is None:
+        raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
 
+    body_list = tuple(bodies or _DEFAULT_BODIES)
+    step_days = step_hours / 24.0
+    events: list[IngressEvent] = []
+    seen: set[tuple[str, int]] = set()
+
+    for body_label in body_list:
+        body_key = body_label.lower()
+        samples = iter(_generate_samples(body_key, start_jd, end_jd, step_days))
+        try:
+            prev_sample = next(samples)
+        except StopIteration:
+            continue
+        prev_index = math.floor(prev_sample.longitude / 30.0)
+
+        for sample in samples:
+            current_index = math.floor(sample.longitude / 30.0)
+            if current_index == prev_index:
+                prev_sample = sample
+                continue
+
+            direction = 1 if current_index > prev_index else -1
+            boundary_index = prev_index + 1 if direction > 0 else prev_index
+            while (
+                (direction > 0 and boundary_index <= current_index)
+                or (direction < 0 and boundary_index > current_index)
+            ):
+                boundary = boundary_index * 30.0
+                jd_root = _refine_ingress(body_key, prev_sample, sample, boundary)
+                if not (start_jd <= jd_root <= end_jd):
+                    if direction > 0:
+                        prev_index = boundary_index
+                        prev_sample = _Sample(jd=jd_root, longitude=boundary)
+                        boundary_index += direction
+                    else:
+                        prev_index = boundary_index - 1
+                        prev_sample = _Sample(jd=jd_root, longitude=boundary)
+                        boundary_index += direction
+                    continue
+
+                key = (body_key, int(round(jd_root * 86400)))
+                if key in seen:
+                    if direction > 0:
+                        prev_index = boundary_index
+                        prev_sample = _Sample(jd=jd_root, longitude=boundary)
+                        boundary_index += direction
+                    else:
+                        prev_index = boundary_index - 1
+                        prev_sample = _Sample(jd=jd_root, longitude=boundary)
+                        boundary_index += direction
+                    continue
+
+                longitude = norm360(body_lon(jd_root, body_key))
+                speed = abs(_estimate_speed(body_key, jd_root)) * (1 if direction > 0 else -1)
+                motion = "retrograde" if direction < 0 else "direct"
+                if direction > 0:
+                    from_index = boundary_index - 1
+                    to_index = boundary_index
+                else:
+                    from_index = boundary_index
+                    to_index = boundary_index - 1
+                from_sign = sign_name(from_index % 12)
+                to_sign = sign_name(to_index % 12)
+
+                events.append(
+                    IngressEvent(
+                        ts=jd_to_iso(jd_root),
+                        jd=jd_root,
+                        body=str(body_label),
+                        from_sign=from_sign,
+                        to_sign=to_sign,
+                        longitude=longitude,
+                        motion=motion,
+                        speed_deg_per_day=float(speed),
+                    )
+                )
+                seen.add(key)
+
+                if direction > 0:
+                    prev_index = boundary_index
+                    boundary_index += direction
+
+                else:
+                    prev_index = boundary_index - 1
+                    boundary_index += direction
+                prev_sample = _Sample(jd=jd_root, longitude=boundary)
+
+
+            prev_sample = sample
+            prev_index = current_index
+
+    events.sort(key=lambda event: (event.jd, event.body.lower()))
     return events

@@ -14,6 +14,8 @@ documented calculation so no runtime module loses access to provenance.
   ``flags`` section exposed in the profile.
 - ``profiles/aspects_policy.json`` — per-aspect orb allowances used by
   ``astroengine.detectors_aspects``.
+- ``profiles/tradition_scoring.json`` — tradition overlays (e.g., Vedic
+  drishti angles) used by the scoring engine's tradition helpers.
 - ``profiles/vca_outline.json`` — registry map for the Venus Cycle
   Analytics channels.
 - ``profiles/dignities.csv`` and ``profiles/fixed_stars.csv`` — static

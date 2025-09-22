@@ -1,10 +1,10 @@
+
 """Streamlit UI for running AstroEngine transit scans interactively."""
+
 
 from __future__ import annotations
 
-import json
 import os
-import subprocess
 import sys
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta, timezone
@@ -21,11 +21,13 @@ from astroengine.app_api import (
     canonicalize_events,
     run_scan_or_raise,
 )
+
 from astroengine.chart.config import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,
     VALID_ZODIAC_SYSTEMS,
 )
+
 from astroengine.exporters import write_parquet_canonical, write_sqlite_canonical
 from astroengine.exporters_ics import ics_bytes_from_events
 from astroengine.utils import (
@@ -34,6 +36,14 @@ from astroengine.utils import (
     DETECTOR_NAMES,
     TARGET_FRAME_BODIES,
     available_frames,
+
+    expand_targets,
+)
+from astroengine.chart.config import (
+    DEFAULT_SIDEREAL_AYANAMSHA,
+    SUPPORTED_AYANAMSHAS,
+    VALID_ZODIAC_SYSTEMS,
+
 )
 
 
@@ -167,8 +177,10 @@ def _apply_preset(name: str) -> None:
     st.session_state["scan_moving"] = preset.get("moving", ["Sun", "Mars", "Jupiter"])
     st.session_state["scan_frames"] = preset.get("frames", list(DEFAULT_TARGET_FRAMES))
     st.session_state["scan_targets"] = preset.get(
+
         "targets",
         [f"natal:{body}" for body in DEFAULT_TARGET_SELECTION],
+
     )
     st.session_state["scan_detectors"] = preset.get("detectors", [])
     st.session_state["scan_provider"] = preset.get("provider", "auto")
@@ -234,7 +246,9 @@ def _ensure_defaults() -> None:
     _set_session_default("scan_entrypoint", "Auto (first compatible)")
     _set_session_default("scan_preset", "Transit scan — Daily")
     _set_session_default("scan_active_preset", "Transit scan — Daily")
+    _set_session_default("scan_initialized", False)
     _set_session_default("scan_ics_title", "AstroEngine Events")
+
     _set_session_default("scan_cache", {})
     _set_session_default("scan_last_cache_key", None)
     _set_session_default("scan_last_cache_hit", False)
@@ -246,7 +260,6 @@ def _ensure_defaults() -> None:
 
 
 _ensure_defaults()
-
 st.set_page_config(page_title="AstroEngine — Transit Scanner", layout="wide")
 st.title("AstroEngine — Transit Scanner")
 
@@ -280,23 +293,15 @@ with st.sidebar:
     st.write("**Detected Swiss path**:", se_path or "not found")
 
     st.header("Scan Settings")
-
-    start_utc = st.text_input(
-        "Start (UTC, ISO-8601)",
-        key="scan_start",
-        on_change=_mark_custom,
-    )
-    end_utc = st.text_input(
-        "End (UTC, ISO-8601)",
-        key="scan_end",
-        on_change=_mark_custom,
-    )
-    provider = st.selectbox(
+    st.text_input("Start (UTC, ISO-8601)", key="scan_start", on_change=_mark_custom)
+    st.text_input("End (UTC, ISO-8601)", key="scan_end", on_change=_mark_custom)
+    st.selectbox(
         "Provider",
         options=["auto", "swiss", "pymeeus", "skyfield"],
         key="scan_provider",
         on_change=_mark_custom,
     )
+
     zodiac_choice = st.selectbox(
         "Zodiac",
         options=sorted(VALID_ZODIAC_SYSTEMS),
@@ -317,6 +322,7 @@ with st.sidebar:
         )
         st.session_state["scan_ayanamsha"] = ayanamsha_choice
     step_minutes = st.slider(
+
         "Step minutes",
         min_value=10,
         max_value=240,
@@ -383,7 +389,10 @@ with st.sidebar:
     for existing in st.session_state.get("scan_targets", []):
         if existing not in merged_options:
             merged_options.append(existing)
+
     targets = st.multiselect(
+ct(
+
         "Targets",
         options=merged_options,
         default=st.session_state.get(
@@ -400,14 +409,33 @@ with st.sidebar:
         key="scan_sidereal",
         on_change=_mark_custom,
     )
+
     profile_id = st.text_input(
+
+    ayanamsha_value = st.session_state.get("scan_ayanamsha", "lahiri")
+    if sidereal:
+        ayanamsha_options = sorted(SUPPORTED_AYANAMSHAS)
+        default_index = ayanamsha_options.index(DEFAULT_SIDEREAL_AYANAMSHA)
+        choice = st.selectbox(
+            "Ayanamsha",
+            options=ayanamsha_options,
+            index=default_index,
+            key="scan_ayanamsha_choice",
+        )
+        if choice != ayanamsha_value:
+            st.session_state["scan_ayanamsha"] = choice
+    else:
+        st.session_state["scan_ayanamsha"] = ayanamsha_value
+
+    st.text_input(
+
         "Profile (optional)",
         value=st.session_state.get("scan_profile", "base"),
         key="scan_profile",
         on_change=_mark_custom,
     )
 
-    if provider in {"swiss", "auto"} and not se_path:
+    if st.session_state.get("scan_provider") in {"swiss", "auto"} and not se_path:
         st.warning(
             "Swiss Ephemeris path not detected. Set SE_EPHE_PATH for precise Swiss calculations.",
             icon="⚠️",
@@ -503,24 +531,98 @@ with tab_run:
         st.session_state["scan_last_cache_key"] = cache_key
         if canonical_events:
             st.success(f"Scan complete — {len(canonical_events)} events")
-        else:
-            st.info("Scan completed but returned no events for the selected window.")
-        st.caption(
-            f"Entrypoint: `{used_entrypoint[0]}.{used_entrypoint[1]}` — Cache: {'hit' if from_cache else 'miss'}"
-        )
 
+col_scan, col_results = st.columns((1, 2))
+
+with col_scan:
+    st.subheader("Run Scan")
+    run = st.button("Run scan")
+    if run:
+        entrypoint_override = entrypoint_lookup.get(st.session_state.get("scan_entrypoint"))
+        entrypoint_arg = tuple([entrypoint_override]) if entrypoint_override else tuple()
+        moving = tuple(st.session_state.get("scan_moving", []))
+        frames = tuple(st.session_state.get("scan_frames", list(DEFAULT_TARGET_FRAMES)))
+        target_tokens = expand_targets(frames, st.session_state.get("scan_targets", []))
+        detectors_tuple = tuple(st.session_state.get("scan_detectors", []))
+        cache_key = (
+            st.session_state.get("scan_start"),
+            st.session_state.get("scan_end"),
+            moving,
+            tuple(target_tokens),
+            st.session_state.get("scan_provider"),
+            st.session_state.get("scan_profile"),
+            int(st.session_state.get("scan_step", 60)),
+            detectors_tuple,
+            st.session_state.get("scan_sidereal"),
+            st.session_state.get("scan_ayanamsha"),
+            frames,
+            entrypoint_arg,
+        )
+        session_cache = st.session_state.setdefault("scan_cache", {})
+        from_cache = cache_key in session_cache
+        st.session_state["scan_last_cache_hit"] = from_cache
+        if from_cache:
+            raw_events, canonical_events, used_entrypoint = session_cache[cache_key]
+        else:
+            raw_events, canonical_events, used_entrypoint = cached_scan(
+                st.session_state.get("scan_start"),
+                st.session_state.get("scan_end"),
+                moving,
+                tuple(target_tokens),
+                st.session_state.get("scan_provider"),
+                st.session_state.get("scan_profile"),
+                int(st.session_state.get("scan_step", 60)),
+                detectors_tuple,
+                st.session_state.get("scan_sidereal"),
+                st.session_state.get("scan_ayanamsha"),
+                frames,
+                entrypoint_arg,
+            )
+            session_cache[cache_key] = (raw_events, canonical_events, used_entrypoint)
+        st.session_state["scan_results"] = (raw_events, canonical_events, used_entrypoint)
+
+with col_results:
+    st.subheader("Results")
+    results = st.session_state.get("scan_results")
+    if not results:
+        st.info("Run a scan to see results.")
+    else:
+        raw_events, canonical_events, used_entrypoint = results
+        st.write(f"Used entrypoint: {used_entrypoint[0]}.{used_entrypoint[1]}")
         records = _sorted_records(_events_to_records(canonical_events))
         df = _records_to_df(records)
-        if df is not None and not df.empty:
-            if "ts" in df.columns:
-                try:
-                    df = df.sort_values("ts")
-                except Exception:  # pragma: no cover - sorting defensive
-                    pass
-            st.dataframe(df, use_container_width=True, hide_index=True)
-            st.caption("Click column headers to sort or filter results interactively.")
-        elif records:
+        if df is not None:
+            st.dataframe(df)
+
+        else:
             st.json(records)
+        st.caption(
+            "Tip: use the export buttons below to save results as SQLite, Parquet, or ICS calendars."
+        )
+
+    export_col1, export_col2, export_col3 = st.columns(3)
+    if results:
+        raw_events, canonical_events, _ = results
+        with export_col1:
+            if st.button("Export SQLite"):
+                path = write_sqlite_canonical(canonical_events)
+                st.success(f"Wrote SQLite export to {path}")
+        with export_col2:
+            if st.button("Export Parquet"):
+                path = write_parquet_canonical(canonical_events)
+                st.success(f"Wrote Parquet export to {path}")
+        with export_col3:
+            if st.button("Download ICS"):
+                payload = ics_bytes_from_events(
+                    canonical_events,
+                    title=st.session_state.get("scan_ics_title", "AstroEngine Events"),
+                )
+                st.download_button(
+                    "Download ICS",
+                    data=payload,
+                    file_name="astroengine_events.ics",
+                )
+
 
         st.markdown("### Export")
         col_sqlite, col_parquet, col_download = st.columns(3)
@@ -596,4 +698,5 @@ with tab_smoke:
                 st.code((out + "\n\n" + err).strip(), language="bash")
         except Exception as exc:  # pragma: no cover - defensive
             st.error(f"Failed to run smoketest: {exc}")
+
 

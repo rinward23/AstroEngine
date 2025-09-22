@@ -1,13 +1,18 @@
+
 """Vimśottarī daśā timelines derived from the natal Moon nakṣatra."""
+
 
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+
 from typing import Iterable, List, Sequence
+
 
 from ..detectors.common import UNIX_EPOCH_JD, iso_to_jd, jd_to_iso, moon_lon
 from ..events import DashaPeriod, DashaPeriodEvent
 from ..utils.angles import norm360
+
 
 YEAR_IN_DAYS = 365.2425
 SIDEREAL_YEAR_DAYS = 365.25636
@@ -39,6 +44,7 @@ _DASHA_YEARS = {
 
 _TOTAL_SEQUENCE_YEARS = sum(_DASHA_YEARS.values())
 
+
 __all__ = ["vimsottari_dashas", "compute_vimshottari_dasha"]
 
 
@@ -47,6 +53,7 @@ def _major_index_and_fraction(natal_jd: float) -> tuple[int, float]:
     nak_index = int(longitude // NAKSHATRA_SIZE)
     within = longitude - nak_index * NAKSHATRA_SIZE
     fraction = within / NAKSHATRA_SIZE
+
     major_index = nak_index % len(_DASHA_SEQUENCE)
     return major_index, fraction
 
@@ -194,7 +201,9 @@ def _generate_antar_periods(
 
     order = _DASHA_SEQUENCE[ruler_index:] + _DASHA_SEQUENCE[:ruler_index]
     parent = _DASHA_SEQUENCE[ruler_index]
+
     current = _ensure_utc(maha_start)
+
     remaining_skip = max(skip_years, 0.0)
     produced_years = 0.0
     active_years = max(maha_total_years - skip_years, 0.0)
@@ -216,7 +225,7 @@ def _generate_antar_periods(
         if produced_years > active_years:
             full_years -= produced_years - active_years
             produced_years = active_years
-        delta = timedelta(days=full_years * YEAR_IN_DAYS)
+        delta = timedelta(days=full_years * TROPICAL_YEAR_DAYS)
         end = current + delta
         if end > maha_end:
             end = maha_end
@@ -259,8 +268,10 @@ def compute_vimshottari_dasha(
     cycles: int = 1,
     levels: Sequence[str] = ("maha", "antar"),
     method: str = "vimshottari",
+
 ) -> List[DashaPeriodEvent]:
     """Return ordered daśā periods beginning from ``start``."""
+
 
     if cycles <= 0:
         raise ValueError("cycles must be >= 1")
@@ -272,12 +283,13 @@ def compute_vimshottari_dasha(
 
     start = _ensure_utc(start)
     longitude = norm360(moon_longitude_deg)
+
     nak_index = int(longitude // NAKSHATRA_SIZE)
     ruler_index = nak_index % len(_DASHA_SEQUENCE)
     ruler = _DASHA_SEQUENCE[ruler_index]
     total_years = _DASHA_YEARS[ruler]
-    offset = longitude % NAKSHATRA_SIZE
-    fraction_elapsed = offset / NAKSHATRA_SIZE
+    offset = longitude % NAKSHATRA_DEGREES
+    fraction_elapsed = offset / NAKSHATRA_DEGREES
     elapsed_years = total_years * fraction_elapsed
     current = start
     events: list[DashaPeriodEvent] = []
@@ -295,7 +307,7 @@ def compute_vimshottari_dasha(
                 active_years = full_years
             if active_years <= 0.0:
                 continue
-            delta = timedelta(days=active_years * YEAR_IN_DAYS)
+            delta = timedelta(days=active_years * TROPICAL_YEAR_DAYS)
             maha_end = current + delta
             if "maha" in normalized_levels:
                 events.append(
@@ -323,4 +335,3 @@ def compute_vimshottari_dasha(
                 )
             current = maha_end
     return events
-
