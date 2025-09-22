@@ -5,21 +5,29 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Sequence, Any
 
 
 from . import engine as engine_module
+from .chart.config import ChartConfig, VALID_HOUSE_SYSTEMS, VALID_ZODIAC_SYSTEMS
+from .detectors.ingress import find_ingresses
 from .engine import events_to_dicts, scan_contacts
+from .ephemeris import SwissEphemerisAdapter
+from .narrative import summarize_top_events
 from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
 from .providers import list_providers
+from .timelords.dashas import compute_vimshottari_dasha
+from .timelords.zr import compute_zodiacal_releasing
 from .validation import (
     SchemaValidationError,
     available_schema_keys,
     validate_payload,
 )
 from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
+from .ux.plugins import setup_cli as setup_plugins
 
 
 def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
@@ -45,6 +53,18 @@ def _augment_parser_with_provisioning(parser: argparse.ArgumentParser) -> None:
 
     return None
 
+
+def _chart_config_from_args(args: argparse.Namespace) -> ChartConfig:
+    """Return a :class:`ChartConfig` built from CLI arguments."""
+
+    zodiac = getattr(args, "zodiac", "tropical")
+    ayanamsha = getattr(args, "ayanamsha", None)
+    house_system = getattr(args, "house_system", "placidus")
+    try:
+        return ChartConfig(zodiac=zodiac, ayanamsha=ayanamsha, house_system=house_system)
+    except ValueError as exc:
+        raise SystemExit(f"Invalid chart configuration: {exc}") from exc
+
 # >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
 from .exporters import write_sqlite_canonical, write_parquet_canonical
 
@@ -58,6 +78,29 @@ def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, in
     if getattr(args, "parquet", None):
         written["parquet"] = write_parquet_canonical(args.parquet, events)
     return written
+
+
+def _ingress_to_canonical(event: Any) -> dict[str, Any]:
+    """Convert an ingress dataclass into a canonical export mapping."""
+
+    payload = {
+        "kind": f"ingress_{getattr(event, 'sign', '').lower()}",
+        "timestamp": getattr(event, "ts", None) or getattr(event, "timestamp", None),
+        "moving": getattr(event, "body", ""),
+        "target": getattr(event, "sign", ""),
+        "orb_abs": 0.0,
+        "orb_allow": 0.0,
+        "applying_or_separating": "exact",
+        "score": 0.0,
+        "lon_moving": getattr(event, "longitude", None),
+        "lon_target": None,
+        "metadata": {
+            "jd": getattr(event, "jd", None),
+            "method": getattr(event, "method", "sign_ingress"),
+            "sign_index": getattr(event, "sign_index", -1),
+        },
+    }
+    return payload
 
 
 def add_canonical_export_args(p: argparse.ArgumentParser) -> None:
@@ -247,6 +290,10 @@ def cmd_transits(args: argparse.Namespace) -> int:
     if args.parquet and written.get("parquet"):
         print(f"Parquet export complete: {args.parquet} ({written['parquet']} rows)")
 
+    if getattr(args, "narrative", False):
+        summary = summarize_top_events(events, top_n=getattr(args, "narrative_top", 5))
+        print(summary)
+
     if not any((args.json, args.sqlite, args.parquet)):
         print(serialize_events_to_json(events))
 
@@ -265,6 +312,101 @@ def cmd_validate(args: argparse.Namespace) -> int:
         return 1
 
     print(f"Payload validated against {args.schema}")
+    return 0
+
+
+def cmd_ingresses(args: argparse.Namespace) -> int:
+    chart_config = _chart_config_from_args(args)
+    adapter = SwissEphemerisAdapter(chart_config=chart_config)
+    start_dt = datetime.fromisoformat(args.start.replace("Z", "+00:00")).astimezone(timezone.utc)
+    end_dt = datetime.fromisoformat(args.end.replace("Z", "+00:00")).astimezone(timezone.utc)
+    if end_dt <= start_dt:
+        print("ingresses: end must be after start", file=sys.stderr)
+        return 1
+    start_jd = adapter.julian_day(start_dt)
+    end_jd = adapter.julian_day(end_dt)
+    bodies = [body.strip() for body in args.bodies.split(",") if body.strip()]
+    if not bodies:
+        bodies = ["Sun"]
+    events = find_ingresses(start_jd, end_jd, bodies, step_hours=args.step_hours)
+    canonical = [_ingress_to_canonical(event) for event in events]
+
+    if args.json:
+        payload = {
+            "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "parameters": {
+                "start_timestamp": args.start,
+                "end_timestamp": args.end,
+                "bodies": bodies,
+                "step_hours": args.step_hours,
+                "zodiac": chart_config.zodiac,
+                "ayanamsha": chart_config.ayanamsha,
+                "house_system": chart_config.house_system,
+            },
+            "events": canonical,
+        }
+        Path(args.json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"Wrote {len(events)} ingresses to {args.json}")
+
+    written = _cli_export(args, canonical)
+    if args.sqlite and written.get("sqlite"):
+        print(f"SQLite export complete: {args.sqlite} ({written['sqlite']} rows)")
+    if args.parquet and written.get("parquet"):
+        print(f"Parquet export complete: {args.parquet} ({written['parquet']} rows)")
+
+    if not any((args.json, args.sqlite, args.parquet)):
+        print(json.dumps(canonical, indent=2))
+
+    return 0
+
+
+def cmd_timelords(args: argparse.Namespace) -> int:
+    start_dt = datetime.fromisoformat(args.start.replace("Z", "+00:00")).astimezone(timezone.utc)
+    results: list[dict[str, Any]] = []
+
+    if args.vimshottari:
+        if args.moon_longitude is None:
+            print("timelords: --moon-longitude is required for Vimshottari dashas", file=sys.stderr)
+            return 1
+        levels = [level.strip() for level in args.timelord_levels.split(",") if level.strip()]
+        periods = compute_vimshottari_dasha(
+            args.moon_longitude,
+            start_dt,
+            cycles=args.dasha_cycles,
+            levels=tuple(levels) if levels else ("maha", "antar"),
+        )
+        results.extend(asdict(event) for event in periods)
+
+    if args.zr:
+        if args.fortune_longitude is None:
+            print("timelords: --fortune-longitude is required for zodiacal releasing", file=sys.stderr)
+            return 1
+        zr_levels = [level.strip() for level in args.zr_levels.split(",") if level.strip()]
+        zr_periods = compute_zodiacal_releasing(
+            args.fortune_longitude,
+            start_dt,
+            lot=args.lot,
+            periods=args.zr_periods,
+            levels=tuple(zr_levels) if zr_levels else ("l1", "l2"),
+        )
+        results.extend(asdict(event) for event in zr_periods)
+
+    if not results:
+        print("timelords: no systems selected", file=sys.stderr)
+        return 1
+
+    payload = {
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "start": args.start,
+        "events": results,
+    }
+
+    if args.json:
+        Path(args.json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"Wrote {len(results)} periods to {args.json}")
+    else:
+        print(json.dumps(payload, indent=2))
+
     return 0
 
 
@@ -315,6 +457,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")
     parser.add_argument("--aspects", help="Comma-separated aspect angles for natal aspect detectors")
     parser.add_argument("--orb", type=float, help="Orb allowance in degrees for natal aspect detectors")
+    parser.add_argument(
+        "--zodiac",
+        choices=sorted(VALID_ZODIAC_SYSTEMS),
+        default="tropical",
+        help="Zodiac frame for calculations (tropical or sidereal)",
+    )
+    parser.add_argument(
+        "--ayanamsha",
+        help="Sidereal ayanamsha name when --zodiac=sidereal",
+    )
+    parser.add_argument(
+        "--house-system",
+        choices=sorted(VALID_HOUSE_SYSTEMS),
+        default="placidus",
+        help="Preferred house system for derived charts",
+    )
     parser.add_argument("--lunations", action="store_true", help="Run lunation detector")
     parser.add_argument("--eclipses", action="store_true", help="Run eclipse detector")
     parser.add_argument("--stations", action="store_true", help="Run planetary station detector")
@@ -344,6 +502,13 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--aspects-policy")
     transits.add_argument("--target-longitude", type=float, default=None)
     transits.add_argument("--json")
+    transits.add_argument("--narrative", action="store_true", help="Summarize detected contacts")
+    transits.add_argument(
+        "--narrative-top",
+        type=int,
+        default=5,
+        help="Number of top-scoring events to include in the narrative summary",
+    )
     add_canonical_export_args(transits)
     transits.set_defaults(func=cmd_transits)
 
@@ -364,7 +529,39 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("path")
     validate.set_defaults(func=cmd_validate)
 
+    ingresses = sub.add_parser("ingresses", help="Detect sign ingress events")
+    ingresses.add_argument("--start", required=True)
+    ingresses.add_argument("--end", required=True)
+    ingresses.add_argument("--bodies", default="Sun")
+    ingresses.add_argument("--step-hours", type=float, default=6.0)
+    ingresses.add_argument("--json")
+    add_canonical_export_args(ingresses)
+    ingresses.set_defaults(func=cmd_ingresses)
+
+    timelords = sub.add_parser("timelords", help="Compute timelord periods")
+    timelords.add_argument("--start", required=True)
+    timelords.add_argument("--vimshottari", action="store_true")
+    timelords.add_argument("--moon-longitude", type=float)
+    timelords.add_argument("--dasha-cycles", type=int, default=1)
+    timelords.add_argument(
+        "--timelord-levels",
+        default="maha,antar",
+        help="Comma-separated Vimshottari levels to compute",
+    )
+    timelords.add_argument("--zr", action="store_true")
+    timelords.add_argument("--fortune-longitude", type=float)
+    timelords.add_argument("--zr-periods", type=int, default=12)
+    timelords.add_argument(
+        "--zr-levels",
+        default="l1,l2",
+        help="Comma-separated releasing levels",
+    )
+    timelords.add_argument("--lot", default="fortune")
+    timelords.add_argument("--json")
+    timelords.set_defaults(func=cmd_timelords)
+
     _augment_parser_with_features(parser)
+    setup_plugins(parser)
     return parser
 
 
