@@ -29,7 +29,17 @@ __all__ = [
 
 @dataclass(frozen=True)
 class BaseEvent:
-    """Base event with canonical timestamp metadata."""
+    """Base event with canonical timestamp metadata.
+
+    Attributes
+    ----------
+    ts:
+        ISO-8601 timestamp in UTC.
+    jd:
+        Julian day (UT) corresponding to ``ts``. Stored as a floating
+        point number so downstream consumers can join against Swiss
+        Ephemeris data without recomputing it.
+    """
 
     ts: str
     jd: float
@@ -37,7 +47,11 @@ class BaseEvent:
 
 @dataclass(frozen=True)
 class LunationEvent(BaseEvent):
-    """Represents a lunation event (new/full moon)."""
+    """Represents a lunation event (new/full moon).
+
+    sun_longitude and moon_longitude are geocentric ecliptic positions in
+    **degrees** normalised to ``[0, 360)``.
+    """
 
     phase: str
     sun_longitude: float
@@ -46,7 +60,11 @@ class LunationEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class EclipseEvent(BaseEvent):
-    """Represents a solar or lunar eclipse."""
+    """Represents a solar or lunar eclipse.
+
+    Longitudes and latitude are expressed in **degrees**. ``phase``
+    distinguishes between partial, annular, total, etc.
+    """
 
     eclipse_type: str
     phase: str
@@ -58,7 +76,12 @@ class EclipseEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class StationEvent(BaseEvent):
-    """Represents a planetary station (speed crossing zero)."""
+    """Represents a planetary station (speed crossing zero).
+
+    ``longitude`` is the ecliptic longitude in degrees. ``speed_longitude``
+    is measured in degrees per day and hovers near zero at the station
+    moment.
+    """
 
     body: str
     motion: str
@@ -80,7 +103,11 @@ class IngressEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class ReturnEvent(BaseEvent):
-    """Represents a solar or lunar return event."""
+    """Represents a solar or lunar return event.
+
+    ``longitude`` stores the body’s geocentric ecliptic longitude in
+    degrees when the return perfects.
+    """
 
     body: str
     method: str
@@ -100,7 +127,12 @@ class DashaPeriod(BaseEvent):
 
 @dataclass(frozen=True)
 class ProgressionEvent(BaseEvent):
-    """Represents secondary progression samples."""
+    """Represents secondary progression samples.
+
+    ``positions`` maps body names to geocentric ecliptic longitudes in
+    degrees. The values are already normalised to ``[0, 360)`` by the
+    detectors.
+    """
 
     method: str
     positions: Mapping[str, float]
@@ -108,7 +140,11 @@ class ProgressionEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class DirectionEvent(BaseEvent):
-    """Represents directed positions (e.g., solar arc)."""
+    """Represents directed positions (e.g., solar arc).
+
+    ``arc_degrees`` is the longitudinal arc applied to each natal body in
+    degrees. ``positions`` stores the directed longitudes (degrees).
+    """
 
     method: str
     arc_degrees: float
@@ -117,7 +153,11 @@ class DirectionEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class ProfectionEvent(BaseEvent):
-    """Represents profected year transitions."""
+    """Represents profected year transitions.
+
+    ``house`` is the profected house number (1–12). ``ruler`` references
+    the planetary ruler active for the period.
+    """
 
     method: str
     house: int
