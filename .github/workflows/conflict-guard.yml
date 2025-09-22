@@ -1,0 +1,20 @@
+# >>> AUTO-GEN BEGIN: Conflict Guard CI v1.0
+name: Conflict Marker Guard
+on:
+  pull_request:
+    branches: [main, trunk]
+  push:
+    branches: [main]
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail on merge conflict markers
+        shell: bash
+        run: |
+          if git grep -n -E '^(<<<<<<<|=======|>>>>>>>)' -- .; then
+            echo "::error::Merge conflict markers found. Resolve before pushing."
+            exit 1
+          fi
+# >>> AUTO-GEN END: Conflict Guard CI v1.0

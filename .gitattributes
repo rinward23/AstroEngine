@@ -1,0 +1,11 @@
+# >>> AUTO-GEN BEGIN: Merge Attributes v1.0
+
+# Normalize line endings and reduce trivial conflicts
+
+* text=auto eol=lf
+
+# Markdown/docs often tolerate union merges better than hard conflicts
+
+*.md merge=union
+
+# >>> AUTO-GEN END: Merge Attributes v1.0

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! python -m pre_commit --version >/dev/null 2>&1; then
+  echo "[pre-commit hook] pre-commit is not installed. Run: make hooks" >&2
+  exit 1
+fi
+
+python -m pre_commit run "$@"

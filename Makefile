@@ -1,14 +1,17 @@
 # >>> AUTO-GEN BEGIN: Makefile v1.1
-.PHONY: help setup fmt lint test doctor clean fullcheck repair build
+.PHONY: help setup hooks fmt lint lint-code test doctor clean fullcheck repair build
 
 help:
-	@echo "Targets: setup, fmt, lint, test, doctor, clean, fullcheck, repair, build"
+	@echo "Targets: setup, hooks, fmt, lint, lint-code, test, doctor, clean, fullcheck, repair, build"
 
 setup:
 	python -m pip install --upgrade pip
 	@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 	@if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e . || true; fi
-	@which pre-commit >/dev/null 2>&1 && pre-commit install || true
+
+hooks:
+	python -m pip install -U pre-commit
+	python -m pre_commit install-hooks
 
 fmt:
 	ruff check --fix . || true
@@ -16,6 +19,9 @@ fmt:
 	isort --profile=black . || true
 
 lint:
+	python -m pre_commit run --all-files
+
+lint-code:
 	ruff check .
 	black --check .
 	isort --check-only --profile=black .
