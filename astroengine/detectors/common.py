@@ -141,6 +141,11 @@ def body_lon(jd_ut: float, body_name: str) -> float:
         "uranus",
         "neptune",
         "pluto",
+        "ceres",
+        "pallas",
+        "juno",
+        "vesta",
+        "chiron",
     }
     adapter = SwissEphemerisAdapter.get_default_adapter()
 
@@ -169,6 +174,11 @@ def body_lon(jd_ut: float, body_name: str) -> float:
         "uranus": swe.URANUS,
         "neptune": swe.NEPTUNE,
         "pluto": swe.PLUTO,
+        "ceres": swe.CERES,
+        "pallas": swe.PALLAS,
+        "juno": swe.JUNO,
+        "vesta": swe.VESTA,
+        "chiron": swe.CHIRON,
     }[name]
     return adapter.body_position(jd_ut, code, body_name=body_name.title()).longitude
 

@@ -3,6 +3,12 @@
 from __future__ import annotations
 
 
+from .profections import annual_profections
+from .dashas import vimsottari_dashas
+
+__all__ = ["annual_profections", "vimsottari_dashas"]
+
+
 from .active import TimelordCalculator, active_timelords
 from .models import TimelordPeriod, TimelordStack
 from .profections import annual_profections, generate_profection_periods
@@ -18,3 +24,4 @@ __all__ = [
     "TimelordCalculator",
     "TimelordPeriod",
     "TimelordStack",
+
