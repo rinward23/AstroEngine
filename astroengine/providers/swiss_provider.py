@@ -1,16 +1,12 @@
-# >>> AUTO-GEN BEGIN: AE Swiss Provider v1.0
 from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Dict, Iterable
 
-
-
 from astroengine.canonical import BodyPosition
 from astroengine.core.time import TimeConversion, to_tt
 from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation, TimeScaleContext
-
 from astroengine.ephemeris.utils import get_se_ephe_path
 
 try:
@@ -45,9 +41,7 @@ except Exception:  # pragma: no cover
         _Pluto,
         _Sun,
         _Moon,
-    ) = (
-        None,
-    ) * 10  # type: ignore[assignment]
+    ) = (None,) * 10  # type: ignore[assignment]
     _PYMEEUS_AVAILABLE = False
 
 from . import register_provider
@@ -118,35 +112,18 @@ class SwissProvider:
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str]
     ) -> Dict[str, Dict[str, float]]:
-
-        dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
-        dt_utc = dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-
-        adapter = SwissEphemerisAdapter.get_default_adapter()
-        jd_ut = adapter.julian_day(dt_utc)
-
         conversion = self._time_conversion(iso_utc)
-
         out: Dict[str, Dict[str, float]] = {}
         for name in bodies:
             try:
                 body_id = self._body_id(name)
             except KeyError:
                 continue
-
-            ipl = _BODY_IDS[name.lower()]
-            position = adapter.body_position(jd_ut, ipl, body_name=name)
-            out[name] = {
-                "lon": position.longitude,
-                "decl": position.latitude,
-                "speed_lon": position.speed_longitude,
-
             sample = self._adapter.sample(body_id, conversion)
             out[name] = {
                 "lon": sample.longitude % 360.0,
                 "decl": sample.declination,
                 "speed_lon": sample.speed_longitude,
-
             }
         return out
 

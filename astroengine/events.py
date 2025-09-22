@@ -14,16 +14,11 @@ __all__ = [
     "ProgressionEvent",
     "DirectionEvent",
     "ProfectionEvent",
-
     "DashaPeriod",
-
-    "IngressEvent",
     "OutOfBoundsEvent",
+    "TimelordPeriod",
     "DashaPeriodEvent",
     "ZodiacalReleasingPeriod",
-
-
-
 ]
 
 
@@ -87,18 +82,6 @@ class StationEvent(BaseEvent):
     motion: str
     longitude: float
     speed_longitude: float
-
-
-@dataclass(frozen=True)
-class IngressEvent(BaseEvent):
-    """Represents a zodiacal ingress for a moving body."""
-
-    body: str
-    sign_from: str
-    sign_to: str
-    longitude: float
-    speed_longitude: float
-    retrograde: bool
 
 
 @dataclass(frozen=True)
@@ -169,18 +152,63 @@ class ProfectionEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
-
 class IngressEvent(BaseEvent):
-    """Represents a zodiac sign ingress for a given body."""
+    """Represents a zodiac sign ingress for a moving body.
+
+    The class serves both the classic ingress detector (which exposes
+    ``sign``/``sign_index``) and the more detailed mundane ingress
+    detector (which exposes ``from_sign``/``to_sign`` and motion data).
+    Optional fields default to ``None`` so callers can progressively
+    adopt the richer schema without breaking existing consumers.
+    """
 
     body: str
-    from_sign: str
-    to_sign: str
     longitude: float
-    motion: str
-    speed_deg_per_day: float
+    sign: str | None = None
+    sign_index: int | None = None
+    from_sign: str | None = None
+    to_sign: str | None = None
+    motion: str | None = None
+    speed_deg_per_day: float | None = None
+    speed_longitude: float | None = None
+    retrograde: bool | None = None
+
+    def __post_init__(self) -> None:
+        # Normalise speed aliases so downstream code can rely on either
+        # attribute regardless of how the event was instantiated.
+        if self.speed_deg_per_day is None and self.speed_longitude is not None:
+            object.__setattr__(self, "speed_deg_per_day", self.speed_longitude)
+        elif self.speed_longitude is None and self.speed_deg_per_day is not None:
+            object.__setattr__(self, "speed_longitude", self.speed_deg_per_day)
+
+        # Derive motion + retrograde flags when possible.
+        if self.motion is None and self.speed_deg_per_day is not None:
+            motion = "retrograde" if self.speed_deg_per_day < 0 else "direct"
+            object.__setattr__(self, "motion", motion)
+        if self.retrograde is None and self.motion is not None:
+            object.__setattr__(self, "retrograde", self.motion.lower() == "retrograde")
+
+        # Ensure legacy ``sign`` accessors remain populated when the
+        # mundane detector supplies ``to_sign`` only.
+        if self.sign is None and self.to_sign is not None:
+            object.__setattr__(self, "sign", self.to_sign)
+        if self.to_sign is None and self.sign is not None:
+            object.__setattr__(self, "to_sign", self.sign)
+
+    @property
+    def sign_from(self) -> str | None:
+        """Backwards compatible alias for :attr:`from_sign`."""
+
+        return self.from_sign
+
+    @property
+    def sign_to(self) -> str | None:
+        """Backwards compatible alias for :attr:`to_sign`."""
+
+        return self.to_sign
 
 
+@dataclass(frozen=True)
 class OutOfBoundsEvent(BaseEvent):
     """Represents a declination out-of-bounds crossing for a body."""
 
