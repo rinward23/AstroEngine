@@ -12,6 +12,7 @@ from typing import Iterable, Sequence, Any
 
 from . import engine as engine_module
 from .engine import events_to_dicts, scan_contacts
+from .ephemeris import EphemerisConfig, ObserverLocation, TimeScaleContext
 from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
 from .providers import list_providers
 from .validation import (
@@ -211,12 +212,30 @@ def cmd_transits(args: argparse.Namespace) -> int:
     engine_module.FEATURE_DIRECTIONS = args.directions
     engine_module.FEATURE_RETURNS = args.returns
     engine_module.FEATURE_PROFECTIONS = args.profections
+    observer = None
+    if args.lat is not None and args.lon is not None:
+        observer = ObserverLocation(
+            latitude_deg=float(args.lat),
+            longitude_deg=float(args.lon),
+            elevation_m=float(getattr(args, "elevation_m", 0.0) or 0.0),
+        )
+    if args.topocentric and observer is None:
+        print("topocentric mode requires --lat and --lon", file=sys.stderr)
+        return 1
+    time_scale = TimeScaleContext(ephemeris_scale=args.ephemeris_time_scale.upper())
+    ephemeris_config = EphemerisConfig(
+        topocentric=bool(args.topocentric),
+        observer=observer,
+        sidereal=bool(args.sidereal),
+        time_scale=time_scale,
+    )
     events = scan_contacts(
         start_iso=args.start,
         end_iso=args.end,
         moving=args.moving,
         target=args.target,
         provider_name=args.provider,
+        ephemeris_config=ephemeris_config,
         decl_parallel_orb=args.decl_orb,
         decl_contra_orb=args.decl_orb,
         antiscia_orb=args.mirror_orb,
@@ -313,6 +332,28 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--profile", help="Profile identifier to annotate export metadata")
     parser.add_argument("--lat", type=float, help="Latitude for location-sensitive detectors")
     parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")
+    parser.add_argument(
+        "--elevation-m",
+        type=float,
+        default=0.0,
+        help="Observer elevation in meters for topocentric calculations",
+    )
+    parser.add_argument(
+        "--topocentric",
+        action="store_true",
+        help="Use topocentric coordinates (requires --lat and --lon; refraction disabled)",
+    )
+    parser.add_argument(
+        "--ephemeris-time-scale",
+        choices=["tt", "ut"],
+        default="tt",
+        help="Ephemeris time scale (inputs are always treated as UTC)",
+    )
+    parser.add_argument(
+        "--sidereal",
+        action="store_true",
+        help="Enable sidereal zodiac output (ayanamsha configuration handled separately)",
+    )
     parser.add_argument("--aspects", help="Comma-separated aspect angles for natal aspect detectors")
     parser.add_argument("--orb", type=float, help="Orb allowance in degrees for natal aspect detectors")
     parser.add_argument("--lunations", action="store_true", help="Run lunation detector")

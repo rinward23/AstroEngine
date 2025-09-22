@@ -12,6 +12,7 @@ from .core.engine import get_active_aspect_angles
 from .detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
 from .detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
 from .detectors_aspects import AspectHit, detect_aspects
+from .ephemeris import EphemerisConfig
 from .exporters import LegacyTransitEvent
 from .providers import get_provider
 from .scoring import ScoreInputs, compute_score
@@ -156,6 +157,7 @@ def scan_contacts(
     target: str,
     provider_name: str = "swiss",
     *,
+    ephemeris_config: EphemerisConfig | None = None,
     decl_parallel_orb: float = 0.5,
     decl_contra_orb: float = 0.5,
     antiscia_orb: float = 2.0,
@@ -166,6 +168,15 @@ def scan_contacts(
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
 
     provider = get_provider(provider_name)
+    if ephemeris_config is not None:
+        configure = getattr(provider, "configure", None)
+        if callable(configure):
+            configure(
+                topocentric=ephemeris_config.topocentric,
+                observer=ephemeris_config.observer,
+                sidereal=ephemeris_config.sidereal,
+                time_scale=ephemeris_config.time_scale,
+            )
     ticks = list(_iso_ticks(start_iso, end_iso, step_minutes=step_minutes))
 
     events: List[LegacyTransitEvent] = []
