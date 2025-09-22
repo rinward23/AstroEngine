@@ -21,6 +21,30 @@ from .validation import (
 )
 from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
 
+
+def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for natal vault wiring in lightweight builds."""
+
+    return None
+
+
+def _augment_parser_with_cache(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for cache warmers in lightweight builds."""
+
+    return None
+
+
+def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for parquet dataset integration in lightweight builds."""
+
+    return None
+
+
+def _augment_parser_with_provisioning(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for ephemeris provisioning hooks in lightweight builds."""
+
+    return None
+
 # >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
 from .exporters import write_sqlite_canonical, write_parquet_canonical
 
@@ -249,7 +273,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--export-parquet", help="Write precomputed events to this Parquet file")
     parser.add_argument("--export-ics", help="Write precomputed events to this ICS calendar file")
     parser.add_argument("--ics-title", default="AstroEngine Events", help="Title to use for ICS export events")
-    parser.add_argument("--natal-id", help="Identifier for the natal chart driving precompute outputs")
     parser.add_argument("--profile", help="Profile identifier to annotate export metadata")
     parser.add_argument("--lat", type=float, help="Latitude for location-sensitive detectors")
     parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")

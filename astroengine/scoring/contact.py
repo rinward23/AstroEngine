@@ -3,14 +3,22 @@
 from __future__ import annotations
 
 import json
+import json
 import math
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import Mapping
 
 from ..core.bodies import body_class
+from ..refine import fuzzy_membership
 
-__all__ = ["ScoreInputs", "ScoreResult", "compute_score"]
+__all__ = [
+    "ScoreInputs",
+    "ScoreResult",
+    "compute_score",
+    "compute_uncertainty_confidence",
+]
 
 
 def _repository_root() -> Path:
@@ -35,12 +43,18 @@ class ScoreInputs:
     moving: str
     target: str
     applying_or_separating: str
+    corridor_width_deg: float | None = None
+    corridor_profile: str = "gaussian"
+    resonance_weights: Mapping[str, float] | None = None
+    observers: int = 1
+    overlap_count: int = 1
 
 
 @dataclass
 class ScoreResult:
     score: float
     components: dict[str, float]
+    confidence: float = 1.0
 
 
 @lru_cache(maxsize=None)
@@ -57,11 +71,50 @@ def _gaussian(value: float, sigma: float) -> float:
     return math.exp(-0.5 * (value / sigma) ** 2)
 
 
+def _resonance_factor(inputs: ScoreInputs) -> float:
+    weights = inputs.resonance_weights or {}
+    if not weights:
+        return 1.0
+    mind = float(weights.get("mind", 1.0))
+    body = float(weights.get("body", 1.0))
+    spirit = float(weights.get("spirit", 1.0))
+    if inputs.corridor_width_deg is None or inputs.corridor_width_deg >= inputs.orb_allow_deg:
+        numerator = mind + body
+    else:
+        numerator = mind + spirit
+    denominator = max(mind + body + spirit, 1e-9)
+    return max(numerator / denominator, 0.0)
+
+
+def compute_uncertainty_confidence(
+    orb_allow_deg: float,
+    corridor_width_deg: float | None,
+    *,
+    observers: int = 1,
+    overlap_count: int = 1,
+) -> float:
+    """Return a 0–1 confidence score mixing orb width and observer effects."""
+
+    width = max(float(orb_allow_deg), 1e-9)
+    corridor = float(corridor_width_deg) if corridor_width_deg else width
+    corridor_ratio = width / (width + corridor)
+    observer_penalty = 1.0 / (1.0 + math.log1p(max(0, observers - 1)))
+    overlap_penalty = 1.0 / (1.0 + max(0, overlap_count - 1) * 0.5)
+    confidence = corridor_ratio * observer_penalty * overlap_penalty
+    return max(0.0, min(confidence, 1.0))
+
+
 def compute_score(inputs: ScoreInputs, *, policy_path: str | None = None) -> ScoreResult:
     policy = _load_policy(policy_path)
     base_weight = float(policy.get("base_weights", {}).get(inputs.kind, 0.0))
     if base_weight <= 0.0 or inputs.orb_allow_deg <= 0:
-        return ScoreResult(0.0, {"base_weight": base_weight})
+        confidence = compute_uncertainty_confidence(
+            inputs.orb_allow_deg,
+            inputs.corridor_width_deg,
+            observers=inputs.observers,
+            overlap_count=inputs.overlap_count,
+        )
+        return ScoreResult(0.0, {"base_weight": base_weight}, confidence)
 
     curve = policy.get("curve", {})
     sigma_frac = float(curve.get("sigma_frac_of_orb", 0.5))
@@ -69,7 +122,15 @@ def compute_score(inputs: ScoreInputs, *, policy_path: str | None = None) -> Sco
     min_score = float(curve.get("min_score", 0.0))
     max_score = float(curve.get("max_score", 1.0))
     gaussian_value = _gaussian(inputs.orb_abs_deg, sigma)
-    normalized = min_score + (max_score - min_score) * gaussian_value
+    corridor_factor = 1.0
+    if inputs.corridor_width_deg:
+        corridor_factor = fuzzy_membership(
+            inputs.orb_abs_deg,
+            float(inputs.corridor_width_deg),
+            profile=inputs.corridor_profile,
+            softness=sigma_frac,
+        )
+    normalized = min_score + (max_score - min_score) * gaussian_value * corridor_factor
 
     cls_m = body_class(inputs.moving)
     cls_t = body_class(inputs.target)
@@ -80,7 +141,8 @@ def compute_score(inputs: ScoreInputs, *, policy_path: str | None = None) -> Sco
     pair_matrix = policy.get("pair_matrix", {})
     pair_weight = float(pair_matrix.get(pair_key, 1.0))
 
-    score = base_weight * weight_m * weight_t * pair_weight * normalized
+    resonance_factor = _resonance_factor(inputs)
+    score = base_weight * weight_m * weight_t * pair_weight * normalized * resonance_factor
 
     phase = (inputs.applying_or_separating or "").lower()
     applying_cfg = policy.get("applying_bias", {})
@@ -93,6 +155,13 @@ def compute_score(inputs: ScoreInputs, *, policy_path: str | None = None) -> Sco
     ):
         score *= float(partile_cfg.get("boost_factor", 1.0))
 
+    confidence = compute_uncertainty_confidence(
+        inputs.orb_allow_deg,
+        inputs.corridor_width_deg,
+        observers=inputs.observers,
+        overlap_count=inputs.overlap_count,
+    )
+    score *= max(confidence, 1e-9)
     score = max(min(score, max_score), min_score)
     components = {
         "base_weight": base_weight,
@@ -100,5 +169,8 @@ def compute_score(inputs: ScoreInputs, *, policy_path: str | None = None) -> Sco
         "weight_t": weight_t,
         "pair_weight": pair_weight,
         "gaussian": gaussian_value,
+        "corridor_factor": corridor_factor,
+        "resonance_factor": resonance_factor,
+        "confidence": confidence,
     }
-    return ScoreResult(score=score, components=components)
+    return ScoreResult(score=score, components=components, confidence=confidence)
