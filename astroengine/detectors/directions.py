@@ -1,4 +1,4 @@
-"""Directions detector implementing solar arc directions."""
+"""Solar arc direction helpers backed by Swiss Ephemeris."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from ..ephemeris import SwissEphemerisAdapter
 from ..events import DirectionEvent
 
 __all__ = ["solar_arc_directions"]
-
 
 SIDEREAL_YEAR_DAYS = 365.2422
 
