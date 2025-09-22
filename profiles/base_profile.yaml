@@ -159,6 +159,7 @@ orb_policies:
     eclipse_node_orb_deg: 1.0
 
 severity_modifiers:
+  retrograde: 0.92
   combust: 0.85
   under_beams: 0.90
   cazimi: 1.10

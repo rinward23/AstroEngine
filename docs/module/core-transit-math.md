@@ -109,6 +109,8 @@ The JSON document in `schemas/orbs_policy.json` mirrors the major aspect familie
 
 The dignity table (`profiles/dignities.csv`) lists the rulership/fall/triplicity modifiers that feed additional severity multipliers (e.g., benefic/malefic adjustments, essential dignity bonuses). Each record contains explicit source citations (Solar Fire export IDs and classical text references) and the table is indexed by `(planet, sign)` so profile loaders can join deterministically. Fixed-star bonuses originate from `profiles/fixed_stars.csv`, which includes longitude/declination positions, magnitudes, default orbs, and source manifest hashes for the FK6 reduction bundled with Solar Fire.
 
+Visibility thresholds that gate whether an event is surfaced are stored in `profiles/visibility_policy.json`. The policy exposes a default minimum score together with per-contact overrides. Callers retrieve the resolved payload via `astroengine.profiles.load_profile`, which merges the base policy with any per-user overrides before attaching the mapping to the execution context.
+
 ## Domain scoring
 
 Domain multipliers and weightings are defined in `profiles/vca_outline.json`. The helper `astroengine.core.scoring.compute_domain_factor` consumes those weights and the domain resolution emitted by `astroengine.domains.DomainResolver`. Tests in `tests/test_domain_scoring.py` and `tests/test_domains.py` assert the weighting functions behave deterministically across the supported methods (`weighted`, `top`, `softmax`).

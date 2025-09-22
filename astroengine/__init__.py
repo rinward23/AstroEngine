@@ -101,6 +101,7 @@ from .profiles import (  # noqa: F401
     DomainScoringProfile,
     ResonanceWeights,
     load_base_profile,
+    load_profile,
     load_resonance_weights,
     load_vca_outline,
 )
@@ -116,12 +117,18 @@ from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
 from .scoring import (
     DEFAULT_ASPECTS,
     OrbCalculator,
+    OrbPolicy,
     ScoreInputs,
     ScoreResult,
+    SeverityPolicy,
+    VisibilityPolicy,
     compute_score,
     compute_uncertainty_confidence,
     load_dignities,
+    load_orb_policy,
     lookup_dignities,
+    load_severity_policy,
+    load_visibility_policy,
 )
 
 __all__ = [
@@ -166,6 +173,7 @@ __all__ = [
     "compute_domain_factor",
     "rollup_domain_scores",
     "load_profile_json",
+    "load_profile",
     "profile_into_ctx",
     "apply_profile_if_any",
     "load_resonance_weights",
@@ -197,6 +205,12 @@ __all__ = [
     "compute_uncertainty_confidence",
     "load_dignities",
     "lookup_dignities",
+    "OrbPolicy",
+    "SeverityPolicy",
+    "VisibilityPolicy",
+    "load_orb_policy",
+    "load_severity_policy",
+    "load_visibility_policy",
     "SwissEphemerisAdapter",
     "TimeScaleContext",
     "collect_environment_report",

@@ -1,0 +1,11 @@
+# AstroEngine per-user overrides (applied after base profile).
+# Structure:
+# users:
+#   sample_user:
+#     policies:
+#       severity:
+#         base_weights:
+#           aspect_trine: 0.65
+#     severity_modifiers:
+#       retrograde: 0.95
+users: {}
