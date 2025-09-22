@@ -8,7 +8,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, List, Mapping
 
+import yaml
 
+from .astro.declination import DEFAULT_ANTISCIA_AXIS
 from .chart.config import ChartConfig
 
 from .core.engine import get_active_aspect_angles
@@ -23,6 +25,7 @@ from .detectors_aspects import AspectHit, detect_aspects
 from .ephemeris import EphemerisConfig
 from .exporters import LegacyTransitEvent
 
+from .infrastructure.paths import profiles_dir
 from .plugins import DetectorContext, get_plugin_manager
 
 
@@ -440,8 +443,8 @@ def scan_contacts(
     include_aspects: bool = True,
     antiscia_axis: str | None = None,
     chart_config: ChartConfig | None = None,
-    tradition_profile: str | None = None,
-    chart_sect: str | None = None,
+
+
 ) -> List[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
 
@@ -512,11 +515,10 @@ def scan_contacts(
     antiscia_enabled = bool(antiscia_flags.get("enabled", True))
 
     do_declination = include_declination and decl_enabled
-    do_parallels = parallel_enabled
-    do_contras = contra_enabled
+    do_parallels = do_declination and parallel_enabled
+    do_contras = do_declination and contra_enabled
     do_mirrors = include_mirrors and antiscia_enabled
     do_aspects = include_aspects
-
 
     provider = get_provider(provider_name)
     if ephemeris_config is not None:
@@ -528,11 +530,18 @@ def scan_contacts(
                 sidereal=ephemeris_config.sidereal,
                 time_scale=ephemeris_config.time_scale,
             )
+
     ticks = list(_iso_ticks(start_iso, end_iso, step_minutes=step_minutes))
 
     events: List[LegacyTransitEvent] = []
 
-    if do_declination:
+
+    def append_event(event: LegacyTransitEvent) -> None:
+        _attach_timelords(event, timelord_calculator)
+        events.append(event)
+
+    if do_parallels or do_contras:
+
         for hit in detect_decl_contacts(
             provider,
             ticks,
@@ -550,16 +559,9 @@ def scan_contacts(
                 if hit.kind == "decl_parallel"
                 else decl_contra_allow
             )
-            event = _event_from_decl(
-                hit,
-                orb_allow=allow,
-                resonance_weights=resonance_weights_map,
-                tradition=tradition,
-                chart_sect=chart_sect,
-                uncertainty_bias=uncertainty_bias_map,
-            )
-            _attach_timelords(event, timelord_calculator)
-            events.append(event)
+
+            append_event(_event_from_decl(hit, orb_allow=allow))
+
 
     if do_mirrors:
         for hit in detect_antiscia_contacts(
@@ -576,16 +578,9 @@ def scan_contacts(
                 if hit.kind == "antiscia"
                 else contra_antiscia_allow
             )
-            event = _event_from_decl(
-                hit,
-                orb_allow=allow,
-                resonance_weights=resonance_weights_map,
-                tradition=tradition,
-                chart_sect=chart_sect,
-                uncertainty_bias=uncertainty_bias_map,
-            )
-            _attach_timelords(event, timelord_calculator)
-            events.append(event)
+
+            append_event(_event_from_decl(hit, orb_allow=allow))
+
 
     if do_aspects:
         for aspect_hit in detect_aspects(
@@ -595,15 +590,8 @@ def scan_contacts(
             target,
             policy_path=aspects_policy_path,
         ):
-            event = _event_from_aspect(
-                aspect_hit,
-                resonance_weights=resonance_weights_map,
-                tradition=tradition,
-                chart_sect=chart_sect,
-                uncertainty_bias=uncertainty_bias_map,
-            )
-            _attach_timelords(event, timelord_calculator)
-            events.append(event)
+
+            append_event(_event_from_aspect(aspect_hit))
 
 
     plugin_context = DetectorContext(
@@ -621,9 +609,12 @@ def scan_contacts(
             "contra_antiscia_orb": contra_antiscia_allow,
             "step_minutes": step_minutes,
             "aspects_policy_path": aspects_policy_path,
-            "profile_id": profile_id,
-            "tradition_profile": tradition,
-            "chart_sect": chart_sect,
+
+            "include_declination": include_declination,
+            "include_mirrors": include_mirrors,
+            "include_aspects": include_aspects,
+            "antiscia_axis": axis,
+
         },
         existing_events=tuple(events),
     )
