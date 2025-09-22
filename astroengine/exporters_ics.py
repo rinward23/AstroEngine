@@ -8,8 +8,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-from ics.grammar.parse import ContentLine
-
 from .canonical import TransitEvent, event_from_legacy, events_from_any
 from .events import ReturnEvent
 from .narrative import markdown_to_plaintext
@@ -280,30 +278,45 @@ def write_ics(
 ) -> int:
     """Write events to an ICS file using summary/description templates."""
 
-    try:
-        from ics import Calendar, Event
-    except Exception as exc:  # pragma: no cover - optional dependency guard
-        raise RuntimeError("The 'ics' package is required for ICS export") from exc
-
     contexts = [_coerce_context(event) for event in events]
-    calendar = Calendar()
-    calendar.extra.append(ContentLine("NAME", value=calendar_name))
-    calendar.extra.append(ContentLine("X-WR-CALNAME", value=calendar_name))
+    now_stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    lines: list[str] = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        f"PRODID:{_PRODID}",
+        f"NAME:{_escape_text(calendar_name)}",
+        f"X-WR-CALNAME:{_escape_text(calendar_name)}",
+    ]
 
-    count = 0
     for context in contexts:
-        evt = Event()
-        evt.name = summary_template.format_map(_TemplateContext(context))
-        evt.begin = context["ts"]
-        description = description_template.format_map(_TemplateContext(context))
-        if description.strip():
-            evt.description = description
-        evt.uid = context.get("uid") or f"{context['ts']}-{count}"
-        calendar.events.add(evt)
-        count += 1
+        dtstart = _iso_to_ics(context["ts"])
+        dtend = _iso_to_ics(context["ts"], delta_minutes=30)
+        summary = summary_template.format_map(_TemplateContext(context)).strip()
+        description = description_template.format_map(_TemplateContext(context)).strip()
+        uid_value = context.get("uid")
+        if not uid_value:
+            raw = f"{dtstart}|{summary}|{description}|{context.get('type','')}".encode(
+                "utf-8"
+            )
+            uid_value = hashlib.sha1(raw).hexdigest()
 
-    Path(path).write_text(str(calendar), encoding="utf-8")
-    return count
+        lines.extend(
+            [
+                "BEGIN:VEVENT",
+                f"UID:{uid_value}@astroengine",
+                f"DTSTAMP:{now_stamp}",
+                f"DTSTART:{dtstart}",
+                f"DTEND:{dtend}",
+                f"SUMMARY:{_escape_text(summary)}",
+            ]
+        )
+        if description:
+            lines.append(f"DESCRIPTION:{_escape_text(description)}")
+        lines.append("END:VEVENT")
+
+    lines.append("END:VCALENDAR")
+    Path(path).write_text("\r\n".join(lines) + "\r\n", encoding="utf-8")
+    return len(contexts)
 
 
 def write_ics_calendar(

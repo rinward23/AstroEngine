@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import yaml
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -16,7 +17,9 @@ from .detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
 from .detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
 from .detectors_aspects import AspectHit, detect_aspects
 from .ephemeris import EphemerisConfig
+from .ephemeris import SwissEphemerisAdapter
 from .exporters import LegacyTransitEvent
+from .infrastructure.paths import profiles_dir
 
 from .plugins import DetectorContext, get_plugin_manager
 
@@ -26,8 +29,6 @@ from .profiles import load_base_profile
 from .scoring import ScoreInputs, compute_score
 
 from .timelords.active import TimelordCalculator
-
-from .ephemeris import SwissEphemerisAdapter
 
 
 # >>> AUTO-GEN BEGIN: engine-feature-flags v1.0
@@ -345,34 +346,26 @@ def scan_contacts(
     target: str,
     provider_name: str = "swiss",
     *,
-
     decl_parallel_orb: float | None = None,
     decl_contra_orb: float | None = None,
     antiscia_orb: float | None = None,
     contra_antiscia_orb: float | None = None,
-
     step_minutes: int = 60,
     aspects_policy_path: str | None = None,
-
-    timelord_calculator: TimelordCalculator | None = None,
-
-
-    chart_config: ChartConfig | None = None,
-) -> List[LegacyTransitEvent]:
-    """Scan for declination, antiscia, and aspect contacts between two bodies."""
-
-    if chart_config is not None:
-        SwissEphemerisAdapter.configure_defaults(chart_config=chart_config)
-
     profile: Mapping[str, Any] | None = None,
     profile_id: str | None = None,
     include_declination: bool = True,
     include_mirrors: bool = True,
     include_aspects: bool = True,
     antiscia_axis: str | None = None,
-
+    timelord_calculator: TimelordCalculator | None = None,
+    ephemeris_config: EphemerisConfig | None = None,
+    chart_config: ChartConfig | None = None,
 ) -> List[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
+
+    if chart_config is not None:
+        SwissEphemerisAdapter.configure_defaults(chart_config=chart_config)
 
     profile_data = _resolve_profile(profile, profile_id)
 
@@ -423,11 +416,10 @@ def scan_contacts(
     antiscia_enabled = bool(antiscia_flags.get("enabled", True))
 
     do_declination = include_declination and decl_enabled
-    do_parallels = parallel_enabled
-    do_contras = contra_enabled
+    do_parallels = do_declination and parallel_enabled
+    do_contras = do_declination and contra_enabled
     do_mirrors = include_mirrors and antiscia_enabled
     do_aspects = include_aspects
-
 
     provider = get_provider(provider_name)
     if ephemeris_config is not None:
@@ -439,47 +431,9 @@ def scan_contacts(
                 sidereal=ephemeris_config.sidereal,
                 time_scale=ephemeris_config.time_scale,
             )
+
     ticks = list(_iso_ticks(start_iso, end_iso, step_minutes=step_minutes))
-
     events: List[LegacyTransitEvent] = []
-
-
-    for hit in detect_decl_contacts(
-        provider,
-        ticks,
-        moving,
-        target,
-        decl_parallel_orb,
-        decl_contra_orb,
-    ):
-        allow = decl_parallel_orb if hit.kind == "decl_parallel" else decl_contra_orb
-        event = _event_from_decl(hit, orb_allow=allow)
-        _attach_timelords(event, timelord_calculator)
-        events.append(event)
-
-    for hit in detect_antiscia_contacts(
-        provider,
-        ticks,
-        moving,
-        target,
-        antiscia_orb,
-        contra_antiscia_orb,
-    ):
-        allow = antiscia_orb if hit.kind == "antiscia" else contra_antiscia_orb
-        event = _event_from_decl(hit, orb_allow=allow)
-        _attach_timelords(event, timelord_calculator)
-        events.append(event)
-
-    for aspect_hit in detect_aspects(
-        provider,
-        ticks,
-        moving,
-        target,
-        policy_path=aspects_policy_path,
-    ):
-        event = _event_from_aspect(aspect_hit)
-        _attach_timelords(event, timelord_calculator)
-        events.append(event)
 
     if do_declination:
         for hit in detect_decl_contacts(
@@ -499,7 +453,9 @@ def scan_contacts(
                 if hit.kind == "decl_parallel"
                 else decl_contra_allow
             )
-            events.append(_event_from_decl(hit, orb_allow=allow))
+            event = _event_from_decl(hit, orb_allow=allow)
+            _attach_timelords(event, timelord_calculator)
+            events.append(event)
 
     if do_mirrors:
         for hit in detect_antiscia_contacts(
@@ -516,7 +472,9 @@ def scan_contacts(
                 if hit.kind == "antiscia"
                 else contra_antiscia_allow
             )
-            events.append(_event_from_decl(hit, orb_allow=allow))
+            event = _event_from_decl(hit, orb_allow=allow)
+            _attach_timelords(event, timelord_calculator)
+            events.append(event)
 
     if do_aspects:
         for aspect_hit in detect_aspects(
@@ -526,8 +484,9 @@ def scan_contacts(
             target,
             policy_path=aspects_policy_path,
         ):
-            events.append(_event_from_aspect(aspect_hit))
-
+            event = _event_from_aspect(aspect_hit)
+            _attach_timelords(event, timelord_calculator)
+            events.append(event)
 
     plugin_context = DetectorContext(
         provider=provider,
@@ -538,17 +497,22 @@ def scan_contacts(
         moving=moving,
         target=target,
         options={
-            "decl_parallel_orb": decl_parallel_orb,
-            "decl_contra_orb": decl_contra_orb,
-            "antiscia_orb": antiscia_orb,
-            "contra_antiscia_orb": contra_antiscia_orb,
+            "decl_parallel_orb": decl_parallel_allow,
+            "decl_contra_orb": decl_contra_allow,
+            "antiscia_orb": antiscia_allow,
+            "contra_antiscia_orb": contra_antiscia_allow,
             "step_minutes": step_minutes,
             "aspects_policy_path": aspects_policy_path,
+            "include_declination": do_declination,
+            "include_mirrors": do_mirrors,
+            "include_aspects": do_aspects,
         },
         existing_events=tuple(events),
     )
     plugin_events = get_plugin_manager().run_detectors(plugin_context)
     if plugin_events:
+        for plugin_event in plugin_events:
+            _attach_timelords(plugin_event, timelord_calculator)
         events.extend(plugin_events)
 
     events.sort(key=lambda event: (event.timestamp, -event.score))
