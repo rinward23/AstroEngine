@@ -4,20 +4,28 @@ from __future__ import annotations
 
 from typing import Iterable, Mapping, Sequence
 
+from .canonical import events_from_any, parquet_write_canonical
+
 __all__ = ["export_parquet_dataset"]
 
 
 def export_parquet_dataset(
     path: str,
-    events: Sequence[Mapping[str, object]] | Iterable[Mapping[str, object]] | Iterable[object],
+    events: Sequence[Mapping[str, object]]
+    | Iterable[Mapping[str, object]]
+    | Iterable[object],
 ) -> int:
-    """Write events to a Parquet dataset.
+    """Write canonical events to a Parquet file or dataset directory.
 
-    The real implementation depends on optional Parquet dependencies. This
-    placeholder raises an informative error when those dependencies are not
-    installed so that CLI imports continue to work.
+    Parameters
+    ----------
+    path:
+        Destination path. If the path ends with ``.parquet`` a single file is
+        written, otherwise a partitioned dataset directory is created.
+    events:
+        Iterable of mappings or objects consumable by
+        :func:`astroengine.canonical.events_from_any`.
     """
 
-    raise RuntimeError(
-        "Parquet export requires optional dependencies (pyarrow/fastparquet)."
-    )
+    canonical = events_from_any(events)
+    return parquet_write_canonical(path, canonical)

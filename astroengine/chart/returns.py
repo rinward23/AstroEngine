@@ -55,14 +55,18 @@ def compute_return_chart(
     bodies: Mapping[str, int] | None = None,
     aspect_angles: Sequence[int] | None = None,
     orb_profile: str = "standard",
+
     config: ChartConfig | None = None,
+
     adapter: SwissEphemerisAdapter | None = None,
     orb_calculator: OrbCalculator | None = None,
 ) -> ReturnChart:
     """Compute the solar or lunar return chart for ``target_year``."""
 
+
     chart_config = config or ChartConfig()
     adapter = adapter or SwissEphemerisAdapter.from_chart_config(chart_config)
+
     orb_calculator = orb_calculator or OrbCalculator()
     location = location or natal_chart.location
     body_map = bodies or DEFAULT_BODIES
@@ -88,7 +92,9 @@ def compute_return_chart(
         bodies=body_map,
         aspect_angles=angles,
         orb_profile=orb_profile,
+
         config=chart_config,
+
         adapter=adapter,
         orb_calculator=orb_calculator,
     )

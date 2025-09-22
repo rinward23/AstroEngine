@@ -107,14 +107,18 @@ def compute_natal_chart(
     bodies: Mapping[str, int] | None = None,
     aspect_angles: Sequence[int] | None = None,
     orb_profile: str = "standard",
+
     config: ChartConfig | None = None,
+
     adapter: SwissEphemerisAdapter | None = None,
     orb_calculator: OrbCalculator | None = None,
 ) -> NatalChart:
     """Compute a natal chart snapshot using Swiss Ephemeris data."""
 
+
     chart_config = config or ChartConfig()
     adapter = adapter or SwissEphemerisAdapter.from_chart_config(chart_config)
+
     orb_calculator = orb_calculator or OrbCalculator()
     body_map = bodies or DEFAULT_BODIES
     angles = aspect_angles or DEFAULT_ASPECTS

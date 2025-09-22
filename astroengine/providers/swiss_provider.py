@@ -1,10 +1,16 @@
 # >>> AUTO-GEN BEGIN: AE Swiss Provider v1.0
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Dict, Iterable
 
-from astroengine.ephemeris import SwissEphemerisAdapter
+
+
+from astroengine.canonical import BodyPosition
+from astroengine.core.time import TimeConversion, to_tt
+from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation, TimeScaleContext
+
 from astroengine.ephemeris.utils import get_se_ephe_path
 
 try:
@@ -67,27 +73,91 @@ class SwissProvider:
         eph = get_se_ephe_path()
         if eph:
             swe.set_ephe_path(eph)
+        self._config = EphemerisConfig(ephemeris_path=str(eph) if eph else None)
+        self._adapter = EphemerisAdapter(self._config)
+
+    def configure(
+        self,
+        *,
+        topocentric: bool | None = None,
+        observer: ObserverLocation | None = None,
+        sidereal: bool | None = None,
+        time_scale: TimeScaleContext | None = None,
+    ) -> None:
+        """Update ephemeris configuration used by the provider."""
+
+        cfg = self._config
+        updates: dict[str, object] = {}
+        if topocentric is not None:
+            updates["topocentric"] = topocentric
+        if observer is not None or (topocentric is False and cfg.observer is not None):
+            updates["observer"] = observer
+        if sidereal is not None:
+            updates["sidereal"] = sidereal
+        if time_scale is not None:
+            updates["time_scale"] = time_scale
+        if updates:
+            cfg = replace(cfg, **updates)
+            self._config = cfg
+            self._adapter = EphemerisAdapter(cfg)
+
+    @staticmethod
+    def _normalize_iso(iso_utc: str) -> datetime:
+        dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
+        return dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+    def _time_conversion(self, iso_utc: str) -> TimeConversion:
+        return to_tt(self._normalize_iso(iso_utc))
+
+    def _body_id(self, name: str) -> int:
+        key = name.lower()
+        if key not in _BODY_IDS:
+            raise KeyError(key)
+        return _BODY_IDS[key]
 
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str]
     ) -> Dict[str, Dict[str, float]]:
+
         dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
         dt_utc = dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
         adapter = SwissEphemerisAdapter.get_default_adapter()
         jd_ut = adapter.julian_day(dt_utc)
+
+        conversion = self._time_conversion(iso_utc)
+
         out: Dict[str, Dict[str, float]] = {}
         for name in bodies:
-            if name.lower() not in _BODY_IDS:
+            try:
+                body_id = self._body_id(name)
+            except KeyError:
                 continue
+
             ipl = _BODY_IDS[name.lower()]
             position = adapter.body_position(jd_ut, ipl, body_name=name)
             out[name] = {
                 "lon": position.longitude,
                 "decl": position.latitude,
                 "speed_lon": position.speed_longitude,
+
+            sample = self._adapter.sample(body_id, conversion)
+            out[name] = {
+                "lon": sample.longitude % 360.0,
+                "decl": sample.declination,
+                "speed_lon": sample.speed_longitude,
+
             }
         return out
+
+    def position(self, body: str, ts_utc: str) -> BodyPosition:
+        sample = self._adapter.sample(self._body_id(body), self._time_conversion(ts_utc))
+        return BodyPosition(
+            lon=sample.longitude % 360.0,
+            lat=sample.latitude,
+            dec=sample.declination,
+            speed_lon=sample.speed_longitude,
+        )
 
 
 class SwissFallbackProvider:
@@ -175,6 +245,18 @@ class SwissFallbackProvider:
                 continue
             out[name] = {"lon": lon_deg % 360.0, "decl": lat_deg, "speed_lon": speed}
         return out
+
+    def position(self, body: str, ts_utc: str) -> BodyPosition:
+        coords = self.positions_ecliptic(ts_utc, [body])
+        if body not in coords:
+            raise KeyError(body)
+        data = coords[body]
+        return BodyPosition(
+            lon=float(data["lon"]),
+            lat=float(data["decl"]),
+            dec=float(data["decl"]),
+            speed_lon=float(data.get("speed_lon", 0.0)),
+        )
 
 
 def _register() -> None:

@@ -16,6 +16,7 @@ from .events import (
     ProgressionEvent,
     DirectionEvent,
     ProfectionEvent,
+    OutOfBoundsEvent,
 )
 
 __all__ = [
@@ -29,4 +30,5 @@ __all__ = [
     "ProgressionEvent",
     "DirectionEvent",
     "ProfectionEvent",
+    "OutOfBoundsEvent",
 ]
