@@ -22,6 +22,7 @@ __all__ = [
     "find_lunations",
     "find_eclipses",
     "find_stations",
+    "find_ingresses",
     "secondary_progressions",
     "solar_arc_directions",
     "solar_lunar_returns",
@@ -190,6 +191,7 @@ def detect_antiscia_contacts(
 
 from .directions import solar_arc_directions  # noqa: E402
 from .eclipses import find_eclipses  # noqa: E402
+from .ingress import find_ingresses  # noqa: E402
 from .lunations import find_lunations  # noqa: E402
 from .progressions import secondary_progressions  # noqa: E402
 from .returns import solar_lunar_returns  # noqa: E402

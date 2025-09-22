@@ -40,6 +40,7 @@ Profiles reference providers through the following keys in `profiles/base_profil
 - Cadence and cache settings must be cross-checked against Solar Fire export intervals; record any deviations in the provenance log so comparisons remain valid.
 
 House system and ayanamsha preferences are stored under `feature_flags.house_system` and `feature_flags.sidereal` in the same profile file. Detectors that rely on relocation/house calculations must combine those flags with provider metadata to select the correct frame.
+Topocentric observer configuration (latitude, longitude, elevation) must be accepted without enabling atmospheric refraction; providers should default to geocentric calculations when no observer is supplied.
 
 ## Provenance & testing expectations
 

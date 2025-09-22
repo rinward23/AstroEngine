@@ -15,6 +15,7 @@ from .core.engine import get_active_aspect_angles
 from .detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
 from .detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
 from .detectors_aspects import AspectHit, detect_aspects
+from .ephemeris import EphemerisConfig
 from .exporters import LegacyTransitEvent
 from .infrastructure.paths import profiles_dir
 from .providers import get_provider
@@ -303,7 +304,13 @@ def _event_from_aspect(hit: AspectHit) -> LegacyTransitEvent:
         score=score,
         lon_moving=hit.lon_moving,
         lon_target=hit.lon_target,
-        metadata={"angle_deg": hit.angle_deg},
+        metadata={
+            "angle_deg": float(hit.angle_deg),
+            "delta_lambda_deg": float(hit.delta_lambda_deg),
+            "offset_deg": float(hit.offset_deg),
+            "partile": bool(hit.is_partile),
+            "family": hit.family,
+        },
     )
 
 
@@ -314,10 +321,12 @@ def scan_contacts(
     target: str,
     provider_name: str = "swiss",
     *,
+
     decl_parallel_orb: float | None = None,
     decl_contra_orb: float | None = None,
     antiscia_orb: float | None = None,
     contra_antiscia_orb: float | None = None,
+
     step_minutes: int = 60,
     aspects_policy_path: str | None = None,
     profile: Mapping[str, Any] | None = None,
@@ -384,6 +393,15 @@ def scan_contacts(
     do_aspects = include_aspects
 
     provider = get_provider(provider_name)
+    if ephemeris_config is not None:
+        configure = getattr(provider, "configure", None)
+        if callable(configure):
+            configure(
+                topocentric=ephemeris_config.topocentric,
+                observer=ephemeris_config.observer,
+                sidereal=ephemeris_config.sidereal,
+                time_scale=ephemeris_config.time_scale,
+            )
     ticks = list(_iso_ticks(start_iso, end_iso, step_minutes=step_minutes))
 
     events: List[LegacyTransitEvent] = []
