@@ -9,10 +9,12 @@ __all__ = [
     "LunationEvent",
     "EclipseEvent",
     "StationEvent",
+    "IngressEvent",
     "ReturnEvent",
     "ProgressionEvent",
     "DirectionEvent",
     "ProfectionEvent",
+    "DashaPeriod",
 ]
 
 
@@ -55,12 +57,35 @@ class StationEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+class IngressEvent(BaseEvent):
+    """Represents a zodiacal ingress for a moving body."""
+
+    body: str
+    sign_from: str
+    sign_to: str
+    longitude: float
+    speed_longitude: float
+    retrograde: bool
+
+
+@dataclass(frozen=True)
 class ReturnEvent(BaseEvent):
     """Represents a solar or lunar return event."""
 
     body: str
     method: str
     longitude: float
+
+
+@dataclass(frozen=True)
+class DashaPeriod(BaseEvent):
+    """Represents a Vimsottari dasha sub-period covering ``ts`` → ``end_ts``."""
+
+    method: str
+    major_lord: str
+    sub_lord: str
+    end_jd: float
+    end_ts: str
 
 
 @dataclass(frozen=True)

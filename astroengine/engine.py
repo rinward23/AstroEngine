@@ -11,6 +11,11 @@ from typing import Iterable, List
 from .core.engine import get_active_aspect_angles
 from .detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
 from .detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
+
+try:  # pragma: no cover - optional for environments without pyswisseph
+    import swisseph as swe  # type: ignore
+except Exception:  # pragma: no cover
+    swe = None  # type: ignore
 from .detectors_aspects import AspectHit, detect_aspects
 from .exporters import LegacyTransitEvent
 from .providers import get_provider
@@ -48,6 +53,18 @@ _BODY_CODE_TO_NAME = {
     8: "neptune",
     9: "pluto",
 }
+
+if swe is not None:  # pragma: no cover - availability tested via swiss-marked tests
+    for attr, name in (
+        ("CERES", "ceres"),
+        ("PALLAS", "pallas"),
+        ("JUNO", "juno"),
+        ("VESTA", "vesta"),
+        ("CHIRON", "chiron"),
+    ):
+        code = getattr(swe, attr, None)
+        if code is not None:
+            _BODY_CODE_TO_NAME[int(code)] = name
 
 
 @dataclass(slots=True)

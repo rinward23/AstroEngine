@@ -139,6 +139,11 @@ def body_lon(jd_ut: float, body_name: str) -> float:
         "uranus",
         "neptune",
         "pluto",
+        "ceres",
+        "pallas",
+        "juno",
+        "vesta",
+        "chiron",
     }
     if USE_CACHE and get_lon_daily is not None and body_name.lower() in cacheable_bodies:
         return float(get_lon_daily(jd_ut, body_name))
@@ -160,6 +165,11 @@ def body_lon(jd_ut: float, body_name: str) -> float:
         "uranus": swe.URANUS,
         "neptune": swe.NEPTUNE,
         "pluto": swe.PLUTO,
+        "ceres": swe.CERES,
+        "pallas": swe.PALLAS,
+        "juno": swe.JUNO,
+        "vesta": swe.VESTA,
+        "chiron": swe.CHIRON,
     }[name]
     result, _ = swe.calc_ut(jd_ut, code)
     return float(result[0])

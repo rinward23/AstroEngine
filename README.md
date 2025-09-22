@@ -1,5 +1,7 @@
 # AstroEngine — Runtime & Schema Contracts
 
+![Coverage](docs/badges/coverage.svg)
+
 AstroEngine provides schema definitions and Python helpers for building
 real-time astrology pipelines.  The codebase has been rebuilt to avoid
 Conda-specific tooling and now organises assets using a
