@@ -5,7 +5,8 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import Path
+
+from ..infrastructure.paths import profiles_dir
 
 __all__ = ["DignityRecord", "load_dignities", "lookup_dignities"]
 
@@ -24,15 +25,6 @@ class DignityRecord:
     source: str
 
 
-def _repository_root() -> Path:
-    here = Path(__file__).resolve()
-    for parent in here.parents:
-        candidate = parent / "profiles"
-        if (candidate / "dignities.csv").is_file():
-            return parent
-    raise FileNotFoundError("Unable to locate repository root containing 'profiles'.")
-
-
 def _parse_float(value: str | None) -> float | None:
     if value is None or value == "":
         return None
@@ -43,7 +35,7 @@ def _parse_float(value: str | None) -> float | None:
 def load_dignities() -> tuple[DignityRecord, ...]:
     """Load the entire dignity table into memory."""
 
-    path = _repository_root() / "profiles" / "dignities.csv"
+    path = profiles_dir() / "dignities.csv"
     with path.open("r", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         records = []

@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from typing import Iterable, Iterator
 
+from ..infrastructure.paths import datasets_dir
+
 __all__ = [
     "DEFAULT_ENV_KEYS",
     "DEFAULT_SUBDIRS",
@@ -24,8 +26,7 @@ DEFAULT_ENV_KEYS: tuple[str, ...] = (
 DEFAULT_SUBDIRS: tuple[str, ...] = ("ephe", "sefstars")
 """Common Swiss ephemeris sub-directories to validate when probing paths."""
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-_DATASETS_ROOT = _REPO_ROOT / "datasets"
+_DATASETS_ROOT = datasets_dir()
 _STUB_DIR = _DATASETS_ROOT / "swisseph_stub"
 
 _DEFAULT_HINTS: tuple[Path, ...] = (

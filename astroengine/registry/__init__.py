@@ -15,6 +15,8 @@ try:
 except Exception:  # pragma: no cover
     _files = None  # type: ignore
 
+from ..infrastructure.paths import registry_dir
+
 
 def _candidate_dirs() -> list[Path]:
     roots: list[Path] = []
@@ -26,11 +28,12 @@ def _candidate_dirs() -> list[Path]:
         except Exception:
             pass
     # 2) project root `registry/` (dev installs, editable mode)
-    here = Path(__file__).resolve()
-    for up in (here.parents[1], Path.cwd()):
-        cand = up / "registry"
-        if cand.exists():
-            roots.append(cand)
+    repo_registry = registry_dir()
+    if repo_registry.exists():
+        roots.append(repo_registry)
+    cwd_registry = Path.cwd() / "registry"
+    if cwd_registry.exists():
+        roots.append(cwd_registry)
     # De-dup while preserving order
     seen: set[Path] = set()
     uniq: list[Path] = []

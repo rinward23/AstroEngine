@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-import json
 import math
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import Path
 from typing import Mapping
 
 from ..core.bodies import body_class
+from ..infrastructure.paths import profiles_dir
 from ..refine import fuzzy_membership
 
 __all__ = [
@@ -19,20 +18,7 @@ __all__ = [
     "compute_score",
     "compute_uncertainty_confidence",
 ]
-
-
-def _repository_root() -> Path:
-    here = Path(__file__).resolve()
-    for parent in here.parents:
-        candidate = parent / "profiles" / "scoring_policy.json"
-        if candidate.exists():
-            return parent
-    raise FileNotFoundError(
-        "Unable to locate 'profiles/scoring_policy.json' in repository parents."
-    )
-
-
-_DEF_POLICY = _repository_root() / "profiles" / "scoring_policy.json"
+_DEF_POLICY = profiles_dir() / "scoring_policy.json"
 
 
 @dataclass(frozen=True)

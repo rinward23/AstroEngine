@@ -11,6 +11,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ..infrastructure.paths import package_root as _package_root
+from ..infrastructure.paths import project_root as _project_root
+from ..infrastructure.paths import schemas_dir as _schemas_dir
+
 __all__ = [
     "PACKAGE_ROOT",
     "ASTROENGINE_ROOT",
@@ -21,9 +25,9 @@ __all__ = [
 ]
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
-ASTROENGINE_ROOT = PACKAGE_ROOT.parent
-REPO_ROOT = ASTROENGINE_ROOT.parent
-SCHEMA_DIR = REPO_ROOT / "schemas"
+ASTROENGINE_ROOT = _package_root()
+REPO_ROOT = _project_root()
+SCHEMA_DIR = _schemas_dir()
 
 
 def project_root() -> Path:

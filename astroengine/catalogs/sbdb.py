@@ -2,10 +2,11 @@
 from __future__ import annotations
 import json
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Dict
 
-CACHE_DIR = Path(__file__).resolve().parent.parent / "datasets" / "sbdb_cache"
+from ..infrastructure.paths import datasets_dir
+
+CACHE_DIR = datasets_dir() / "sbdb_cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 try:
