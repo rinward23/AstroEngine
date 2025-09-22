@@ -2,4 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = []
+from .merging import deep_merge
+
+__all__ = ["deep_merge"]
