@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, List
+from typing import Iterable, List, Mapping
 
 from ..astro.declination import (
+    DEFAULT_ANTISCIA_AXIS,
     antiscia_lon,
     contra_antiscia_lon,
     ecl_to_dec,
@@ -21,6 +22,10 @@ __all__ = [
     "find_lunations",
     "find_eclipses",
     "find_stations",
+
+    "find_sign_ingresses",
+    "find_out_of_bounds",
+
     "secondary_progressions",
     "solar_arc_directions",
     "solar_lunar_returns",
@@ -41,6 +46,18 @@ class CoarseHit:
     dec_target: float
     delta: float
     applying_or_separating: str
+    mirror_lon: float | None = None
+    axis: str | None = None
+
+
+def _extract_declination(data: Mapping[str, float], fallback_lon: float) -> float:
+    for key in ("declination", "dec", "decl"):
+        if key in data:
+            try:
+                return float(data[key])
+            except (TypeError, ValueError):  # pragma: no cover - defensive
+                continue
+    return ecl_to_dec(fallback_lon)
 
 
 def detect_decl_contacts(
@@ -56,11 +73,16 @@ def detect_decl_contacts(
     out: List[CoarseHit] = []
     for iso in iso_ticks:
         positions = provider.positions_ecliptic(iso, [moving, target])
-        lon_moving = float(positions[moving]["lon"])
-        lon_target = float(positions[target]["lon"])
-        dec_moving = ecl_to_dec(lon_moving)
-        dec_target = ecl_to_dec(lon_target)
-        speed = float(positions[moving].get("speed_lon", 0.0))
+        pos_moving = positions.get(moving)
+        pos_target = positions.get(target)
+        if not pos_moving or not pos_target:
+            continue
+
+        lon_moving = float(pos_moving.get("lon", 0.0))
+        lon_target = float(pos_target.get("lon", 0.0))
+        dec_moving = _extract_declination(pos_moving, lon_moving)
+        dec_target = _extract_declination(pos_target, lon_target)
+        speed = float(pos_moving.get("speed_lon", 0.0))
 
         if is_parallel(dec_moving, dec_target, orb_deg_parallel):
             delta = dec_moving - dec_target
@@ -106,20 +128,27 @@ def detect_antiscia_contacts(
     target: str,
     orb_deg_antiscia: float = 2.0,
     orb_deg_contra: float = 2.0,
+    *,
+    axis: str = DEFAULT_ANTISCIA_AXIS,
 ) -> List[CoarseHit]:
     """Detect antiscia and contra-antiscia contacts across ``iso_ticks``."""
 
     out: List[CoarseHit] = []
     for iso in iso_ticks:
         positions = provider.positions_ecliptic(iso, [moving, target])
-        lon_moving = float(positions[moving]["lon"])
-        lon_target = float(positions[target]["lon"])
-        speed = float(positions[moving].get("speed_lon", 0.0))
-        dec_moving = ecl_to_dec(lon_moving)
-        dec_target = ecl_to_dec(lon_target)
+        pos_moving = positions.get(moving)
+        pos_target = positions.get(target)
+        if not pos_moving or not pos_target:
+            continue
 
-        anti_lon = antiscia_lon(lon_moving)
-        contra_lon = contra_antiscia_lon(lon_moving)
+        lon_moving = float(pos_moving.get("lon", 0.0))
+        lon_target = float(pos_target.get("lon", 0.0))
+        speed = float(pos_moving.get("speed_lon", 0.0))
+        dec_moving = _extract_declination(pos_moving, lon_moving)
+        dec_target = _extract_declination(pos_target, lon_target)
+
+        anti_lon = antiscia_lon(lon_moving, axis=axis)
+        contra_lon = contra_antiscia_lon(lon_moving, axis=axis)
 
         d_anti = delta_angle(anti_lon, lon_target)
         if is_within_orb(d_anti, orb_deg_antiscia):
@@ -136,6 +165,8 @@ def detect_antiscia_contacts(
                     dec_target=dec_target,
                     delta=d_anti,
                     applying_or_separating=motion,
+                    mirror_lon=anti_lon,
+                    axis=axis,
                 )
             )
 
@@ -154,6 +185,8 @@ def detect_antiscia_contacts(
                     dec_target=dec_target,
                     delta=d_contra,
                     applying_or_separating=motion,
+                    mirror_lon=contra_lon,
+                    axis=axis,
                 )
             )
     return out
@@ -161,7 +194,10 @@ def detect_antiscia_contacts(
 
 from .directions import solar_arc_directions  # noqa: E402
 from .eclipses import find_eclipses  # noqa: E402
+
+from .ingresses import find_sign_ingresses  # noqa: E402
 from .lunations import find_lunations  # noqa: E402
+from .out_of_bounds import find_out_of_bounds  # noqa: E402
 from .progressions import secondary_progressions  # noqa: E402
 from .returns import solar_lunar_returns  # noqa: E402
 from .stations import find_stations  # noqa: E402

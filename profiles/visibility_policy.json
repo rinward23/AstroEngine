@@ -1,0 +1,18 @@
+# >>> AUTO-GEN BEGIN: AE Visibility Policy v1.0
+{
+  "version": 1,
+  "default_min_score": 0.20,
+  "per_kind": {
+    "aspect_conjunction": 0.15,
+    "aspect_sextile": 0.22,
+    "aspect_square": 0.18,
+    "aspect_trine": 0.20,
+    "aspect_opposition": 0.15,
+    "decl_parallel": 0.25,
+    "decl_contra": 0.28,
+    "antiscia": 0.24,
+    "contra_antiscia": 0.26
+  },
+  "notes": "Thresholds calibrated against the base profile; events scoring below the per-kind value are hidden by default."
+}
+# >>> AUTO-GEN END: AE Visibility Policy v1.0

@@ -131,9 +131,21 @@ orb_policies:
   declination_aspect_orb_deg:
     default: 0.5
     moon: 0.6667
+    parallel:
+      default: 0.5
+      moon: 0.6667
+    contraparallel:
+      default: 0.5
+      moon: 0.6667
   antiscia_orb_deg:
     default: 1.5
     angular: 2.5
+    antiscia:
+      default: 1.5
+      angular: 2.5
+    contra_antiscia:
+      default: 1.5
+      angular: 2.5
   midpoint_orb_deg:
     default: 1.0
     angular: 1.5
@@ -147,6 +159,7 @@ orb_policies:
     eclipse_node_orb_deg: 1.0
 
 severity_modifiers:
+  retrograde: 0.92
   combust: 0.85
   under_beams: 0.90
   cazimi: 1.10
@@ -187,7 +200,9 @@ feature_flags:
     enabled: true
     threshold_deg: 23.45
   antiscia:
-    enabled: false
+    enabled: true
+    axis: cancer_capricorn
+    axis_variants: [cancer_capricorn, aries_libra]
   midpoints:
     enabled: true
     base_pairs: [sun_moon, asc_mc, mc_node]

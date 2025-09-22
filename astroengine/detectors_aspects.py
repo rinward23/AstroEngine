@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List
 
+from .core.angles import DeltaLambdaTracker, classify_relative_motion, signed_delta
 from .core.bodies import body_class
 from .infrastructure.paths import profiles_dir
-from .utils.angles import classify_applying_separating, delta_angle, is_within_orb
 
 __all__ = ["AspectHit", "detect_aspects"]
 
@@ -25,12 +25,68 @@ class AspectHit:
     angle_deg: float
     lon_moving: float
     lon_target: float
+    delta_lambda_deg: float
+    offset_deg: float
     orb_abs: float
     orb_allow: float
+    is_partile: bool
     applying_or_separating: str
+    family: str
 
 
 _DEF_PATH = profiles_dir() / "aspects_policy.json"
+
+_DEFAULT_PARTILE_THRESHOLD_DEG = 10.0 / 60.0
+
+_MAJOR_NAMES = {"conjunction", "sextile", "square", "trine", "opposition"}
+
+_MINOR_NAMES = {
+    "semisextile",
+    "semisquare",
+    "sesquisquare",
+    "quincunx",
+    "quintile",
+    "biquintile",
+    "semiquintile",
+}
+
+_HARMONIC_NAMES = {
+    "septile",
+    "biseptile",
+    "triseptile",
+    "novile",
+    "binovile",
+    "undecile",
+    "tredecile",
+}
+
+_OPTIONAL_ANGLE_OVERRIDES: Dict[str, float] = {
+    "semisextile": 30.0,
+    "semisquare": 45.0,
+    "sesquisquare": 135.0,
+    "quincunx": 150.0,
+    "quintile": 72.0,
+    "biquintile": 144.0,
+    "semiquintile": 36.0,
+    "tredecile": 108.0,
+    "septile": 51.4286,
+    "biseptile": 102.8571,
+    "triseptile": 154.2857,
+    "novile": 40.0,
+    "binovile": 80.0,
+    "undecile": 32.7273,
+}
+
+_HARMONIC_FAMILY_TO_NAMES: Dict[int, tuple[str, ...]] = {
+    5: ("quintile", "biquintile"),
+    6: ("sextile", "trine", "opposition"),
+    7: ("septile", "biseptile", "triseptile"),
+    8: ("semisquare", "sesquisquare"),
+    9: ("novile", "binovile"),
+    10: ("semiquintile", "quintile", "biquintile", "tredecile"),
+    11: ("undecile",),
+    12: ("semisextile", "quincunx", "sextile", "square", "trine", "opposition"),
+}
 
 
 def _load_policy(path: str | None = None) -> dict:
@@ -40,11 +96,90 @@ def _load_policy(path: str | None = None) -> dict:
     return json.loads(payload)
 
 
-def _orb_for(aspect_name: str, a_class: str, b_class: str, policy: dict) -> float:
+def _normalize_name(name: str) -> str:
+    return str(name).strip().lower()
+
+
+def _family_for(name: str) -> str:
+    lowered = _normalize_name(name)
+    if lowered in _MAJOR_NAMES:
+        return "major"
+    if lowered in _MINOR_NAMES:
+        return "minor"
+    if lowered in _HARMONIC_NAMES:
+        return "harmonic"
+    return "harmonic"
+
+
+def _orb_for(aspect_name: str, family: str, a_class: str, b_class: str, policy: dict) -> float:
     orbs = policy.get("orbs_deg", {}).get(aspect_name, {})
-    allow_a = float(orbs.get(a_class, orbs.get("default", 2.0)))
-    allow_b = float(orbs.get(b_class, orbs.get("default", 2.0)))
-    return min(allow_a, allow_b)
+
+    if isinstance(orbs, (int, float)):
+        return float(orbs)
+
+    pair_key = f"{a_class}-{b_class}"
+    if pair_key in orbs:
+        return float(orbs[pair_key])
+
+    pair_key_rev = f"{b_class}-{a_class}"
+    if pair_key_rev in orbs:
+        return float(orbs[pair_key_rev])
+
+    if orbs:
+        default = float(orbs.get("default", policy.get("default_orb_deg", 2.0)))
+        allow_a = float(orbs.get(a_class, default))
+        allow_b = float(orbs.get(b_class, default))
+        return min(allow_a, allow_b)
+
+    family_defaults = policy.get("orb_defaults", {}).get(family, {})
+    if family_defaults:
+        default = float(family_defaults.get("default", policy.get("default_orb_deg", 2.0)))
+        allow_a = float(family_defaults.get(a_class, default))
+        allow_b = float(family_defaults.get(b_class, default))
+        return min(allow_a, allow_b)
+
+    fallback = policy.get("default_orb_deg")
+    if fallback is not None:
+        return float(fallback)
+
+    return 2.0
+
+
+def _resolve_enabled(policy: dict) -> Dict[str, tuple[float, str]]:
+    base_angles = {
+        _normalize_name(name): float(angle)
+        for name, angle in policy.get("angles_deg", {}).items()
+    }
+
+    enabled: set[str] = set()
+    for name in policy.get("enabled", []):
+        enabled.add(_normalize_name(name))
+
+    for name in policy.get("enabled_minors", []):
+        enabled.add(_normalize_name(name))
+
+    for entry in policy.get("enabled_harmonics", []):
+        if isinstance(entry, (int, float)) or (isinstance(entry, str) and entry.strip().isdigit()):
+            try:
+                harmonic = int(entry)
+            except (TypeError, ValueError):
+                continue
+            for name in _HARMONIC_FAMILY_TO_NAMES.get(harmonic, ()):  # ensure optional families
+                enabled.add(_normalize_name(name))
+        else:
+            enabled.add(_normalize_name(entry))
+
+    angle_defs: Dict[str, tuple[float, str]] = {}
+    for name in enabled:
+        if name in base_angles:
+            angle = base_angles[name]
+        elif name in _OPTIONAL_ANGLE_OVERRIDES:
+            angle = _OPTIONAL_ANGLE_OVERRIDES[name]
+        else:
+            continue
+        angle_defs[name] = (float(angle), _family_for(name))
+
+    return angle_defs
 
 
 def detect_aspects(
@@ -56,11 +191,12 @@ def detect_aspects(
     policy_path: str | None = None,
 ) -> List[AspectHit]:
     policy = _load_policy(policy_path)
-    enabled = set(policy.get("enabled", [])) | set(policy.get("enabled_minors", []))
-    angles_map: Dict[str, float] = {
-        key: float(value) for key, value in policy.get("angles_deg", {}).items() if key in enabled
-    }
+    angles_map = _resolve_enabled(policy)
+    if not angles_map:
+        return []
 
+    partile_threshold = float(policy.get("partile_threshold_deg", _DEFAULT_PARTILE_THRESHOLD_DEG))
+    delta_tracker = DeltaLambdaTracker()
     out: List[AspectHit] = []
     cls_m = body_class(moving)
     cls_t = body_class(target)
@@ -69,15 +205,22 @@ def detect_aspects(
         positions = provider.positions_ecliptic(iso, [moving, target])
         lon_moving = float(positions[moving]["lon"])
         lon_target = float(positions[target]["lon"])
-        speed = float(positions[moving].get("speed_lon", 0.0))
-        delta_mt = (lon_target - lon_moving) % 360.0
+        speed_moving = float(positions[moving].get("speed_lon", 0.0))
+        speed_target = float(positions[target].get("speed_lon", 0.0))
 
-        for aspect_name, angle in angles_map.items():
-            orb_allow = _orb_for(aspect_name, cls_m, cls_t, policy)
-            separation = delta_angle(delta_mt, angle)
-            if abs(separation) <= orb_allow:
-                ref_point = (lon_target - angle) % 360.0
-                motion = classify_applying_separating(lon_moving, speed, ref_point)
+        delta_lambda = delta_tracker.update(lon_target, lon_moving)
+        for aspect_name, (angle, family) in angles_map.items():
+            orb_allow = _orb_for(aspect_name, family, cls_m, cls_t, policy)
+            offset = signed_delta(delta_lambda - angle)
+            if abs(offset) <= orb_allow:
+                separation_for_motion = angle + offset
+                motion = classify_relative_motion(
+                    separation_for_motion,
+                    angle,
+                    speed_moving,
+                    speed_target,
+                )
+                is_partile = abs(offset) <= partile_threshold
                 out.append(
                     AspectHit(
                         kind=f"aspect_{aspect_name}",
@@ -87,9 +230,13 @@ def detect_aspects(
                         angle_deg=float(angle),
                         lon_moving=float(lon_moving),
                         lon_target=float(lon_target),
-                        orb_abs=float(abs(separation)),
+                        delta_lambda_deg=float(delta_lambda),
+                        offset_deg=float(offset),
+                        orb_abs=float(abs(offset)),
                         orb_allow=float(orb_allow),
-                        applying_or_separating=motion,
+                        is_partile=bool(is_partile),
+                        applying_or_separating=motion.state,
+                        family=family,
                     )
                 )
     return out
