@@ -230,6 +230,12 @@ class PluginRuntime:
         self._loaded_entrypoints = discovered
         return list(discovered)
 
+    def loaded_entrypoints(self) -> tuple[str, ...]:
+        """Return the names of entry points loaded so far."""
+
+        self._ensure_entrypoints()
+        return tuple(self._loaded_entrypoints)
+
     # ------------------------------------------------------------------
     # Registration helpers
     # ------------------------------------------------------------------

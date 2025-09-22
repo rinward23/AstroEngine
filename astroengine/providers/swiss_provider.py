@@ -119,12 +119,6 @@ class SwissProvider:
         self, iso_utc: str, bodies: Iterable[str]
     ) -> Dict[str, Dict[str, float]]:
 
-        dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
-        dt_utc = dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-
-        adapter = SwissEphemerisAdapter.get_default_adapter()
-        jd_ut = adapter.julian_day(dt_utc)
-
         conversion = self._time_conversion(iso_utc)
 
         out: Dict[str, Dict[str, float]] = {}
@@ -134,19 +128,11 @@ class SwissProvider:
             except KeyError:
                 continue
 
-            ipl = _BODY_IDS[name.lower()]
-            position = adapter.body_position(jd_ut, ipl, body_name=name)
-            out[name] = {
-                "lon": position.longitude,
-                "decl": position.latitude,
-                "speed_lon": position.speed_longitude,
-
             sample = self._adapter.sample(body_id, conversion)
             out[name] = {
                 "lon": sample.longitude % 360.0,
                 "decl": sample.declination,
                 "speed_lon": sample.speed_longitude,
-
             }
         return out
 

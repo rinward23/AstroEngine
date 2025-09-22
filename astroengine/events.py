@@ -1,4 +1,4 @@
-"""Typed event payloads produced by AstroEngine detectors."""
+"""Canonical event dataclasses shared across AstroEngine modules."""
 
 from __future__ import annotations
 
@@ -6,40 +6,26 @@ from dataclasses import dataclass
 from typing import Mapping
 
 __all__ = [
+    "BaseEvent",
     "LunationEvent",
     "EclipseEvent",
     "StationEvent",
     "IngressEvent",
     "ReturnEvent",
+    "DashaPeriod",
     "ProgressionEvent",
     "DirectionEvent",
     "ProfectionEvent",
-
-    "DashaPeriod",
-
-    "IngressEvent",
     "OutOfBoundsEvent",
+    "TimelordPeriod",
     "DashaPeriodEvent",
     "ZodiacalReleasingPeriod",
-
-
-
 ]
 
 
 @dataclass(frozen=True)
 class BaseEvent:
-    """Base event with canonical timestamp metadata.
-
-    Attributes
-    ----------
-    ts:
-        ISO-8601 timestamp in UTC.
-    jd:
-        Julian day (UT) corresponding to ``ts``. Stored as a floating
-        point number so downstream consumers can join against Swiss
-        Ephemeris data without recomputing it.
-    """
+    """Base event with canonical timestamp metadata."""
 
     ts: str
     jd: float
@@ -47,11 +33,7 @@ class BaseEvent:
 
 @dataclass(frozen=True)
 class LunationEvent(BaseEvent):
-    """Represents a lunation event (new/full moon).
-
-    sun_longitude and moon_longitude are geocentric ecliptic positions in
-    **degrees** normalised to ``[0, 360)``.
-    """
+    """Represents a lunation event (new or full Moon)."""
 
     phase: str
     sun_longitude: float
@@ -60,11 +42,7 @@ class LunationEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class EclipseEvent(BaseEvent):
-    """Represents a solar or lunar eclipse.
-
-    Longitudes and latitude are expressed in **degrees**. ``phase``
-    distinguishes between partial, annular, total, etc.
-    """
+    """Represents a solar or lunar eclipse."""
 
     eclipse_type: str
     phase: str
@@ -76,12 +54,7 @@ class EclipseEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class StationEvent(BaseEvent):
-    """Represents a planetary station (speed crossing zero).
-
-    ``longitude`` is the ecliptic longitude in degrees. ``speed_longitude``
-    is measured in degrees per day and hovers near zero at the station
-    moment.
-    """
+    """Represents a planetary station (speed crossing zero)."""
 
     body: str
     motion: str
@@ -100,14 +73,40 @@ class IngressEvent(BaseEvent):
     speed_longitude: float
     retrograde: bool
 
+    @property
+    def sign(self) -> str:
+        """Return the destination sign for backward compatibility."""
+
+        return self.sign_to
+
+    @property
+    def from_sign(self) -> str:
+        """Alias for the departing sign used by older APIs."""
+
+        return self.sign_from
+
+    @property
+    def to_sign(self) -> str:
+        """Alias for the destination sign used by older APIs."""
+
+        return self.sign_to
+
+    @property
+    def motion(self) -> str:
+        """Return the textual motion descriptor expected by older callers."""
+
+        return "retrograde" if self.retrograde else "direct"
+
+    @property
+    def speed_deg_per_day(self) -> float:
+        """Expose the longitudinal speed in degrees/day for legacy consumers."""
+
+        return self.speed_longitude
+
 
 @dataclass(frozen=True)
 class ReturnEvent(BaseEvent):
-    """Represents a solar or lunar return event.
-
-    ``longitude`` stores the body’s geocentric ecliptic longitude in
-    degrees when the return perfects.
-    """
+    """Represents a solar or lunar return event."""
 
     body: str
     method: str
@@ -116,7 +115,7 @@ class ReturnEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class DashaPeriod(BaseEvent):
-    """Represents a Vimsottari dasha sub-period covering ``ts`` → ``end_ts``."""
+    """Represents a Vimśottarī daśā sub-period covering ``ts`` → ``end_ts``."""
 
     method: str
     major_lord: str
@@ -127,12 +126,7 @@ class DashaPeriod(BaseEvent):
 
 @dataclass(frozen=True)
 class ProgressionEvent(BaseEvent):
-    """Represents secondary progression samples.
-
-    ``positions`` maps body names to geocentric ecliptic longitudes in
-    degrees. The values are already normalised to ``[0, 360)`` by the
-    detectors.
-    """
+    """Represents secondary progression samples."""
 
     method: str
     positions: Mapping[str, float]
@@ -140,11 +134,7 @@ class ProgressionEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class DirectionEvent(BaseEvent):
-    """Represents directed positions (e.g., solar arc).
-
-    ``arc_degrees`` is the longitudinal arc applied to each natal body in
-    degrees. ``positions`` stores the directed longitudes (degrees).
-    """
+    """Represents directed positions (e.g., solar arc)."""
 
     method: str
     arc_degrees: float
@@ -153,34 +143,16 @@ class DirectionEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class ProfectionEvent(BaseEvent):
-    """Represents profected year transitions.
-
-    ``house`` is the profected house number (1–12). ``ruler`` references
-    the planetary ruler active for the period.
-    """
+    """Represents profected year transitions."""
 
     method: str
     house: int
     ruler: str
-
     end_ts: str
     midpoint_ts: str
 
 
-
 @dataclass(frozen=True)
-
-class IngressEvent(BaseEvent):
-    """Represents a zodiac sign ingress for a given body."""
-
-    body: str
-    from_sign: str
-    to_sign: str
-    longitude: float
-    motion: str
-    speed_deg_per_day: float
-
-
 class OutOfBoundsEvent(BaseEvent):
     """Represents a declination out-of-bounds crossing for a body."""
 
@@ -204,7 +176,7 @@ class TimelordPeriod(BaseEvent):
 
 @dataclass(frozen=True)
 class DashaPeriodEvent(TimelordPeriod):
-    """Represents a Vimshottari dasha or sub-period."""
+    """Represents a Vimśottarī daśā or sub-period."""
 
     parent: str | None = None
 
@@ -215,5 +187,4 @@ class ZodiacalReleasingPeriod(TimelordPeriod):
 
     lot: str
     sign: str
-
 

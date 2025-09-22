@@ -40,16 +40,29 @@ def _boundary_for(prev_index: int) -> float:
     return _SIGN_DEGREES[(prev_index + 1) % 12] if prev_index < 11 else 360.0
 
 
-def _to_ingress_event(body_label: str, body_key: str, jd_ut: float, sign_index: int) -> IngressEvent:
+def _to_ingress_event(
+    body_label: str,
+    body_key: str,
+    jd_ut: float,
+    sign_from_index: int,
+    sign_to_index: int,
+) -> IngressEvent:
     longitude = norm360(body_lon(jd_ut, body_key))
-    sign_name = _SIGN_NAMES[sign_index]
+    sign_from = _SIGN_NAMES[sign_from_index]
+    sign_to = _SIGN_NAMES[sign_to_index]
+    epsilon = 1.0 / 24.0
+    ahead_lon = norm360(body_lon(jd_ut + epsilon, body_key))
+    speed = delta_deg(ahead_lon, longitude) / epsilon
+    retrograde = speed < 0.0
     return IngressEvent(
         ts=jd_to_iso(jd_ut),
         jd=jd_ut,
         body=body_label,
-        sign=sign_name,
+        sign_from=sign_from,
+        sign_to=sign_to,
         longitude=longitude,
-        sign_index=sign_index,
+        speed_longitude=speed,
+        retrograde=retrograde,
     )
 
 
@@ -96,7 +109,9 @@ def find_ingresses(
                     root = None
 
                 if root is not None and start_jd - _STEP_TOL <= root <= end_jd + _STEP_TOL:
-                    events.append(_to_ingress_event(body_label, body, root, target_sign))
+                    events.append(
+                        _to_ingress_event(body_label, body, root, prev_sign, target_sign)
+                    )
 
             prev_jd = jd
             prev_lon = curr_lon
@@ -108,7 +123,11 @@ def find_ingresses(
     deduped: list[IngressEvent] = []
     seen: set[tuple[str, int, int]] = set()
     for event in events:
-        key = (event.body.lower(), int(round(event.jd * 86400)), event.sign_index)
+        key = (
+            event.body.lower(),
+            int(round(event.jd * 86400)),
+            (_SIGN_NAMES.index(event.sign_to) if event.sign_to in _SIGN_NAMES else -1),
+        )
         if key in seen:
             continue
         seen.add(key)

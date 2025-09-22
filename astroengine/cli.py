@@ -10,7 +10,7 @@ from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 
 from pathlib import Path
-from typing import Any, Iterable, List, Sequence
+from typing import Any, Iterable, List, Mapping, Sequence
 
 
 from . import engine as engine_module
@@ -22,10 +22,9 @@ from .chart.config import (
     ChartConfig,
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,
+    VALID_HOUSE_SYSTEMS,
     VALID_ZODIAC_SYSTEMS,
 )
-
-from .chart.config import ChartConfig, VALID_HOUSE_SYSTEMS, VALID_ZODIAC_SYSTEMS
 from .detectors.ingress import find_ingresses
 
 from .engine import events_to_dicts, scan_contacts
@@ -37,7 +36,7 @@ from .exporters_ics import (
 )
 
 from .astro.declination import available_antiscia_axes
-from .ephemeris import SwissEphemerisAdapter
+from .ephemeris import EphemerisConfig, ObserverLocation, SwissEphemerisAdapter, TimeScaleContext
 from .narrative import summarize_top_events
 
 
@@ -49,7 +48,6 @@ from .plugins import ExportContext, get_plugin_manager
 from .providers import list_providers
 
 from .exporters_ics import write_ics_canonical
-=======
 
 from .timelords import TimelordCalculator, active_timelords
 from .timelords.context import build_context
@@ -73,10 +71,64 @@ from .utils import (
     expand_targets,
 )
 
+from .infrastructure.storage.sqlite import SQLiteMigrator, ensure_sqlite_schema
 from .infrastructure.storage.sqlite.query import top_events_by_score
 
 from .ux.plugins import setup_cli as setup_plugins
+from .ux.maps import astrocartography_lines, local_space_vectors
+from .ux.timelines import outer_cycle_windows
 
+
+def _ensure_subparsers(parser: argparse.ArgumentParser) -> argparse._SubParsersAction:
+    subparsers = getattr(parser, "_ae_subparsers", None)
+    if subparsers is None:
+        subparsers = parser.add_subparsers(dest="command")
+        parser._ae_subparsers = subparsers
+    return subparsers
+
+
+def cmd_natal_list(_: argparse.Namespace) -> int:
+    entries = list_natals()
+    if not entries:
+        print("No natal charts stored.")
+    else:
+        print("Stored natal charts:")
+        for ident in entries:
+            print(f" - {ident}")
+    return 0
+
+
+def cmd_natal_show(args: argparse.Namespace) -> int:
+    try:
+        natal = load_natal(args.natal_id)
+    except FileNotFoundError:
+        print(f"natal '{args.natal_id}' not found", file=sys.stderr)
+        return 1
+    print(json.dumps(asdict(natal), indent=2))
+    return 0
+
+
+def cmd_natal_save(args: argparse.Namespace) -> int:
+    entry = Natal(
+        natal_id=args.natal_id,
+        utc=args.utc,
+        lat=float(args.lat),
+        lon=float(args.lon),
+        name=getattr(args, "name", None),
+        tz=getattr(args, "tz", None),
+        place=getattr(args, "place", None),
+    )
+    save_natal(entry)
+    print(f"Saved natal '{args.natal_id}'.")
+    return 0
+
+
+def cmd_natal_delete(args: argparse.Namespace) -> int:
+    if delete_natal(args.natal_id):
+        print(f"Deleted natal '{args.natal_id}'.")
+        return 0
+    print(f"natal '{args.natal_id}' not found", file=sys.stderr)
+    return 1
 
 
 def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
@@ -109,6 +161,64 @@ def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
     natal_delete.set_defaults(func=cmd_natal_delete)
 
     parser._ae_natals_added = True
+
+
+def cmd_plugins(args: argparse.Namespace) -> int:
+    runtime = get_plugin_manager()
+    show_all = not any(
+        [args.entrypoints, args.detectors, args.score_extensions, args.ui_panels, args.json]
+    )
+    payload: dict[str, Any] = {}
+    if args.entrypoints or show_all or args.json:
+        payload["entrypoints"] = list(runtime.loaded_entrypoints())
+        if not args.json:
+            if payload["entrypoints"]:
+                print("Loaded entrypoints:")
+                for name in payload["entrypoints"]:
+                    print(" -", name)
+            else:
+                print("No plugin entrypoints discovered.")
+
+    if args.detectors or show_all or args.json:
+        detector_specs = []
+        for spec in runtime.detectors():
+            detector_specs.append({"name": spec.name, "metadata": dict(spec.metadata)})
+        payload["detectors"] = detector_specs
+        if not args.json:
+            print("Detectors:")
+            if detector_specs:
+                for spec in detector_specs:
+                    print(f" - {spec['name']}")
+            else:
+                print(" - none registered")
+
+    if args.score_extensions or show_all or args.json:
+        extensions = []
+        for spec in runtime.score_extensions().iter_extensions():
+            extensions.append({"name": spec.name, "namespace": spec.namespace})
+        payload["score_extensions"] = extensions
+        if not args.json:
+            print("Score extensions:")
+            if extensions:
+                for spec in extensions:
+                    print(f" - {spec['name']} ({spec['namespace']})")
+            else:
+                print(" - none registered")
+
+    if args.ui_panels or show_all or args.json:
+        panels = [panel.as_dict() for panel in runtime.collect_ui_panels()]
+        payload["ui_panels"] = panels
+        if not args.json:
+            print("UI panels:")
+            if panels:
+                for panel in panels:
+                    print(f" - {panel['identifier']}: {panel['component']}")
+            else:
+                print(" - none registered")
+
+    if args.json:
+        print(json.dumps(payload, indent=2))
+    return 0
 
 
 def cmd_cache_info(_: argparse.Namespace) -> int:
@@ -170,6 +280,19 @@ def cmd_cache_warm(args: argparse.Namespace) -> int:
         f"warmed {entries} cache entries for bodies {', '.join(bodies)} "
         f"[{args.start} → {args.end}]"
     )
+    return 0
+
+
+def cmd_ops_migrate(args: argparse.Namespace) -> int:
+    migrator = SQLiteMigrator(args.sqlite)
+    revision = args.revision or "head"
+    try:
+        migrator.upgrade(revision)
+    except Exception as exc:
+        print(f"Migration failed: {exc}", file=sys.stderr)
+        return 1
+    current = migrator.current()
+    print(f"SQLite schema migrated to {current or 'base'}")
     return 0
 
 
@@ -355,7 +478,10 @@ def _serialize_mundane_chart(chart) -> dict[str, Any]:
         "year": chart.year,
         "event": asdict(chart.event),
         "location": asdict(chart.location) if chart.location else None,
-        "positions": {name: pos.to_dict() for name, pos in chart.positions.items()},
+        "positions": {
+            name: asdict(pos) if is_dataclass(pos) else dict(pos)
+            for name, pos in chart.positions.items()
+        },
         "houses": chart.houses.to_dict() if chart.houses else None,
         "aspects": [asdict(hit) for hit in chart.aspects],
         "natal_aspects": [asdict(hit) for hit in chart.natal_aspects],
@@ -1018,6 +1144,112 @@ def cmd_query(args: argparse.Namespace) -> int:
         year=args.year,
     )
     print(json.dumps(results, indent=2))
+    if args.narrative:
+        context: Mapping[str, Any] = {}
+        for item in args.context or []:
+            if "=" in item:
+                key, value = item.split("=", 1)
+                context[key.strip()] = value.strip()
+        timelord_payload = None
+        for row in results:
+            meta = row.get("meta") or {}
+            if isinstance(meta, Mapping) and meta.get("timelords"):
+                timelord_payload = meta["timelords"]
+                break
+        summary = summarize_top_events(
+            results,
+            top_n=min(len(results), args.limit),
+            profile=args.narrative_profile,
+            timelords=timelord_payload,
+            profile_context=context,
+            prefer_template=True,
+        )
+        print()
+        print(summary)
+    return 0
+
+
+def cmd_locational_astrocartography(args: argparse.Namespace) -> int:
+    try:
+        moment = _parse_iso_datetime(args.moment)
+        bodies = [b.strip() for b in args.bodies.split(",") if b.strip()] if args.bodies else None
+        lines = astrocartography_lines(moment, bodies=bodies, lat_step=args.lat_step)
+    except Exception as exc:
+        print(f"Astrocartography computation failed: {exc}", file=sys.stderr)
+        return 1
+    if args.json:
+        print(json.dumps([line.as_dict() for line in lines], indent=2))
+    else:
+        for line in lines:
+            print(f"{line.body} {line.kind}: {len(line.coordinates)} points")
+    return 0
+
+
+def cmd_locational_local_space(args: argparse.Namespace) -> int:
+    try:
+        moment = _parse_iso_datetime(args.moment)
+        bodies = [b.strip() for b in args.bodies.split(",") if b.strip()] if args.bodies else None
+        vectors = local_space_vectors(moment, args.lat, args.lon, bodies=bodies)
+    except Exception as exc:
+        print(f"Local-space computation failed: {exc}", file=sys.stderr)
+        return 1
+    if args.json:
+        print(json.dumps([vector.as_dict() for vector in vectors], indent=2))
+    else:
+        for vector in vectors:
+            print(
+                f"{vector.body}: azimuth {vector.azimuth_deg:.2f}°, altitude {vector.altitude_deg:.2f}°"
+            )
+    return 0
+
+
+def _parse_aspect_spec(spec: str | None) -> Mapping[float, str]:
+    if not spec:
+        return {}
+    mapping: dict[float, str] = {}
+    defaults = {0.0: "conjunction", 60.0: "sextile", 90.0: "square", 120.0: "trine", 180.0: "opposition"}
+    for token in spec.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if ":" in token:
+            deg_part, label = token.split(":", 1)
+        else:
+            deg_part, label = token, ""
+        try:
+            deg_value = float(deg_part)
+        except ValueError:
+            continue
+        mapping[deg_value] = label or defaults.get(deg_value, f"{deg_value:g}°")
+    return mapping
+
+
+def cmd_timeline_outer_cycles(args: argparse.Namespace) -> int:
+    try:
+        start = _parse_iso_datetime(args.start)
+        end = _parse_iso_datetime(args.end)
+        bodies = [b.strip() for b in args.bodies.split(",") if b.strip()] if args.bodies else None
+        aspect_mapping = _parse_aspect_spec(args.aspects) or None
+        windows = outer_cycle_windows(
+            start,
+            end,
+            bodies=bodies,
+            aspects=aspect_mapping,
+            step_days=args.step_days,
+            orb_allow=args.orb,
+        )
+    except Exception as exc:
+        print(f"Outer-cycle computation failed: {exc}", file=sys.stderr)
+        return 1
+    if args.json:
+        print(json.dumps([window.describe() for window in windows], indent=2))
+    else:
+        for window in windows:
+            aspect = window.metadata.get("aspect") if window.metadata else ""
+            print(
+                f"{aspect or 'event'}: {window.start.isoformat()} → {window.end.isoformat()}"
+            )
+    return 0
 
 def cmd_ingresses(args: argparse.Namespace) -> int:
     chart_config = _chart_config_from_args(args)
@@ -1224,16 +1456,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--aspects", help="Comma-separated aspect angles for natal aspect detectors")
     parser.add_argument("--orb", type=float, help="Orb allowance in degrees for natal aspect detectors")
-    parser.add_argument(
-        "--zodiac",
-        choices=sorted(VALID_ZODIAC_SYSTEMS),
-        default="tropical",
-        help="Zodiac frame for calculations (tropical or sidereal)",
-    )
-    parser.add_argument(
-        "--ayanamsha",
-        help="Sidereal ayanamsha name when --zodiac=sidereal",
-    )
+    # --zodiac and --ayanamsha are defined above for the top-level CLI; avoid
+    # redefining them here so argparse does not raise duplicate option errors.
     parser.add_argument(
         "--house-system",
         choices=sorted(VALID_HOUSE_SYSTEMS),
@@ -1255,6 +1479,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     env_parser = sub.add_parser("env", help="List registered providers")
     env_parser.set_defaults(func=cmd_env)
+
+    plugins = sub.add_parser("plugins", help="Inspect plugin runtime and registry")
+    plugins.add_argument("--entrypoints", action="store_true", help="List loaded plugin entrypoints")
+    plugins.add_argument("--detectors", action="store_true", help="Show detector registrations")
+    plugins.add_argument(
+        "--score-extensions",
+        action="store_true",
+        help="Show registered score extension hooks",
+    )
+    plugins.add_argument("--ui-panels", action="store_true", help="Show UI panel contributions")
+    plugins.add_argument("--json", action="store_true", help="Emit JSON payload instead of text")
+    plugins.set_defaults(func=cmd_plugins)
 
     scan = sub.add_parser("scan", help="Run a canonical transit scan with presets")
     scan.add_argument("--start-utc", required=True, help="Window start timestamp (ISO-8601)")
@@ -1387,6 +1623,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     timelords = sub.add_parser("timelords", help="Timelord utilities")
     tl_sub = timelords.add_subparsers(dest="timelords_command")
+    tl_sub.required = True
     active = tl_sub.add_parser("active", help="Show active timelords")
     active.add_argument("--natal-utc", required=True)
     active.add_argument("--lat", type=float, required=True)
@@ -1395,6 +1632,28 @@ def build_parser() -> argparse.ArgumentParser:
     active.add_argument("--fortune", action="store_true", help="Include Lot of Fortune releasing")
     active.add_argument("--horizon", help="Optional end timestamp for timeline precomputation")
     active.set_defaults(func=cmd_timelords_active)
+
+    generate = tl_sub.add_parser("generate", help="Compute timelord periods")
+    generate.add_argument("--start", required=True)
+    generate.add_argument("--vimshottari", action="store_true")
+    generate.add_argument("--moon-longitude", type=float)
+    generate.add_argument("--dasha-cycles", type=int, default=1)
+    generate.add_argument(
+        "--timelord-levels",
+        default="maha,antar",
+        help="Comma-separated Vimshottari levels to compute",
+    )
+    generate.add_argument("--zr", action="store_true")
+    generate.add_argument("--fortune-longitude", type=float)
+    generate.add_argument("--zr-periods", type=int, default=12)
+    generate.add_argument(
+        "--zr-levels",
+        default="l1,l2",
+        help="Comma-separated releasing levels",
+    )
+    generate.add_argument("--lot", default="fortune")
+    generate.add_argument("--json")
+    generate.set_defaults(func=cmd_timelords)
 
     validate = sub.add_parser("validate", help="Validate a JSON payload against a schema")
     validate.add_argument("schema", choices=list(available_schema_keys("jsonschema")))
@@ -1410,7 +1669,63 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("--moving", help="Filter by moving body")
     query.add_argument("--target", help="Filter by target point")
     query.add_argument("--year", type=int, help="Restrict to calendar year")
+    query.add_argument("--narrative", action="store_true", help="Render narrative summary for the result set")
+    query.add_argument(
+        "--narrative-profile",
+        default="transits",
+        help="Narrative profile identifier when --narrative is supplied",
+    )
+    query.add_argument(
+        "--context",
+        action="append",
+        help="Key=value entries supplying narrative context (repeatable)",
+    )
     query.set_defaults(func=cmd_query)
+
+
+    ops = sub.add_parser("ops", help="Operational helpers")
+    ops_sub = ops.add_subparsers(dest="ops_command")
+    ops_sub.required = True
+    migrate = ops_sub.add_parser("migrate", help="Apply Alembic migrations to SQLite stores")
+    migrate.add_argument("--sqlite", required=True, help="SQLite file to migrate")
+    migrate.add_argument("--revision", help="Target Alembic revision (default: head)")
+    migrate.set_defaults(func=cmd_ops_migrate)
+
+    locational = sub.add_parser("locational", help="Locational visualization datasets")
+    loc_sub = locational.add_subparsers(dest="locational_command")
+    loc_sub.required = True
+    acg = loc_sub.add_parser("astrocartography", help="Compute astrocartography linework")
+    acg.add_argument("--moment", required=True, help="UTC timestamp (ISO-8601)")
+    acg.add_argument("--bodies", default="", help="Comma-separated body names (optional)")
+    acg.add_argument("--lat-step", type=float, default=1.5, help="Latitude sampling step in degrees")
+    acg.add_argument("--json", action="store_true", help="Emit JSON output")
+    acg.set_defaults(func=cmd_locational_astrocartography)
+    local_space = loc_sub.add_parser("local-space", help="Compute local space azimuth vectors")
+    local_space.add_argument("--moment", required=True, help="UTC timestamp (ISO-8601)")
+    local_space.add_argument("--lat", type=float, required=True, help="Observer latitude in degrees")
+    local_space.add_argument("--lon", type=float, required=True, help="Observer longitude in degrees")
+    local_space.add_argument("--bodies", default="", help="Comma-separated body names (optional)")
+    local_space.add_argument("--json", action="store_true", help="Emit JSON output")
+    local_space.set_defaults(func=cmd_locational_local_space)
+
+    timeline = sub.add_parser("timeline", help="Timeline synthesis commands")
+    timeline_sub = timeline.add_subparsers(dest="timeline_command")
+    timeline_sub.required = True
+    outer_cycles = timeline_sub.add_parser(
+        "outer-cycles", help="Generate outer planet cycle windows for visualization"
+    )
+    outer_cycles.add_argument("--start", required=True, help="Start timestamp (ISO-8601)")
+    outer_cycles.add_argument("--end", required=True, help="End timestamp (ISO-8601)")
+    outer_cycles.add_argument("--bodies", default="", help="Optional comma-separated body list")
+    outer_cycles.add_argument(
+        "--aspects",
+        default="",
+        help="Aspect specification (deg[:label], comma separated; default majors)",
+    )
+    outer_cycles.add_argument("--step-days", type=float, default=1.0, help="Sampling cadence in days")
+    outer_cycles.add_argument("--orb", type=float, default=1.0, help="Orb allowance for windows")
+    outer_cycles.add_argument("--json", action="store_true", help="Emit JSON output")
+    outer_cycles.set_defaults(func=cmd_timeline_outer_cycles)
 
 
     ingresses = sub.add_parser("ingresses", help="Detect sign ingress events")
@@ -1421,30 +1736,6 @@ def build_parser() -> argparse.ArgumentParser:
     ingresses.add_argument("--json")
     add_canonical_export_args(ingresses)
     ingresses.set_defaults(func=cmd_ingresses)
-
-    timelords = sub.add_parser("timelords", help="Compute timelord periods")
-    timelords.add_argument("--start", required=True)
-    timelords.add_argument("--vimshottari", action="store_true")
-    timelords.add_argument("--moon-longitude", type=float)
-    timelords.add_argument("--dasha-cycles", type=int, default=1)
-    timelords.add_argument(
-        "--timelord-levels",
-        default="maha,antar",
-        help="Comma-separated Vimshottari levels to compute",
-    )
-    timelords.add_argument("--zr", action="store_true")
-    timelords.add_argument("--fortune-longitude", type=float)
-    timelords.add_argument("--zr-periods", type=int, default=12)
-    timelords.add_argument(
-        "--zr-levels",
-        default="l1,l2",
-        help="Comma-separated releasing levels",
-    )
-    timelords.add_argument("--lot", default="fortune")
-    timelords.add_argument("--json")
-    timelords.set_defaults(func=cmd_timelords)
-
-
 
     _augment_parser_with_features(parser)
     setup_plugins(parser)

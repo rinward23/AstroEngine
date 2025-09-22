@@ -1,4 +1,4 @@
-"""Interactive Streamlit app for running AstroEngine transit scans."""
+"""Streamlit UI for running AstroEngine transit scans interactively."""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
-try:
+try:  # pragma: no cover - Streamlit import guarded for test environments
     import streamlit as st
-except Exception as exc:  # pragma: no cover - environment guard
+except Exception as exc:  # pragma: no cover - surfacing missing dependency
     print("This app requires Streamlit. Install with: pip install streamlit", file=sys.stderr)
     raise
 
@@ -21,7 +21,11 @@ from astroengine.app_api import (
     canonicalize_events,
     run_scan_or_raise,
 )
-
+from astroengine.chart.config import (
+    DEFAULT_SIDEREAL_AYANAMSHA,
+    SUPPORTED_AYANAMSHAS,
+    VALID_ZODIAC_SYSTEMS,
+)
 from astroengine.exporters import write_parquet_canonical, write_sqlite_canonical
 from astroengine.exporters_ics import ics_bytes_from_events
 from astroengine.utils import (
@@ -30,13 +34,6 @@ from astroengine.utils import (
     DETECTOR_NAMES,
     TARGET_FRAME_BODIES,
     available_frames,
-    expand_targets,
-
-from astroengine.chart.config import (
-    DEFAULT_SIDEREAL_AYANAMSHA,
-    SUPPORTED_AYANAMSHAS,
-    VALID_ZODIAC_SYSTEMS,
-
 )
 
 
@@ -80,9 +77,9 @@ def _events_to_records(events: Iterable[Any]) -> List[Dict[str, Any]]:
 def _records_to_df(records: List[Dict[str, Any]]):
     if not records:
         return None
-    try:  # pragma: no cover - optional dependency
+    try:  # pragma: no cover - pandas optional dependency
         import pandas as pd
-    except Exception:  # pragma: no cover - pandas optional
+    except Exception:  # pragma: no cover - gracefully degrade
         return None
     try:
         return pd.DataFrame(records)
@@ -169,7 +166,10 @@ def _apply_preset(name: str) -> None:
     st.session_state["scan_end"] = end
     st.session_state["scan_moving"] = preset.get("moving", ["Sun", "Mars", "Jupiter"])
     st.session_state["scan_frames"] = preset.get("frames", list(DEFAULT_TARGET_FRAMES))
-    st.session_state["scan_targets"] = preset.get("targets", [f"natal:{body}" for body in DEFAULT_TARGET_SELECTION])
+    st.session_state["scan_targets"] = preset.get(
+        "targets",
+        [f"natal:{body}" for body in DEFAULT_TARGET_SELECTION],
+    )
     st.session_state["scan_detectors"] = preset.get("detectors", [])
     st.session_state["scan_provider"] = preset.get("provider", "auto")
     st.session_state["scan_step"] = preset.get("step", 60)
@@ -193,6 +193,7 @@ def cached_scan(
     ayanamsha: Optional[str],
     frames: Tuple[str, ...],
     entrypoints: Tuple[str, ...],
+    zodiac: str,
 ) -> Tuple[List[Dict[str, Any]], Sequence[Any], Tuple[str, str]]:
     entrypoint_arg = list(entrypoints) if entrypoints else None
     raw_events, used_entrypoint = run_scan_or_raise(
@@ -207,6 +208,7 @@ def cached_scan(
         target_frames=list(frames),
         sidereal=sidereal,
         ayanamsha=ayanamsha,
+        zodiac=zodiac,
         entrypoints=entrypoint_arg,
         return_used_entrypoint=True,
     )
@@ -220,19 +222,27 @@ def _ensure_defaults() -> None:
     _set_session_default("scan_end", end)
     _set_session_default("scan_moving", ["Sun", "Mars", "Jupiter"])
     _set_session_default("scan_frames", list(DEFAULT_TARGET_FRAMES))
-    _set_session_default("scan_targets", [f"natal:{body}" for body in DEFAULT_TARGET_SELECTION])
+    _set_session_default(
+        "scan_targets", [f"natal:{body}" for body in DEFAULT_TARGET_SELECTION]
+    )
     _set_session_default("scan_detectors", [])
     _set_session_default("scan_provider", "auto")
     _set_session_default("scan_profile", "base")
     _set_session_default("scan_step", 60)
     _set_session_default("scan_sidereal", False)
-    _set_session_default("scan_ayanamsha", "lahiri")
+    _set_session_default("scan_ayanamsha", DEFAULT_SIDEREAL_AYANAMSHA)
     _set_session_default("scan_entrypoint", "Auto (first compatible)")
     _set_session_default("scan_preset", "Transit scan — Daily")
     _set_session_default("scan_active_preset", "Transit scan — Daily")
     _set_session_default("scan_ics_title", "AstroEngine Events")
+    _set_session_default("scan_cache", {})
+    _set_session_default("scan_last_cache_key", None)
+    _set_session_default("scan_last_cache_hit", False)
+    _set_session_default("scan_preset_initialized", False)
     if st.session_state["scan_active_preset"] != "Custom":
-        _apply_preset(st.session_state["scan_active_preset"])
+        if not st.session_state["scan_preset_initialized"]:
+            _apply_preset(st.session_state["scan_active_preset"])
+            st.session_state["scan_preset_initialized"] = True
 
 
 _ensure_defaults()
@@ -247,16 +257,19 @@ entrypoint_lookup = dict(zip(entrypoint_labels[1:], entrypoints))
 with st.sidebar:
     st.header("Presets & Environment")
     preset_choice = st.selectbox("Preset", list(PRESETS.keys()), key="scan_preset")
-    if preset_choice != st.session_state.get("scan_active_preset") and preset_choice != "Custom":
+    if (
+        preset_choice != st.session_state.get("scan_active_preset")
+        and preset_choice != "Custom"
+    ):
         _apply_preset(preset_choice)
     st.caption("Adjust any field to switch into the Custom preset.")
 
     se_path = None
-    try:
+    try:  # pragma: no cover - optional swiss info
         from astroengine.ephemeris.utils import get_se_ephe_path
 
         se_path = get_se_ephe_path()
-    except Exception:  # pragma: no cover - optional import
+    except Exception:  # pragma: no cover - best-effort
         se_path = None
 
     st.write("**SE_EPHE_PATH**:", os.getenv("SE_EPHE_PATH") or "not set")
@@ -284,6 +297,25 @@ with st.sidebar:
         key="scan_provider",
         on_change=_mark_custom,
     )
+    zodiac_choice = st.selectbox(
+        "Zodiac",
+        options=sorted(VALID_ZODIAC_SYSTEMS),
+        index=0,
+        key="scan_zodiac",
+        on_change=_mark_custom,
+    )
+    ayanamsha_choice = None
+    if zodiac_choice == "sidereal":
+        ayanamsha_options = sorted(SUPPORTED_AYANAMSHAS)
+        default_index = ayanamsha_options.index(DEFAULT_SIDEREAL_AYANAMSHA)
+        ayanamsha_choice = st.selectbox(
+            "Ayanāṁśa",
+            options=ayanamsha_options,
+            index=default_index,
+            key="scan_ayanamsha_choice",
+            on_change=_mark_custom,
+        )
+        st.session_state["scan_ayanamsha"] = ayanamsha_choice
     step_minutes = st.slider(
         "Step minutes",
         min_value=10,
@@ -293,30 +325,19 @@ with st.sidebar:
         key="scan_step",
         on_change=_mark_custom,
     )
+    detector_selection = st.multiselect(
+        "Detectors",
+        options=sorted(DETECTOR_NAMES),
+        default=st.session_state.get("scan_detectors", []),
+        key="Detectors",
+        on_change=_mark_custom,
+    )
+    st.session_state["scan_detectors"] = detector_selection
     entrypoint_choice = st.selectbox(
         "Scan entrypoint",
         entrypoint_labels,
         index=0,
         key="scan_entrypoint",
-    )
-
-    s, e = _default_window()
-    start_utc = st.text_input("Start (UTC, ISO-8601)", value=s)
-    end_utc = st.text_input("End (UTC, ISO-8601)", value=e)
-    provider = st.selectbox("Provider", options=["auto", "swiss", "pymeeus", "skyfield"], index=0)
-    zodiac_choice = st.selectbox("Zodiac", options=sorted(VALID_ZODIAC_SYSTEMS), index=0)
-    ayanamsha_choice = None
-    if zodiac_choice == "sidereal":
-        ayanamsha_options = sorted(SUPPORTED_AYANAMSHAS)
-        default_index = ayanamsha_options.index(DEFAULT_SIDEREAL_AYANAMSHA)
-        ayanamsha_choice = st.selectbox("Ayanamsha", options=ayanamsha_options, index=default_index)
-    step_minutes = st.slider("Step minutes", min_value=10, max_value=240, value=60, step=10)
-    st.caption("Tip: set SE_EPHE_PATH to your Swiss ephemeris folder if using the swiss provider.")
-    entrypoint_choice = st.selectbox("Scan entrypoint", entrypoint_labels, index=0)
-
-    st.caption(
-        "Select an explicit scan function or leave on Auto to try detected entrypoints in order.\n"
-        "Set ASTROENGINE_SCAN_ENTRYPOINTS for custom modules (format: module:function)."
     )
 
     st.header("Transiting bodies")
@@ -334,7 +355,7 @@ with st.sidebar:
         "Node",
         "Chiron",
     ]
-    st.multiselect(
+    moving = st.multiselect(
         "Transiting bodies",
         moving_options,
         default=st.session_state.get("scan_moving", ["Sun", "Mars", "Jupiter"]),
@@ -344,14 +365,14 @@ with st.sidebar:
 
     st.header("Frames & Targets")
     frame_options = available_frames()
-    target_frames = st.multiselect(
+    frame_selection = st.multiselect(
         "Target frames",
         frame_options,
         default=st.session_state.get("scan_frames", list(DEFAULT_TARGET_FRAMES)),
         key="scan_frames",
         on_change=_mark_custom,
     )
-    selected_frames = target_frames or list(DEFAULT_TARGET_FRAMES)
+    selected_frames = frame_selection or list(DEFAULT_TARGET_FRAMES)
     merged_options: List[str] = []
     for frame in selected_frames:
         bodies = TARGET_FRAME_BODIES.get(frame) or DEFAULT_TARGET_SELECTION
@@ -362,63 +383,23 @@ with st.sidebar:
     for existing in st.session_state.get("scan_targets", []):
         if existing not in merged_options:
             merged_options.append(existing)
-    default_targets = st.session_state.get("scan_targets", [f"natal:{body}" for body in DEFAULT_TARGET_SELECTION])
     targets = st.multiselect(
         "Targets",
         options=merged_options,
-        default=default_targets,
+        default=st.session_state.get(
+            "scan_targets", [f"natal:{body}" for body in DEFAULT_TARGET_SELECTION]
+        ),
         key="scan_targets",
         on_change=_mark_custom,
     )
 
     st.header("Toggles")
-    detectors = st.multiselect(
-        "Detectors",
-        options=sorted(DETECTOR_NAMES),
-        default=st.session_state.get("scan_detectors", []),
-        key="scan_detectors",
-        on_change=_mark_custom,
-    )
     sidereal = st.checkbox(
         "Use sidereal zodiac",
         value=st.session_state.get("scan_sidereal", False),
         key="scan_sidereal",
         on_change=_mark_custom,
     )
-    ayanamsha_value = st.session_state.get("scan_ayanamsha", "lahiri")
-    known_ayanamshas = [
-        "lahiri",
-        "krishnamurti",
-        "raman",
-        "fagan_bradley",
-        "yukteshwar",
-        "de_luce",
-        "true_citra",
-        "custom",
-    ]
-    ayanamsha_choice = ayanamsha_value if ayanamsha_value in known_ayanamshas else "custom"
-    if sidereal:
-        default_index = known_ayanamshas.index(ayanamsha_choice)
-        ayanamsha_choice = st.selectbox(
-            "Ayanāṁśa",
-            options=known_ayanamshas,
-            index=default_index,
-            key="scan_ayanamsha_choice",
-        )
-        if ayanamsha_choice == "custom":
-            ayanamsha_value = st.text_input(
-                "Custom ayanāṁśa",
-                value=ayanamsha_value,
-                key="scan_ayanamsha",
-                on_change=_mark_custom,
-            )
-            st.session_state["scan_ayanamsha"] = ayanamsha_value
-        else:
-            ayanamsha_value = ayanamsha_choice
-            st.session_state["scan_ayanamsha"] = ayanamsha_choice
-    else:
-        st.session_state["scan_ayanamsha"] = ayanamsha_value
-
     profile_id = st.text_input(
         "Profile (optional)",
         value=st.session_state.get("scan_profile", "base"),
@@ -428,7 +409,7 @@ with st.sidebar:
 
     if provider in {"swiss", "auto"} and not se_path:
         st.warning(
-            "Swiss Ephemeris path not detected. Set SE_EPHE_PATH to your Swiss ephemeris folder for precision.",
+            "Swiss Ephemeris path not detected. Set SE_EPHE_PATH for precise Swiss calculations.",
             icon="⚠️",
         )
 
@@ -439,44 +420,55 @@ with st.sidebar:
             st.code(f"{mod}.{fn}", language="python")
     else:
         st.warning(
-            "No scan entrypoints discovered. Ensure astroengine is installed or set ASTROENGINE_SCAN_ENTRYPOINTS.",
+            "No scan entrypoints discovered. Set ASTROENGINE_SCAN_ENTRYPOINTS to register custom modules.",
             icon="⚠️",
         )
 
+    st.caption(
+        "Select an explicit scan function or leave on Auto to try detected entrypoints in order.\n"
+        "Set ASTROENGINE_SCAN_ENTRYPOINTS for custom modules (format: module:function)."
+    )
 
-tab_scan, tab_smoke = st.tabs(["Scan Transits", "Swiss Smoketest"])
 
-with tab_scan:
-    st.subheader("Run Scan")
-    run = st.button("Run scan")
-    if run:
-        entrypoint_override = entrypoint_lookup.get(st.session_state.get("scan_entrypoint"))
-        entrypoint_arg = tuple([entrypoint_override]) if entrypoint_override else tuple()
-        moving = tuple(st.session_state.get("scan_moving", []))
-        frames = tuple(st.session_state.get("scan_frames", list(DEFAULT_TARGET_FRAMES)))
-        target_tokens = expand_targets(frames, st.session_state.get("scan_targets", []))
-        detectors = tuple(st.session_state.get("scan_detectors", []))
-        cache_key = (
-            st.session_state.get("scan_start"),
-            st.session_state.get("scan_end"),
-            moving,
-            tuple(target_tokens),
-            st.session_state.get("scan_provider"),
-            st.session_state.get("scan_profile"),
-            int(st.session_state.get("scan_step", 60)),
-            detectors,
-            st.session_state.get("scan_sidereal"),
-            st.session_state.get("scan_ayanamsha"),
-            frames,
-            entrypoint_arg,
-        )
+tab_run, tab_smoke = st.tabs(["Run scan", "Swiss smoketest"])
+
+with tab_run:
+    st.subheader("Run scan")
+    st.caption("Adjust settings in the sidebar, then run the scan to view results below.")
+    run_clicked = st.button("Run scan", key="Run scan")
+
+    last_key = st.session_state.get("scan_last_cache_key")
+    cache_key = (
+        st.session_state.get("scan_start"),
+        st.session_state.get("scan_end"),
+        tuple(st.session_state.get("scan_moving", [])),
+        tuple(st.session_state.get("scan_targets", [])),
+        st.session_state.get("scan_provider"),
+        st.session_state.get("scan_profile"),
+        int(st.session_state.get("scan_step", 60)),
+        tuple(st.session_state.get("scan_detectors", [])),
+        bool(st.session_state.get("scan_sidereal")),
+        st.session_state.get("scan_ayanamsha"),
+        tuple(st.session_state.get("scan_frames", [])),
+        st.session_state.get("scan_entrypoint"),
+        st.session_state.get("scan_zodiac"),
+    )
+
+    if run_clicked:
+        entrypoint_arg: Tuple[str, ...]
+        if st.session_state.get("scan_entrypoint") == entrypoint_labels[0]:
+            entrypoint_arg = tuple(entrypoint_lookup.values())
+        else:
+            entrypoint_arg = (st.session_state["scan_entrypoint"],)
         session_cache = st.session_state.setdefault("scan_cache", {})
-        from_cache = cache_key in session_cache
-        st.session_state["scan_last_cache_hit"] = from_cache
+        cached_tuple = session_cache.get(cache_key)
+        from_cache = cached_tuple is not None
+        cache_hit = from_cache or (last_key == cache_key)
+        st.session_state["scan_last_cache_hit"] = cache_hit
         progress = st.progress(0, text="Preparing scan…")
         status = st.status("Checking cache…", expanded=False)
-        if from_cache:
-            raw_events, canonical_events, used_entrypoint = session_cache[cache_key]
+        if cached_tuple is not None:
+            raw_events, canonical_events, used_entrypoint = cached_tuple
             progress.progress(100, text="Loaded cached results")
             status.update(label="Cache hit — reused previous run", state="complete")
         else:
@@ -485,30 +477,30 @@ with tab_scan:
                 raw_events, canonical_events, used_entrypoint = cached_scan(
                     start_utc=st.session_state.get("scan_start"),
                     end_utc=st.session_state.get("scan_end"),
-                    moving=moving,
-                    targets=tuple(target_tokens),
-                    provider=None if st.session_state.get("scan_provider") == "auto" else st.session_state.get("scan_provider"),
+                    moving=tuple(st.session_state.get("scan_moving", [])),
+                    targets=tuple(st.session_state.get("scan_targets", [])),
+                    provider=None
+                    if st.session_state.get("scan_provider") == "auto"
+                    else st.session_state.get("scan_provider"),
                     profile_id=st.session_state.get("scan_profile"),
                     step_minutes=int(st.session_state.get("scan_step", 60)),
-                    detectors=detectors,
+                    detectors=tuple(st.session_state.get("scan_detectors", [])),
                     sidereal=st.session_state.get("scan_sidereal"),
                     ayanamsha=st.session_state.get("scan_ayanamsha"),
-                    frames=frames,
+                    frames=tuple(st.session_state.get("scan_frames", [])),
                     entrypoints=entrypoint_arg,
-
-                    zodiac=zodiac_choice,
-                    ayanamsha=ayanamsha_choice,
-                    return_used_entrypoint=True,
-
+                    zodiac=st.session_state.get("scan_zodiac", "tropical"),
                 )
                 session_cache[cache_key] = (raw_events, canonical_events, used_entrypoint)
                 progress.progress(100, text="Scan complete")
                 status.update(label="Scan complete", state="complete")
-            except Exception as exc:  # pragma: no cover - run-time errors displayed in UI
+            except Exception as exc:  # pragma: no cover - runtime failure surfaced to user
                 status.update(label=f"Scan failed: {exc}", state="error")
                 st.error(f"Scan failed: {exc}")
                 raw_events = canonical_events = []
                 used_entrypoint = ("?", "?")
+        st.session_state["scan_cache"] = session_cache
+        st.session_state["scan_last_cache_key"] = cache_key
         if canonical_events:
             st.success(f"Scan complete — {len(canonical_events)} events")
         else:
@@ -542,7 +534,9 @@ with tab_scan:
                     st.error(f"SQLite export failed: {export_exc}")
         with col_parquet:
             parquet_path = st.text_input(
-                "Parquet path (.parquet or dir)", value="runs.parquet", key="scan_parquet_path"
+                "Parquet path (.parquet or dir)",
+                value="runs.parquet",
+                key="scan_parquet_path",
             )
             if st.button("Save Parquet", key="scan_parquet_btn") and canonical_events:
                 try:
@@ -564,7 +558,10 @@ with tab_scan:
                 value=st.session_state.get("scan_ics_title", "AstroEngine Events"),
                 key="scan_ics_title",
             )
-            ics_bytes = ics_bytes_from_events(canonical_events, calendar_name=ics_title or "AstroEngine Events")
+            ics_bytes = ics_bytes_from_events(
+                canonical_events,
+                calendar_name=ics_title or "AstroEngine Events",
+            )
             st.download_button(
                 "Download ICS",
                 ics_bytes,
@@ -577,10 +574,17 @@ with tab_scan:
 
 with tab_smoke:
     st.subheader("Swiss Smoketest (script)")
-    st.write("Runs scripts/swe_smoketest.py with the start time above to validate your Swiss setup.")
-    if st.button("Run smoketest"):
+    st.write(
+        "Runs scripts/swe_smoketest.py with the selected start time to validate your Swiss setup."
+    )
+    if st.button("Run smoketest", key="Run smoketest"):
         try:
-            cmd = [sys.executable, "scripts/swe_smoketest.py", "--utc", st.session_state.get("scan_start")]
+            cmd = [
+                sys.executable,
+                "scripts/swe_smoketest.py",
+                "--utc",
+                st.session_state.get("scan_start"),
+            ]
             proc = subprocess.run(cmd, capture_output=True, text=True)
             out = proc.stdout.strip()
             err = proc.stderr.strip()
@@ -592,3 +596,4 @@ with tab_smoke:
                 st.code((out + "\n\n" + err).strip(), language="bash")
         except Exception as exc:  # pragma: no cover - defensive
             st.error(f"Failed to run smoketest: {exc}")
+
