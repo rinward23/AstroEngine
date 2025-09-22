@@ -10,18 +10,12 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
-from textwrap import dedent
 from typing import Any
 
 from ..domains import rollup_domain_scores
 from ..infrastructure.paths import profiles_dir
 from .gpt_api import GPTNarrativeClient
 from .prompts import build_summary_prompt, build_template_summary
-
-try:  # pragma: no cover - optional dependency
-    from jinja2 import Template
-except Exception:  # pragma: no cover - optional dependency guard
-    Template = None  # type: ignore[assignment]
 
 __all__ = [
     "NarrativeHighlight",
@@ -40,51 +34,15 @@ __all__ = [
 
 _LOG = logging.getLogger(__name__)
 
-_DEFAULT_TEMPLATE = """
-{{ title }}\n\n{% for e in events %}- {{ e }}\n{% endfor %}
-"""
-
-_TEMPLATE_MARKDOWN = dedent(
-    """
-    # AstroEngine Narrative Summary
-    Generated at {{ generated_at }}
-
-    {% if categories %}
-    ## Event Highlights
-    {% for category in categories %}
-    ### {{ category.label }} (score {{ category.score }})
-    {% for event in category.events %}
-    - **{{ event.title }}** — {{ event.summary }} ({{ event.timestamp }}, score {{ event.score }})
-    {% endfor %}
-    {% endfor %}
-    {% else %}
-    _No high-score events available for the requested window._
-    {% endif %}
-
-    {% if domains %}
-    ## Dominant Domains
-    {% for domain in domains %}
-    - {{ domain.name }} (score {{ domain.score }})
-      {% if domain.channels %}
-      {% for channel in domain.channels %}
-        - {{ channel.name }}: {{ channel.score }}
-      {% endfor %}
-      {% endif %}
-    {% endfor %}
-    {% else %}
-    _No domain emphasis detected from the supplied events._
-    {% endif %}
-
-    {% if timelords %}
-    ## Timelord Periods
-    {% for tl in timelords %}
-    - {{ tl.name }} — {{ tl.description }} (intensity {{ tl.weight }})
-    {% endfor %}
-    {% else %}
-    _No active timelords were detected for this window._
-    {% endif %}
-    """
-).strip()
+def _render_simple_template(title: str, events: Mapping[str, Any]) -> str:
+    lines = [str(title).strip()]
+    for key, value in events.items():
+        if isinstance(value, Mapping):
+            value_repr = ", ".join(f"{k}={v}" for k, v in value.items())
+            lines.append(f"- {key}: {value_repr}")
+        else:
+            lines.append(f"- {key}: {value}")
+    return "\n".join(lines).strip()
 
 
 @dataclass(frozen=True)
@@ -245,11 +203,9 @@ _CATEGORY_LABELS = {
 
 
 def render_simple(title: str, events: Mapping[str, Any]) -> str:
-    """Render a simple narrative block using Jinja templates."""
+    """Render a deterministic narrative block without optional dependencies."""
 
-    if Template is None:  # pragma: no cover - guard for optional extra
-        raise RuntimeError("Narrative extra not installed. Use: pip install -e .[narrative]")
-    return Template(_DEFAULT_TEMPLATE).render(title=title, events=events)
+    return _render_simple_template(title, events)
 
 
 def summarize_top_events(
@@ -301,15 +257,119 @@ def compose_narrative(
     return _compose_template(events, top_n=top_n, generated_at=generated_at)
 
 
+def _render_template_markdown(context: Mapping[str, Any]) -> str:
+    categories = list(context.get("categories", []))
+    domains = list(context.get("domains", []))
+    timelords = list(context.get("timelords", []))
+
+    lines: list[str] = []
+
+    def add(line: str) -> None:
+        lines.append(line)
+
+    def blank(count: int = 1) -> None:
+        if count <= 0:
+            return
+        lines.extend([""] * count)
+
+    def spacer(count: int = 1) -> None:
+        if count <= 0:
+            return
+        lines.extend(["  "] * count)
+
+    add("# AstroEngine Narrative Summary")
+    add(f"Generated at {context['generated_at']}")
+    blank(2)
+
+    add("## Event Highlights")
+    blank()
+
+    if categories:
+        for index, category in enumerate(categories):
+            add(f"### {category['label']} (score {category['score']})")
+            blank()
+
+            events = list(category.get("events", []))
+            if events:
+                for event in events:
+                    add(
+                        "- **{title}** — {summary} ({timestamp}, score {score})".format(
+                            title=event["title"],
+                            summary=event["summary"],
+                            timestamp=event["timestamp"],
+                            score=event["score"],
+                        )
+                    )
+                    blank()
+            else:
+                add("- _No individual highlights available._")
+                blank()
+
+            if index != len(categories) - 1:
+                blank()
+    else:
+        add("_No high-score events available for the requested window._")
+        blank()
+
+    blank(4)
+
+    add("## Dominant Domains")
+    blank()
+
+    if domains:
+        for index, domain in enumerate(domains):
+            add(f"- {domain['name']} (score {domain['score']})")
+            spacer(2)
+
+            channels = list(domain.get("channels") or [])
+            if channels:
+                for channel in channels:
+                    add(
+                        "    - {name}: {score}".format(
+                            name=channel.get("name", ""),
+                            score=channel.get("score", ""),
+                        )
+                    )
+                    spacer()
+            else:
+                add("    - _No channel activity recorded._")
+                spacer()
+
+            spacer()
+            if index != len(domains) - 1:
+                blank()
+    else:
+        add("_No domain emphasis detected from the supplied events._")
+        blank()
+
+    blank(4)
+
+    add("## Timelord Periods")
+    blank()
+
+    if timelords:
+        for index, tl in enumerate(timelords):
+            add(
+                "- {name} — {description} (intensity {weight})".format(
+                    name=tl["name"],
+                    description=tl["description"],
+                    weight=tl["weight"],
+                )
+            )
+            if index != len(timelords) - 1:
+                blank()
+    else:
+        add("_No active timelords were detected for this window._")
+
+    return "\n".join(lines).strip()
+
+
 def _compose_template(
     events: Sequence[object],
     *,
     top_n: int,
     generated_at: datetime | str | None,
 ) -> NarrativeBundle:
-    if Template is None:
-        raise RuntimeError("Narrative extra not installed. Use: pip install -e .[narrative]")
-
     highlights = _select_highlights(events, top_n=top_n)
     categories = _build_categories(highlights)
     domains = _summarise_domains(highlights)
@@ -323,7 +383,7 @@ def _compose_template(
         "timelords": [timelord.as_template() for timelord in timelords],
     }
 
-    markdown = Template(_TEMPLATE_MARKDOWN).render(**context).strip()
+    markdown = _render_template_markdown(context)
     html_output = markdown_to_html(markdown)
 
     return NarrativeBundle(
