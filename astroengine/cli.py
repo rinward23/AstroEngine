@@ -19,6 +19,7 @@ from .validation import (
     available_schema_keys,
     validate_payload,
 )
+from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
 
 # >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
 from .exporters import write_sqlite_canonical, write_parquet_canonical
@@ -55,6 +56,9 @@ from .detectors import (
     solar_lunar_returns,
 )
 from .detectors.common import iso_to_jd
+from .detectors.common import enable_cache  # ENSURE-LINE
+from .cache.positions_cache import warm_daily  # ENSURE-LINE
+from .exporters_batch import export_parquet_dataset  # ENSURE-LINE
 
 
 def run_experimental(args) -> None:
@@ -120,41 +124,6 @@ def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:
 # >>> AUTO-GEN END: cli-new-detector-flags v1.0
 
 
-# >>> AUTO-GEN BEGIN: cli-provision-precompute v1.0
-def _augment_parser_with_provisioning(p):
-    g = p.add_argument_group("Provisioning")
-    g.add_argument("--provision-ephemeris", action="store_true", help="Verify Swiss ephemeris and record metadata")
-    g.add_argument("--require-provision", action="store_true", help="Block runs unless provisioning metadata exists")
-    g.add_argument("--precompute", action="store_true", help="Compute selected detectors for the given window and export via --export-* flags")
-
-
-def run_provisioning_and_precompute(args) -> None:
-    if args.provision_ephemeris:
-        meta = provision_ephemeris()
-        print(f"Provisioned ephemeris: ok={meta.get('ok')} swe_version={meta.get('swe_version')} path={meta.get('ephe_path')}")
-    if args.require_provision and not is_provisioned():
-        raise SystemExit("Provisioning required: run with --provision-ephemeris first")
-    if args.precompute:
-        if not args.start_utc or not args.end_utc:
-            raise SystemExit("precompute requires --start-utc and --end-utc")
-        if not any((args.export_sqlite, args.export_parquet, args.export_ics)):
-            raise SystemExit("precompute requires at least one export target via --export-sqlite/--export-parquet/--export-ics")
-        from .pipeline.collector import collect_events
-        from .exporters_batch import export_batch
-        ev = collect_events(args)
-        summary = export_batch(ev,
-                               sqlite_path=args.export_sqlite,
-                               parquet_path=args.export_parquet,
-                               ics_path=args.export_ics,
-                               ics_title=getattr(args, 'ics_title', "AstroEngine Events"),
-                               meta={
-                                   'natal_id': getattr(args, 'natal_id', None),
-                                   'profile': getattr(args, 'profile', None),
-                                   'window_start': args.start_utc,
-                                   'window_end': args.end_utc,
-                               })
-        print(f"precompute exported {summary.get('count', 0)} events → {summary}")
-# >>> AUTO-GEN END: cli-provision-precompute v1.0
 
 def serialize_events_to_json(events: Iterable) -> str:
     """Serialize events into a pretty-printed JSON string."""
@@ -274,6 +243,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--start-utc", help="Start timestamp (ISO-8601) for experimental detectors")  # ENSURE-LINE
     parser.add_argument("--end-utc", help="End timestamp (ISO-8601) for experimental detectors")  # ENSURE-LINE
     parser.add_argument("--natal-utc", help="Natal timestamp (ISO-8601) for return calculations")  # ENSURE-LINE
+    parser.add_argument("--natal-id", help="Natal identifier for provenance and vault operations")  # ENSURE-LINE
     parser.add_argument("--return-kind", default="solar", help="Return kind: solar or lunar")  # ENSURE-LINE
     parser.add_argument("--export-sqlite", help="Write precomputed events to this SQLite file")
     parser.add_argument("--export-parquet", help="Write precomputed events to this Parquet file")
@@ -334,6 +304,9 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("path")
     validate.set_defaults(func=cmd_validate)
 
+    _augment_parser_with_natals(parser)  # ENSURE-LINE
+    _augment_parser_with_cache(parser)  # ENSURE-LINE
+    _augment_parser_with_parquet_dataset(parser)  # ENSURE-LINE
     _augment_parser_with_features(parser)
     _augment_parser_with_provisioning(parser)  # ENSURE-LINE
     return parser
@@ -343,7 +316,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
     _augment_parser_with_features(parser)
     namespace = parser.parse_args(list(argv) if argv is not None else None)
-    run_provisioning_and_precompute(namespace)  # ENSURE-LINE
+
     run_experimental(namespace)
     func = getattr(namespace, "func", None)
     if func is not None:
