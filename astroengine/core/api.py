@@ -8,7 +8,36 @@ from dataclasses import dataclass, field
 
 @dataclass
 class TransitEvent:
-    """Container for a resolved transit event."""
+    """Container for a resolved transit event.
+
+    Attributes
+    ----------
+    timestamp:
+        Timestamp in UTC. ``None`` is used for detectors that only emit
+        positional metadata.
+    body:
+        Moving body symbol (``"mars"``, ``"moon"``…).
+    target:
+        Static body or chart point symbol (e.g. ``"natal_sun"``).
+    aspect:
+        Canonical aspect name such as ``"conjunction"`` or ``"square"``.
+    orb:
+        Signed separation in **degrees** relative to the aspect angle.
+        Negative values represent applying contacts. Values are expected
+        to fall inside the configured orb policy.
+    motion:
+        ``"applying"``, ``"separating"``, or ``"stationary"`` depending on
+        relative speed calculations.
+    elements:
+        Optional elemental tags derived from domain scoring.
+    domains:
+        Mapping of domain name → weight (each weight in ``[0, 1]``).
+    domain_profile:
+        Identifier of the profile that produced ``domains``.
+    severity:
+        Composite severity score in ``[0, 1]`` when profiles supply a
+        weighting model.
+    """
 
     timestamp: _dt.datetime | None = None
     body: str | None = None
@@ -24,7 +53,19 @@ class TransitEvent:
 
 @dataclass
 class TransitScanConfig:
-    """Configuration options for a transit scan."""
+    """Configuration options for a transit scan.
+
+    Parameters
+    ----------
+    ruleset_id:
+        Identifier of the ruleset to load from the registry.
+    enable_declination:
+        Toggle declination parallels/contraparallels.
+    enable_mirrors:
+        Toggle antiscia/contra-antiscia detection.
+    enable_harmonics:
+        Toggle harmonic aspect families defined in the selected profile.
+    """
 
     ruleset_id: str = "vca_core"
     enable_declination: bool = True

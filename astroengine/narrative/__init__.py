@@ -12,11 +12,14 @@ except Exception:  # pragma: no cover - stub fallback
     Template = None  # type: ignore
 
 from .gpt_api import GPTNarrativeClient
+from .profiles import render_profile, timelord_outline
 from .prompts import build_summary_prompt, build_template_summary
 
 __all__ = [
     "render_simple",
     "summarize_top_events",
+    "render_profile",
+    "timelord_outline",
     "build_summary_prompt",
     "build_template_summary",
 ]
@@ -54,6 +57,9 @@ def summarize_top_events(
     top_n: int = 5,
     client: GPTNarrativeClient | None = None,
     profile: str = "transits",
+    timelords: Any | None = None,
+    profile_context: Mapping[str, Any] | None = None,
+    prefer_template: bool = False,
 ) -> str:
     """Return a narrative summary of the top-N events."""
 
@@ -64,11 +70,17 @@ def summarize_top_events(
     sorted_events = sorted(events_list, key=_event_score, reverse=True)
     top_events = sorted_events[: max(top_n, 1)]
 
+    context = dict(profile_context or {})
+    offline = render_profile(profile, top_events, timelords=timelords, context=context)
+
+    if prefer_template:
+        return offline
+
     try:
-        prompt = build_summary_prompt(top_events, profile=profile)
+        prompt = build_summary_prompt(top_events, profile=profile, timelords=timelords, context=context)
     except Exception as exc:  # pragma: no cover - defensive fallback
         _LOG.debug("Failed to build GPT prompt: %s", exc)
-        return build_template_summary(top_events)
+        return offline
 
     client = client or GPTNarrativeClient.from_env()
     if client and client.available:
@@ -77,4 +89,4 @@ def summarize_top_events(
         except Exception as exc:  # pragma: no cover - network or API errors
             _LOG.warning("GPT narrative generation failed; using template fallback: %s", exc)
 
-    return build_template_summary(top_events)
+    return offline

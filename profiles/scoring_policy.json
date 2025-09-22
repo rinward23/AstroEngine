@@ -1,6 +1,6 @@
-# >>> AUTO-GEN BEGIN: AE Scoring Policy v1.1
+# >>> AUTO-GEN BEGIN: AE Scoring Policy v1.2
 {
-  "curve": {"kind": "gaussian", "sigma_frac_of_orb": 0.5, "min_score": 0.0, "max_score": 1.0},
+  "curve": {"kind": "gaussian", "sigma_frac_of_orb": 0.5, "min_score": 0.0, "max_score": 2.5},
   "applying_bias": {"enabled": true, "factor": 1.10},
   "partile": {"enabled": true, "threshold_deg": 0.1667, "boost_factor": 1.25},
   "base_weights": {
@@ -34,6 +34,67 @@
     "social-social": 0.90,
     "social-outer": 0.90,
     "outer-outer": 0.85
+  },
+  "condition_modifiers": {
+    "retrograde": 0.92,
+    "combust": 0.85,
+    "under_beams": 0.90,
+    "cazimi": 1.10,
+    "out_of_bounds": 1.05
+  },
+  "dignity_weights": {
+    "rulership": 1.10,
+    "exaltation": 1.08,
+    "triplicity": 1.05,
+    "term": 1.03,
+    "face": 1.02,
+    "detriment": 0.90,
+    "fall": 0.88
+  },
+  "sect_bias": {
+    "day": {
+      "benefics": {"venus": 1.10, "jupiter": 1.10},
+      "malefics": {"mars": 0.90, "saturn": 0.90}
+    },
+    "night": {
+      "benefics": {"venus": 1.10},
+      "malefics": {"mars": 0.90, "saturn": 0.85}
+    }
+  },
+  "body_severity_weights": {
+    "sun": 1.00,
+    "moon": 1.10,
+    "mercury": 1.00,
+    "venus": 0.95,
+    "mars": 1.15,
+    "jupiter": 0.85,
+    "saturn": 1.05,
+    "uranus": 0.80,
+    "neptune": 0.75,
+    "pluto": 0.85,
+    "ceres": 0.60,
+    "pallas": 0.55,
+    "juno": 0.55,
+    "vesta": 0.55,
+    "eris": 0.65,
+    "sedna": 0.60
+  },
+  "fractal_patterns": {
+    "enabled": true,
+    "harmonics": [2, 3, 4, 6],
+    "include_cardinals": true,
+    "softness": 0.5,
+    "baseline": 0.5,
+    "spread": 0.5
+  },
+  "traditions": {
+    "vedic": {
+      "condition_modifiers": {"retrograde": 0.92},
+      "base_weights": {"aspect_square": 0.75, "aspect_trine": 0.75}
+    },
+    "hellenistic": {
+      "condition_modifiers": {"cazimi": 1.10}
+    }
   }
 }
-# >>> AUTO-GEN END: AE Scoring Policy v1.1
+# >>> AUTO-GEN END: AE Scoring Policy v1.2

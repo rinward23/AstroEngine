@@ -11,6 +11,15 @@ from .contact import (
 )
 from .dignity import DignityRecord, load_dignities, lookup_dignities
 from .orb import DEFAULT_ASPECTS, OrbCalculator
+from .policy import (
+    OrbPolicy,
+    SeverityPolicy,
+    VisibilityPolicy,
+    load_orb_policy,
+    load_severity_policy,
+    load_visibility_policy,
+)
+from .tradition import TraditionSpec, get_tradition_spec
 
 __all__ = [
     "compute_domain_factor",
@@ -23,4 +32,12 @@ __all__ = [
     "DignityRecord",
     "load_dignities",
     "lookup_dignities",
+    "OrbPolicy",
+    "SeverityPolicy",
+    "VisibilityPolicy",
+    "load_orb_policy",
+    "load_severity_policy",
+    "load_visibility_policy",
+    "TraditionSpec",
+    "get_tradition_spec",
 ]

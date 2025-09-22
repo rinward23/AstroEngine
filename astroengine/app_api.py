@@ -136,6 +136,10 @@ def _filter_kwargs_for(fn, proposed: Dict[str, Any]) -> Dict[str, Any]:
         "provider": ["provider", "provider_name"],
         "profile_id": ["profile", "profile_id"],
         "step_minutes": ["step_minutes", "step_min", "step"],
+        "sidereal": ["sidereal", "use_sidereal", "sidereal_flag"],
+        "ayanamsha": ["ayanamsha", "ayanamsa", "sidereal_ayanamsha"],
+        "detectors": ["detectors", "detector_flags", "features", "feature_flags"],
+        "target_frames": ["target_frames", "target_frame", "frames", "target_contexts"],
     }
 
     final: Dict[str, Any] = {}
@@ -233,8 +237,13 @@ def run_scan_or_raise(
     provider: Optional[str] = None,
     profile_id: Optional[str] = None,
     step_minutes: int = 60,
+    detectors: Optional[Iterable[str]] = None,
+    target_frames: Optional[Iterable[str]] = None,
+    sidereal: Optional[bool] = None,
+    ayanamsha: Optional[str] = None,
     entrypoints: Optional[Iterable[ScanSpec]] = None,
     return_used_entrypoint: bool = False,
+    zodiac: Optional[str] = None,
 ) -> Union[List[Dict[str, Any]], Tuple[List[Dict[str, Any]], ScanCandidate]]:
     """
     Try known scan entrypoints, call the first that matches a compatible signature,
@@ -256,15 +265,27 @@ def run_scan_or_raise(
         if not callable(fn):
             errors.append(f"{mod}.{fn_name}: attribute is not callable")
             continue
-        kwargs = dict(
+        kwargs: Dict[str, Any] = dict(
             start_utc=start_utc,
             end_utc=end_utc,
             moving=list(moving),
             targets=list(targets),
             provider=provider,
-            profile_id=profile_id or None,
             step_minutes=step_minutes,
+            zodiac=zodiac,
         )
+        optional_kwargs: Dict[str, Any] = {}
+        if profile_id is not None:
+            optional_kwargs["profile_id"] = profile_id
+        if detectors:
+            optional_kwargs["detectors"] = list(detectors)
+        if target_frames:
+            optional_kwargs["target_frames"] = list(target_frames)
+        if sidereal is not None:
+            optional_kwargs["sidereal"] = bool(sidereal)
+        if ayanamsha:
+            optional_kwargs["ayanamsha"] = ayanamsha
+        kwargs.update(optional_kwargs)
         call_kwargs = _filter_kwargs_for(fn, kwargs)
         try:
             result = fn(**call_kwargs)  # type: ignore[arg-type]

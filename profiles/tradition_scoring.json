@@ -1,0 +1,22 @@
+# >>> AUTO-GEN BEGIN: AE Tradition Scoring v0.1
+{
+  "metadata": {
+    "version": "0.1.0",
+    "source": "Derived from classical drishti and sect delineations (Raman 1992, Lilly 1647)",
+    "updated": "2024-05-01"
+  },
+  "traditions": {
+    "vedic": {
+      "drishti": {
+        "mars": {"angles_deg": [90.0, 180.0, 270.0], "severity_scalar": 0.50},
+        "jupiter": {"angles_deg": [120.0, 180.0, 240.0], "severity_scalar": 0.45},
+        "saturn": {"angles_deg": [60.0, 180.0, 300.0], "severity_scalar": 0.40}
+      },
+      "resonance_bias": {"mind": 1.0, "body": 1.0, "spirit": 1.0}
+    },
+    "hellenistic": {
+      "resonance_bias": {"mind": 1.0, "body": 1.0, "spirit": 1.0}
+    }
+  }
+}
+# >>> AUTO-GEN END: AE Tradition Scoring v0.1

@@ -1,5 +1,7 @@
 # AstroEngine — Runtime & Schema Contracts
 
+![Coverage](docs/badges/coverage.svg)
+
 AstroEngine provides schema definitions and Python helpers for building
 real-time astrology pipelines.  The codebase has been rebuilt to avoid
 Conda-specific tooling and now organises assets using a
@@ -29,6 +31,28 @@ python -m astroengine.maint --full --strict --auto-install all --yes
 
 See `docs/DIAGNOSTICS.md`, `docs/SWISS_EPHEMERIS.md`, and `docs/QUALITY_GATE.md` for details.
 # >>> AUTO-GEN END: README Quick Start v1.1
+
+### First transit sanity check
+
+Once the virtual environment is ready, confirm that the bundled CLI can
+resolve ephemeris data and emit real transits. The command below scans
+for aspects between the Moon and Sun over the first week of 2024 and
+writes a JSON payload containing every hit and its severity score:
+
+```bash
+python -m astroengine transits \
+  --start 2024-01-01T00:00:00Z \
+  --end 2024-01-07T00:00:00Z \
+  --moving moon \
+  --target sun \
+  --provider swiss \
+  --step 180 \
+  --json moon_sun_transits.json
+```
+
+Inspecting the generated file is a convenient way to verify that Swiss
+Ephemeris (or the PyMeeus fallback) is configured correctly before
+trying richer recipes.
 
 # >>> AUTO-GEN BEGIN: Minimal App Quickstart v1.1
 ## Run the minimal application
@@ -67,6 +91,22 @@ See `docs/DIAGNOSTICS.md`, `docs/SWISS_EPHEMERIS.md`, and `docs/QUALITY_GATE.md`
 
 # >>> AUTO-GEN END: Minimal App Quickstart v1.1
 
+### Next steps
+
+The documentation set now includes step-by-step recipes for three common
+workflows:
+
+- Daily planner view that combines transiting bodies with natal
+  positions.
+- Electional window sweeps that surface promising aspect windows for
+  a specific transiting body.
+- Transit-to-progressed synastry comparisons for relationship or event
+  tracking.
+
+Start with `docs/quickstart.md` for an annotated walkthrough, then jump
+to `docs/recipes/` to reproduce the detailed examples without additional
+setup.
+
 # >>> AUTO-GEN BEGIN: README Import Snippet v1.0
 ### Import the package
 
@@ -92,14 +132,39 @@ from astroengine.canonical import events_from_any
 
 ```python
 from astroengine.exporters import write_sqlite_canonical, write_parquet_canonical
+from astroengine.canonical import sqlite_read_canonical
+from astroengine.exporters_ics import write_ics
+from astroengine.infrastructure.storage.sqlite import ensure_sqlite_schema
 
 rows = write_sqlite_canonical("events.db", events)     # accepts dicts/legacy/canonical
-rows = write_parquet_canonical("events.parquet", events)
+rows = write_parquet_canonical("events.parquet", events, compression="gzip")
+ensure_sqlite_schema("events.db")  # applies Alembic migrations in-place
+events = sqlite_read_canonical("events.db")
+write_ics(
+    "events.ics",
+    events,
+    calendar_name="AstroEngine",
+    summary_template="{label} [{natal_id}]",
+)
 ```
+
+- Canonical SQLite exports store a fully versioned `transits_events` schema with
+  indexed columns (`profile_id`, `natal_id`, `event_year`, `score`).
+- Parquet exports are partitioned by `natal_id/event_year` to support efficient
+  downstream filtering. The `compression` keyword controls the codec (snappy,
+  gzip, brotli, ...).
+- ICS exports accept summary/description templates and understand ingress and
+  return events alongside standard transits.
 
 ### CLI integration (maintainers)
 
-Scan commands can call `_cli_export(args, events)` after adding `add_canonical_export_args(parser)` to gain `--sqlite/--parquet` switches.
+Scan commands can call `_cli_export(args, events)` after adding
+`add_canonical_export_args(parser)` to gain `--sqlite/--parquet` switches. A
+companion query tool exposes indexed lookups:
+
+```
+astroengine query --sqlite events.db --limit 5 --natal-id n001
+```
 
 ### CLI enhancements
 
@@ -151,6 +216,8 @@ pip install -e .[trad]                 # flatlib (dignities/lots)
 ```bash
 python -m astroengine provider list
 python -m astroengine provider check swiss
+astroengine scan --start-utc 2024-01-01T00:00:00Z --end-utc 2024-01-02T00:00:00Z \
+  --moving Sun Moon --targets natal:Sun natal:Moon --target-frame natal --detector lunations
 ```
 
 > **Licensing note:** Swiss Ephemeris is AGPL/commercial for distribution. Keep data files outside the wheel; users should provide `SWE_EPH_PATH/SE_EPHE_PATH`.

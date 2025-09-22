@@ -12,4 +12,5 @@ def test_experimental_detectors_default_off():
     assert getattr(eng, "FEATURE_DIRECTIONS", False) is False
     assert getattr(eng, "FEATURE_RETURNS", False) is False
     assert getattr(eng, "FEATURE_PROFECTIONS", False) is False
+    assert getattr(eng, "FEATURE_TIMELORDS", False) is False
 # >>> AUTO-GEN END: tests-feature-flags v1.0

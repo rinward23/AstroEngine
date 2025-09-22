@@ -35,12 +35,17 @@ def compute_solar_arc_chart(
     target_moment: datetime,
     *,
     bodies: Sequence[str] | None = None,
-    chart_config: ChartConfig | None = None,
+
+    config: ChartConfig | None = None,
+
     adapter: SwissEphemerisAdapter | None = None,
 ) -> DirectedChart:
     """Return solar arc directed longitudes for ``target_moment``."""
 
-    adapter = adapter or SwissEphemerisAdapter(chart_config=chart_config)
+
+    chart_config = config or ChartConfig()
+    adapter = adapter or SwissEphemerisAdapter.from_chart_config(chart_config)
+
     natal_moment = _ensure_utc(natal_chart.moment)
     target_moment = _ensure_utc(target_moment)
     elapsed_days = (target_moment - natal_moment).total_seconds() / 86400.0

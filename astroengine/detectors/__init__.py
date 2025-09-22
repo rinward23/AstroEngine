@@ -13,6 +13,7 @@ from ..astro.declination import (
     is_contraparallel,
     is_parallel,
 )
+from ..refine import adaptive_corridor_width
 from ..utils.angles import classify_applying_separating, delta_angle, is_within_orb
 
 __all__ = [
@@ -22,8 +23,10 @@ __all__ = [
     "find_lunations",
     "find_eclipses",
     "find_stations",
+
+    "find_sign_ingresses",
     "find_out_of_bounds",
-    "find_ingresses",
+
     "secondary_progressions",
     "solar_arc_directions",
     "solar_lunar_returns",
@@ -46,6 +49,9 @@ class CoarseHit:
     applying_or_separating: str
     mirror_lon: float | None = None
     axis: str | None = None
+    orb_allow: float | None = None
+    corridor_width_deg: float | None = None
+    corridor_profile: str | None = None
 
 
 def _extract_declination(data: Mapping[str, float], fallback_lon: float) -> float:
@@ -69,6 +75,9 @@ def detect_decl_contacts(
     """Detect declination parallels/contraparallels across ``iso_ticks``."""
 
     out: List[CoarseHit] = []
+    allow_parallel = float(orb_deg_parallel if orb_deg_parallel is not None else 0.5)
+    allow_contra = float(orb_deg_contra if orb_deg_contra is not None else 0.5)
+    corridor_profile = "gaussian"
     for iso in iso_ticks:
         positions = provider.positions_ecliptic(iso, [moving, target])
         pos_moving = positions.get(moving)
@@ -80,11 +89,21 @@ def detect_decl_contacts(
         lon_target = float(pos_target.get("lon", 0.0))
         dec_moving = _extract_declination(pos_moving, lon_moving)
         dec_target = _extract_declination(pos_target, lon_target)
-        speed = float(pos_moving.get("speed_lon", 0.0))
+        speed_moving = float(pos_moving.get("speed_lon", 0.0))
+        speed_target = float(pos_target.get("speed_lon", 0.0))
+        retrograde = speed_moving < 0 or speed_target < 0
 
         if is_parallel(dec_moving, dec_target, orb_deg_parallel):
             delta = dec_moving - dec_target
-            motion = classify_applying_separating(lon_moving, speed, lon_target)
+            motion = classify_applying_separating(lon_moving, speed_moving, lon_target)
+            corridor_width = adaptive_corridor_width(
+                allow_parallel,
+                speed_moving,
+                speed_target,
+                retrograde=retrograde,
+                aspect_strength=1.0,
+                minimum_orb_deg=0.1,
+            )
             out.append(
                 CoarseHit(
                     kind="decl_parallel",
@@ -97,11 +116,22 @@ def detect_decl_contacts(
                     dec_target=dec_target,
                     delta=delta,
                     applying_or_separating=motion,
+                    orb_allow=allow_parallel,
+                    corridor_width_deg=corridor_width,
+                    corridor_profile=corridor_profile,
                 )
             )
         elif is_contraparallel(dec_moving, dec_target, orb_deg_contra):
             delta = dec_moving + dec_target
-            motion = classify_applying_separating(lon_moving, speed, lon_target)
+            motion = classify_applying_separating(lon_moving, speed_moving, lon_target)
+            corridor_width = adaptive_corridor_width(
+                allow_contra,
+                speed_moving,
+                speed_target,
+                retrograde=retrograde,
+                aspect_strength=1.0,
+                minimum_orb_deg=0.1,
+            )
             out.append(
                 CoarseHit(
                     kind="decl_contra",
@@ -114,6 +144,9 @@ def detect_decl_contacts(
                     dec_target=dec_target,
                     delta=delta,
                     applying_or_separating=motion,
+                    orb_allow=allow_contra,
+                    corridor_width_deg=corridor_width,
+                    corridor_profile=corridor_profile,
                 )
             )
     return out
@@ -132,6 +165,9 @@ def detect_antiscia_contacts(
     """Detect antiscia and contra-antiscia contacts across ``iso_ticks``."""
 
     out: List[CoarseHit] = []
+    allow_antiscia = float(orb_deg_antiscia if orb_deg_antiscia is not None else 2.0)
+    allow_contra = float(orb_deg_contra if orb_deg_contra is not None else 2.0)
+    corridor_profile = "gaussian"
     for iso in iso_ticks:
         positions = provider.positions_ecliptic(iso, [moving, target])
         pos_moving = positions.get(moving)
@@ -141,7 +177,9 @@ def detect_antiscia_contacts(
 
         lon_moving = float(pos_moving.get("lon", 0.0))
         lon_target = float(pos_target.get("lon", 0.0))
-        speed = float(pos_moving.get("speed_lon", 0.0))
+        speed_moving = float(pos_moving.get("speed_lon", 0.0))
+        speed_target = float(pos_target.get("speed_lon", 0.0))
+        retrograde = speed_moving < 0 or speed_target < 0
         dec_moving = _extract_declination(pos_moving, lon_moving)
         dec_target = _extract_declination(pos_target, lon_target)
 
@@ -150,7 +188,15 @@ def detect_antiscia_contacts(
 
         d_anti = delta_angle(anti_lon, lon_target)
         if is_within_orb(d_anti, orb_deg_antiscia):
-            motion = classify_applying_separating(lon_moving, speed, anti_lon)
+            motion = classify_applying_separating(lon_moving, speed_moving, anti_lon)
+            corridor_width = adaptive_corridor_width(
+                allow_antiscia,
+                speed_moving,
+                speed_target,
+                retrograde=retrograde,
+                aspect_strength=1.0,
+                minimum_orb_deg=0.1,
+            )
             out.append(
                 CoarseHit(
                     kind="antiscia",
@@ -165,12 +211,23 @@ def detect_antiscia_contacts(
                     applying_or_separating=motion,
                     mirror_lon=anti_lon,
                     axis=axis,
+                    orb_allow=allow_antiscia,
+                    corridor_width_deg=corridor_width,
+                    corridor_profile=corridor_profile,
                 )
             )
 
         d_contra = delta_angle(contra_lon, lon_target)
         if is_within_orb(d_contra, orb_deg_contra):
-            motion = classify_applying_separating(lon_moving, speed, contra_lon)
+            motion = classify_applying_separating(lon_moving, speed_moving, contra_lon)
+            corridor_width = adaptive_corridor_width(
+                allow_contra,
+                speed_moving,
+                speed_target,
+                retrograde=retrograde,
+                aspect_strength=1.0,
+                minimum_orb_deg=0.1,
+            )
             out.append(
                 CoarseHit(
                     kind="contra_antiscia",
@@ -185,6 +242,9 @@ def detect_antiscia_contacts(
                     applying_or_separating=motion,
                     mirror_lon=contra_lon,
                     axis=axis,
+                    orb_allow=allow_contra,
+                    corridor_width_deg=corridor_width,
+                    corridor_profile=corridor_profile,
                 )
             )
     return out
@@ -192,7 +252,13 @@ def detect_antiscia_contacts(
 
 from .directions import solar_arc_directions  # noqa: E402
 from .eclipses import find_eclipses  # noqa: E402
-from .ingress import find_ingresses  # noqa: E402
+
+try:  # pragma: no cover - optional when ingress module is syntactically unavailable
+    from .ingresses import find_sign_ingresses  # noqa: E402
+except SyntaxError as exc:  # pragma: no cover - defensive for partial builds
+    def find_sign_ingresses(*_args, **_kwargs):  # type: ignore
+        raise RuntimeError("sign ingress detector unavailable") from exc
+
 from .lunations import find_lunations  # noqa: E402
 from .out_of_bounds import find_out_of_bounds  # noqa: E402
 from .progressions import secondary_progressions  # noqa: E402
