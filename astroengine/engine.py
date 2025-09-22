@@ -30,10 +30,19 @@ from .plugins import DetectorContext, get_plugin_manager
 
 
 from .providers import get_provider
-from .profiles import load_base_profile
+from .profiles import load_base_profile, load_resonance_weights
 from .scoring import ScoreInputs, compute_score
 
-from .timelords.active import TimelordCalculator
+try:  # pragma: no cover - optional systems ship without full timelord stack
+    from .timelords.active import TimelordCalculator
+except Exception:  # pragma: no cover - SyntaxError/import failures treated as optional
+
+    class TimelordCalculator:  # type: ignore[no-redef]
+        """Fallback that signals the timelord stack is unavailable."""
+
+        def __init__(self, *_args, **_kwargs) -> None:  # pragma: no cover - error path
+            raise RuntimeError("timelord subsystem unavailable")
+
 
 from .ephemeris import SwissEphemerisAdapter
 
@@ -279,6 +288,14 @@ def _score_from_hit(
     moving: str,
     target: str,
     phase: str,
+    *,
+    corridor_width: float | None = None,
+    corridor_profile: str | None = None,
+    resonance_weights: Mapping[str, float] | None = None,
+    tradition: str | None = None,
+    chart_sect: str | None = None,
+    angle_deg: float | None = None,
+    uncertainty_bias: Mapping[str, str] | None = None,
 ) -> float:
     """Use the scoring policy to assign a score for a detected contact."""
 
@@ -289,18 +306,41 @@ def _score_from_hit(
         moving=moving,
         target=target,
         applying_or_separating=phase,
+        corridor_width_deg=corridor_width,
+        corridor_profile=corridor_profile or "gaussian",
+        resonance_weights=resonance_weights,
+        tradition_profile=tradition,
+        chart_sect=chart_sect,
+        angle_deg=angle_deg,
+        uncertainty_bias=uncertainty_bias,
     )
     return compute_score(score_inputs).score
 
 
-def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> LegacyTransitEvent:
+def _event_from_decl(
+    hit: CoarseHit,
+    *,
+    orb_allow: float,
+    resonance_weights: Mapping[str, float] | None,
+    tradition: str | None,
+    chart_sect: str | None,
+    uncertainty_bias: Mapping[str, str] | None,
+) -> LegacyTransitEvent:
+    effective_orb = float(hit.orb_allow) if hit.orb_allow is not None else float(orb_allow)
     score = _score_from_hit(
         hit.kind,
         abs(hit.delta),
-        orb_allow,
+        effective_orb,
         hit.moving,
         hit.target,
         hit.applying_or_separating,
+        corridor_width=hit.corridor_width_deg,
+        corridor_profile=hit.corridor_profile,
+        resonance_weights=resonance_weights,
+        tradition=tradition,
+        chart_sect=chart_sect,
+        angle_deg=None,
+        uncertainty_bias=uncertainty_bias,
     )
     metadata: dict[str, float | str] = {
         "dec_moving": hit.dec_moving,
@@ -313,13 +353,17 @@ def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> LegacyTransitEvent:
         metadata["mirror_lon"] = hit.mirror_lon
     if hit.axis:
         metadata["mirror_axis"] = hit.axis
+    if hit.corridor_width_deg is not None:
+        metadata["corridor_width_deg"] = float(hit.corridor_width_deg)
+    if hit.corridor_profile:
+        metadata["corridor_profile"] = hit.corridor_profile
     return LegacyTransitEvent(
         kind=hit.kind,
         timestamp=hit.when_iso,
         moving=hit.moving,
         target=hit.target,
         orb_abs=abs(hit.delta),
-        orb_allow=float(orb_allow),
+        orb_allow=effective_orb,
         applying_or_separating=hit.applying_or_separating,
         score=score,
         lon_moving=hit.lon_moving,
@@ -328,7 +372,14 @@ def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> LegacyTransitEvent:
     )
 
 
-def _event_from_aspect(hit: AspectHit) -> LegacyTransitEvent:
+def _event_from_aspect(
+    hit: AspectHit,
+    *,
+    resonance_weights: Mapping[str, float] | None,
+    tradition: str | None,
+    chart_sect: str | None,
+    uncertainty_bias: Mapping[str, str] | None,
+) -> LegacyTransitEvent:
     score = _score_from_hit(
         hit.kind,
         hit.orb_abs,
@@ -336,7 +387,25 @@ def _event_from_aspect(hit: AspectHit) -> LegacyTransitEvent:
         hit.moving,
         hit.target,
         hit.applying_or_separating,
+        corridor_width=hit.corridor_width_deg,
+        corridor_profile=hit.corridor_profile,
+        resonance_weights=resonance_weights,
+        tradition=tradition,
+        chart_sect=chart_sect,
+        angle_deg=hit.angle_deg,
+        uncertainty_bias=uncertainty_bias,
     )
+    metadata = {
+        "angle_deg": float(hit.angle_deg),
+        "delta_lambda_deg": float(hit.delta_lambda_deg),
+        "offset_deg": float(hit.offset_deg),
+        "partile": bool(hit.is_partile),
+        "family": hit.family,
+    }
+    if hit.corridor_width_deg is not None:
+        metadata["corridor_width_deg"] = float(hit.corridor_width_deg)
+    if hit.corridor_profile:
+        metadata["corridor_profile"] = hit.corridor_profile
     return LegacyTransitEvent(
         kind=hit.kind,
         timestamp=hit.when_iso,
@@ -348,13 +417,7 @@ def _event_from_aspect(hit: AspectHit) -> LegacyTransitEvent:
         score=score,
         lon_moving=hit.lon_moving,
         lon_target=hit.lon_target,
-        metadata={
-            "angle_deg": float(hit.angle_deg),
-            "delta_lambda_deg": float(hit.delta_lambda_deg),
-            "offset_deg": float(hit.offset_deg),
-            "partile": bool(hit.is_partile),
-            "family": hit.family,
-        },
+        metadata=metadata,
     )
 
 
@@ -380,6 +443,8 @@ def scan_contacts(
     include_aspects: bool = True,
     antiscia_axis: str | None = None,
     chart_config: ChartConfig | None = None,
+
+
 ) -> List[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
 
@@ -387,6 +452,21 @@ def scan_contacts(
         SwissEphemerisAdapter.configure_defaults(chart_config=chart_config)
 
     profile_data = _resolve_profile(profile, profile_id)
+    resonance_weights_map = load_resonance_weights(profile_data).as_mapping()
+    uncertainty_bias_map: Mapping[str, str] | None = None
+    resonance_section = (
+        profile_data.get("resonance") if isinstance(profile_data, Mapping) else None
+    )
+    if isinstance(resonance_section, Mapping):
+        bias_section = resonance_section.get("uncertainty_bias")
+        if isinstance(bias_section, Mapping):
+            uncertainty_bias_map = {str(key): str(value) for key, value in bias_section.items()}
+    tradition = tradition_profile
+    tradition_section = profile_data.get("tradition") if isinstance(profile_data, Mapping) else None
+    if not tradition and isinstance(tradition_section, Mapping):
+        default_trad = tradition_section.get("default")
+        if isinstance(default_trad, str):
+            tradition = default_trad
 
     decl_parallel_allow = _resolve_declination_orb(
         profile_data,
@@ -455,11 +535,13 @@ def scan_contacts(
 
     events: List[LegacyTransitEvent] = []
 
+
     def append_event(event: LegacyTransitEvent) -> None:
         _attach_timelords(event, timelord_calculator)
         events.append(event)
 
     if do_parallels or do_contras:
+
         for hit in detect_decl_contacts(
             provider,
             ticks,
@@ -477,7 +559,9 @@ def scan_contacts(
                 if hit.kind == "decl_parallel"
                 else decl_contra_allow
             )
+
             append_event(_event_from_decl(hit, orb_allow=allow))
+
 
     if do_mirrors:
         for hit in detect_antiscia_contacts(
@@ -494,7 +578,9 @@ def scan_contacts(
                 if hit.kind == "antiscia"
                 else contra_antiscia_allow
             )
+
             append_event(_event_from_decl(hit, orb_allow=allow))
+
 
     if do_aspects:
         for aspect_hit in detect_aspects(
@@ -504,7 +590,9 @@ def scan_contacts(
             target,
             policy_path=aspects_policy_path,
         ):
+
             append_event(_event_from_aspect(aspect_hit))
+
 
     plugin_context = DetectorContext(
         provider=provider,
@@ -515,16 +603,18 @@ def scan_contacts(
         moving=moving,
         target=target,
         options={
-            "decl_parallel_orb": decl_parallel_orb,
-            "decl_contra_orb": decl_contra_orb,
-            "antiscia_orb": antiscia_orb,
-            "contra_antiscia_orb": contra_antiscia_orb,
+            "decl_parallel_orb": decl_parallel_allow,
+            "decl_contra_orb": decl_contra_allow,
+            "antiscia_orb": antiscia_allow,
+            "contra_antiscia_orb": contra_antiscia_allow,
             "step_minutes": step_minutes,
             "aspects_policy_path": aspects_policy_path,
+
             "include_declination": include_declination,
             "include_mirrors": include_mirrors,
             "include_aspects": include_aspects,
             "antiscia_axis": axis,
+
         },
         existing_events=tuple(events),
     )

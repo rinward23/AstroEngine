@@ -1,4 +1,6 @@
+
 """Sign ingress detection utilities built on Swiss Ephemeris longitudes."""
+
 
 from __future__ import annotations
 
@@ -36,6 +38,7 @@ ZODIAC_SIGNS: Sequence[str] = (
     "Aquarius",
     "Pisces",
 )
+
 
 _DEFAULT_BODIES: Sequence[str] = (
     "sun",
@@ -91,8 +94,10 @@ def _estimate_speed(body: str, jd_ut: float, *, hours: float = 6.0) -> float:
     return span / (2.0 * delta_days)
 
 
+
 def _generate_samples(body: str, start_jd: float, end_jd: float, step_days: float) -> Iterable[_Sample]:
     """Yield unwrapped longitude samples for ``body`` between ``start_jd`` and ``end_jd``."""
+
 
     jd = start_jd
     prev_unwrapped: float | None = None
@@ -145,6 +150,7 @@ def find_sign_ingresses(
 
     if end_jd <= start_jd:
         return []
+
     if step_hours <= 0:
         raise ValueError("step_hours must be positive")
     if swe is None:
@@ -230,6 +236,7 @@ def find_sign_ingresses(
                 if direction > 0:
                     prev_index = boundary_index
                     boundary_index += direction
+
                 else:
                     prev_index = boundary_index - 1
                     boundary_index += direction
