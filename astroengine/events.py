@@ -106,13 +106,16 @@ class IngressEvent(BaseEvent):
     """Represents a zodiac sign ingress for a given body."""
 
     body: str
-    from_sign: str
-    to_sign: str
     longitude: float
-    motion: str
-    speed_deg_per_day: float
+    motion: str | None = None
+    speed_deg_per_day: float | None = None
+    from_sign: str | None = None
+    to_sign: str | None = None
+    sign: str | None = None
+    sign_index: int | None = None
 
 
+@dataclass(frozen=True)
 class OutOfBoundsEvent(BaseEvent):
     """Represents a declination out-of-bounds crossing for a body."""
 

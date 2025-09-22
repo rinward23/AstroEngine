@@ -31,6 +31,7 @@ from astroengine.utils import (
     TARGET_FRAME_BODIES,
     available_frames,
     expand_targets,
+)
 
 from astroengine.chart.config import (
     DEFAULT_SIDEREAL_AYANAMSHA,
@@ -193,6 +194,8 @@ def cached_scan(
     ayanamsha: Optional[str],
     frames: Tuple[str, ...],
     entrypoints: Tuple[str, ...],
+    *,
+    zodiac: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]], Sequence[Any], Tuple[str, str]]:
     entrypoint_arg = list(entrypoints) if entrypoints else None
     raw_events, used_entrypoint = run_scan_or_raise(
@@ -209,12 +212,16 @@ def cached_scan(
         ayanamsha=ayanamsha,
         entrypoints=entrypoint_arg,
         return_used_entrypoint=True,
+        zodiac=zodiac,
     )
     canonical = canonicalize_events(raw_events)
     return list(raw_events), canonical, used_entrypoint
 
 
 def _ensure_defaults() -> None:
+    start_missing = "scan_start" not in st.session_state
+    preset_missing = "scan_active_preset" not in st.session_state
+
     start, end = _default_window()
     _set_session_default("scan_start", start)
     _set_session_default("scan_end", end)
@@ -231,8 +238,9 @@ def _ensure_defaults() -> None:
     _set_session_default("scan_preset", "Transit scan — Daily")
     _set_session_default("scan_active_preset", "Transit scan — Daily")
     _set_session_default("scan_ics_title", "AstroEngine Events")
-    if st.session_state["scan_active_preset"] != "Custom":
-        _apply_preset(st.session_state["scan_active_preset"])
+    active_preset = st.session_state.get("scan_active_preset")
+    if active_preset and active_preset != "Custom" and (start_missing or preset_missing):
+        _apply_preset(active_preset)
 
 
 _ensure_defaults()
@@ -259,12 +267,11 @@ with st.sidebar:
     except Exception:  # pragma: no cover - optional import
         se_path = None
 
-    st.write("**SE_EPHE_PATH**:", os.getenv("SE_EPHE_PATH") or "not set")
+    st.write(f"**SE_EPHE_PATH**: {os.getenv('SE_EPHE_PATH') or 'not set'}")
     st.write(
-        "**ASTROENGINE_SCAN_ENTRYPOINTS**:",
-        os.getenv("ASTROENGINE_SCAN_ENTRYPOINTS") or "not set",
+        f"**ASTROENGINE_SCAN_ENTRYPOINTS**: {os.getenv('ASTROENGINE_SCAN_ENTRYPOINTS') or 'not set'}"
     )
-    st.write("**Detected Swiss path**:", se_path or "not found")
+    st.write(f"**Detected Swiss path**: {se_path or 'not found'}")
 
     st.header("Scan Settings")
 
@@ -299,20 +306,6 @@ with st.sidebar:
         index=0,
         key="scan_entrypoint",
     )
-
-    s, e = _default_window()
-    start_utc = st.text_input("Start (UTC, ISO-8601)", value=s)
-    end_utc = st.text_input("End (UTC, ISO-8601)", value=e)
-    provider = st.selectbox("Provider", options=["auto", "swiss", "pymeeus", "skyfield"], index=0)
-    zodiac_choice = st.selectbox("Zodiac", options=sorted(VALID_ZODIAC_SYSTEMS), index=0)
-    ayanamsha_choice = None
-    if zodiac_choice == "sidereal":
-        ayanamsha_options = sorted(SUPPORTED_AYANAMSHAS)
-        default_index = ayanamsha_options.index(DEFAULT_SIDEREAL_AYANAMSHA)
-        ayanamsha_choice = st.selectbox("Ayanamsha", options=ayanamsha_options, index=default_index)
-    step_minutes = st.slider("Step minutes", min_value=10, max_value=240, value=60, step=10)
-    st.caption("Tip: set SE_EPHE_PATH to your Swiss ephemeris folder if using the swiss provider.")
-    entrypoint_choice = st.selectbox("Scan entrypoint", entrypoint_labels, index=0)
 
     st.caption(
         "Select an explicit scan function or leave on Auto to try detected entrypoints in order.\n"
@@ -419,6 +412,7 @@ with st.sidebar:
     else:
         st.session_state["scan_ayanamsha"] = ayanamsha_value
 
+    zodiac_choice = "sidereal" if st.session_state.get("scan_sidereal") else "tropical"
     profile_id = st.text_input(
         "Profile (optional)",
         value=st.session_state.get("scan_profile", "base"),
@@ -456,19 +450,22 @@ with tab_scan:
         frames = tuple(st.session_state.get("scan_frames", list(DEFAULT_TARGET_FRAMES)))
         target_tokens = expand_targets(frames, st.session_state.get("scan_targets", []))
         detectors = tuple(st.session_state.get("scan_detectors", []))
-        cache_key = (
-            st.session_state.get("scan_start"),
-            st.session_state.get("scan_end"),
-            moving,
-            tuple(target_tokens),
-            st.session_state.get("scan_provider"),
-            st.session_state.get("scan_profile"),
-            int(st.session_state.get("scan_step", 60)),
-            detectors,
-            st.session_state.get("scan_sidereal"),
-            st.session_state.get("scan_ayanamsha"),
-            frames,
-            entrypoint_arg,
+        cache_key = json.dumps(
+            {
+                "start": st.session_state.get("scan_start"),
+                "end": st.session_state.get("scan_end"),
+                "moving": tuple(sorted(moving)),
+                "targets": tuple(sorted(target_tokens)),
+                "provider": st.session_state.get("scan_provider"),
+                "profile": st.session_state.get("scan_profile"),
+                "step": int(st.session_state.get("scan_step", 60)),
+                "detectors": tuple(sorted(detectors)),
+                "sidereal": st.session_state.get("scan_sidereal"),
+                "ayanamsha": st.session_state.get("scan_ayanamsha"),
+                "frames": tuple(sorted(frames)),
+                "entrypoint": st.session_state.get("scan_entrypoint"),
+            },
+            sort_keys=True,
         )
         session_cache = st.session_state.setdefault("scan_cache", {})
         from_cache = cache_key in session_cache
@@ -482,6 +479,7 @@ with tab_scan:
         else:
             progress.progress(30, text="Running detectors…")
             try:
+                ayanamsha_param = ayanamsha_choice or st.session_state.get("scan_ayanamsha")
                 raw_events, canonical_events, used_entrypoint = cached_scan(
                     start_utc=st.session_state.get("scan_start"),
                     end_utc=st.session_state.get("scan_end"),
@@ -492,14 +490,10 @@ with tab_scan:
                     step_minutes=int(st.session_state.get("scan_step", 60)),
                     detectors=detectors,
                     sidereal=st.session_state.get("scan_sidereal"),
-                    ayanamsha=st.session_state.get("scan_ayanamsha"),
+                    ayanamsha=ayanamsha_param,
                     frames=frames,
                     entrypoints=entrypoint_arg,
-
                     zodiac=zodiac_choice,
-                    ayanamsha=ayanamsha_choice,
-                    return_used_entrypoint=True,
-
                 )
                 session_cache[cache_key] = (raw_events, canonical_events, used_entrypoint)
                 progress.progress(100, text="Scan complete")

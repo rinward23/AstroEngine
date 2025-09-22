@@ -1,22 +1,17 @@
-# >>> AUTO-GEN BEGIN: AE Swiss Provider v1.0
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import datetime, timezone
-from typing import Dict, Iterable
-
-
+from typing import Any, Dict, Iterable
 
 from astroengine.canonical import BodyPosition
-from astroengine.core.time import TimeConversion, to_tt
-from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation, TimeScaleContext
-
+from astroengine.chart.config import ChartConfig
+from astroengine.ephemeris import SwissEphemerisAdapter
 from astroengine.ephemeris.utils import get_se_ephe_path
 
-try:
-    import swisseph as swe  # pyswisseph imports the module name 'swisseph'
+try:  # pragma: no cover - optional dependency
+    import swisseph as swe  # type: ignore
 except Exception:  # pragma: no cover
-    swe = None
+    swe = None  # type: ignore
 
 try:  # pragma: no cover - exercised via runtime fallback
     from pymeeus.Epoch import Epoch
@@ -45,118 +40,165 @@ except Exception:  # pragma: no cover
         _Pluto,
         _Sun,
         _Moon,
-    ) = (
-        None,
-    ) * 10  # type: ignore[assignment]
+    ) = (None,) * 10  # type: ignore[assignment]
     _PYMEEUS_AVAILABLE = False
 
 from . import register_provider
 
 _BODY_IDS = {
-    "sun": 0,
-    "moon": 1,
-    "mercury": 2,
-    "venus": 3,
-    "mars": 4,
-    "jupiter": 5,
-    "saturn": 6,
-    "uranus": 7,
-    "neptune": 8,
-    "pluto": 9,
+    "sun": swe.SUN if swe is not None else None,
+    "moon": swe.MOON if swe is not None else None,
+    "mercury": swe.MERCURY if swe is not None else None,
+    "venus": swe.VENUS if swe is not None else None,
+    "mars": swe.MARS if swe is not None else None,
+    "jupiter": swe.JUPITER if swe is not None else None,
+    "saturn": swe.SATURN if swe is not None else None,
+    "uranus": swe.URANUS if swe is not None else None,
+    "neptune": swe.NEPTUNE if swe is not None else None,
+    "pluto": swe.PLUTO if swe is not None else None,
 }
 
 
 class SwissProvider:
+    """Primary Swiss ephemeris-backed provider registered under ``"swiss"``."""
+
     def __init__(self) -> None:
         if swe is None:
             raise ImportError("pyswisseph is not installed")
-        eph = get_se_ephe_path()
-        if eph:
-            swe.set_ephe_path(eph)
-        self._config = EphemerisConfig(ephemeris_path=str(eph) if eph else None)
-        self._adapter = EphemerisAdapter(self._config)
+        ephe_path = get_se_ephe_path()
+        if ephe_path:
+            swe.set_ephe_path(ephe_path)
+        self._ephemeris_path = str(ephe_path) if ephe_path else None
+        self._chart_config = ChartConfig()
+        self._topocentric: bool | None = None
+        self._observer: Any | None = None
+        self._time_scale: Any | None = None
+        self._adapter = SwissEphemerisAdapter(
+            ephemeris_path=self._ephemeris_path,
+            chart_config=self._chart_config,
+        )
 
     def configure(
         self,
         *,
-        topocentric: bool | None = None,
-        observer: ObserverLocation | None = None,
         sidereal: bool | None = None,
-        time_scale: TimeScaleContext | None = None,
+        ayanamsha: str | None = None,
+        house_system: str | None = None,
+        topocentric: bool | None = None,
+        observer: Any | None = None,
+        time_scale: Any | None = None,
+        **_: Any,
     ) -> None:
-        """Update ephemeris configuration used by the provider."""
+        """Update zodiac configuration consumed by the provider."""
 
-        cfg = self._config
-        updates: dict[str, object] = {}
+        config_kwargs = {
+            "zodiac": self._chart_config.zodiac,
+            "ayanamsha": self._chart_config.ayanamsha,
+            "house_system": self._chart_config.house_system,
+        }
+
+        # Preserve extra configuration flags so repeated invocations keep the
+        # previously requested context even if the current adapter does not yet
+        # consume them directly.
         if topocentric is not None:
-            updates["topocentric"] = topocentric
-        if observer is not None or (topocentric is False and cfg.observer is not None):
-            updates["observer"] = observer
-        if sidereal is not None:
-            updates["sidereal"] = sidereal
+            config_kwargs["topocentric"] = topocentric
+        if observer is not None:
+            config_kwargs["observer"] = observer
         if time_scale is not None:
-            updates["time_scale"] = time_scale
-        if updates:
-            cfg = replace(cfg, **updates)
-            self._config = cfg
-            self._adapter = EphemerisAdapter(cfg)
+            config_kwargs["time_scale"] = time_scale
+
+        if house_system is not None:
+            config_kwargs["house_system"] = house_system
+
+        if sidereal is not None:
+            config_kwargs["zodiac"] = "sidereal" if sidereal else "tropical"
+            if not sidereal:
+                config_kwargs["ayanamsha"] = None
+
+        if ayanamsha is not None:
+            config_kwargs["ayanamsha"] = ayanamsha
+            if config_kwargs.get("zodiac") != "sidereal":
+                config_kwargs["zodiac"] = "sidereal"
+
+        # ChartConfig does not accept these supplemental keys; strip them from
+        # the initializer while retaining their values on the provider instance
+        # so future adapter enhancements can honour the requested context.
+        preserved_flags = {
+            "topocentric": config_kwargs.pop("topocentric", None),
+            "observer": config_kwargs.pop("observer", None),
+            "time_scale": config_kwargs.pop("time_scale", None),
+        }
+
+        self._chart_config = ChartConfig(**config_kwargs)
+        topocentric_value = (
+            preserved_flags["topocentric"]
+            if preserved_flags["topocentric"] is not None
+            else self._topocentric
+        )
+        observer_value = (
+            preserved_flags["observer"]
+            if preserved_flags["observer"] is not None
+            else self._observer
+        )
+        time_scale_value = (
+            preserved_flags["time_scale"]
+            if preserved_flags["time_scale"] is not None
+            else self._time_scale
+        )
+
+        self._topocentric = topocentric_value
+        self._observer = observer_value
+        self._time_scale = time_scale_value
+        self._adapter = SwissEphemerisAdapter(
+            ephemeris_path=self._ephemeris_path,
+            chart_config=self._chart_config,
+        )
 
     @staticmethod
     def _normalize_iso(iso_utc: str) -> datetime:
         dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
         return dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
-    def _time_conversion(self, iso_utc: str) -> TimeConversion:
-        return to_tt(self._normalize_iso(iso_utc))
+    def _julian_day(self, iso_utc: str) -> float:
+        dt_utc = self._normalize_iso(iso_utc)
+        return self._adapter.julian_day(dt_utc)
 
     def _body_id(self, name: str) -> int:
-        key = name.lower()
-        if key not in _BODY_IDS:
-            raise KeyError(key)
-        return _BODY_IDS[key]
+        code = _BODY_IDS.get(name.lower())
+        if code is None:
+            raise KeyError(name)
+        return int(code)
 
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str]
     ) -> Dict[str, Dict[str, float]]:
+        if swe is None:
+            raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
 
-        dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
-        dt_utc = dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-
-        adapter = SwissEphemerisAdapter.get_default_adapter()
-        jd_ut = adapter.julian_day(dt_utc)
-
-        conversion = self._time_conversion(iso_utc)
-
+        jd_ut = self._julian_day(iso_utc)
         out: Dict[str, Dict[str, float]] = {}
         for name in bodies:
             try:
-                body_id = self._body_id(name)
+                body_code = self._body_id(name)
             except KeyError:
                 continue
-
-            ipl = _BODY_IDS[name.lower()]
-            position = adapter.body_position(jd_ut, ipl, body_name=name)
+            pos = self._adapter.body_position(jd_ut, body_code, body_name=name)
             out[name] = {
-                "lon": position.longitude,
-                "decl": position.latitude,
-                "speed_lon": position.speed_longitude,
-
-            sample = self._adapter.sample(body_id, conversion)
-            out[name] = {
-                "lon": sample.longitude % 360.0,
-                "decl": sample.declination,
-                "speed_lon": sample.speed_longitude,
-
+                "lon": pos.longitude,
+                "decl": pos.declination,
+                "speed_lon": pos.speed_longitude,
             }
         return out
 
     def position(self, body: str, ts_utc: str) -> BodyPosition:
-        sample = self._adapter.sample(self._body_id(body), self._time_conversion(ts_utc))
+        jd_ut = self._julian_day(ts_utc)
+        body_code = self._body_id(body)
+        pos = self._adapter.body_position(jd_ut, body_code, body_name=body)
         return BodyPosition(
-            lon=sample.longitude % 360.0,
-            lat=sample.latitude,
-            dec=sample.declination,
-            speed_lon=sample.speed_longitude,
+            lon=pos.longitude,
+            lat=pos.latitude,
+            dec=pos.declination,
+            speed_lon=pos.speed_longitude,
         )
 
 
@@ -247,16 +289,10 @@ class SwissFallbackProvider:
         return out
 
     def position(self, body: str, ts_utc: str) -> BodyPosition:
-        coords = self.positions_ecliptic(ts_utc, [body])
-        if body not in coords:
-            raise KeyError(body)
-        data = coords[body]
-        return BodyPosition(
-            lon=float(data["lon"]),
-            lat=float(data["decl"]),
-            dec=float(data["decl"]),
-            speed_lon=float(data.get("speed_lon", 0.0)),
-        )
+        epoch = self._to_epoch(ts_utc)
+        lon_deg, lat_deg = self._coords_for(body, epoch)
+        speed = self._lon_speed(body, epoch)
+        return BodyPosition(lon=lon_deg % 360.0, lat=lat_deg, dec=lat_deg, speed_lon=speed)
 
 
 def _register() -> None:

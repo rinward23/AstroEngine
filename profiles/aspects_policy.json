@@ -8,26 +8,30 @@
     "opposition": 180,
     "semisextile": 30,
     "semisquare": 45,
-
     "sesquisquare": 135,
     "quincunx": 150,
+    "semiquintile": 36,
     "quintile": 72,
     "biquintile": 144,
-    "semiquintile": 36,
     "novile": 40,
     "binovile": 80,
     "septile": 51.4286,
     "biseptile": 102.8571,
     "triseptile": 154.2857,
     "tredecile": 108,
-    "undecile": 32.7273,
-
-    "sesquiquadrate": 135
-
+    "undecile": 32.7273
   },
   "enabled": ["conjunction", "sextile", "square", "trine", "opposition"],
-  "enabled_minors": [],
-  "enabled_harmonics": [],
+  "enabled_minors": [
+    "semisextile",
+    "semisquare",
+    "sesquisquare",
+    "quincunx",
+    "semiquintile",
+    "quintile",
+    "biquintile"
+  ],
+  "enabled_harmonics": [5, 7, 9, 10, 11],
   "partile_threshold_deg": 0.1667,
   "default_orb_deg": 2.0,
   "orb_defaults": {
@@ -41,13 +45,13 @@
     "square":     {"luminary": 7.0, "personal": 5.0, "social": 4.5, "outer": 4.0},
     "trine":      {"luminary": 7.0, "personal": 5.0, "social": 4.5, "outer": 4.0},
     "sextile":    {"luminary": 5.0, "personal": 4.0, "social": 3.5, "outer": 3.0},
-    "semisextile":{"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
+    "semisextile": {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
     "semisquare": {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
-    "sesquisquare":{"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
+    "sesquisquare": {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
     "quincunx":   {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
+    "semiquintile": {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
     "quintile":   {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
     "biquintile": {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
-    "semiquintile":{"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
     "novile":     {"luminary": 1.0, "personal": 1.0, "social": 1.0, "outer": 1.0},
     "binovile":   {"luminary": 1.0, "personal": 1.0, "social": 1.0, "outer": 1.0},
     "septile":    {"luminary": 1.0, "personal": 1.0, "social": 1.0, "outer": 1.0},
@@ -55,8 +59,6 @@
     "triseptile": {"luminary": 1.0, "personal": 1.0, "social": 1.0, "outer": 1.0},
     "tredecile":  {"luminary": 1.5, "personal": 1.5, "social": 1.5, "outer": 1.5},
     "undecile":   {"luminary": 1.0, "personal": 1.0, "social": 1.0, "outer": 1.0}
-    "sesquiquadrate":{"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0}
-
   }
 }
 # >>> AUTO-GEN END: AE Aspects Policy v1.0

@@ -38,7 +38,7 @@ from .exporters_ics import (
 )
 
 from .astro.declination import available_antiscia_axes
-from .ephemeris import SwissEphemerisAdapter
+from .ephemeris import EphemerisConfig, SwissEphemerisAdapter, TimeScaleContext
 from .narrative import compose_narrative, summarize_top_events
 
 from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
@@ -74,6 +74,19 @@ from .infrastructure.storage.sqlite.query import top_events_by_score
 from .ux.plugins import setup_cli as setup_plugins
 
 
+def _ensure_subparsers(parser: argparse.ArgumentParser) -> argparse._SubParsersAction:
+    """Return the subparser collection for ``parser``, creating it if needed."""
+
+    existing = getattr(parser, "_ae_subparsers", None)
+    if existing is not None:
+        return existing
+
+    subparsers = parser.add_subparsers(dest="command")
+    subparsers.required = False
+    parser._ae_subparsers = subparsers
+    return subparsers
+
+
 
 def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
     if getattr(parser, "_ae_natals_added", False):
@@ -105,6 +118,45 @@ def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
     natal_delete.set_defaults(func=cmd_natal_delete)
 
     parser._ae_natals_added = True
+
+
+def cmd_natal_list(_: argparse.Namespace) -> int:
+    for natal_id in list_natals():
+        print(natal_id)
+    return 0
+
+
+def cmd_natal_show(args: argparse.Namespace) -> int:
+    try:
+        natal = load_natal(args.natal_id)
+    except FileNotFoundError:
+        print(f"natal '{args.natal_id}' not found", file=sys.stderr)
+        return 1
+    print(json.dumps(asdict(natal), indent=2))
+    return 0
+
+
+def cmd_natal_save(args: argparse.Namespace) -> int:
+    record = Natal(
+        natal_id=args.natal_id,
+        name=getattr(args, "name", None),
+        utc=args.utc,
+        lat=args.lat,
+        lon=args.lon,
+        tz=getattr(args, "tz", None),
+        place=getattr(args, "place", None),
+    )
+    save_natal(record)
+    print(f"Saved natal '{args.natal_id}'")
+    return 0
+
+
+def cmd_natal_delete(args: argparse.Namespace) -> int:
+    if delete_natal(args.natal_id):
+        print(f"Deleted natal '{args.natal_id}'")
+        return 0
+    print(f"natal '{args.natal_id}' not found", file=sys.stderr)
+    return 1
 
 
 def cmd_cache_info(_: argparse.Namespace) -> int:
@@ -1243,16 +1295,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--aspects", help="Comma-separated aspect angles for natal aspect detectors")
     parser.add_argument("--orb", type=float, help="Orb allowance in degrees for natal aspect detectors")
     parser.add_argument(
-        "--zodiac",
-        choices=sorted(VALID_ZODIAC_SYSTEMS),
-        default="tropical",
-        help="Zodiac frame for calculations (tropical or sidereal)",
-    )
-    parser.add_argument(
-        "--ayanamsha",
-        help="Sidereal ayanamsha name when --zodiac=sidereal",
-    )
-    parser.add_argument(
         "--house-system",
         choices=sorted(VALID_HOUSE_SYSTEMS),
         default="placidus",
@@ -1427,6 +1469,28 @@ def build_parser() -> argparse.ArgumentParser:
     active.add_argument("--horizon", help="Optional end timestamp for timeline precomputation")
     active.set_defaults(func=cmd_timelords_active)
 
+    compute = tl_sub.add_parser("compute", help="Compute timelord periods")
+    compute.add_argument("--start", required=True)
+    compute.add_argument("--vimshottari", action="store_true")
+    compute.add_argument("--moon-longitude", type=float)
+    compute.add_argument("--dasha-cycles", type=int, default=1)
+    compute.add_argument(
+        "--timelord-levels",
+        default="maha,antar",
+        help="Comma-separated Vimshottari levels to compute",
+    )
+    compute.add_argument("--zr", action="store_true")
+    compute.add_argument("--fortune-longitude", type=float)
+    compute.add_argument("--zr-periods", type=int, default=12)
+    compute.add_argument(
+        "--zr-levels",
+        default="l1,l2",
+        help="Comma-separated releasing levels",
+    )
+    compute.add_argument("--lot", default="fortune")
+    compute.add_argument("--json")
+    compute.set_defaults(func=cmd_timelords)
+
     validate = sub.add_parser("validate", help="Validate a JSON payload against a schema")
     validate.add_argument("schema", choices=list(available_schema_keys("jsonschema")))
     validate.add_argument("path")
@@ -1452,30 +1516,6 @@ def build_parser() -> argparse.ArgumentParser:
     ingresses.add_argument("--json")
     add_canonical_export_args(ingresses)
     ingresses.set_defaults(func=cmd_ingresses)
-
-    timelords = sub.add_parser("timelords", help="Compute timelord periods")
-    timelords.add_argument("--start", required=True)
-    timelords.add_argument("--vimshottari", action="store_true")
-    timelords.add_argument("--moon-longitude", type=float)
-    timelords.add_argument("--dasha-cycles", type=int, default=1)
-    timelords.add_argument(
-        "--timelord-levels",
-        default="maha,antar",
-        help="Comma-separated Vimshottari levels to compute",
-    )
-    timelords.add_argument("--zr", action="store_true")
-    timelords.add_argument("--fortune-longitude", type=float)
-    timelords.add_argument("--zr-periods", type=int, default=12)
-    timelords.add_argument(
-        "--zr-levels",
-        default="l1,l2",
-        help="Comma-separated releasing levels",
-    )
-    timelords.add_argument("--lot", default="fortune")
-    timelords.add_argument("--json")
-    timelords.set_defaults(func=cmd_timelords)
-
-
 
     _augment_parser_with_features(parser)
     setup_plugins(parser)
