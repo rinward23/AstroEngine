@@ -59,6 +59,8 @@ def test_cli_transits_runs(tmp_path):
     output = tmp_path / "events.json"
     args = [
         "transits",
+        "--target-frame",
+        "natal",
         "--target-longitude",
         "240.9623186447056",
         "--start",

@@ -204,6 +204,11 @@ feature_flags:
     lunation_boost: true
   progressions:
     enabled: false
+    transits_to_progressed: false
+    progressed_to_progressed: false
+  directions:
+    enabled: false
+    transits_to_directed: false
   timelords:
     enabled: false
   maps:
@@ -222,6 +227,9 @@ feature_flags:
     ingresses: false
   dwarfs:
     enabled: false
+  relationships:
+    composite_transits: false
+    synastry_transits: false
 
 validation:
   determinism_hash: sha256
