@@ -104,6 +104,43 @@ def run_experimental(args) -> None:
 __all__ = ["build_parser", "main", "serialize_events_to_json", "json"]
 
 
+# >>> AUTO-GEN BEGIN: cli-natal-stub v1.0
+def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for natal vault integration (no-op until implemented)."""
+
+    return None
+
+
+# >>> AUTO-GEN END: cli-natal-stub v1.0
+
+
+# >>> AUTO-GEN BEGIN: cli-cache-stub v1.0
+def _augment_parser_with_cache(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for cache warmers/controls (currently unused)."""
+
+    return None
+
+
+# >>> AUTO-GEN END: cli-cache-stub v1.0
+
+# >>> AUTO-GEN BEGIN: cli-parquet-stub v1.0
+def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for batch-parquet export commands."""
+
+    return None
+
+
+# >>> AUTO-GEN END: cli-parquet-stub v1.0
+
+# >>> AUTO-GEN BEGIN: cli-provision-stub v1.0
+def _augment_parser_with_provisioning(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for provisioning helpers (Swiss downloads etc.)."""
+
+    return None
+
+
+# >>> AUTO-GEN END: cli-provision-stub v1.0
+
 # >>> AUTO-GEN BEGIN: cli-new-detector-flags v1.0
 def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:
     targets = getattr(p, "_ae_feature_parsers", [p])
@@ -249,7 +286,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--export-parquet", help="Write precomputed events to this Parquet file")
     parser.add_argument("--export-ics", help="Write precomputed events to this ICS calendar file")
     parser.add_argument("--ics-title", default="AstroEngine Events", help="Title to use for ICS export events")
-    parser.add_argument("--natal-id", help="Identifier for the natal chart driving precompute outputs")
     parser.add_argument("--profile", help="Profile identifier to annotate export metadata")
     parser.add_argument("--lat", type=float, help="Latitude for location-sensitive detectors")
     parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")
