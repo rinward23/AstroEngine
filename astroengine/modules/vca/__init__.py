@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ...profiles import load_resonance_weights
 from ..registry import AstroModule, AstroRegistry
 from .catalogs import (
     VCA_CENTAURS,
@@ -94,6 +95,34 @@ def register_vca_module(registry: AstroRegistry) -> AstroModule:
             metadata={"label": profile.name},
             payload={"multipliers": dict(profile.domain_multipliers)},
         )
+
+    # Uncertainty profiles
+    uncertainty = module.register_submodule(
+        "uncertainty",
+        metadata={"description": "Corridor shapes and resonance weights"},
+    )
+    corridors = uncertainty.register_channel(
+        "corridors",
+        metadata={"default_profile": "gaussian"},
+    )
+    corridors.register_subchannel(
+        "gaussian",
+        metadata={"description": "Gaussian membership corridor"},
+        payload={
+            "factory": "astroengine.refine.CorridorModel",
+            "membership": "gaussian",
+        },
+    )
+    resonance_channel = uncertainty.register_channel(
+        "resonance",
+        metadata={"description": "Mind/Body/Spirit weighting"},
+    )
+    resonance_weights = load_resonance_weights().as_mapping()
+    resonance_channel.register_subchannel(
+        "base_profile",
+        metadata={"profile_id": "base"},
+        payload={"weights": resonance_weights},
+    )
 
     # Rulesets
     rulesets = module.register_submodule(

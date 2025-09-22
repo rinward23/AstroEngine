@@ -36,9 +36,3 @@ def get_se_ephe_path(
         if candidate.is_dir():
             return str(candidate)
 
-    for candidate in _iter_candidates(extra_paths):
-        if candidate.is_dir():
-            return str(candidate)
-    return None
-
-# >>> AUTO-GEN END: Ephemeris Utils v1.1

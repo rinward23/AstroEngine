@@ -1,9 +1,9 @@
-"""Canonical event dataclasses used by detector modules."""
+
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Mapping, MutableMapping
+from dataclasses import dataclass
+from typing import Mapping, Sequence
 
 __all__ = [
     "BaseEvent",
@@ -17,89 +17,46 @@ __all__ = [
 ]
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True)
 class BaseEvent:
-    """Common metadata shared by most detector outputs."""
-
     ts: float
-    """Event timestamp expressed as Julian Day (UT)."""
-
-    provenance: str = "swiss_ephemeris"
-    """Identifier describing the ephemeris source used to compute the event."""
+    kind: str
+    metadata: Mapping[str, object] | None = None
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True)
 class LunationEvent(BaseEvent):
-    """Represents a lunar phase crossing (new/full/quarters)."""
-
-    kind: str = ""
-    """Phase identifier: ``new``, ``full``, ``first_quarter`` or ``third_quarter``."""
-
-    phase_angle: float = 0.0
-    """Difference in degrees between Moon and Sun longitudes at the event."""
-
-    sun_longitude: float = 0.0
-    moon_longitude: float = 0.0
+    phase: str | None = None
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True)
 class EclipseEvent(BaseEvent):
-    """Represents a solar or lunar eclipse detected near a lunation."""
-
-    kind: str = ""
-    """``solar`` or ``lunar`` depending on the lunation polarity."""
-
-    separation_deg: float = 0.0
-    """Absolute lunar latitude at the event (smaller implies stronger eclipse)."""
-
-    phase: str = ""
+    magnitude: float | None = None
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True)
 class StationEvent(BaseEvent):
-    """Represents a planetary station when longitudinal speed crosses zero."""
-
-    body: str = ""
-    direction: str = ""
-    """Direction after the station: ``retrograde`` or ``direct``."""
-
-    longitude: float = 0.0
-    speed: float = 0.0
+    body: str | None = None
+    motion: str | None = None
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True)
 class ReturnEvent(BaseEvent):
-    """Represents a solar or lunar return event."""
-
-    body: str = ""
-    kind: str = ""
-    longitude: float = 0.0
+    body: str | None = None
+    cycle: str | None = None
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True)
 class ProgressionEvent(BaseEvent):
-    """Represents a secondary progression snapshot (day-for-a-year)."""
-
-    method: str = "secondary"
-    age: float = 0.0
-    positions: Mapping[str, float] = field(default_factory=dict)
+    method: str | None = None
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True)
 class DirectionEvent(BaseEvent):
-    """Represents a solar arc direction snapshot."""
-
-    method: str = "solar_arc"
-    age: float = 0.0
-    positions: Mapping[str, float] = field(default_factory=dict)
+    method: str | None = None
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True)
 class ProfectionEvent(BaseEvent):
-    """Represents an annual profection change."""
-
-    age: int = 0
-    sign_index: int = 0
-    ruler: str = ""
-    metadata: MutableMapping[str, object] = field(default_factory=dict)
-
+    lord: str | None = None
+    houses: Sequence[int] | None = None

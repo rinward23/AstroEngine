@@ -21,6 +21,30 @@ from .validation import (
 )
 from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
 
+
+def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for natal vault wiring in lightweight builds."""
+
+    return None
+
+
+def _augment_parser_with_cache(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for cache warmers in lightweight builds."""
+
+    return None
+
+
+def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for parquet dataset integration in lightweight builds."""
+
+    return None
+
+
+def _augment_parser_with_provisioning(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for ephemeris provisioning hooks in lightweight builds."""
+
+    return None
+
 # >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
 from .exporters import write_sqlite_canonical, write_parquet_canonical
 
