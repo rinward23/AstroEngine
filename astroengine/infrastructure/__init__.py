@@ -19,6 +19,14 @@ from .paths import (
     schemas_dir,
 )
 
+from .storage import (
+    SQLiteMigrator,
+    downgrade_sqlite,
+    ensure_sqlite_schema,
+    get_sqlite_config,
+    upgrade_sqlite,
+)
+
 __all__ = [
     "EnvironmentReport",
     "collect_environment_report",
@@ -36,4 +44,9 @@ __all__ = [
     "registry_dir",
     "rulesets_dir",
     "schemas_dir",
+    "SQLiteMigrator",
+    "ensure_sqlite_schema",
+    "upgrade_sqlite",
+    "downgrade_sqlite",
+    "get_sqlite_config",
 ]
