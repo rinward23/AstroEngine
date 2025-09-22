@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Sequence, Any
@@ -45,6 +46,118 @@ def _augment_parser_with_provisioning(parser: argparse.ArgumentParser) -> None:
 
     return None
 
+
+DEFAULT_INGRESS_BODIES = (
+    "sun",
+    "mercury",
+    "venus",
+    "mars",
+    "jupiter",
+    "saturn",
+    "uranus",
+    "neptune",
+    "pluto",
+)
+
+
+def _parse_ingress_bodies(spec: str | None) -> tuple[str, ...]:
+    if not spec:
+        return tuple(DEFAULT_INGRESS_BODIES)
+    parts = [item.strip().lower() for item in spec.split(",") if item.strip()]
+    return tuple(parts) if parts else tuple(DEFAULT_INGRESS_BODIES)
+
+
+def _parse_iso_datetime(value: str) -> datetime:
+    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _build_natal_chart_from_args(args: argparse.Namespace):
+    natal_iso = getattr(args, "natal_utc", None)
+    if not natal_iso:
+        return None
+    lat = getattr(args, "natal_lat", None)
+    lon = getattr(args, "natal_lon", None)
+    if lat is None or lon is None:
+        return None
+    moment = _parse_iso_datetime(natal_iso)
+    location = ChartLocation(latitude=float(lat), longitude=float(lon))
+    return compute_natal_chart(moment, location)
+
+
+def _serialize_mundane_chart(chart) -> dict[str, Any]:
+    payload = {
+        "sign": chart.sign,
+        "year": chart.year,
+        "event": asdict(chart.event),
+        "location": asdict(chart.location) if chart.location else None,
+        "positions": {name: pos.to_dict() for name, pos in chart.positions.items()},
+        "houses": chart.houses.to_dict() if chart.houses else None,
+        "aspects": [asdict(hit) for hit in chart.aspects],
+        "natal_aspects": [asdict(hit) for hit in chart.natal_aspects],
+    }
+    return payload
+
+
+def _handle_mundane(args: argparse.Namespace):
+    has_ingresses = bool(getattr(args, "ingresses", False))
+    has_aries = getattr(args, "aries_ingress", None) is not None
+    if not (has_ingresses or has_aries):
+        return None
+
+    payload: dict[str, Any] = {}
+    if has_ingresses:
+        if not args.start_utc or not args.end_utc:
+            raise SystemExit("--ingresses requires --start-utc and --end-utc")
+        start_jd = iso_to_jd(args.start_utc)
+        end_jd = iso_to_jd(args.end_utc)
+        bodies = _parse_ingress_bodies(getattr(args, "ingress_bodies", None))
+        step = float(getattr(args, "ingress_step_hours", 6.0))
+        events = find_sign_ingresses(start_jd, end_jd, bodies=bodies, step_hours=step)
+        payload["ingresses"] = {
+            "parameters": {
+                "start_utc": args.start_utc,
+                "end_utc": args.end_utc,
+                "bodies": list(bodies),
+                "step_hours": step,
+            },
+            "events": [asdict(event) for event in events],
+        }
+
+    natal_chart = _build_natal_chart_from_args(args)
+
+    if has_aries:
+        year = int(getattr(args, "aries_ingress"))
+        location = None
+        if args.lat is not None and args.lon is not None:
+            location = ChartLocation(latitude=float(args.lat), longitude=float(args.lon))
+        quartet = bool(getattr(args, "aries_quartet", False))
+        if quartet:
+            charts = compute_solar_quartet(
+                year,
+                location=location,
+                natal_chart=natal_chart,
+            )
+        else:
+            charts = [
+                compute_solar_ingress_chart(
+                    year,
+                    "Aries",
+                    location=location,
+                    natal_chart=natal_chart,
+                )
+            ]
+        payload["aries_ingress"] = {
+            "year": year,
+            "quartet": quartet,
+            "location": asdict(location) if location else None,
+            "charts": [_serialize_mundane_chart(chart) for chart in charts],
+        }
+
+    return payload
+
 # >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
 from .exporters import write_sqlite_canonical, write_parquet_canonical
 
@@ -74,6 +187,7 @@ def add_canonical_export_args(p: argparse.ArgumentParser) -> None:
 # >>> AUTO-GEN BEGIN: cli-run-experimental v1.1
 from .detectors import (
     find_lunations,
+    find_sign_ingresses,
     find_stations,
     secondary_progressions,
     solar_arc_directions,
@@ -83,6 +197,8 @@ from .detectors.common import iso_to_jd
 from .detectors.common import enable_cache  # ENSURE-LINE
 from .cache.positions_cache import warm_daily  # ENSURE-LINE
 from .exporters_batch import export_parquet_dataset  # ENSURE-LINE
+from .mundane import compute_solar_ingress_chart, compute_solar_quartet
+from .chart.natal import ChartLocation, compute_natal_chart
 
 
 def run_experimental(args) -> None:
@@ -306,6 +422,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--natal-utc", help="Natal timestamp (ISO-8601) for return calculations")  # ENSURE-LINE
     parser.add_argument("--natal-id", help="Natal identifier for provenance and vault operations")  # ENSURE-LINE
     parser.add_argument("--return-kind", default="solar", help="Return kind: solar or lunar")  # ENSURE-LINE
+    parser.add_argument("--natal-lat", type=float, help="Latitude for natal chart when computing mundane aspects")
+    parser.add_argument("--natal-lon", type=float, help="Longitude for natal chart when computing mundane aspects")
     parser.add_argument("--export-sqlite", help="Write precomputed events to this SQLite file")
     parser.add_argument("--export-parquet", help="Write precomputed events to this Parquet file")
     parser.add_argument("--export-ics", help="Write precomputed events to this ICS calendar file")
@@ -313,6 +431,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--profile", help="Profile identifier to annotate export metadata")
     parser.add_argument("--lat", type=float, help="Latitude for location-sensitive detectors")
     parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")
+    parser.add_argument("--ingresses", action="store_true", help="Emit sign ingress events between --start-utc and --end-utc")
+    parser.add_argument("--ingress-bodies", help="Comma-separated list of bodies for ingress detection")
+    parser.add_argument(
+        "--ingress-step-hours",
+        type=float,
+        default=6.0,
+        help="Sampling cadence in hours for ingress detection",
+    )
+    parser.add_argument("--aries-ingress", type=int, help="Generate Aries ingress chart for the given year")
+    parser.add_argument(
+        "--aries-quartet",
+        action="store_true",
+        help="Include solstice/equinox quartet when computing Aries ingress charts",
+    )
+    parser.add_argument("--mundane-json", help="Write ingress/chart payloads to this JSON path")
     parser.add_argument("--aspects", help="Comma-separated aspect angles for natal aspect detectors")
     parser.add_argument("--orb", type=float, help="Orb allowance in degrees for natal aspect detectors")
     parser.add_argument("--lunations", action="store_true", help="Run lunation detector")
@@ -372,6 +505,17 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
     _augment_parser_with_features(parser)
     namespace = parser.parse_args(list(argv) if argv is not None else None)
+
+    mundane_payload = _handle_mundane(namespace)
+    if mundane_payload is not None:
+        output_path = getattr(namespace, "mundane_json", None)
+        payload_json = json.dumps(mundane_payload, indent=2)
+        if output_path:
+            Path(output_path).write_text(payload_json, encoding="utf-8")
+            print(f"Wrote mundane payload to {output_path}")
+        else:
+            print(payload_json)
+        return 0
 
     run_experimental(namespace)
     func = getattr(namespace, "func", None)

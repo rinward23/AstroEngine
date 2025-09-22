@@ -13,6 +13,7 @@ __all__ = [
     "ProgressionEvent",
     "DirectionEvent",
     "ProfectionEvent",
+    "IngressEvent",
 ]
 
 
@@ -87,3 +88,15 @@ class ProfectionEvent(BaseEvent):
     method: str
     house: int
     ruler: str
+
+
+@dataclass(frozen=True)
+class IngressEvent(BaseEvent):
+    """Represents a zodiac sign ingress for a given body."""
+
+    body: str
+    from_sign: str
+    to_sign: str
+    longitude: float
+    motion: str
+    speed_deg_per_day: float
