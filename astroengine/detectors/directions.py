@@ -45,7 +45,24 @@ def solar_arc_directions(
     *,
     bodies: Sequence[str] | None = None,
 ) -> list[DirectionEvent]:
-    """Return solar arc directions sampled annually between ``start`` and ``end``."""
+    """Return solar arc directions sampled annually between ``start`` and ``end``.
+
+    Parameters
+    ----------
+    natal_iso, start_iso, end_iso:
+        ISO-8601 timestamps in UTC.
+    bodies:
+        Iterable of body names (matching ``DEFAULT_BODIES`` keys). When
+        ``None`` the full default set is used.
+
+    Returns
+    -------
+    list[DirectionEvent]
+        One event per year in the requested range. ``DirectionEvent.arc_degrees``
+        stores the longitudinal arc applied to every natal position in
+        **degrees**, while ``DirectionEvent.positions`` contains the
+        directed longitudes normalised to ``[0, 360)``.
+    """
 
     natal_dt = _parse_iso(natal_iso)
     start_dt = _parse_iso(start_iso)
