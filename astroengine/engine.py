@@ -145,7 +145,13 @@ def _event_from_aspect(hit: AspectHit) -> LegacyTransitEvent:
         score=score,
         lon_moving=hit.lon_moving,
         lon_target=hit.lon_target,
-        metadata={"angle_deg": hit.angle_deg},
+        metadata={
+            "angle_deg": float(hit.angle_deg),
+            "delta_lambda_deg": float(hit.delta_lambda_deg),
+            "offset_deg": float(hit.offset_deg),
+            "partile": bool(hit.is_partile),
+            "family": hit.family,
+        },
     )
 
 
