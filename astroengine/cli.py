@@ -47,6 +47,8 @@ def _augment_parser_with_provisioning(parser: argparse.ArgumentParser) -> None:
 
 # >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
 from .exporters import write_sqlite_canonical, write_parquet_canonical
+from .exporters_ics import write_ics_calendar
+from .narrative import compose_narrative
 
 
 def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, int]:
@@ -225,6 +227,14 @@ def cmd_transits(args: argparse.Namespace) -> int:
         aspects_policy_path=args.aspects_policy,
     )
 
+    narrative_bundle = None
+    if getattr(args, "narrative", None):
+        narrative_bundle = compose_narrative(
+            events,
+            mode=args.narrative,
+            top_n=getattr(args, "narrative_top", 5),
+        )
+
     if args.json:
         payload = {
             "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -238,6 +248,8 @@ def cmd_transits(args: argparse.Namespace) -> int:
             },
             "events": events_to_dicts(events),
         }
+        if narrative_bundle is not None:
+            payload["narrative"] = narrative_bundle.to_dict()
         Path(args.json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
         print(f"Wrote {len(events)} events to {args.json}")
 
@@ -247,8 +259,21 @@ def cmd_transits(args: argparse.Namespace) -> int:
     if args.parquet and written.get("parquet"):
         print(f"Parquet export complete: {args.parquet} ({written['parquet']} rows)")
 
+    if args.export_ics:
+        narrative_text = narrative_bundle.markdown if narrative_bundle else None
+        count = write_ics_calendar(
+            args.export_ics,
+            events,
+            title=args.ics_title,
+            narrative_text=narrative_text,
+        )
+        print(f"ICS export complete: {args.export_ics} ({count} entries)")
+
     if not any((args.json, args.sqlite, args.parquet)):
         print(serialize_events_to_json(events))
+
+    if narrative_bundle is not None:
+        print(narrative_bundle.markdown)
 
     return 0
 
@@ -343,6 +368,19 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--step", type=int, default=60)
     transits.add_argument("--aspects-policy")
     transits.add_argument("--target-longitude", type=float, default=None)
+    transits.add_argument(
+        "--narrative",
+        nargs="?",
+        choices=["template", "llm"],
+        const="template",
+        help="Generate a narrative summary (default template; pass 'llm' to use a configured model)",
+    )
+    transits.add_argument(
+        "--narrative-top",
+        type=int,
+        default=5,
+        help="Number of top-scoring events to include in the narrative summary",
+    )
     transits.add_argument("--json")
     add_canonical_export_args(transits)
     transits.set_defaults(func=cmd_transits)
