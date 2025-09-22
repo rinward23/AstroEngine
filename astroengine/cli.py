@@ -9,6 +9,17 @@ import sys
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+
+from typing import Iterable, Sequence, Any, Optional
+
+
+from . import engine as engine_module
+
+from .engine import events_to_dicts, scan_contacts, TargetFrameResolver
+
+from .chart.config import ChartConfig, VALID_HOUSE_SYSTEMS, VALID_ZODIAC_SYSTEMS
+from .detectors.ingress import find_ingresses
+
 from typing import Any, Iterable, List, Mapping, Sequence
 
 from . import engine as engine_module
@@ -30,7 +41,6 @@ from .exporters_ics import (
     write_ics,
     write_ics_canonical,
 )
-
 
 from .astro.declination import available_antiscia_axes
 from .ephemeris import EphemerisConfig, ObserverLocation, SwissEphemerisAdapter, TimeScaleContext
@@ -57,6 +67,11 @@ from .validation import (
 )
 
 from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
+
+
+from .chart import ChartLocation, NatalChart, compute_natal_chart
+from .chart.composite import compute_composite_chart
+
 from .utils import (
     DEFAULT_TARGET_FRAMES,
     DEFAULT_TARGET_SELECTION,
@@ -68,6 +83,7 @@ from .utils import (
 
 from .infrastructure.storage.sqlite import SQLiteMigrator, ensure_sqlite_schema
 from .infrastructure.storage.sqlite.query import top_events_by_score
+
 
 from .ux.plugins import setup_cli as setup_plugins
 from .ux.maps import astrocartography_lines, local_space_vectors
@@ -132,6 +148,7 @@ def _ensure_subparsers(parser: argparse.ArgumentParser) -> argparse._SubParsersA
         subparsers = parser.add_subparsers(dest="command")
         parser._ae_subparsers = subparsers
     return subparsers
+
 
 
 
@@ -481,6 +498,19 @@ def _chart_config_from_args(args: argparse.Namespace) -> ChartConfig:
 
 
 
+
+def _parse_iso_arg(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+def _primary_chart(args: argparse.Namespace) -> Optional[NatalChart]:
+    natal_ts = getattr(args, "natal_utc", None)
+    lat = getattr(args, "lat", None)
+    lon = getattr(args, "lon", None)
+    if not natal_ts or lat is None or lon is None:
+        return None
+    moment = _parse_iso_arg(str(natal_ts))
+
 DEFAULT_INGRESS_BODIES = (
     "sun",
     "mercury",
@@ -517,9 +547,63 @@ def _build_natal_chart_from_args(args: argparse.Namespace):
     if lat is None or lon is None:
         return None
     moment = _parse_iso_datetime(natal_iso)
+
     location = ChartLocation(latitude=float(lat), longitude=float(lon))
     return compute_natal_chart(moment, location)
 
+
+
+def _partner_chart(args: argparse.Namespace) -> Optional[NatalChart]:
+    partner_ts = getattr(args, "partner_utc", None)
+    lat = getattr(args, "partner_lat", None)
+    lon = getattr(args, "partner_lon", None)
+    if not partner_ts or lat is None or lon is None:
+        return None
+    moment = _parse_iso_arg(str(partner_ts))
+    location = ChartLocation(latitude=float(lat), longitude=float(lon))
+    return compute_natal_chart(moment, location)
+
+
+def _resolver_for_target_frame(args: argparse.Namespace) -> Optional[TargetFrameResolver]:
+    frame = getattr(args, "target_frame", "natal")
+    frame_lower = frame.lower()
+    target_name = getattr(args, "target", None)
+    static_positions: dict[str, float] = {}
+    if target_name and getattr(args, "target_longitude", None) is not None:
+        try:
+            static_positions[target_name.lower()] = float(args.target_longitude) % 360.0
+        except Exception:
+            pass
+
+    primary = _primary_chart(args)
+
+    if frame_lower == "natal":
+        if primary is None and not static_positions:
+            return None
+        return TargetFrameResolver("natal", natal_chart=primary, static_positions=static_positions)
+
+    if frame_lower == "progressed":
+        if primary is None:
+            raise ValueError("--target-frame progressed requires --natal-utc, --lat, and --lon")
+        return TargetFrameResolver("progressed", natal_chart=primary, static_positions=static_positions)
+
+    if frame_lower == "directed":
+        if primary is None:
+            raise ValueError("--target-frame directed requires --natal-utc, --lat, and --lon")
+        return TargetFrameResolver("directed", natal_chart=primary)
+
+    if frame_lower == "composite":
+        if primary is None:
+            raise ValueError("--target-frame composite requires --natal-utc, --lat, and --lon")
+        partner = _partner_chart(args)
+        if partner is None:
+            raise ValueError(
+                "--target-frame composite requires --partner-utc, --partner-lat, and --partner-lon"
+            )
+        composite = compute_composite_chart(primary, partner)
+        return TargetFrameResolver("composite", natal_chart=primary, composite_chart=composite)
+
+    raise ValueError(f"Unsupported target frame '{frame}'")
 
 def _serialize_mundane_chart(chart) -> dict[str, Any]:
     payload = {
@@ -594,6 +678,7 @@ def _handle_mundane(args: argparse.Namespace):
         }
 
     return payload
+
 
 # >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
 from .exporters import write_sqlite_canonical, write_parquet_canonical
@@ -957,6 +1042,13 @@ def cmd_transits(args: argparse.Namespace) -> int:
     engine_module.FEATURE_RETURNS = args.returns
     engine_module.FEATURE_PROFECTIONS = args.profections
 
+
+    try:
+        resolver = _resolver_for_target_frame(args)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
     engine_module.FEATURE_TIMELORDS = getattr(args, "timelords", False)
 
     timelord_calculator = None
@@ -969,6 +1061,7 @@ def cmd_transits(args: argparse.Namespace) -> int:
             horizon = datetime.fromisoformat(args.end.replace("Z", "+00:00")) + timedelta(days=1)
             context = build_context(natal_dt, args.lat, args.lon)
             timelord_calculator = TimelordCalculator(context=context, until=horizon)
+
 
 
     include_mirrors = not args.decl_only
@@ -1007,10 +1100,14 @@ def cmd_transits(args: argparse.Namespace) -> int:
         step_minutes=args.step,
         aspects_policy_path=args.aspects_policy,
 
+
+        target_frame=args.target_frame,
+        target_resolver=resolver,
         timelord_calculator=timelord_calculator,
 
 
         chart_config=getattr(args, "chart_config", None),
+
 
         profile_id=args.profile,
         include_declination=True,
@@ -1031,6 +1128,7 @@ def cmd_transits(args: argparse.Namespace) -> int:
                 "target": args.target,
                 "provider": args.provider,
                 "target_longitude": args.target_longitude,
+                "target_frame": args.target_frame,
             },
             "events": events_to_dicts(events),
         }
@@ -1668,6 +1766,11 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--end", required=True)
     transits.add_argument("--moving", default="sun")
     transits.add_argument("--target", default="moon")
+    transits.add_argument(
+        "--target-frame",
+        choices=["natal", "progressed", "directed", "composite"],
+        default="natal",
+    )
     transits.add_argument("--provider", default="swiss")
     transits.add_argument(
         "--decl-orb",
@@ -1694,6 +1797,9 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--step", type=int, default=60)
     transits.add_argument("--aspects-policy")
     transits.add_argument("--target-longitude", type=float, default=None)
+    transits.add_argument("--partner-utc")
+    transits.add_argument("--partner-lat", type=float)
+    transits.add_argument("--partner-lon", type=float)
     transits.add_argument("--json")
 
     transits.add_argument("--timelords", action="store_true", help="Annotate events with active timelords")
