@@ -46,7 +46,7 @@ class LegacyTransitEvent:
     lon_moving: float | None = None
     lon_target: float | None = None
 
-    metadata: dict[str, float | str] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
     @property

@@ -95,6 +95,10 @@ class ProfectionEvent(BaseEvent):
     house: int
     ruler: str
 
+    end_ts: str
+    midpoint_ts: str
+
+
 
 @dataclass(frozen=True)
 
@@ -143,4 +147,5 @@ class ZodiacalReleasingPeriod(TimelordPeriod):
 
     lot: str
     sign: str
+
 

@@ -5,8 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import asdict
-from datetime import datetime, timezone
+
+from datetime import datetime, timedelta, timezone
+
 from pathlib import Path
 from typing import Iterable, Sequence, Any
 
@@ -31,8 +32,13 @@ from .narrative import summarize_top_events
 from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
 
 from .providers import list_providers
+
+from .timelords import TimelordCalculator, active_timelords
+from .timelords.context import build_context
+
 from .timelords.dashas import compute_vimshottari_dasha
 from .timelords.zr import compute_zodiacal_releasing
+
 from .validation import (
     SchemaValidationError,
     available_schema_keys,
@@ -554,6 +560,45 @@ def cmd_env(_: argparse.Namespace) -> int:
     return 0
 
 
+def _format_timelord_period(period) -> str:
+    extras: list[str] = []
+    metadata = period.metadata
+    if period.system == "profections":
+        house = metadata.get("house")
+        sign = metadata.get("sign")
+        if house is not None:
+            extras.append(f"house {house}")
+        if sign:
+            extras.append(str(sign))
+    elif period.system == "vimshottari":
+        parent = metadata.get("parent")
+        if parent:
+            extras.append(f"parent {parent}")
+    elif period.system == "zodiacal_releasing":
+        sign = metadata.get("sign")
+        if sign:
+            extras.append(str(sign))
+        if metadata.get("loosing"):
+            extras.append("loosing")
+    detail = f" ({', '.join(extras)})" if extras else ""
+    return f"- {period.system}/{period.level}: {period.ruler}{detail}"
+
+
+def cmd_timelords_active(args: argparse.Namespace) -> int:
+    stack = active_timelords(
+        natal_ts=args.natal_utc,
+        lat=args.lat,
+        lon=args.lon,
+        target_ts=args.datetime,
+        include_fortune=args.fortune,
+        horizon_ts=args.horizon,
+    )
+    print(f"Active timelords at {stack.moment.isoformat().replace('+00:00', 'Z')}:")
+    for period in stack.iter_periods():
+        print(_format_timelord_period(period))
+    return 0
+
+
 def cmd_transits(args: argparse.Namespace) -> int:
     engine_module.FEATURE_LUNATIONS = args.lunations
     engine_module.FEATURE_ECLIPSES = args.eclipses
@@ -562,6 +607,20 @@ def cmd_transits(args: argparse.Namespace) -> int:
     engine_module.FEATURE_DIRECTIONS = args.directions
     engine_module.FEATURE_RETURNS = args.returns
     engine_module.FEATURE_PROFECTIONS = args.profections
+
+    engine_module.FEATURE_TIMELORDS = getattr(args, "timelords", False)
+
+    timelord_calculator = None
+    if engine_module.FEATURE_TIMELORDS:
+        if not getattr(args, "natal_utc", None) or args.lat is None or args.lon is None:
+            print("timelords overlay requires --natal-utc, --lat, and --lon; disabling")
+            engine_module.FEATURE_TIMELORDS = False
+        else:
+            natal_dt = datetime.fromisoformat(args.natal_utc.replace("Z", "+00:00"))
+            horizon = datetime.fromisoformat(args.end.replace("Z", "+00:00")) + timedelta(days=1)
+            context = build_context(natal_dt, args.lat, args.lon)
+            timelord_calculator = TimelordCalculator(context=context, until=horizon)
+
 
     include_mirrors = not args.decl_only
     include_aspects = not args.decl_only
@@ -584,6 +643,7 @@ def cmd_transits(args: argparse.Namespace) -> int:
         time_scale=time_scale,
     )
 
+
     events = scan_contacts(
         start_iso=args.start,
         end_iso=args.end,
@@ -598,6 +658,9 @@ def cmd_transits(args: argparse.Namespace) -> int:
         step_minutes=args.step,
         aspects_policy_path=args.aspects_policy,
 
+        timelord_calculator=timelord_calculator,
+
+
         chart_config=getattr(args, "chart_config", None),
 
         profile_id=args.profile,
@@ -605,6 +668,7 @@ def cmd_transits(args: argparse.Namespace) -> int:
         include_mirrors=include_mirrors,
         include_aspects=include_aspects,
         antiscia_axis=args.mirror_axis,
+
 
     )
 
@@ -875,6 +939,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--directions", action="store_true", help="Run solar arc direction detector")
     parser.add_argument("--returns", action="store_true", help="Run solar/lunar return detector")
     parser.add_argument("--profections", action="store_true", help="Run annual profection timelord detector")
+    parser.add_argument("--timelords", action="store_true", help="Annotate transit outputs with timelord overlays")
     parser.add_argument("--prog-aspects", action="store_true", help="Run progressed natal aspect detector")
     parser.add_argument("--dir-aspects", action="store_true", help="Run directed natal aspect detector")
     sub = parser.add_subparsers(dest="command")
@@ -918,13 +983,9 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--aspects-policy")
     transits.add_argument("--target-longitude", type=float, default=None)
     transits.add_argument("--json")
-    transits.add_argument("--narrative", action="store_true", help="Summarize detected contacts")
-    transits.add_argument(
-        "--narrative-top",
-        type=int,
-        default=5,
-        help="Number of top-scoring events to include in the narrative summary",
-    )
+
+    transits.add_argument("--timelords", action="store_true", help="Annotate events with active timelords")
+
     add_canonical_export_args(transits)
     transits.set_defaults(func=cmd_transits)
 
@@ -939,6 +1000,17 @@ def build_parser() -> argparse.ArgumentParser:
     experimental.add_argument("--progressions", action="store_true")  # ENSURE-LINE
     experimental.add_argument("--directions", action="store_true")  # ENSURE-LINE
     experimental.set_defaults(func=cmd_experimental)
+
+    timelords = sub.add_parser("timelords", help="Timelord utilities")
+    tl_sub = timelords.add_subparsers(dest="timelords_command")
+    active = tl_sub.add_parser("active", help="Show active timelords")
+    active.add_argument("--natal-utc", required=True)
+    active.add_argument("--lat", type=float, required=True)
+    active.add_argument("--lon", type=float, required=True)
+    active.add_argument("--datetime", required=True, help="Target timestamp in ISO-8601")
+    active.add_argument("--fortune", action="store_true", help="Include Lot of Fortune releasing")
+    active.add_argument("--horizon", help="Optional end timestamp for timeline precomputation")
+    active.set_defaults(func=cmd_timelords_active)
 
     validate = sub.add_parser("validate", help="Validate a JSON payload against a schema")
     validate.add_argument("schema", choices=list(available_schema_keys("jsonschema")))
