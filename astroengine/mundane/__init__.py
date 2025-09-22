@@ -1,5 +1,17 @@
-"""Mundane astrology helpers."""
 
-from .ingress_charts import IngressChart, compute_cardinal_ingress_charts
+"""Mundane astrology helpers (ingress charts, mundane aspecting, etc.)."""
 
-__all__ = ["IngressChart", "compute_cardinal_ingress_charts"]
+from .ingress import (
+    MundaneAspect,
+    SolarIngressChart,
+    compute_solar_ingress_chart,
+    compute_solar_quartet,
+)
+
+__all__ = [
+    "MundaneAspect",
+    "SolarIngressChart",
+    "compute_solar_ingress_chart",
+    "compute_solar_quartet",
+]
+

@@ -13,10 +13,11 @@ __all__ = [
     "ProgressionEvent",
     "DirectionEvent",
     "ProfectionEvent",
-    "OutOfBoundsEvent",
     "IngressEvent",
+    "OutOfBoundsEvent",
     "DashaPeriodEvent",
     "ZodiacalReleasingPeriod",
+
 
 ]
 
@@ -97,6 +98,17 @@ class ProfectionEvent(BaseEvent):
 
 @dataclass(frozen=True)
 
+class IngressEvent(BaseEvent):
+    """Represents a zodiac sign ingress for a given body."""
+
+    body: str
+    from_sign: str
+    to_sign: str
+    longitude: float
+    motion: str
+    speed_deg_per_day: float
+
+
 class OutOfBoundsEvent(BaseEvent):
     """Represents a declination out-of-bounds crossing for a body."""
 
@@ -105,15 +117,6 @@ class OutOfBoundsEvent(BaseEvent):
     hemisphere: str  # "north" or "south"
     declination: float
     limit: float
-
-class IngressEvent(BaseEvent):
-    """Represents a zodiac sign ingress for a single body."""
-
-    body: str
-    sign: str
-    longitude: float
-    method: str = "sign_ingress"
-    sign_index: int = -1
 
 
 @dataclass(frozen=True)
