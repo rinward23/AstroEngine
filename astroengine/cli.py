@@ -6,13 +6,17 @@ import argparse
 import json
 import sys
 
-from datetime import datetime, timedelta, timezone
+from dataclasses import asdict, is_dataclass
+from datetime import datetime, timezone
 
 from pathlib import Path
-from typing import Iterable, Sequence, Any
+from typing import Any, Iterable, List, Sequence
 
 
 from . import engine as engine_module
+
+from .app_api import canonicalize_events, run_scan_or_raise
+
 
 from .chart.config import (
     ChartConfig,
@@ -23,6 +27,7 @@ from .chart.config import (
 
 from .chart.config import ChartConfig, VALID_HOUSE_SYSTEMS, VALID_ZODIAC_SYSTEMS
 from .detectors.ingress import find_ingresses
+
 from .engine import events_to_dicts, scan_contacts
 
 from .exporters_ics import (
@@ -41,6 +46,9 @@ from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LI
 
 from .providers import list_providers
 
+from .exporters_ics import write_ics_canonical
+=======
+
 from .timelords import TimelordCalculator, active_timelords
 from .timelords.context import build_context
 
@@ -54,6 +62,14 @@ from .validation import (
 )
 
 from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
+from .utils import (
+    DEFAULT_TARGET_FRAMES,
+    DEFAULT_TARGET_SELECTION,
+    DETECTOR_NAMES,
+    ENGINE_FLAG_MAP,
+    available_frames,
+    expand_targets,
+)
 
 from .infrastructure.storage.sqlite.query import top_events_by_score
 
@@ -562,6 +578,136 @@ def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:
 
 
 
+DEFAULT_MOVING_BODIES = ["Sun", "Mars", "Jupiter"]
+
+
+def _normalize_detectors(values: Iterable[str] | None) -> List[str]:
+    if not values:
+        return []
+    selected: set[str] = set()
+    for item in values:
+        if not item:
+            continue
+        raw = str(item)
+        for token in raw.replace(",", " ").split():
+            key = token.strip().lower()
+            if not key:
+                continue
+            if key == "all":
+                return sorted(DETECTOR_NAMES)
+            if key in DETECTOR_NAMES:
+                selected.add(key)
+    return sorted(selected)
+
+
+def _set_engine_detector_flags(detectors: Iterable[str]) -> None:
+    active = {name.lower() for name in detectors}
+    for name, attr in ENGINE_FLAG_MAP.items():
+        setattr(engine_module, attr, name in active)
+
+
+def _event_summary(event: Any) -> dict[str, Any]:
+    if isinstance(event, dict):
+        data = event
+    elif is_dataclass(event):
+        data = asdict(event)
+    elif hasattr(event, "model_dump"):
+        try:
+            dumped = event.model_dump()
+        except Exception:  # pragma: no cover - defensive
+            dumped = None
+        data = dumped if isinstance(dumped, dict) else {}
+    elif hasattr(event, "__dict__"):
+        data = dict(vars(event))
+    else:
+        data = {}
+    ts = data.get("ts") or data.get("timestamp") or data.get("when_iso")
+    moving = data.get("moving") or data.get("body")
+    aspect = data.get("aspect") or data.get("kind")
+    target = data.get("target") or data.get("natal")
+    orb = data.get("orb")
+    if orb is None:
+        orb = data.get("orb_abs")
+    score = data.get("score") or data.get("severity")
+    return {
+        "ts": ts,
+        "moving": moving,
+        "aspect": aspect,
+        "target": target,
+        "orb": orb,
+        "score": score,
+    }
+
+
+def _format_event_table(events: Iterable[Any]) -> str:
+    rows = []
+    for event in events:
+        summary = _event_summary(event)
+        if not summary.get("ts"):
+            continue
+        rows.append(summary)
+    rows.sort(key=lambda item: str(item.get("ts")))
+    if not rows:
+        return ""
+    headers = ["Timestamp", "Moving", "Aspect", "Target", "Orb", "Score"]
+    table_rows: List[List[str]] = []
+    for row in rows:
+        orb = row.get("orb")
+        score = row.get("score")
+        table_rows.append(
+            [
+                str(row.get("ts", "")),
+                str(row.get("moving", "")),
+                str(row.get("aspect", "")),
+                str(row.get("target", "")),
+                "" if orb is None else f"{float(orb):+0.2f}",
+                "" if score is None else f"{float(score):0.2f}",
+            ]
+        )
+    widths = [len(h) for h in headers]
+    for row in table_rows:
+        for idx, value in enumerate(row):
+            widths[idx] = max(widths[idx], len(value))
+    header_line = " | ".join(h.ljust(widths[idx]) for idx, h in enumerate(headers))
+    divider = "-+-".join("-" * widths[idx] for idx in range(len(headers)))
+    body_lines = [" | ".join(value.ljust(widths[idx]) for idx, value in enumerate(row)) for row in table_rows]
+    return "\n".join([header_line, divider, *body_lines])
+
+
+def _canonical_events_to_dicts(events: Iterable[Any]) -> List[dict[str, Any]]:
+    payload: List[dict[str, Any]] = []
+    for event in events:
+        if isinstance(event, dict):
+            payload.append(dict(event))
+            continue
+        if is_dataclass(event):
+            payload.append(asdict(event))
+            continue
+        if hasattr(event, "model_dump"):
+            try:
+                dumped = event.model_dump()
+            except Exception:  # pragma: no cover - defensive
+                dumped = None
+            if isinstance(dumped, dict):
+                payload.append(dumped)
+                continue
+        if hasattr(event, "__dict__"):
+            payload.append(dict(vars(event)))
+            continue
+        payload.append({"value": repr(event)})
+    return payload
+
+
+def _resolve_targets_cli(
+    raw_targets: Iterable[str] | None,
+    frames: Iterable[str] | None,
+) -> List[str]:
+    cleaned = [token.strip() for token in (raw_targets or []) if token]
+    if not cleaned:
+        return expand_targets(frames or DEFAULT_TARGET_FRAMES, DEFAULT_TARGET_SELECTION)
+    return expand_targets(frames or DEFAULT_TARGET_FRAMES, cleaned)
+
+
 def serialize_events_to_json(events: Iterable) -> str:
     """Serialize events into a pretty-printed JSON string."""
 
@@ -730,6 +876,108 @@ def cmd_transits(args: argparse.Namespace) -> int:
     if not any((args.json, args.sqlite, args.parquet, args.export_ics)):
 
         print(serialize_events_to_json(events))
+
+    return 0
+
+
+def cmd_scan(args: argparse.Namespace) -> int:
+    detectors = _normalize_detectors(getattr(args, "detectors", None))
+    _set_engine_detector_flags(detectors)
+
+    moving = list(dict.fromkeys(args.moving or DEFAULT_MOVING_BODIES))
+    frame_selection = list(dict.fromkeys(args.target_frames or [])) or list(DEFAULT_TARGET_FRAMES)
+    targets = _resolve_targets_cli(args.targets, frame_selection)
+
+    entrypoints: List[str] = []
+    for raw in getattr(args, "entrypoint", []) or []:
+        token = str(raw).strip()
+        if token:
+            entrypoints.append(token)
+
+    if getattr(args, "cache", False):
+        enable_cache(True)
+
+    provider = args.provider
+    if provider == "auto":
+        provider = None
+
+    try:
+        result = run_scan_or_raise(
+            start_utc=args.start_utc,
+            end_utc=args.end_utc,
+            moving=moving,
+            targets=targets,
+            provider=provider,
+            profile_id=args.profile,
+            step_minutes=args.step_minutes,
+            detectors=detectors,
+            target_frames=frame_selection,
+            sidereal=args.sidereal if args.sidereal is not None else None,
+            ayanamsha=args.ayanamsha or None,
+            entrypoints=entrypoints or None,
+            return_used_entrypoint=True,
+        )
+    except RuntimeError as exc:  # pragma: no cover - exercised in integration tests
+        print(f"Scan failed: {exc}", file=sys.stderr)
+        return 1
+
+    raw_events, used_entrypoint = result
+    canonical_events = canonicalize_events(raw_events)
+    records = _canonical_events_to_dicts(canonical_events)
+
+    if args.export_json:
+        try:
+            path = Path(args.export_json)
+            path.write_text(json.dumps(records, indent=2, ensure_ascii=False), encoding="utf-8")
+            print(f"JSON export complete: {path} ({len(records)} events)")
+        except Exception as exc:
+            print(f"JSON export failed ({exc})", file=sys.stderr)
+
+    if args.export_sqlite:
+        try:
+            rows = write_sqlite_canonical(args.export_sqlite, canonical_events)
+            print(f"SQLite export complete: {args.export_sqlite} ({rows} rows)")
+        except Exception as exc:
+            print(f"SQLite export failed ({exc})", file=sys.stderr)
+
+    if args.export_parquet:
+        try:
+            rows = write_parquet_canonical(args.export_parquet, canonical_events)
+            print(f"Parquet export complete: {args.export_parquet} ({rows} rows)")
+        except Exception as exc:
+            print(f"Parquet export failed ({exc})", file=sys.stderr)
+
+    if args.export_ics:
+        try:
+            rows = write_ics_canonical(
+                args.export_ics,
+                canonical_events,
+                calendar_name=args.ics_title or "AstroEngine Events",
+            )
+            print(f"ICS export complete: {args.export_ics} ({rows} events)")
+        except Exception as exc:
+            print(f"ICS export failed ({exc})", file=sys.stderr)
+
+    table = _format_event_table(canonical_events)
+    module_name, func_name = used_entrypoint
+    print(f"Scan entrypoint: {module_name}.{func_name}")
+    print(f"Detected {len(canonical_events)} events")
+    if detectors:
+        print("Detectors:", ", ".join(detectors))
+    if table:
+        print(table)
+    elif not canonical_events:
+        print("No events detected for the provided window.")
+
+    if not any(
+        [
+            args.export_json,
+            args.export_sqlite,
+            args.export_parquet,
+            args.export_ics,
+        ]
+    ):
+        print(json.dumps(records, indent=2, ensure_ascii=False))
 
     return 0
 
@@ -909,6 +1157,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--natal-utc", help="Natal timestamp (ISO-8601) for return calculations")  # ENSURE-LINE
     parser.add_argument("--natal-id", help="Natal identifier for provenance and vault operations")  # ENSURE-LINE
     parser.add_argument("--return-kind", default="solar", help="Return kind: solar or lunar")  # ENSURE-LINE
+
     parser.add_argument("--natal-lat", type=float, help="Latitude for natal chart when computing mundane aspects")
     parser.add_argument("--natal-lon", type=float, help="Longitude for natal chart when computing mundane aspects")
     parser.add_argument("--export-sqlite", help="Write precomputed events to this SQLite file")
@@ -920,6 +1169,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--ics-description-template",
         help="Custom description template for ICS events",
     )
+
     parser.add_argument("--profile", help="Profile identifier to annotate export metadata")
     parser.add_argument("--lat", type=float, help="Latitude for location-sensitive detectors")
     parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")
@@ -996,6 +1246,82 @@ def build_parser() -> argparse.ArgumentParser:
 
     env_parser = sub.add_parser("env", help="List registered providers")
     env_parser.set_defaults(func=cmd_env)
+
+    scan = sub.add_parser("scan", help="Run a canonical transit scan with presets")
+    scan.add_argument("--start-utc", required=True, help="Window start timestamp (ISO-8601)")
+    scan.add_argument("--end-utc", required=True, help="Window end timestamp (ISO-8601)")
+    scan.add_argument(
+        "--provider",
+        default="auto",
+        help="Ephemeris provider (auto, swiss, pymeeus, skyfield)",
+    )
+    scan.add_argument(
+        "--moving",
+        nargs="+",
+        default=DEFAULT_MOVING_BODIES,
+        help="Transiting bodies to track (default: %(default)s)",
+    )
+    scan.add_argument(
+        "--targets",
+        nargs="+",
+        help="Target bodies or qualified symbols (e.g. natal:Sun)",
+    )
+    scan.add_argument(
+        "--target-frame",
+        "--frame",
+        dest="target_frames",
+        action="append",
+        choices=available_frames(),
+        help="Target frame to prefix targets (repeatable)",
+    )
+    scan.add_argument(
+        "--detector",
+        "--detectors",
+        dest="detectors",
+        action="append",
+        choices=sorted(DETECTOR_NAMES),
+        help="Enable optional detectors (repeatable, use 'all' for every toggle)",
+    )
+    scan.add_argument(
+        "--entrypoint",
+        action="append",
+        help="Explicit scan entrypoint module:function (repeatable)",
+    )
+    scan.add_argument(
+        "--step-minutes",
+        type=int,
+        default=60,
+        help="Sampling cadence in minutes (default: %(default)s)",
+    )
+    scan.add_argument("--export-json", help="Write canonical events to a JSON file")
+    scan.add_argument("--export-sqlite", help="Write canonical events to a SQLite file")
+    scan.add_argument("--export-parquet", help="Write canonical events to a Parquet dataset")
+    scan.add_argument("--export-ics", help="Write canonical events to an ICS calendar file")
+    scan.add_argument(
+        "--ics-title",
+        default="AstroEngine Events",
+        help="Calendar title to embed when exporting ICS",
+    )
+    scan.add_argument(
+        "--cache",
+        action="store_true",
+        help="Enable Swiss longitude caching when available",
+    )
+    scan.add_argument(
+        "--sidereal",
+        dest="sidereal",
+        action="store_true",
+        help="Use sidereal zodiac settings for this scan",
+    )
+    scan.add_argument(
+        "--tropical",
+        dest="sidereal",
+        action="store_false",
+        help="Force tropical zodiac for this scan",
+    )
+    scan.set_defaults(sidereal=None)
+    scan.add_argument("--ayanamsha", help="Sidereal ayanāṁśa to apply when sidereal is enabled")
+    scan.set_defaults(func=cmd_scan)
 
     transits = sub.add_parser("transits", help="Scan for transit contacts")
     feature_targets = getattr(parser, "_ae_feature_parsers", [])

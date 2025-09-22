@@ -176,6 +176,8 @@ pip install -e .[trad]                 # flatlib (dignities/lots)
 ```bash
 python -m astroengine provider list
 python -m astroengine provider check swiss
+astroengine scan --start-utc 2024-01-01T00:00:00Z --end-utc 2024-01-02T00:00:00Z \
+  --moving Sun Moon --targets natal:Sun natal:Moon --target-frame natal --detector lunations
 ```
 
 > **Licensing note:** Swiss Ephemeris is AGPL/commercial for distribution. Keep data files outside the wheel; users should provide `SWE_EPH_PATH/SE_EPHE_PATH`.
