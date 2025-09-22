@@ -6,14 +6,23 @@ import datetime as dt
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+
 from typing import Iterable, List, Mapping, MutableMapping
 
+
+
+import yaml
+
+from .astro.declination import DEFAULT_ANTISCIA_AXIS
 from .core.engine import get_active_aspect_angles
 from .detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
 from .detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
 from .detectors_aspects import AspectHit, detect_aspects
+from .ephemeris import EphemerisConfig
 from .exporters import LegacyTransitEvent
+from .infrastructure.paths import profiles_dir
 from .providers import get_provider
+from .profiles import load_base_profile
 from .scoring import ScoreInputs, compute_score
 from .canonical import BodyPosition
 from .chart.natal import NatalChart
@@ -242,6 +251,151 @@ class ScanConfig:
     tick_minutes: int = 60
 
 
+_ANGLE_BODIES = {"asc", "mc", "ic", "dsc"}
+
+
+def _normalize_body(name: str | None) -> str:
+    return str(name or "").lower()
+
+
+def _has_moon(*names: str) -> bool:
+    return any(_normalize_body(name) == "moon" for name in names)
+
+
+def _has_angle(*names: str) -> bool:
+    return any(_normalize_body(name) in _ANGLE_BODIES for name in names)
+
+
+def _orb_from_policy(
+    policy: Any,
+    *,
+    moving: str,
+    target: str,
+    default: float,
+    include_moon: bool = True,
+    include_angles: bool = False,
+    angle_key: str = "angular",
+) -> float:
+    if isinstance(policy, Mapping):
+        value: Any = policy.get("default", default)
+        if include_moon and _has_moon(moving, target):
+            value = policy.get("moon", value)
+        if include_angles and _has_angle(moving, target):
+            value = policy.get(angle_key, value)
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(default)
+    if policy is None:
+        return float(default)
+    try:
+        return float(policy)
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def _resolve_declination_orb(
+    profile: Mapping[str, Any],
+    *,
+    kind: str,
+    moving: str,
+    target: str,
+    override: float | None,
+) -> float:
+    if override is not None:
+        return float(override)
+    policies = profile.get("orb_policies")
+    policy: Any = None
+    if isinstance(policies, Mapping):
+        policy = policies.get("declination_aspect_orb_deg")
+        if isinstance(policy, Mapping):
+            kind_policy = policy.get(kind)
+            if kind_policy is not None:
+                policy = kind_policy
+    return _orb_from_policy(
+        policy,
+        moving=moving,
+        target=target,
+        default=0.5,
+    )
+
+
+def _resolve_mirror_orb(
+    profile: Mapping[str, Any],
+    *,
+    kind: str,
+    moving: str,
+    target: str,
+    override: float | None,
+) -> float:
+    if override is not None:
+        return float(override)
+    policies = profile.get("orb_policies")
+    policy: Any = None
+    if isinstance(policies, Mapping):
+        policy = policies.get("antiscia_orb_deg")
+        if isinstance(policy, Mapping):
+            kind_policy = policy.get(kind)
+            if kind_policy is not None:
+                policy = kind_policy
+    return _orb_from_policy(
+        policy,
+        moving=moving,
+        target=target,
+        default=2.0,
+        include_angles=True,
+    )
+
+
+def _load_profile_by_id(profile_id: str) -> Mapping[str, Any]:
+    base = load_base_profile()
+    profiles_path = profiles_dir()
+    for suffix in (".yaml", ".yml", ".json"):
+        candidate = profiles_path / f"{profile_id}{suffix}"
+        if not candidate.exists():
+            continue
+        try:
+            data = yaml.safe_load(candidate.read_text(encoding="utf-8"))
+        except Exception:  # pragma: no cover - file parse errors bubble to callers later
+            break
+        if isinstance(data, Mapping):
+            return data
+        break
+    return base
+
+
+def _resolve_profile(
+    profile: Mapping[str, Any] | None,
+    profile_id: str | None,
+) -> Mapping[str, Any]:
+    if profile is not None:
+        return profile
+    if profile_id:
+        if profile_id == "base":
+            return load_base_profile()
+        return _load_profile_by_id(profile_id)
+    return load_base_profile()
+
+
+def _resolve_antiscia_axis(
+    profile: Mapping[str, Any], axis_override: str | None
+) -> str:
+    if axis_override:
+        return axis_override
+    feature_flags = profile.get("feature_flags")
+    axis: Any = None
+    if isinstance(feature_flags, Mapping):
+        antiscia_flags = feature_flags.get("antiscia")
+        if isinstance(antiscia_flags, Mapping):
+            axis = antiscia_flags.get("axis")
+    if axis is None:
+        legacy = profile.get("antiscia")
+        if isinstance(legacy, Mapping):
+            axis = legacy.get("axis")
+    if isinstance(axis, str) and axis.strip():
+        return axis
+    return DEFAULT_ANTISCIA_AXIS
+
 def events_to_dicts(events: Iterable[LegacyTransitEvent]) -> List[dict]:
     """Convert :class:`LegacyTransitEvent` objects into JSON-friendly dictionaries."""
 
@@ -290,6 +444,17 @@ def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> LegacyTransitEvent:
         hit.target,
         hit.applying_or_separating,
     )
+    metadata: dict[str, float | str] = {
+        "dec_moving": hit.dec_moving,
+        "dec_target": hit.dec_target,
+        "decl_moving": hit.dec_moving,
+        "decl_target": hit.dec_target,
+        "decl_delta": hit.delta,
+    }
+    if hit.mirror_lon is not None:
+        metadata["mirror_lon"] = hit.mirror_lon
+    if hit.axis:
+        metadata["mirror_axis"] = hit.axis
     return LegacyTransitEvent(
         kind=hit.kind,
         timestamp=hit.when_iso,
@@ -301,10 +466,7 @@ def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> LegacyTransitEvent:
         score=score,
         lon_moving=hit.lon_moving,
         lon_target=hit.lon_target,
-        metadata={
-            "dec_moving": hit.dec_moving,
-            "dec_target": hit.dec_target,
-        },
+        metadata=metadata,
     )
 
 
@@ -328,7 +490,13 @@ def _event_from_aspect(hit: AspectHit) -> LegacyTransitEvent:
         score=score,
         lon_moving=hit.lon_moving,
         lon_target=hit.lon_target,
-        metadata={"angle_deg": hit.angle_deg},
+        metadata={
+            "angle_deg": float(hit.angle_deg),
+            "delta_lambda_deg": float(hit.delta_lambda_deg),
+            "offset_deg": float(hit.offset_deg),
+            "partile": bool(hit.is_partile),
+            "family": hit.family,
+        },
     )
 
 
@@ -339,12 +507,15 @@ def scan_contacts(
     target: str,
     provider_name: str = "swiss",
     *,
-    decl_parallel_orb: float = 0.5,
-    decl_contra_orb: float = 0.5,
-    antiscia_orb: float = 2.0,
-    contra_antiscia_orb: float = 2.0,
+
+    decl_parallel_orb: float | None = None,
+    decl_contra_orb: float | None = None,
+    antiscia_orb: float | None = None,
+    contra_antiscia_orb: float | None = None,
+
     step_minutes: int = 60,
     aspects_policy_path: str | None = None,
+
     provider: object | None = None,
     target_frame: str = "transit",
     target_resolver: TargetFrameResolver | None = None,
@@ -365,9 +536,85 @@ def scan_contacts(
         provider_obj = FrameAwareProvider(base_provider, target, resolver)
     else:
         provider_obj = base_provider
+
+    profile: Mapping[str, Any] | None = None,
+    profile_id: str | None = None,
+    include_declination: bool = True,
+    include_mirrors: bool = True,
+    include_aspects: bool = True,
+    antiscia_axis: str | None = None,
+) -> List[LegacyTransitEvent]:
+    """Scan for declination, antiscia, and aspect contacts between two bodies."""
+
+    profile_data = _resolve_profile(profile, profile_id)
+
+    decl_parallel_allow = _resolve_declination_orb(
+        profile_data,
+        kind="parallel",
+        moving=moving,
+        target=target,
+        override=decl_parallel_orb,
+    )
+    decl_contra_allow = _resolve_declination_orb(
+        profile_data,
+        kind="contraparallel",
+        moving=moving,
+        target=target,
+        override=decl_contra_orb,
+    )
+    antiscia_allow = _resolve_mirror_orb(
+        profile_data,
+        kind="antiscia",
+        moving=moving,
+        target=target,
+        override=antiscia_orb,
+    )
+    contra_antiscia_allow = _resolve_mirror_orb(
+        profile_data,
+        kind="contra_antiscia",
+        moving=moving,
+        target=target,
+        override=contra_antiscia_orb,
+    )
+    axis = _resolve_antiscia_axis(profile_data, antiscia_axis)
+
+    feature_flags = profile_data.get("feature_flags")
+    decl_flags: Mapping[str, Any] = {}
+    antiscia_flags: Mapping[str, Any] = {}
+    if isinstance(feature_flags, Mapping):
+        candidate = feature_flags.get("declination_aspects")
+        if isinstance(candidate, Mapping):
+            decl_flags = candidate
+        candidate = feature_flags.get("antiscia")
+        if isinstance(candidate, Mapping):
+            antiscia_flags = candidate
+
+    decl_enabled = bool(decl_flags.get("enabled", True))
+    parallel_enabled = bool(decl_flags.get("parallels", True))
+    contra_enabled = bool(decl_flags.get("contraparallels", True))
+    antiscia_enabled = bool(antiscia_flags.get("enabled", True))
+
+    do_declination = include_declination and decl_enabled
+    do_parallels = parallel_enabled
+    do_contras = contra_enabled
+    do_mirrors = include_mirrors and antiscia_enabled
+    do_aspects = include_aspects
+
+    provider = get_provider(provider_name)
+    if ephemeris_config is not None:
+        configure = getattr(provider, "configure", None)
+        if callable(configure):
+            configure(
+                topocentric=ephemeris_config.topocentric,
+                observer=ephemeris_config.observer,
+                sidereal=ephemeris_config.sidereal,
+                time_scale=ephemeris_config.time_scale,
+            )
+
     ticks = list(_iso_ticks(start_iso, end_iso, step_minutes=step_minutes))
 
     events: List[LegacyTransitEvent] = []
+
 
     for hit in detect_decl_contacts(
         provider_obj,
@@ -399,6 +646,54 @@ def scan_contacts(
         policy_path=aspects_policy_path,
     ):
         events.append(_event_from_aspect(aspect_hit))
+
+    if do_declination:
+        for hit in detect_decl_contacts(
+            provider,
+            ticks,
+            moving,
+            target,
+            decl_parallel_allow,
+            decl_contra_allow,
+        ):
+            if hit.kind == "decl_parallel" and not do_parallels:
+                continue
+            if hit.kind == "decl_contra" and not do_contras:
+                continue
+            allow = (
+                decl_parallel_allow
+                if hit.kind == "decl_parallel"
+                else decl_contra_allow
+            )
+            events.append(_event_from_decl(hit, orb_allow=allow))
+
+    if do_mirrors:
+        for hit in detect_antiscia_contacts(
+            provider,
+            ticks,
+            moving,
+            target,
+            antiscia_allow,
+            contra_antiscia_allow,
+            axis=axis,
+        ):
+            allow = (
+                antiscia_allow
+                if hit.kind == "antiscia"
+                else contra_antiscia_allow
+            )
+            events.append(_event_from_decl(hit, orb_allow=allow))
+
+    if do_aspects:
+        for aspect_hit in detect_aspects(
+            provider,
+            ticks,
+            moving,
+            target,
+            policy_path=aspects_policy_path,
+        ):
+            events.append(_event_from_aspect(aspect_hit))
+
 
     events.sort(key=lambda event: (event.timestamp, -event.score))
     return events

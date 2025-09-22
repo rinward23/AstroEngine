@@ -35,6 +35,13 @@ AstroEngine bundles a small number of static datasets that are consumed by the r
 - **Integrity**: When a new catalogue is imported, compute a SHA-256 checksum, store it in the CSV, and index the dataset in
   SQLite if it grows beyond a few hundred rows. Document the import command and verification steps in the revision log.
 
+### `datasets/star_names_iau.csv`
+
+- **Purpose**: Provides official WGSN star names and J2000 equatorial positions for the fixed-star utilities (`astroengine.fixedstars`).
+- **Origins**: Derived from the HYG Database v4.1 (`c7f7f883fe678cc7680169a50ccd7dcc49b060ce`, CC-BY-SA 4.0) which mirrors the IAU Working Group for Star Names list as of March 2023. Unofficial duplicate component names (e.g., “Revati B”) are excluded.
+- **Structure**: Columns `name`, `hip`, `hr`, `ra_deg`, `dec_deg`, `notes`. Right ascension values are converted from hours to degrees; declinations remain in degrees (epoch/equinox J2000). The `notes` column captures Bayer/Flamsteed, HD, or Gliese identifiers plus the source citation.
+- **Integrity**: Preserve alphabetical ordering and regenerate the file via the documented import script whenever the WGSN list updates. Record the upstream HYG commit hash in the header comments and update `docs/governance/data_revision_policy.md` if provenance changes.
+
 ### `profiles/vca_outline.json`
 
 - **Purpose**: Declares the module → submodule → channel → subchannel hierarchy for the Venus Cycle Analytics runtime.
