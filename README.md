@@ -92,14 +92,39 @@ from astroengine.canonical import events_from_any
 
 ```python
 from astroengine.exporters import write_sqlite_canonical, write_parquet_canonical
+from astroengine.canonical import sqlite_read_canonical
+from astroengine.exporters_ics import write_ics
+from astroengine.infrastructure.storage.sqlite import ensure_sqlite_schema
 
 rows = write_sqlite_canonical("events.db", events)     # accepts dicts/legacy/canonical
-rows = write_parquet_canonical("events.parquet", events)
+rows = write_parquet_canonical("events.parquet", events, compression="gzip")
+ensure_sqlite_schema("events.db")  # applies Alembic migrations in-place
+events = sqlite_read_canonical("events.db")
+write_ics(
+    "events.ics",
+    events,
+    calendar_name="AstroEngine",
+    summary_template="{label} [{natal_id}]",
+)
 ```
+
+- Canonical SQLite exports store a fully versioned `transits_events` schema with
+  indexed columns (`profile_id`, `natal_id`, `event_year`, `score`).
+- Parquet exports are partitioned by `natal_id/event_year` to support efficient
+  downstream filtering. The `compression` keyword controls the codec (snappy,
+  gzip, brotli, ...).
+- ICS exports accept summary/description templates and understand ingress and
+  return events alongside standard transits.
 
 ### CLI integration (maintainers)
 
-Scan commands can call `_cli_export(args, events)` after adding `add_canonical_export_args(parser)` to gain `--sqlite/--parquet` switches.
+Scan commands can call `_cli_export(args, events)` after adding
+`add_canonical_export_args(parser)` to gain `--sqlite/--parquet` switches. A
+companion query tool exposes indexed lookups:
+
+```
+astroengine query --sqlite events.db --limit 5 --natal-id n001
+```
 
 # >>> AUTO-GEN END: Canonical Transit Types v1.0
 
