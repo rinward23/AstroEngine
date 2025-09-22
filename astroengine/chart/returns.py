@@ -55,13 +55,18 @@ def compute_return_chart(
     bodies: Mapping[str, int] | None = None,
     aspect_angles: Sequence[int] | None = None,
     orb_profile: str = "standard",
-    chart_config: ChartConfig | None = None,
+
+    config: ChartConfig | None = None,
+
     adapter: SwissEphemerisAdapter | None = None,
     orb_calculator: OrbCalculator | None = None,
 ) -> ReturnChart:
     """Compute the solar or lunar return chart for ``target_year``."""
 
-    adapter = adapter or SwissEphemerisAdapter(chart_config=chart_config)
+
+    chart_config = config or ChartConfig()
+    adapter = adapter or SwissEphemerisAdapter.from_chart_config(chart_config)
+
     orb_calculator = orb_calculator or OrbCalculator()
     location = location or natal_chart.location
     body_map = bodies or DEFAULT_BODIES
@@ -73,7 +78,7 @@ def compute_return_chart(
 
     start_jd = adapter.julian_day(start_dt)
     end_jd = adapter.julian_day(end_dt)
-    events = solar_lunar_returns(natal_jd, start_jd, end_jd, kind)
+    events = solar_lunar_returns(natal_jd, start_jd, end_jd, kind, adapter=adapter)
     if not events:
         raise ValueError(f"No {kind} return found between {start_dt.isoformat()} and {end_dt.isoformat()}")
 
@@ -87,7 +92,9 @@ def compute_return_chart(
         bodies=body_map,
         aspect_angles=angles,
         orb_profile=orb_profile,
-        chart_config=chart_config,
+
+        config=chart_config,
+
         adapter=adapter,
         orb_calculator=orb_calculator,
     )

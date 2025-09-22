@@ -7,13 +7,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+
+from typing import ClassVar, Optional, TYPE_CHECKING
 
 import swisseph as swe
 
+from .sidereal import DEFAULT_SIDEREAL_AYANAMSHA, SUPPORTED_AYANAMSHAS, normalize_ayanamsha_name
 from .utils import get_se_ephe_path
 
-if TYPE_CHECKING:  # pragma: no cover - avoid circular import at runtime
+if TYPE_CHECKING:
+
     from ..chart.config import ChartConfig
 
 __all__ = ["BodyPosition", "HousePositions", "SwissEphemerisAdapter"]
@@ -68,13 +71,137 @@ class HousePositions:
 
 
 class SwissEphemerisAdapter:
-    """High-level adapter around :mod:`pyswisseph`."""
+    """High-level adapter around :mod:`pyswisseph` with sidereal support."""
 
     _DEFAULT_PATHS = (
         Path("/usr/share/sweph"),
         Path("/usr/share/libswisseph"),
         Path.home() / ".sweph",
     )
+    _DEFAULT_ZODIAC: ClassVar[str] = "tropical"
+    _DEFAULT_AYANAMSHA: ClassVar[str | None] = DEFAULT_SIDEREAL_AYANAMSHA
+    _DEFAULT_ADAPTER: ClassVar[Optional["SwissEphemerisAdapter"]] = None
+    _AYANAMSHA_MODES: ClassVar[dict[str, int]] = {
+        "lahiri": swe.SIDM_LAHIRI,
+        "fagan_bradley": swe.SIDM_FAGAN_BRADLEY,
+        "krishnamurti": swe.SIDM_KRISHNAMURTI,
+        "raman": swe.SIDM_RAMAN,
+        "deluce": swe.SIDM_DELUCE,
+    }
+
+    def __init__(
+        self,
+        ephemeris_path: str | os.PathLike[str] | None = None,
+        *,
+        zodiac: str | None = None,
+        ayanamsha: str | None = None,
+        chart_config: ChartConfig | None = None,
+    ) -> None:
+        if chart_config is not None:
+            zodiac = chart_config.zodiac
+            ayanamsha = chart_config.ayanamsha
+        zodiac_normalized = (zodiac or self._DEFAULT_ZODIAC).lower()
+        if zodiac_normalized not in {"tropical", "sidereal"}:
+            options = ", ".join(sorted({"tropical", "sidereal"}))
+            raise ValueError(f"Unknown zodiac mode '{zodiac}'. Valid options: {options}")
+
+        ayanamsha_normalized: str | None
+        if zodiac_normalized == "sidereal":
+            fallback = ayanamsha or chart_config.ayanamsha if chart_config else ayanamsha
+            ayanamsha_candidate = fallback or self._DEFAULT_AYANAMSHA or DEFAULT_SIDEREAL_AYANAMSHA
+            ayanamsha_normalized = normalize_ayanamsha_name(ayanamsha_candidate)
+            if ayanamsha_normalized not in SUPPORTED_AYANAMSHAS:
+                options = ", ".join(sorted(SUPPORTED_AYANAMSHAS))
+                raise ValueError(
+                    f"Unsupported ayanamsha '{ayanamsha_candidate}'. Supported options: {options}"
+                )
+        else:
+            ayanamsha_normalized = None
+
+        self.zodiac = zodiac_normalized
+        self.ayanamsha = ayanamsha_normalized
+        self._sidereal_mode: int | None = None
+        self._is_sidereal = zodiac_normalized == "sidereal"
+        if self._is_sidereal:
+            self._sidereal_mode = self._resolve_sidereal_mode(ayanamsha_normalized)
+        self._calc_flags = swe.FLG_SWIEPH | swe.FLG_SPEED
+        self._fallback_flags = swe.FLG_MOSEPH | swe.FLG_SPEED
+        if self._is_sidereal:
+            self._calc_flags |= swe.FLG_SIDEREAL
+            self._fallback_flags |= swe.FLG_SIDEREAL
+
+
+        self.ephemeris_path = self._configure_ephemeris_path(ephemeris_path)
+        if self._is_sidereal:
+            self._apply_sidereal_mode()
+
+    # ------------------------------------------------------------------
+    # Class helpers
+    # ------------------------------------------------------------------
+    @classmethod
+    def configure_defaults(
+        cls,
+        *,
+        zodiac: str | None = None,
+        ayanamsha: str | None = None,
+        chart_config: ChartConfig | None = None,
+    ) -> None:
+        """Update default zodiac configuration for subsequently created adapters."""
+
+        if chart_config is not None:
+            zodiac = chart_config.zodiac
+            ayanamsha = chart_config.ayanamsha
+
+        if zodiac is not None:
+            zodiac_normalized = zodiac.lower()
+        else:
+            zodiac_normalized = cls._DEFAULT_ZODIAC
+
+        if zodiac_normalized not in {"tropical", "sidereal"}:
+            options = ", ".join(sorted({"tropical", "sidereal"}))
+            raise ValueError(f"Unknown zodiac mode '{zodiac}'. Valid options: {options}")
+
+        cls._DEFAULT_ZODIAC = zodiac_normalized
+
+        if zodiac_normalized == "sidereal":
+            ayanamsha_value = ayanamsha or cls._DEFAULT_AYANAMSHA or DEFAULT_SIDEREAL_AYANAMSHA
+            ayanamsha_normalized = normalize_ayanamsha_name(ayanamsha_value)
+            if ayanamsha_normalized not in SUPPORTED_AYANAMSHAS:
+                options = ", ".join(sorted(SUPPORTED_AYANAMSHAS))
+                raise ValueError(
+                    f"Unsupported ayanamsha '{ayanamsha_value}'. Supported options: {options}"
+                )
+            cls._DEFAULT_AYANAMSHA = ayanamsha_normalized
+        else:
+            cls._DEFAULT_AYANAMSHA = None
+
+        cls._DEFAULT_ADAPTER = None
+
+    @classmethod
+    def get_default_adapter(cls) -> "SwissEphemerisAdapter":
+        if cls._DEFAULT_ADAPTER is None:
+            cls._DEFAULT_ADAPTER = cls()
+        return cls._DEFAULT_ADAPTER
+
+    @classmethod
+    def from_chart_config(cls, config: ChartConfig) -> "SwissEphemerisAdapter":
+        return cls(chart_config=config)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+    @classmethod
+    def _resolve_sidereal_mode(cls, ayanamsha: str | None) -> int:
+        assert ayanamsha is not None
+        try:
+            return cls._AYANAMSHA_MODES[ayanamsha]
+        except KeyError as exc:  # pragma: no cover - guarded by validation upstream
+            raise ValueError(f"Unsupported ayanamsha '{ayanamsha}'") from exc
+
+    def _apply_sidereal_mode(self) -> None:
+        if self._sidereal_mode is None:
+            return
+        swe.set_sid_mode(self._sidereal_mode, 0, 0)
 
     _HOUSE_SYSTEM_CODES: Mapping[str, bytes] = {
         "placidus": b"P",
@@ -100,6 +227,7 @@ class SwissEphemerisAdapter:
         self._sidereal_flag = swe.FLG_SIDEREAL if self._sidereal else 0
         self.ephemeris_path = self._configure_ephemeris_path(ephemeris_path)
         self._configure_sidereal_mode()
+
 
     def _configure_ephemeris_path(
         self, ephemeris_path: str | os.PathLike[str] | None
@@ -148,11 +276,15 @@ class SwissEphemerisAdapter:
     ) -> BodyPosition:
         """Compute longitude/latitude/speed data for a single body."""
 
-        flags = swe.FLG_SWIEPH | swe.FLG_SPEED | self._sidereal_flag
+
+        self._apply_sidereal_mode()
+
+        flags = self._calc_flags
         try:
             values, _ = swe.calc_ut(jd_ut, body_code, flags)
         except Exception:
-            flags = swe.FLG_MOSEPH | swe.FLG_SPEED | self._sidereal_flag
+            flags = self._fallback_flags
+
             values, _ = swe.calc_ut(jd_ut, body_code, flags)
 
         lon, lat, dist, speed_lon, speed_lat, speed_dist = values
@@ -194,18 +326,36 @@ class SwissEphemerisAdapter:
     ) -> HousePositions:
         """Compute house cusps for a given location."""
 
-        sys_code = self._resolve_house_system(system)
+
+        sys_code = system.upper().encode("ascii")
+        self._apply_sidereal_mode()
+
         cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, sys_code)
+
+        if self._is_sidereal:
+            ayan = swe.get_ayanamsa_ut(jd_ut)
+            cusps = [(c - ayan) % 360.0 for c in cusps]
+            ascendant = (angles[0] - ayan) % 360.0
+            midheaven = (angles[1] - ayan) % 360.0
+        else:
+            ascendant = angles[0]
+            midheaven = angles[1]
+
         return HousePositions(
-            system=sys_code.decode("ascii"),
+
+            system=system.upper(),
             cusps=tuple(cusps),
-            ascendant=angles[0],
-            midheaven=angles[1],
+            ascendant=ascendant,
+            midheaven=midheaven,
         )
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # Properties
     # ------------------------------------------------------------------
+    @property
+    def is_sidereal(self) -> bool:
+        return self._is_sidereal
+
     def _configure_sidereal_mode(self) -> None:
         if not self._sidereal:
             return
@@ -257,3 +407,4 @@ class SwissEphemerisAdapter:
             return code
 
         raise ValueError(f"Unsupported house system '{system}'")
+

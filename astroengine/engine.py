@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, List, Mapping
 
-import yaml
 
-from .astro.declination import DEFAULT_ANTISCIA_AXIS
+from .chart.config import ChartConfig
+
 from .core.engine import get_active_aspect_angles
 from .detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
 from .detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
@@ -21,6 +21,7 @@ from .infrastructure.paths import profiles_dir
 from .providers import get_provider
 from .profiles import load_base_profile
 from .scoring import ScoreInputs, compute_score
+from .ephemeris import SwissEphemerisAdapter
 
 # >>> AUTO-GEN BEGIN: engine-feature-flags v1.0
 # Feature flags (default OFF to preserve current behavior)
@@ -329,6 +330,14 @@ def scan_contacts(
 
     step_minutes: int = 60,
     aspects_policy_path: str | None = None,
+
+    chart_config: ChartConfig | None = None,
+) -> List[LegacyTransitEvent]:
+    """Scan for declination, antiscia, and aspect contacts between two bodies."""
+
+    if chart_config is not None:
+        SwissEphemerisAdapter.configure_defaults(chart_config=chart_config)
+
     profile: Mapping[str, Any] | None = None,
     profile_id: str | None = None,
     include_declination: bool = True,
@@ -391,6 +400,7 @@ def scan_contacts(
     do_contras = contra_enabled
     do_mirrors = include_mirrors and antiscia_enabled
     do_aspects = include_aspects
+
 
     provider = get_provider(provider_name)
     if ephemeris_config is not None:

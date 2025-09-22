@@ -12,12 +12,21 @@ from typing import Iterable, Sequence, Any
 
 
 from . import engine as engine_module
+
+from .chart.config import (
+    ChartConfig,
+    DEFAULT_SIDEREAL_AYANAMSHA,
+    SUPPORTED_AYANAMSHAS,
+    VALID_ZODIAC_SYSTEMS,
+)
+
 from .chart.config import ChartConfig, VALID_HOUSE_SYSTEMS, VALID_ZODIAC_SYSTEMS
 from .detectors.ingress import find_ingresses
 from .engine import events_to_dicts, scan_contacts
 from .astro.declination import available_antiscia_axes
 from .ephemeris import SwissEphemerisAdapter
 from .narrative import summarize_top_events
+
 
 from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
 
@@ -342,6 +351,8 @@ def run_experimental(args) -> None:
         ]
     ):
         return
+    chart_config = getattr(args, "chart_config", ChartConfig())
+    adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
     start_jd = iso_to_jd(args.start_utc)
     end_jd = iso_to_jd(args.end_utc)
     if args.eclipses:
@@ -361,19 +372,25 @@ def run_experimental(args) -> None:
             print("returns: missing --natal-utc; skipping")
         else:
             which = getattr(args, "return_kind", "solar")
-            ev = solar_lunar_returns(iso_to_jd(args.natal_utc), start_jd, end_jd, which)
+            ev = solar_lunar_returns(
+                iso_to_jd(args.natal_utc), start_jd, end_jd, which, adapter=adapter
+            )
             print(f"{which}-returns: {len(ev)} events")
     if args.progressions:
         if not getattr(args, "natal_utc", None):
             print("progressions: missing --natal-utc; skipping")
         else:
-            ev = secondary_progressions(args.natal_utc, args.start_utc, args.end_utc)
+            ev = secondary_progressions(
+                args.natal_utc, args.start_utc, args.end_utc, config=chart_config
+            )
             print(f"progressions: {len(ev)} events")
     if args.directions:
         if not getattr(args, "natal_utc", None):
             print("directions: missing --natal-utc; skipping")
         else:
-            ev = solar_arc_directions(args.natal_utc, args.start_utc, args.end_utc)
+            ev = solar_arc_directions(
+                args.natal_utc, args.start_utc, args.end_utc, config=chart_config
+            )
             print(f"solar-arc directions: {len(ev)} events")
 # >>> AUTO-GEN END: cli-run-experimental v1.1
 
@@ -462,11 +479,15 @@ def cmd_transits(args: argparse.Namespace) -> int:
         contra_antiscia_orb=args.mirror_orb,
         step_minutes=args.step,
         aspects_policy_path=args.aspects_policy,
+
+        chart_config=getattr(args, "chart_config", None),
+
         profile_id=args.profile,
         include_declination=True,
         include_mirrors=include_mirrors,
         include_aspects=include_aspects,
         antiscia_axis=args.mirror_axis,
+
     )
 
     if args.json:
@@ -623,6 +644,8 @@ def run_experimental(args) -> None:
     if not args.start_utc or not args.end_utc:
         print("experimental detectors require --start-utc and --end-utc; skipping")
         return
+    chart_config = getattr(args, "chart_config", ChartConfig())
+    adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
     start_jd = _iso_to_jd(args.start_utc)
     end_jd = _iso_to_jd(args.end_utc)
     if args.lunations:
@@ -638,12 +661,23 @@ def run_experimental(args) -> None:
         else:
             natal_jd = _iso_to_jd(args.natal_utc)
             which = getattr(args, 'return_kind', 'solar')
-            ev = solar_lunar_returns(natal_jd, start_jd, end_jd, which)
+            ev = solar_lunar_returns(natal_jd, start_jd, end_jd, which, adapter=adapter)
             print(f"{which}-returns: {len(ev)} events")
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="astroengine", description="AstroEngine CLI")
+    parser.add_argument(
+        "--zodiac",
+        choices=sorted(VALID_ZODIAC_SYSTEMS),
+        default="tropical",
+        help="Zodiac mode for chart and transit computations",
+    )
+    parser.add_argument(
+        "--ayanamsha",
+        choices=sorted(SUPPORTED_AYANAMSHAS),
+        help=f"Sidereal ayanamsha (required when --zodiac sidereal; default is '{DEFAULT_SIDEREAL_AYANAMSHA}')",
+    )
     parser.add_argument("--start-utc", help="Start timestamp (ISO-8601) for experimental detectors")  # ENSURE-LINE
     parser.add_argument("--end-utc", help="End timestamp (ISO-8601) for experimental detectors")  # ENSURE-LINE
     parser.add_argument("--natal-utc", help="Natal timestamp (ISO-8601) for return calculations")  # ENSURE-LINE
@@ -819,6 +853,18 @@ def main(argv: Iterable[str] | None = None) -> int:
     _augment_parser_with_provisioning(parser)
     _augment_parser_with_features(parser)
     namespace = parser.parse_args(list(argv) if argv is not None else None)
+
+    zodiac = namespace.zodiac
+    ayanamsha = namespace.ayanamsha
+    if zodiac == "sidereal" and ayanamsha is None:
+        ayanamsha = DEFAULT_SIDEREAL_AYANAMSHA
+    if zodiac != "sidereal":
+        ayanamsha = None
+
+    chart_config = ChartConfig(zodiac=zodiac, ayanamsha=ayanamsha)
+    SwissEphemerisAdapter.configure_defaults(chart_config=chart_config)
+    namespace.chart_config = chart_config
+    namespace.ayanamsha = chart_config.ayanamsha
 
     run_experimental(namespace)
     func = getattr(namespace, "func", None)
