@@ -174,6 +174,7 @@ def solve_zero_crossing(
     *,
     max_iter: int = 64,
     tol: float = 1e-6,
+    value_tol: float | None = None,
     tol_deg: float | None = None,
 ) -> float:
     """Return a root of ``f`` bracketed by ``a`` and ``b``."""
@@ -205,8 +206,13 @@ def solve_zero_crossing(
         f_mid = f(mid)
         root = mid
 
-        value_tol = tol_deg if tol_deg is not None else tol
-        if abs(f_mid) <= value_tol:
+        threshold = value_tol
+        if threshold is None and tol_deg is not None:
+            threshold = tol_deg
+        if threshold is None:
+            threshold = tol
+
+        if abs(f_mid) <= threshold:
             return root
         if abs(right - left) <= tol:
             return root

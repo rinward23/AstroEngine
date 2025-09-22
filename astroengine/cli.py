@@ -73,7 +73,9 @@ def add_canonical_export_args(p: argparse.ArgumentParser) -> None:
 
 # >>> AUTO-GEN BEGIN: cli-run-experimental v1.1
 from .detectors import (
+    find_eclipses,
     find_lunations,
+    find_out_of_bounds,
     find_stations,
     secondary_progressions,
     solar_arc_directions,
@@ -88,22 +90,30 @@ from .exporters_batch import export_parquet_dataset  # ENSURE-LINE
 def run_experimental(args) -> None:
     if not any(
         [
+            args.eclipses,
             args.lunations,
             args.stations,
             args.returns,
             args.progressions,
             args.directions,
+            getattr(args, "oob", False),
         ]
     ):
         return
     start_jd = iso_to_jd(args.start_utc)
     end_jd = iso_to_jd(args.end_utc)
+    if args.eclipses:
+        ev = find_eclipses(start_jd, end_jd)
+        print(f"eclipses: {len(ev)} events")
     if args.lunations:
         ev = find_lunations(start_jd, end_jd)
         print(f"lunations: {len(ev)} events")
     if args.stations:
         ev = find_stations(start_jd, end_jd, None)
         print(f"stations: {len(ev)} events")
+    if getattr(args, "oob", False):
+        ev = find_out_of_bounds(start_jd, end_jd)
+        print(f"out-of-bounds: {len(ev)} events")
     if args.returns:
         if not getattr(args, "natal_utc", None):
             print("returns: missing --natal-utc; skipping")
@@ -174,6 +184,7 @@ def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:
         g = target.add_argument_group("Detectors (experimental)")
         g.add_argument("--lunations", action="store_true", help="Enable lunations detector")
         g.add_argument("--eclipses", action="store_true", help="Enable eclipses detector")
+        g.add_argument("--oob", action="store_true", help="Enable out-of-bounds detector")
         g.add_argument("--stations", action="store_true", help="Enable stations detector")
         g.add_argument("--progressions", action="store_true", help="Enable secondary progressions")
         g.add_argument("--directions", action="store_true", help="Enable solar arc directions")
