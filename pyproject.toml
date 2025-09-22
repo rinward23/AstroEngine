@@ -23,6 +23,9 @@ dependencies = [
   "pandas>=2.0",
   "python-dateutil>=2.8",
   "PyYAML>=6.0",
+  "SQLAlchemy>=2.0",
+  "alembic>=1.13",
+  "ics>=0.7",
   "tzdata>=2023.3",
 ]
 

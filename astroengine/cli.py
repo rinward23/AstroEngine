@@ -24,9 +24,17 @@ from .chart.config import (
 from .chart.config import ChartConfig, VALID_HOUSE_SYSTEMS, VALID_ZODIAC_SYSTEMS
 from .detectors.ingress import find_ingresses
 from .engine import events_to_dicts, scan_contacts
+
+from .exporters_ics import (
+    DEFAULT_DESCRIPTION_TEMPLATE as ICS_DEFAULT_DESCRIPTION_TEMPLATE,
+    DEFAULT_SUMMARY_TEMPLATE as ICS_DEFAULT_SUMMARY_TEMPLATE,
+    write_ics,
+)
+
 from .astro.declination import available_antiscia_axes
 from .ephemeris import SwissEphemerisAdapter
 from .narrative import summarize_top_events
+
 
 
 from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
@@ -46,6 +54,9 @@ from .validation import (
 )
 
 from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
+
+from .infrastructure.storage.sqlite.query import top_events_by_score
+
 from .ux.plugins import setup_cli as setup_plugins
 
 
@@ -402,7 +413,10 @@ def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, in
     if getattr(args, "sqlite", None):
         written["sqlite"] = write_sqlite_canonical(args.sqlite, events)
     if getattr(args, "parquet", None):
-        written["parquet"] = write_parquet_canonical(args.parquet, events)
+        compression = getattr(args, "parquet_compression", "snappy")
+        written["parquet"] = write_parquet_canonical(
+            args.parquet, events, compression=compression
+        )
     return written
 
 
@@ -435,6 +449,11 @@ def add_canonical_export_args(p: argparse.ArgumentParser) -> None:
     group.add_argument(
         "--parquet",
         help="Path to Parquet file or dataset directory",
+    )
+    group.add_argument(
+        "--parquet-compression",
+        default="snappy",
+        help="Compression codec for Parquet exports (snappy, gzip, brotli, ...)",
     )
 
 
@@ -694,11 +713,22 @@ def cmd_transits(args: argparse.Namespace) -> int:
     if args.parquet and written.get("parquet"):
         print(f"Parquet export complete: {args.parquet} ({written['parquet']} rows)")
 
-    if getattr(args, "narrative", False):
-        summary = summarize_top_events(events, top_n=getattr(args, "narrative_top", 5))
-        print(summary)
+    if getattr(args, "export_ics", None):
+        summary_template = args.ics_summary_template or ICS_DEFAULT_SUMMARY_TEMPLATE
+        description_template = (
+            args.ics_description_template or ICS_DEFAULT_DESCRIPTION_TEMPLATE
+        )
+        count_ics = write_ics(
+            args.export_ics,
+            events,
+            calendar_name=args.ics_title,
+            summary_template=summary_template,
+            description_template=description_template,
+        )
+        print(f"ICS export complete: {args.export_ics} ({count_ics} events)")
 
-    if not any((args.json, args.sqlite, args.parquet)):
+    if not any((args.json, args.sqlite, args.parquet, args.export_ics)):
+
         print(serialize_events_to_json(events))
 
     return 0
@@ -718,6 +748,19 @@ def cmd_validate(args: argparse.Namespace) -> int:
     print(f"Payload validated against {args.schema}")
     return 0
 
+
+
+def cmd_query(args: argparse.Namespace) -> int:
+    results = top_events_by_score(
+        args.sqlite,
+        limit=args.limit,
+        profile_id=args.profile_id,
+        natal_id=args.natal_id,
+        moving=args.moving,
+        target=args.target,
+        year=args.year,
+    )
+    print(json.dumps(results, indent=2))
 
 def cmd_ingresses(args: argparse.Namespace) -> int:
     chart_config = _chart_config_from_args(args)
@@ -811,6 +854,7 @@ def cmd_timelords(args: argparse.Namespace) -> int:
     else:
         print(json.dumps(payload, indent=2))
 
+
     return 0
 
 
@@ -871,6 +915,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--export-parquet", help="Write precomputed events to this Parquet file")
     parser.add_argument("--export-ics", help="Write precomputed events to this ICS calendar file")
     parser.add_argument("--ics-title", default="AstroEngine Events", help="Title to use for ICS export events")
+    parser.add_argument("--ics-summary-template", help="Custom summary template for ICS events")
+    parser.add_argument(
+        "--ics-description-template",
+        help="Custom description template for ICS events",
+    )
     parser.add_argument("--profile", help="Profile identifier to annotate export metadata")
     parser.add_argument("--lat", type=float, help="Latitude for location-sensitive detectors")
     parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")
@@ -1018,6 +1067,17 @@ def build_parser() -> argparse.ArgumentParser:
     validate.set_defaults(func=cmd_validate)
 
 
+    query = sub.add_parser("query", help="Query exported SQLite transit events")
+    query.add_argument("--sqlite", required=True, help="Path to the SQLite database")
+    query.add_argument("--limit", type=int, default=10, help="Maximum number of rows to return")
+    query.add_argument("--profile-id", help="Filter by profile identifier")
+    query.add_argument("--natal-id", help="Filter by natal identifier")
+    query.add_argument("--moving", help="Filter by moving body")
+    query.add_argument("--target", help="Filter by target point")
+    query.add_argument("--year", type=int, help="Restrict to calendar year")
+    query.set_defaults(func=cmd_query)
+
+
     ingresses = sub.add_parser("ingresses", help="Detect sign ingress events")
     ingresses.add_argument("--start", required=True)
     ingresses.add_argument("--end", required=True)
@@ -1048,6 +1108,7 @@ def build_parser() -> argparse.ArgumentParser:
     timelords.add_argument("--lot", default="fortune")
     timelords.add_argument("--json")
     timelords.set_defaults(func=cmd_timelords)
+
 
 
     _augment_parser_with_features(parser)
