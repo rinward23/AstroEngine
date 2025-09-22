@@ -83,16 +83,16 @@ def sun_lon(jd_ut: float) -> float:
     if not _ensure_swiss():
         raise RuntimeError("pyswisseph unavailable; install extras: astroengine[ephem]")
     import swisseph as swe  # type: ignore
-    lon, lat, dist, speed_lon = swe.calc_ut(jd_ut, swe.SUN)
-    return float(lon)
+    result, _ = swe.calc_ut(jd_ut, swe.SUN)
+    return float(result[0])
 
 
 def moon_lon(jd_ut: float) -> float:
     if not _ensure_swiss():
         raise RuntimeError("pyswisseph unavailable; install extras: astroengine[ephem]")
     import swisseph as swe  # type: ignore
-    lon, lat, dist, speed_lon = swe.calc_ut(jd_ut, swe.MOON)
-    return float(lon)
+    result, _ = swe.calc_ut(jd_ut, swe.MOON)
+    return float(result[0])
 
 
 
@@ -109,38 +109,52 @@ def body_lon(jd_ut: float, body_name: str) -> float:  # replace previous block i
         'mercury': swe.MERCURY, 'venus': swe.VENUS, 'mars': swe.MARS,
         'jupiter': swe.JUPITER, 'saturn': swe.SATURN, 'uranus': swe.URANUS, 'neptune': swe.NEPTUNE, 'pluto': swe.PLUTO,
     }[name]
-    lon, lat, dist, speed_lon = swe.calc_ut(jd_ut, code)
-    return float(lon)
+    result, _ = swe.calc_ut(jd_ut, code)
+    return float(result[0])
 
 
 # --- Root finding ------------------------------------------------------------
 
 
-    if abs(fa) <= tol_deg:
+def find_root(
+    f: Callable[[float], float],
+    a: float,
+    b: float,
+    *,
+    tol: float = 1e-6,
+    max_iter: int = 64,
+) -> float:
+    """Find a root of ``f`` in the interval ``[a, b]`` using a secant/bisection hybrid."""
+
+    fa = f(a)
+    fb = f(b)
+    if abs(fa) <= tol:
         return a
-    if abs(fb) <= tol_deg:
+    if abs(fb) <= tol:
         return b
+
     x0, x1 = a, b
     f0, f1 = fa, fb
     for _ in range(max_iter):
-
-        if (f1 - f0) == 0:
+        if f0 == f1:
             xm = 0.5 * (x0 + x1)
         else:
             xm = x1 - f1 * (x1 - x0) / (f1 - f0)
         fm = f(xm)
-
-        if (f0 > 0 and fm < 0) or (f0 < 0 and fm > 0):
+        if abs(fm) <= tol:
+            return xm
+        if f0 * fm <= 0:
             x1, f1 = xm, fm
         else:
             x0, f0 = xm, fm
 
-    for _ in range(32):
+    # Final bisection polish
+    for _ in range(64):
         xm = 0.5 * (x0 + x1)
         fm = f(xm)
-        if abs(fm) <= tol_deg:
+        if abs(fm) <= tol:
             return xm
-        if (f0 > 0 and fm < 0) or (f0 < 0 and fm > 0):
+        if f0 * fm <= 0:
             x1, f1 = xm, fm
         else:
             x0, f0 = xm, fm

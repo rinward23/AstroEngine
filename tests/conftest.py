@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 import types
 import warnings
@@ -70,8 +71,18 @@ def _ensure_repo_package() -> None:
 
 _ensure_repo_package()
 
+
+def _ensure_swiss_stub() -> None:
+    if os.getenv("SE_EPHE_PATH"):
+        return
+    stub = PROJECT_ROOT / "datasets" / "swisseph_stub"
+    if stub.is_dir():
+        os.environ.setdefault("SE_EPHE_PATH", str(stub))
+
+
+_ensure_swiss_stub()
+
 # >>> AUTO-GEN BEGIN: swiss availability gating v1.0
-import os
 import pytest
 
 

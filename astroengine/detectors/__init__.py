@@ -4,6 +4,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, List
 
+from .directions import solar_arc_directions
+from .eclipses import find_eclipses
+from .lunations import find_lunations
+from .progressions import secondary_progressions
+from .returns import solar_lunar_returns
+from .stations import find_stations
+
 from ..astro.declination import (
     antiscia_lon,
     contra_antiscia_lon,
@@ -33,6 +40,18 @@ __all__ = [
     "secondary_progressions",
     "solar_arc_directions",
     "solar_lunar_returns",
+]
+
+__all__ = [
+    "find_lunations",
+    "find_eclipses",
+    "find_stations",
+    "secondary_progressions",
+    "solar_arc_directions",
+    "solar_lunar_returns",
+    "CoarseHit",
+    "detect_decl_contacts",
+    "detect_antiscia_contacts",
 ]
 
 

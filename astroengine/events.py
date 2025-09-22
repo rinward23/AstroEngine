@@ -1,4 +1,4 @@
-"""Lightweight dataclasses used by detector stubs and tests."""
+
 
 from __future__ import annotations
 
