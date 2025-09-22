@@ -3,13 +3,16 @@ from __future__ import annotations
 
 from typing import Dict, Iterable, Protocol
 
+from ..canonical import BodyPosition
+
 from .se_fixedstars import get_star_lonlat
 
 class EphemerisProvider(Protocol):
-    """Minimal provider interface used by AstroEngine internals.
+    """Provider contract returning canonical body positions.
 
-    Coordinates: geocentric ecliptic true-of-date (longitude degrees [0,360), declination degrees),
-    with speed in deg/day when available.
+    Implementations continue to expose the legacy :meth:`positions_ecliptic` batch API,
+    while :meth:`position` offers a canonical :class:`~astroengine.canonical.BodyPosition`
+    view for single-body sampling.
     """
 
     def positions_ecliptic(
@@ -18,6 +21,11 @@ class EphemerisProvider(Protocol):
         bodies: Iterable[str],
     ) -> Dict[str, Dict[str, float]]:
         """Return mapping body -> {lon, decl, speed_lon?} for the given UTC timestamp."""
+        ...
+
+    def position(self, body: str, ts_utc: str) -> BodyPosition:
+        """Fetch a canonical body position at the supplied UTC timestamp."""
+
         ...
 
 

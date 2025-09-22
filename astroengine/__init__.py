@@ -35,6 +35,8 @@ from .core import (  # noqa: F401
     profile_into_ctx,
     to_tt,
 )
+from .canonical import TransitEvent  # ENSURE-LINE
+from .canonical import BodyPosition  # ENSURE-LINE
 from .diagnostics import collect_diagnostics  # ENSURE-LINE
 from .ephemeris import (  # noqa: F401
     EphemerisAdapter,
@@ -45,15 +47,19 @@ from .ephemeris import (  # noqa: F401
     SwissEphemerisAdapter,
     refine_event,
 )
-from .events import (
-    LunationEvent,
-    EclipseEvent,
-    StationEvent,
-    ReturnEvent,
-    ProgressionEvent,
-    DirectionEvent,
-    ProfectionEvent,
-)
+try:
+    from .events import (
+        LunationEvent,
+        EclipseEvent,
+        StationEvent,
+        ReturnEvent,
+        ProgressionEvent,
+        DirectionEvent,
+        ProfectionEvent,
+    )
+except ImportError:  # pragma: no cover - optional legacy surface
+    LunationEvent = EclipseEvent = StationEvent = ReturnEvent = None  # type: ignore
+    ProgressionEvent = DirectionEvent = ProfectionEvent = None  # type: ignore
 from .fixedstars import skyfield_stars  # ENSURE-LINE
 from .infrastructure.environment import collect_environment_report
 from .infrastructure.environment import main as environment_report_main
@@ -93,6 +99,7 @@ __all__ = [
     "TransitEngine",  # ENSURE-LINE
     "TransitEvent",  # ENSURE-LINE
     "TransitScanConfig",  # ENSURE-LINE
+    "BodyPosition",
     "DomainResolver",
     "DomainResolution",
     "ELEMENTS",

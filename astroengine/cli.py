@@ -7,11 +7,12 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Sequence, Any
 
 
+from . import engine as engine_module
 from .engine import events_to_dicts, scan_contacts
-from .exporters import ParquetExporter, SQLiteExporter
+from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
 from .providers import list_providers
 from .validation import (
     SchemaValidationError,
@@ -19,6 +20,32 @@ from .validation import (
     validate_payload,
 )
 from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
+
+# >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
+from .exporters import write_sqlite_canonical, write_parquet_canonical
+
+
+def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, int]:
+    """Standardized export helper accepting canonical or legacy events."""
+
+    written: dict[str, int] = {}
+    if getattr(args, "sqlite", None):
+        written["sqlite"] = write_sqlite_canonical(args.sqlite, events)
+    if getattr(args, "parquet", None):
+        written["parquet"] = write_parquet_canonical(args.parquet, events)
+    return written
+
+
+def add_canonical_export_args(p: argparse.ArgumentParser) -> None:
+    group = p.add_argument_group("canonical export")
+    group.add_argument("--sqlite", help="Path to SQLite DB; writes into table transits_events")
+    group.add_argument(
+        "--parquet",
+        help="Path to Parquet file or dataset directory",
+    )
+
+
+# >>> AUTO-GEN END: CLI Canonical Export Commands v1.0
 
 # >>> AUTO-GEN BEGIN: cli-run-experimental v1.1
 from .detectors import (
@@ -91,100 +118,12 @@ def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:
         g.add_argument("--directions", action="store_true", help="Enable solar arc directions")
         g.add_argument("--returns", action="store_true", help="Enable solar/lunar returns")
         g.add_argument("--profections", action="store_true", help="Enable annual profections")
+        g.add_argument("--prog-aspects", action="store_true", help="Enable progressed natal aspects detector")
+        g.add_argument("--dir-aspects", action="store_true", help="Enable directed natal aspects detector")
         target._ae_features_added = True
 # >>> AUTO-GEN END: cli-new-detector-flags v1.0
 
-# >>> AUTO-GEN BEGIN: cli-natals-crud v1.0
-def _augment_parser_with_natals(p):
-    existing = {opt for action in getattr(p, "_actions", []) for opt in getattr(action, "option_strings", [])}
-    g = p.add_argument_group("Natals Vault")
-    if "--save-natal" not in existing:
-        g.add_argument("--save-natal", action="store_true", help="Save/update a natal record into the vault")
-    if "--delete-natal" not in existing:
-        g.add_argument("--delete-natal", action="store_true", help="Delete a natal record from the vault")
-    if "--list-natals" not in existing:
-        g.add_argument("--list-natals", action="store_true", help="List natal ids in the vault")
-    if "--load-natal" not in existing:
-        g.add_argument("--load-natal", type=str, default=None, help="Load natal by id and inject into args (sets --natal-utc/--lat/--lon)")
-    if "--natal-name" not in existing:
-        g.add_argument("--natal-name", type=str, default=None)
-    if "--natal-utc" not in existing:
-        g.add_argument("--natal-utc", type=str, default=None)
-    if "--lat" not in existing:
-        g.add_argument("--lat", type=float, default=None)
-    if "--lon" not in existing:
-        g.add_argument("--lon", type=float, default=None)
-    if "--tz" not in existing:
-        g.add_argument("--tz", type=str, default=None)
-    if "--place" not in existing:
-        g.add_argument("--place", type=str, default=None)
 
-
-def run_natals_crud(args) -> None:
-    if args.list_natals:
-        ids = list_natals()
-        print("natals:", ", ".join(ids))
-    if args.save_natal:
-        if not (args.natal_id and args.natal_utc is not None and args.lat is not None and args.lon is not None):
-            raise SystemExit("--save-natal requires --natal-id --natal-utc --lat --lon")
-        p = save_natal(Natal(natal_id=args.natal_id, name=args.natal_name, utc=args.natal_utc, lat=args.lat, lon=args.lon, tz=args.tz, place=args.place))
-        print(f"saved natal → {p}")
-    if args.delete_natal:
-        if not args.natal_id:
-            raise SystemExit("--delete-natal requires --natal-id")
-        ok = delete_natal(args.natal_id)
-        print("deleted" if ok else "not found")
-    if args.load_natal:
-        n = load_natal(args.load_natal)
-        # inject fields
-        args.natal_id = n.natal_id
-        args.natal_utc = n.utc
-        args.lat = n.lat
-        args.lon = n.lon
-        if getattr(args, 'tz', None) is None:
-            args.tz = n.tz
-        if getattr(args, 'place', None) is None:
-            args.place = n.place
-        print(f"loaded natal {n.natal_id}")
-# >>> AUTO-GEN END: cli-natals-crud v1.0
-
-# >>> AUTO-GEN BEGIN: cli-cache v1.0
-def _augment_parser_with_cache(p):
-    g = p.add_argument_group("Positions Cache")
-    g.add_argument("--use-cache", action="store_true", help="Enable positions cache for Sun..Pluto+Moon (daily)")
-    g.add_argument("--cache-warm", action="store_true", help="Precompute daily positions for window")
-    g.add_argument("--cache-bodies", type=str, default="Sun,Moon,Mercury,Venus,Mars,Jupiter,Saturn,Uranus,Neptune,Pluto")
-
-
-def run_cache_ops(args) -> None:
-    if args.use_cache:
-        enable_cache(True)
-    if args.cache_warm:
-        bodies = [b for b in args.cache_bodies.split(',') if b]
-        n = warm_daily(bodies, iso_to_jd(args.start_utc), iso_to_jd(args.end_utc))
-        print(f"cache warmed entries={n}")
-# >>> AUTO-GEN END: cli-cache v1.0
-
-# >>> AUTO-GEN BEGIN: cli-parquet-dataset-flag v1.0
-def _augment_parser_with_parquet_dataset(p):
-    g = p.add_argument_group("Parquet Dataset")
-    g.add_argument("--export-parquet-dataset", type=str, default=None, help="Write a partitioned Parquet dataset (partition_cols: natal_id/year)")
-
-
-def run_parquet_dataset_if_any(args) -> None:
-    if not args.export_parquet_dataset:
-        return
-    from .pipeline.collector import collect_events
-    ev = collect_events(args)
-    meta = {
-        'natal_id': getattr(args, 'natal_id', None),
-        'profile': getattr(args, 'profile', None),
-        'window_start': args.start_utc,
-        'window_end': args.end_utc,
-    }
-    path = export_parquet_dataset(ev, args.export_parquet_dataset, meta=meta)
-    print(f"parquet dataset → {path}")
-# >>> AUTO-GEN END: cli-parquet-dataset-flag v1.0
 
 def serialize_events_to_json(events: Iterable) -> str:
     """Serialize events into a pretty-printed JSON string."""
@@ -241,13 +180,11 @@ def cmd_transits(args: argparse.Namespace) -> int:
         Path(args.json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
         print(f"Wrote {len(events)} events to {args.json}")
 
-    if args.sqlite:
-        SQLiteExporter(args.sqlite).write(events)
-        print(f"SQLite export complete: {args.sqlite}")
-
-    if args.parquet:
-        ParquetExporter(args.parquet).write(events)
-        print(f"Parquet export complete: {args.parquet}")
+    written = _cli_export(args, events)
+    if args.sqlite and written.get("sqlite"):
+        print(f"SQLite export complete: {args.sqlite} ({written['sqlite']} rows)")
+    if args.parquet and written.get("parquet"):
+        print(f"Parquet export complete: {args.parquet} ({written['parquet']} rows)")
 
     if not any((args.json, args.sqlite, args.parquet)):
         print(serialize_events_to_json(events))
@@ -308,9 +245,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--natal-utc", help="Natal timestamp (ISO-8601) for return calculations")  # ENSURE-LINE
     parser.add_argument("--natal-id", help="Natal identifier for provenance and vault operations")  # ENSURE-LINE
     parser.add_argument("--return-kind", default="solar", help="Return kind: solar or lunar")  # ENSURE-LINE
+    parser.add_argument("--export-sqlite", help="Write precomputed events to this SQLite file")
+    parser.add_argument("--export-parquet", help="Write precomputed events to this Parquet file")
+    parser.add_argument("--export-ics", help="Write precomputed events to this ICS calendar file")
+    parser.add_argument("--ics-title", default="AstroEngine Events", help="Title to use for ICS export events")
+    parser.add_argument("--natal-id", help="Identifier for the natal chart driving precompute outputs")
+    parser.add_argument("--profile", help="Profile identifier to annotate export metadata")
+    parser.add_argument("--lat", type=float, help="Latitude for location-sensitive detectors")
+    parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")
+    parser.add_argument("--aspects", help="Comma-separated aspect angles for natal aspect detectors")
+    parser.add_argument("--orb", type=float, help="Orb allowance in degrees for natal aspect detectors")
     parser.add_argument("--lunations", action="store_true", help="Run lunation detector")
+    parser.add_argument("--eclipses", action="store_true", help="Run eclipse detector")
     parser.add_argument("--stations", action="store_true", help="Run planetary station detector")
+    parser.add_argument("--progressions", action="store_true", help="Run secondary progression detector")
+    parser.add_argument("--directions", action="store_true", help="Run solar arc direction detector")
     parser.add_argument("--returns", action="store_true", help="Run solar/lunar return detector")
+    parser.add_argument("--profections", action="store_true", help="Run annual profection timelord detector")
+    parser.add_argument("--prog-aspects", action="store_true", help="Run progressed natal aspect detector")
+    parser.add_argument("--dir-aspects", action="store_true", help="Run directed natal aspect detector")
     sub = parser.add_subparsers(dest="command")
 
     env_parser = sub.add_parser("env", help="List registered providers")
@@ -331,8 +284,7 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--aspects-policy")
     transits.add_argument("--target-longitude", type=float, default=None)
     transits.add_argument("--json")
-    transits.add_argument("--sqlite")
-    transits.add_argument("--parquet")
+    add_canonical_export_args(transits)
     transits.set_defaults(func=cmd_transits)
 
     experimental = sub.add_parser("experimental", help="Run experimental detectors")
@@ -356,6 +308,7 @@ def build_parser() -> argparse.ArgumentParser:
     _augment_parser_with_cache(parser)  # ENSURE-LINE
     _augment_parser_with_parquet_dataset(parser)  # ENSURE-LINE
     _augment_parser_with_features(parser)
+    _augment_parser_with_provisioning(parser)  # ENSURE-LINE
     return parser
 
 
@@ -363,9 +316,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
     _augment_parser_with_features(parser)
     namespace = parser.parse_args(list(argv) if argv is not None else None)
-    run_natals_crud(namespace)  # ENSURE-LINE
-    run_cache_ops(namespace)  # ENSURE-LINE
-    run_parquet_dataset_if_any(namespace)  # ENSURE-LINE
+
     run_experimental(namespace)
     func = getattr(namespace, "func", None)
     if func is not None:

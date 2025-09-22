@@ -9,7 +9,27 @@ from dataclasses import dataclass
 from ..ephemeris import EphemerisAdapter, EphemerisConfig, EphemerisSample
 from ..ephemeris.refinement import RefinementBracket, refine_event
 from .angles import classify_relative_motion, signed_delta
-from .api import TransitEvent
+from .api import TransitEvent as LegacyTransitEvent
+
+# >>> AUTO-GEN BEGIN: Canonical Scan Adapter v1.0
+from typing import Iterable as _TypingIterable, Any as _TypingAny
+
+try:
+    from ..canonical import TransitEvent, events_from_any
+except Exception:  # pragma: no cover
+    TransitEvent = object  # type: ignore
+
+    def events_from_any(x):
+        return list(x)  # type: ignore
+
+
+def to_canonical_events(events: _TypingIterable[_TypingAny]) -> _TypingIterable[TransitEvent]:
+    """Normalize engine or legacy events to :class:`~astroengine.canonical.TransitEvent`."""
+
+    return events_from_any(events)
+
+
+# >>> AUTO-GEN END: Canonical Scan Adapter v1.0
 
 __all__ = ["TransitEngine"]
 
@@ -40,7 +60,7 @@ class TransitEngine:
         end: _dt.datetime,
         *,
         step_hours: float = 6.0,
-    ) -> Iterable[TransitEvent]:
+    ) -> Iterable[LegacyTransitEvent]:
         current = start
         previous_sample = self.adapter.sample(body, current)
         previous_offset = (
@@ -94,7 +114,7 @@ class TransitEngine:
                     0.0,
                 )
 
-                event = TransitEvent(
+                event = LegacyTransitEvent(
                     timestamp=timestamp,
                     body=str(body),
                     target="natal",  # placeholder until natal metadata wired in

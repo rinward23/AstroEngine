@@ -21,12 +21,19 @@ except Exception:  # pragma: no cover
     pq = None  # type: ignore[assignment]
     _PARQUET_OK = False
 
-__all__ = ["TransitEvent", "SQLiteExporter", "ParquetExporter", "parquet_available"]
+__all__ = [
+    "LegacyTransitEvent",
+    "SQLiteExporter",
+    "ParquetExporter",
+    "write_sqlite_canonical",
+    "write_parquet_canonical",
+    "parquet_available",
+]
 
 
 @dataclass
-class TransitEvent:
-    """Canonical representation of a detected transit contact."""
+class LegacyTransitEvent:
+    """Legacy representation of a detected transit contact."""
 
     kind: str
     timestamp: str
@@ -89,7 +96,7 @@ class SQLiteExporter:
         con.commit()
         con.close()
 
-    def write(self, events: Iterable[TransitEvent]) -> None:
+    def write(self, events: Iterable[LegacyTransitEvent]) -> None:
         con = self._connect()
         rows = [
             (
@@ -128,10 +135,31 @@ class ParquetExporter:
             raise ImportError("pyarrow not installed")
         self.path = str(path)
 
-    def write(self, events: Iterable[TransitEvent]) -> None:
+    def write(self, events: Iterable[LegacyTransitEvent]) -> None:
         assert pa is not None and pq is not None  # for mypy/pyright
         table = pa.Table.from_pylist([event.to_dict() for event in events])
         pq.write_table(table, self.path)
+
+
+# >>> AUTO-GEN BEGIN: Canonical Export Adapters v1.0
+from typing import Iterable as _TypingIterable, Any as _TypingAny
+
+from .canonical import TransitEvent, sqlite_write_canonical, parquet_write_canonical
+
+
+def write_sqlite_canonical(db_path: str, events: _TypingIterable[_TypingAny]) -> int:
+    """Canonical SQLite writer accepting legacy or canonical events."""
+
+    return sqlite_write_canonical(db_path, events)
+
+
+def write_parquet_canonical(path: str, events: _TypingIterable[_TypingAny]) -> int:
+    """Canonical Parquet writer accepting legacy or canonical events."""
+
+    return parquet_write_canonical(path, events)
+
+
+# >>> AUTO-GEN END: Canonical Export Adapters v1.0
 
 
 def parquet_available() -> bool:
