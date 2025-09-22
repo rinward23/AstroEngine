@@ -92,14 +92,46 @@ from astroengine.canonical import events_from_any
 
 ```python
 from astroengine.exporters import write_sqlite_canonical, write_parquet_canonical
+from astroengine.canonical import sqlite_read_canonical
+from astroengine.exporters_ics import write_ics
+from astroengine.infrastructure.storage.sqlite import ensure_sqlite_schema
 
 rows = write_sqlite_canonical("events.db", events)     # accepts dicts/legacy/canonical
-rows = write_parquet_canonical("events.parquet", events)
+rows = write_parquet_canonical("events.parquet", events, compression="gzip")
+ensure_sqlite_schema("events.db")  # applies Alembic migrations in-place
+events = sqlite_read_canonical("events.db")
+write_ics(
+    "events.ics",
+    events,
+    calendar_name="AstroEngine",
+    summary_template="{label} [{natal_id}]",
+)
 ```
+
+- Canonical SQLite exports store a fully versioned `transits_events` schema with
+  indexed columns (`profile_id`, `natal_id`, `event_year`, `score`).
+- Parquet exports are partitioned by `natal_id/event_year` to support efficient
+  downstream filtering. The `compression` keyword controls the codec (snappy,
+  gzip, brotli, ...).
+- ICS exports accept summary/description templates and understand ingress and
+  return events alongside standard transits.
 
 ### CLI integration (maintainers)
 
-Scan commands can call `_cli_export(args, events)` after adding `add_canonical_export_args(parser)` to gain `--sqlite/--parquet` switches.
+Scan commands can call `_cli_export(args, events)` after adding
+`add_canonical_export_args(parser)` to gain `--sqlite/--parquet` switches. A
+companion query tool exposes indexed lookups:
+
+```
+astroengine query --sqlite events.db --limit 5 --natal-id n001
+```
+
+### CLI enhancements
+
+* Global options `--zodiac`, `--ayanamsha`, and `--house-system` mirror the runtime `ChartConfig`, allowing sidereal and non-Placidus workflows to run directly from the CLI without rewriting chart code.
+* `astroengine ingresses --start … --end …` reports sign changes for any supported body and supports JSON/SQLite/Parquet exports.
+* `astroengine timelords --start … --vimshottari --moon-longitude …` computes Vimshottari dashas; pair with `--zr --fortune-longitude …` to emit zodiacal releasing tables.
+* `astroengine transits … --narrative` summarises the top scored events via the new narrative layer (falls back to a deterministic template when no GPT backend is configured).
 
 # >>> AUTO-GEN END: Canonical Transit Types v1.0
 
@@ -161,12 +193,16 @@ production deployments to regain full Swiss Ephemeris precision.
 # >>> AUTO-GEN END: AE README Providers Addendum v1.2
 
 # >>> AUTO-GEN BEGIN: AE README Aspects + Domain Report v1.0
-### Enable minor aspects (optional)
-Edit `profiles/aspects_policy.json` and add to `enabled_minors`, then:
+### Enable minor & harmonic aspects (optional)
+Edit `profiles/aspects_policy.json`, adding desired entries to `enabled_minors` and
+`enabled_harmonics` (accepts canonical names or harmonic numbers 5–12), then:
 ```bash
 python -m astroengine scan --start 2024-06-01T00:00:00Z --end 2024-06-07T00:00:00Z \
   --moving mars --target venus --provider swiss
 ````
+
+> Tip: adjust the `partile_threshold_deg` field in this policy to tune the
+> ≤0°10′ tagging window used for partile aspects.
 
 ### Domain report
 
@@ -237,7 +273,7 @@ working tree so downstream automation stays deterministic.
 
 # >>> AUTO-GEN BEGIN: AE README Stars/SBDB/Decl Addendum v1.0
 ### Fixed stars (Skyfield & Swiss)
-- Dataset: `datasets/star_names_iau.csv` (replace with full WGSN list as needed).
+- Dataset: `datasets/star_names_iau.csv` (official WGSN catalogue derived from HYG Database v4.1, CC-BY-SA 4.0).
 - Skyfield method requires a local JPL kernel (e.g., `de440s.bsp`).
 
 ```bash
@@ -253,6 +289,9 @@ python -m astroengine decl mirror --type antiscia --lon 10
 python -m astroengine decl mirror --type contra --lon 10
 python -m astroengine decl parallel --dec1 12.0 --dec2 -11.7 --tol 0.5
 ```
+
+- `astroengine transits ... --decl-only` scans only declination parallels/contraparallels.
+- Override the antiscia axis (Cancer–Capricorn by default) with `--mirror-axis` when running `astroengine transits`.
 
 ### SBDB fetch (with cache)
 

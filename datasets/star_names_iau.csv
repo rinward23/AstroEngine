@@ -1,5 +1,458 @@
-# >>> AUTO-GEN BEGIN: AE IAU Star Names (stub) v1.0
+# >>> AUTO-GEN BEGIN: AE IAU Star Names (WGSN) v2024-03
+# Derived from HYG Database v4.1 commit c7f7f883fe678cc7680169a50ccd7dcc49b060ce (CC-BY-SA 4.0); official WGSN list as of 2023-03.
+# Columns: name,hip,hr,ra_deg,dec_deg,notes
 name,hip,hr,ra_deg,dec_deg,notes
-Regulus,49669,3982,152.092962,11.967208,Alpha Leonis (WGSN name); sample only
-# TODO: replace with full IAU WGSN list; keep columns consistent.
-# >>> AUTO-GEN END: AE IAU Star Names (stub) v1.0
+268 G. Cet,12114,753,39.020355,6.886870,HD 16160; Gliese 105A; Constellation Cet; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+3C 273,60936,,187.277895,2.052398,Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+82 G. Eri,15510,1008,49.979160,-43.069784,HD 20794; Gliese 139; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+96 G. Psc,3765,222,12.095730,5.280615,HD 4628; Gliese 33; Constellation Psc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Acamar,13847,897,44.565345,-40.304672,Bayer/Flamsteed The1Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Achernar,7588,472,24.428340,-57.236757,Bayer/Flamsteed Alp Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Achird,3821,219,12.273900,57.815187,Bayer/Flamsteed 24Eta Cas; Constellation Cas; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Acrab,78820,5984,241.359300,-19.805453,Bayer/Flamsteed 8Bet1Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Acrux,60718,4730,186.649665,-63.099092,Bayer/Flamsteed Alp1Cru; Constellation Cru; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Acubens,44066,3572,134.621760,11.857701,Bayer/Flamsteed 65Alp Cnc; Constellation Cnc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Adhafera,50335,4031,154.172565,23.417311,Bayer/Flamsteed 36Zet Leo; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Adhara,33579,2618,104.656455,-28.972084,Bayer/Flamsteed 21Eps CMa; Constellation CMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Adhil,6411,390,20.585055,45.528778,Bayer/Flamsteed 46Xi  And; Constellation And; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ain,20889,1409,67.154145,19.180431,Bayer/Flamsteed 74Eps Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ainalrami,92761,7116,283.542405,-22.744834,Bayer/Flamsteed 32Nu 1Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Aiolos,53524,,164.262765,-68.667347,HD 95086; Constellation Car; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Aladfar,94481,7298,288.439530,39.145968,Bayer/Flamsteed 20Eta Lyr; Constellation Lyr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alasia,90004,,275.457435,-11.922683,HD 168746; Constellation Ser; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Albaldah,94141,7264,287.440965,-21.023615,Bayer/Flamsteed 41Pi  Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Albali,102618,7950,311.918970,-9.495776,Bayer/Flamsteed 2Eps Aqr; Constellation Aqr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Albireo,95947,7417,292.680345,27.959681,Bayer/Flamsteed 6Bet1Cyg; Constellation Cyg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alchiba,59199,4623,182.103375,-24.728875,Bayer/Flamsteed 1Alp Crv; Constellation Crv; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alcor,65477,5062,201.306195,54.987958,Bayer/Flamsteed 80    UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alcyone,17702,1165,56.871150,24.105137,Bayer/Flamsteed 25Eta Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Aldebaran,21421,1457,68.980155,16.509301,Bayer/Flamsteed 87Alp Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alderamin,105199,8162,319.644450,62.585573,Bayer/Flamsteed 5Alp Cep; Constellation Cep; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Aldhanab,108085,8353,328.482120,-37.364852,Bayer/Flamsteed Gam Gru; Constellation Gru; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Aldhibah,83895,6396,257.196720,65.714683,Bayer/Flamsteed 22Zet Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Aldulfin,101421,7852,308.303205,11.303263,Bayer/Flamsteed 2Eps Del; Constellation Del; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alfirk,106032,8238,322.164930,70.560716,Bayer/Flamsteed 8Bet Cep; Constellation Cep; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Algedi,100064,7754,304.513560,-12.544852,Bayer/Flamsteed 6Alp2Cap; Constellation Cap; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Algenib,1067,39,3.308970,15.183596,Bayer/Flamsteed 88Gam Peg; Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Algieba,50583,4057,154.993095,19.841489,Bayer/Flamsteed 41Gam1Leo; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Algol,14576,936,47.042220,40.955648,Bayer/Flamsteed 26Bet Per; Constellation Per; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Algorab,60965,4757,187.466085,-16.515432,Bayer/Flamsteed 7Del Crv; Constellation Crv; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alhena,31681,2421,99.427920,16.399252,Bayer/Flamsteed 24Gam Gem; Constellation Gem; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alioth,62956,4905,193.507080,55.959821,Bayer/Flamsteed 77Eps UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Aljanah,102488,7949,311.552670,33.970256,Bayer/Flamsteed 53Eps Cyg; Constellation Cyg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alkaid,67301,5191,206.885310,49.313265,Bayer/Flamsteed 85Eta UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alkalurops,75411,5733,231.122715,37.377167,Bayer/Flamsteed 51Mu 1Boo; Constellation Boo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alkaphrah,44471,3594,135.906405,47.156525,Bayer/Flamsteed 12Kap UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alkarab,115623,8905,351.344895,23.404101,Bayer/Flamsteed 68Ups Peg; Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alkes,53740,4287,164.943660,-18.298783,Bayer/Flamsteed 7Alp Crt; Constellation Crt; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Almaaz,23416,1605,75.492225,43.823308,Bayer/Flamsteed 7Eps Aur; Constellation Aur; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Almach,9640,603,30.974760,42.329725,Bayer/Flamsteed 57Gam1And; Constellation And; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alnair,109268,8425,332.058135,-46.960975,Bayer/Flamsteed Alp Gru; Constellation Gru; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alnasl,88635,6746,271.452045,-30.424091,Bayer/Flamsteed 10Gam2Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alnilam,26311,1903,84.053385,-1.201920,Bayer/Flamsteed 46Eps Ori; Constellation Ori; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alnitak,26727,1948,85.189695,-1.942572,Bayer/Flamsteed 50Zet Ori; Constellation Ori; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alniyat,80112,6084,245.297145,-25.592796,Bayer/Flamsteed 20Sig Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alphard,46390,3748,141.896850,-8.658603,Bayer/Flamsteed 30Alp Hya; Constellation Hya; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alphecca,76267,5793,233.671920,26.714693,Bayer/Flamsteed 5Alp CrB; Constellation CrB; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alpheratz,677,15,2.096865,29.090432,Bayer/Flamsteed 21Alp And; Constellation And; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alpherg,7097,437,22.870875,15.345823,Bayer/Flamsteed 99Eta Psc; Constellation Psc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alrakis,,6370,256.330710,54.469093,Bayer/Flamsteed 21Mu  Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alrescha,9487,595,30.511755,2.763759,Bayer/Flamsteed 113Alp Psc; Constellation Psc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alruba,86782,6618,265.996545,53.801715,HD 161693; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alsafi,96100,7462,293.087235,69.661175,Bayer/Flamsteed 61Sig Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alsciaukat,41075,3275,125.708820,43.188131,Bayer/Flamsteed 31    Lyn; Constellation Lyn; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alsephina,42913,3485,131.175885,-54.708821,Bayer/Flamsteed Del Vel; Constellation Vel; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alshain,98036,7602,298.828305,6.406763,Bayer/Flamsteed 60Bet Aql; Constellation Aql; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alshat,100310,7773,305.165895,-12.759080,Bayer/Flamsteed 8Nu  Cap; Constellation Cap; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Altair,97649,7557,297.695820,8.868322,Bayer/Flamsteed 53Alp Aql; Constellation Aql; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Altais,94376,7310,288.138375,67.661541,Bayer/Flamsteed 57Del Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alterf,46750,3773,142.930125,22.967971,Bayer/Flamsteed 4Lam Leo; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Aludra,35904,2827,111.023760,-29.303104,Bayer/Flamsteed 31Eta CMa; Constellation CMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alula Australis,,4375,169.546770,31.528783,Bayer/Flamsteed 53Xi  UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alula Borealis,55219,4377,169.619745,33.094306,Bayer/Flamsteed 54Nu  UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alya,92946,7141,284.054925,4.203595,Bayer/Flamsteed 63The1Ser; Constellation Ser; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Alzirr,32362,2484,101.322360,12.895591,Bayer/Flamsteed 31Xi  Gem; Constellation Gem; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Amadioha,29550,,93.398535,-29.897269,HD 43197; Constellation CMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ancha,110003,8499,334.208475,-7.783290,Bayer/Flamsteed 43The Aqr; Constellation Aqr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Angetenar,13288,850,42.759675,-21.004019,Bayer/Flamsteed 2Tau2Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Aniara,57820,,177.843825,57.640736,HD 102956; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ankaa,2081,99,6.570840,-42.305981,Bayer/Flamsteed Alp Phe; Constellation Phe; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Anser,95771,7405,292.176405,24.664905,Bayer/Flamsteed 6Alp Vul; Constellation Vul; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Antares,80763,6134,247.351920,-26.432002,Bayer/Flamsteed 21Alp Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Arcalís,72845,,223.345950,18.235401,HD 131496; Constellation Boo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Arcturus,69673,5340,213.915450,19.182410,Bayer/Flamsteed 16Alp Boo; Constellation Boo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Arkab Posterior,95294,7343,290.804640,-44.799778,Bayer/Flamsteed Bet2Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Arkab Prior,95241,7337,290.659545,-44.458965,Bayer/Flamsteed Bet1Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Arneb,25985,1865,83.182560,-17.822289,Bayer/Flamsteed 11Alp Lep; Constellation Lep; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ascella,93506,7194,285.652980,-29.880105,Bayer/Flamsteed 38Zet Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Asellus Australis,42911,3461,131.171250,18.154309,Bayer/Flamsteed 47Del Cnc; Constellation Cnc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Asellus Borealis,42806,3449,130.821465,21.468501,Bayer/Flamsteed 43Gam Cnc; Constellation Cnc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ashlesha,43109,3482,131.693805,6.418809,Bayer/Flamsteed 11Eps Hya; Constellation Hya; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Aspidiske,45556,3699,139.272570,-59.275229,Bayer/Flamsteed Iot Car; Constellation Car; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Asterope,17579,1151,56.476980,24.554511,Bayer/Flamsteed 21    Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Athebyne,80331,6132,245.997900,61.514213,Bayer/Flamsteed 14Eta Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Atik,17448,1131,56.079720,32.288248,Bayer/Flamsteed 38Omi Per; Constellation Per; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Atlas,17847,1178,57.290595,24.053415,Bayer/Flamsteed 27    Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Atria,82273,6217,252.166155,-69.027715,Bayer/Flamsteed Alp TrA; Constellation TrA; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Avior,41037,3307,125.628540,-59.509483,Bayer/Flamsteed Eps Car; Constellation Car; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Axólotl,118319,,359.974275,-22.428113,HD 224693; Constellation Cet; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ayeyarwady,13993,,45.044415,-20.802604,HD 18742; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Azelfafage,107136,8301,325.523595,51.189622,Bayer/Flamsteed 80Pi 1Cyg; Constellation Cyg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Azha,13701,874,44.106870,-8.898144,Bayer/Flamsteed 3Eta Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Azmidi,38170,3045,117.323565,-24.859786,Bayer/Flamsteed 7Xi  Pup; Constellation Pup; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Añañuca,47780,,146.124795,-45.776513,Gliese 367; Constellation Vel; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Babcock's star,112247,,341.031270,55.589226,HD 215441; Constellation Lac; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Baekdu,73136,,224.201385,74.900927,HD 133086; Constellation UMi; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Barnard's Star,87937,,269.452080,4.693388,Gliese 699; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Baten Kaitos,8645,539,27.865140,-10.335038,Bayer/Flamsteed 55Zet Cet; Constellation Cet; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Beemim,20535,1393,66.009195,-34.016846,Bayer/Flamsteed 43    Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Beid,19587,1298,62.966415,-6.837581,Bayer/Flamsteed 38Omi1Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Belel,95124,,290.267640,-23.619572,HD 181342; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Bellatrix,25336,1790,81.282765,6.349702,Bayer/Flamsteed 24Gam Ori; Constellation Ori; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Betelgeuse,27989,2061,88.792935,7.407063,Bayer/Flamsteed 58Alp Ori; Constellation Ori; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Bharani,13209,838,42.495945,27.260507,Bayer/Flamsteed 41    Ari; Constellation Ari; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Bibhā,48711,,149.024655,-3.808422,HD 86081; Constellation Sex; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Biham,109427,8450,332.549940,6.197865,Bayer/Flamsteed 26The Peg; Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Bosona,107251,,325.853745,-7.408253,HD 206610; Constellation Aqr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Botein,14838,951,47.907330,19.726677,Bayer/Flamsteed 57Del Ari; Constellation Ari; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Brachium,73714,5603,226.017585,-25.281965,Bayer/Flamsteed 20Sig Lib; Constellation Lib; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Bubup,26380,,84.257535,-73.699343,HD 38283; Constellation Men; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Buna,12191,,39.258000,42.062633,HD 16175; Constellation And; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Bunda,106786,8264,324.437955,-7.854201,Bayer/Flamsteed 23Xi  Aqr; Constellation Aqr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Bélénos,6643,,21.302070,28.566693,HD 8574; Constellation Psc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Campbell's Hydrogen Star,96295,,293.688465,30.516371,HD 184738; Constellation Cyg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Canopus,30438,2326,95.987925,-52.695660,Bayer/Flamsteed Alp Car; Constellation Car; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Capella,24608,1708,79.172250,45.997991,Bayer/Flamsteed 13Alp Aur; Constellation Aur; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Caph,746,21,2.293305,59.149780,Bayer/Flamsteed 11Bet Cas; Constellation Cas; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Castor,36850,2891,113.649510,31.888276,Bayer/Flamsteed 66Alp Gem; Constellation Gem; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Castula,4422,265,14.166480,59.181056,Bayer/Flamsteed 28Ups2Cas; Constellation Cas; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Cebalrai,86742,6603,265.868145,4.567303,Bayer/Flamsteed 60Bet Oph; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ceibo,37284,,114.841245,-78.278972,HD 63454; Constellation Cha; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Celaeno,17489,1140,56.200890,24.289470,Bayer/Flamsteed 16    Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Cervantes,86796,6585,266.036280,-51.834053,Bayer/Flamsteed Mu  Ara; Constellation Ara; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Chalawan,53721,4277,164.866800,40.430257,Bayer/Flamsteed 47    UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Chamukuy,20894,1412,67.165575,15.870883,Bayer/Flamsteed 78The2Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Chara,61317,4785,188.436165,41.357480,Bayer/Flamsteed 8Bet CVn; Constellation CVn; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Chechia,99894,,304.025025,4.580795,HD 192699; Constellation Aql; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Chertan,54879,4359,168.560025,15.429570,Bayer/Flamsteed 70The Leo; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Cih,4427,264,14.177145,60.716740,Bayer/Flamsteed 27Gam Cas; Constellation Cas; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Citadelle,1547,,4.821105,14.054755,HD 1502; Constellation Psc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Citalá,33719,2622,105.075150,-5.367162,HD 52265; Constellation Mon; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Cocibolca,3479,,11.110950,-26.515680,HD 4208; Gliese-Jahreiß 9024; Constellation Scl; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Copernicus,43587,3522,133.149375,28.330819,Bayer/Flamsteed 55Rho1Cnc; Constellation Cnc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Cor Caroli,63125,4915,194.007105,38.318380,Bayer/Flamsteed 12Alp2CVn; Constellation CVn; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Cujam,80463,6117,246.353970,14.033270,Bayer/Flamsteed 24Ome Her; Constellation Her; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Cursa,23875,1666,76.962435,-5.086446,Bayer/Flamsteed 67Bet Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Cygnus X-1,98298,,299.590320,35.201604,HD 226868; Constellation Cyg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Dabih,100345,7776,305.252805,-14.781367,Bayer/Flamsteed 9Bet Cap; Constellation Cap; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Dalim,14879,963,48.018735,-28.987618,Bayer/Flamsteed Alp For; Constellation For; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Danfeng,115211,,350.032140,-60.065183,Gliese-Jahreiß 4332; Constellation Tuc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Deneb,102098,7924,310.357980,45.280338,Bayer/Flamsteed 50Alp Cyg; Constellation Cyg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Deneb Algedi,107556,8322,326.760165,-16.127286,Bayer/Flamsteed 49Del Cap; Constellation Cap; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Denebola,57632,4534,177.264945,14.572060,Bayer/Flamsteed 94Bet Leo; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Diadem,64241,4968,197.497035,17.529431,Bayer/Flamsteed 42Alp Com; Constellation Com; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Dingolay,54158,,166.185225,-2.513218,HD 96063; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Diphda,3419,188,10.897350,-17.986605,Bayer/Flamsteed 16Bet Cet; Constellation Cet; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Dofida,66047,,203.106450,-47.271363,HD 117618; Constellation Cen; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Dschubba,78401,5953,240.083355,-22.621710,Bayer/Flamsteed 7Del Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Dubhe,54061,4301,165.932325,61.751033,Bayer/Flamsteed 50Alp UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Dziban,86614,6636,265.484670,72.148843,Bayer/Flamsteed 31Psi1Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ebla,114322,,347.294700,-2.260742,HD 218566; Gliese-Jahreiß 4313; Constellation Psc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Edasich,75458,5744,231.232410,58.966065,Bayer/Flamsteed 12Iot Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Electra,17499,1142,56.218905,24.113339,Bayer/Flamsteed 17    Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Elgafar,70755,5409,217.050570,-2.227957,Bayer/Flamsteed 105Phi Vir; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Elkurud,29034,2177,91.881795,-37.252920,Bayer/Flamsteed The Col; Constellation Col; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Elnath,25428,1791,81.572970,28.607450,Bayer/Flamsteed 112Bet Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Eltanin,87833,6705,269.151555,51.488895,Bayer/Flamsteed 33Gam Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Emiw,5529,,17.696355,-66.188164,HD 7199; Constellation Tuc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Enif,107315,8308,326.046495,9.875011,Bayer/Flamsteed 8Eps Peg; Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Errai,116727,8974,354.837300,77.632276,Bayer/Flamsteed 35Gam Cep; Constellation Cep; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+EZ Aqr,,,339.638430,-15.302542,Gliese 866A; Constellation Aqr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Fafnir,90344,6945,276.496035,65.563480,Bayer/Flamsteed 42    Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Fang,78265,5944,239.712975,-26.114105,Bayer/Flamsteed 6Pi  Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Fawaris,97165,7528,296.243610,45.130810,Bayer/Flamsteed 18Del Cyg; Constellation Cyg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Felis,48615,3923,148.717545,-19.009360,HD 85951; Constellation Hya; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Felixvarela,2247,,7.142985,-16.226344,Constellation Cet; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Flegetonte,57370,,176.426220,2.821483,HD 102195; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Fomalhaut,113368,8728,344.412570,-29.622236,Bayer/Flamsteed 24Alp PsA; Constellation PsA; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Formosa,56508,4459,173.765655,20.441545,HD 100655; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Fulu,2920,153,9.242820,53.896909,Bayer/Flamsteed 17Zet Cas; Constellation Cas; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Fumalsamakah,113889,8773,345.969225,3.820045,Bayer/Flamsteed 4Bet Psc; Constellation Psc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Funi,61177,,188.031090,74.489551,HD 109246; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Furud,30122,2282,95.078295,-30.063367,Bayer/Flamsteed 1Zet CMa; Constellation CMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Fuyue,87261,6630,267.464475,-37.043304,HD 161892; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Gacrux,61084,4763,187.791435,-57.113212,Bayer/Flamsteed Gam Cru; Constellation Cru; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Gakyid,42446,,129.815850,12.960375,HD 73534; Constellation Cnc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Gar,62452,,191.985975,9.751397,Gliese 486; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Giausar,56211,4434,172.851105,69.331076,Bayer/Flamsteed 1Lam Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Gienah,59803,4662,183.951555,-17.541929,Bayer/Flamsteed 4Gam Crv; Constellation Crv; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ginan,60260,4700,185.340465,-60.401147,Bayer/Flamsteed Eps Cru; Constellation Cru; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Gomeisa,36188,2845,111.787680,8.289315,Bayer/Flamsteed 3Bet CMi; Constellation CMi; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Graffias,,5978,241.091610,-11.374611,Bayer/Flamsteed Xi  Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Groombridge 1830,57939,4550,178.242300,37.718679,HD 103095; Gliese 451A; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Groombridge 34,1475,,4.592610,44.022954,HD 1326; Gliese 15A; Constellation And; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Grumium,87585,6688,268.382010,56.872643,Bayer/Flamsteed 32Xi  Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Gudja,77450,5879,237.184905,18.141564,Bayer/Flamsteed 35Kap Ser; Constellation Ser; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Gumala,94645,7291,288.888420,-24.179352,HD 179949; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Guniibuu,84405,6401,258.837540,-26.602829,Bayer/Flamsteed 36    Oph; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Hadar,68702,5267,210.955935,-60.373039,Bayer/Flamsteed Bet Cen; Constellation Cen; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Haedus,23767,1641,76.628700,41.234474,Bayer/Flamsteed 10Eta Aur; Constellation Aur; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Hamal,9884,617,31.793325,23.462423,Bayer/Flamsteed 13Alp Ari; Constellation Ari; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Hassaleh,23015,1577,74.248410,33.166090,Bayer/Flamsteed 3Iot Aur; Constellation Aur; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Hatysa,26241,1899,83.858265,-5.909901,Bayer/Flamsteed 44Iot Ori; Constellation Ori; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Helvetios,113357,8729,344.366550,20.768832,Bayer/Flamsteed 51    Peg; Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Heze,66249,5107,203.673300,-0.595820,Bayer/Flamsteed 79Zet Vir; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Hoggar,21109,,67.856055,4.575287,HD 28678; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Homam,112029,8634,340.365495,10.831364,Bayer/Flamsteed 42Zet Peg; Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Hunahpú,55174,,169.448160,-23.975414,HD 98219; Constellation Crt; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Hunor,80076,,245.151495,41.048084,HD 147506; Constellation Her; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Iklil,78104,5928,239.221155,-29.214073,Bayer/Flamsteed 5Rho Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Illyrian,47087,,143.938260,34.780742,HD 82886; Constellation LMi; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Imai,59747,4656,183.786405,-58.748928,Bayer/Flamsteed Del Cru; Constellation Cru; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Inquill,84787,,259.964205,-48.549319,HD 156411; Constellation Ara; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Intan,15578,,50.177745,-33.730104,HD 20868; Constellation For; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Intercrus,46471,3743,142.166625,45.601483,HD 81688; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Itonda,108375,,329.332635,-37.763621,HD 208487; Constellation Gru; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Izar,72105,5505,221.246760,27.074222,Bayer/Flamsteed 36Eps Boo; Constellation Boo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Jabbah,79374,6027,242.998890,-19.460708,Bayer/Flamsteed 14Nu  Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Jishui,37265,2930,114.791400,34.584346,Bayer/Flamsteed 71Omi Gem; Constellation Gem; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kaewkosin,,,119.776230,15.392426,Gliese-Jahreiß 3470; Constellation Cnc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kaffaljidhma,12706,804,40.825170,3.235818,Bayer/Flamsteed 86Gam Cet; Constellation Cet; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kalausi,47202,,144.299265,-43.272205,HD 83443; Constellation Vel; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kamuy,79219,,242.516310,26.742750,HD 145457; Constellation CrB; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kang,69427,5315,213.223935,-10.273702,Bayer/Flamsteed 98Kap Vir; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kapteyn's Star,24186,,77.912535,-45.018417,HD 33793; Gliese 191; Constellation Pic; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Karaka,76351,,233.916930,-80.204587,HD 137388; Constellation Aps; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kaus Australis,90185,6879,276.043020,-34.384616,Bayer/Flamsteed 20Eps Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kaus Borealis,90496,6913,276.992685,-25.421700,Bayer/Flamsteed 22Lam Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kaus Media,89931,6859,275.248500,-29.828103,Bayer/Flamsteed 19Del Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kaveh,92895,,283.920345,4.265325,HD 175541; Gliese 736; Constellation Ser; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Keid,19849,1325,63.818055,-7.652871,Bayer/Flamsteed 40Omi2Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Khambalia,69974,5359,214.777470,-13.371095,Bayer/Flamsteed 100Lam Vir; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kitalpha,104987,8131,318.955965,5.247845,Bayer/Flamsteed 8Alp Equ; Constellation Equ; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kochab,72607,5563,222.676575,74.155505,Bayer/Flamsteed 7Bet UMi; Constellation UMi; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Koeia,12961,,41.678625,-23.086611,Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kornephoros,80816,6148,247.555020,21.489613,Bayer/Flamsteed 27Bet Her; Constellation Her; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kraz,61359,4786,188.596815,-23.396759,Bayer/Flamsteed 9Bet Crv; Constellation Crv; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kruger 60,110893,,336.999630,57.695875,HD 239960; Gliese 860A; Constellation Cep; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Kurhah,108917,8417,330.947025,64.627971,Bayer/Flamsteed 17Xi  Cep; Constellation Cep; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+La Superba,62223,4846,191.282610,45.440256,HD 110914; Constellation CVn; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Lacaille 8760,105090,,319.315875,-38.867362,HD 202560; Gliese 825; Constellation Mic; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Lacaille 9352,114046,,346.462965,-35.853073,HD 217987; Gliese 887; Constellation PsA; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Lalande 21185,54035,,165.834480,35.969877,HD 95735; Gliese 411; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Larawag,82396,6241,252.541200,-34.293232,Bayer/Flamsteed 26Eps Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Lesath,85696,6508,262.690980,-37.295811,Bayer/Flamsteed 34Ups Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Libertas,97938,7595,298.562010,8.461453,Bayer/Flamsteed 59Xi  Aql; Constellation Aql; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Liesma,66192,,203.510715,53.728529,HD 118203; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Lilii Borea,13061,824,41.977200,29.247118,Bayer/Flamsteed 39    Ari; Constellation Ari; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Lionrock,110813,,336.762810,-17.263658,HD 212771; Constellation Aqr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Lucilinburhuc,30860,,97.190490,38.962963,HD 45350; Constellation Aur; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Lusitânia,30905,,97.304955,10.933891,HD 45652; Constellation Mon; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Luyten's Star,36208,,111.852075,5.225785,Gliese 273; Constellation CMi; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Maasym,85693,6526,262.684620,26.110645,Bayer/Flamsteed 76Lam Her; Constellation Her; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Macondo,52521,,161.087190,-33.577022,HD 93083; Gliese-Jahreiß 1137; Constellation Ant; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mago,24003,1636,77.402715,69.639401,HD 32518; Constellation Cam; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mahasim,28380,2095,89.930265,37.212585,Bayer/Flamsteed 37The Aur; Constellation Aur; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mahsati,82651,,253.431585,11.973746,HD 152581; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Maia,17573,1149,56.456685,24.367748,Bayer/Flamsteed 20    Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Marfik,80883,6149,247.728435,1.983923,Bayer/Flamsteed 10Lam Oph; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Markab,113963,8781,346.190220,15.205264,Bayer/Flamsteed 54Alp Peg; Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Markeb,45941,3734,140.528430,-55.010668,Bayer/Flamsteed Kap Vel; Constellation Vel; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Marsic,79043,6008,242.018865,17.046980,Bayer/Flamsteed 7Kap Her; Constellation Her; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Maru,,,121.709040,-66.299883,Gliese-Jahreiß 3483; Constellation Vol; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Matar,112158,8650,340.750560,30.221245,Bayer/Flamsteed 44Eta Peg; Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Matza,65426,,201.150450,-51.504458,HD 116434; Constellation Cen; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mebsuta,32246,2473,100.983030,25.131124,Bayer/Flamsteed 27Eps Gem; Constellation Gem; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Megrez,59774,4660,183.856290,57.032617,Bayer/Flamsteed 69Del UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Meissa,26207,1879,83.784495,9.934158,Bayer/Flamsteed 39Lam Ori; Constellation Ori; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mekbuda,34088,2650,106.027215,20.570297,Bayer/Flamsteed 43Zet Gem; Constellation Gem; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Meleph,42556,3429,130.112550,19.544808,Bayer/Flamsteed 41Eps Cnc; Constellation Cnc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Menkalinan,28360,2088,89.882235,44.947433,Bayer/Flamsteed 34Bet Aur; Constellation Aur; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Menkar,14135,911,45.569880,4.089734,Bayer/Flamsteed 92Alp Cet; Constellation Cet; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Menkent,68933,5288,211.670925,-36.369954,Bayer/Flamsteed 5The Cen; Constellation Cen; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Menkib,18614,1228,59.741250,35.791033,Bayer/Flamsteed 46Xi  Per; Constellation Per; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Merak,53910,4295,165.460155,56.382427,Bayer/Flamsteed 48Bet UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Merga,72487,5533,222.327795,46.116205,Bayer/Flamsteed 38    Boo; Constellation Boo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Meridiana,94114,7254,287.368035,-37.904474,Bayer/Flamsteed Alp CrA; Constellation CrA; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Merope,17608,1156,56.581560,23.948358,Bayer/Flamsteed 23    Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mesarthim,8832,546,28.382550,19.293852,Bayer/Flamsteed 5Gam2Ari; Constellation Ari; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Miaplacidus,45238,3685,138.300615,-69.717208,Bayer/Flamsteed Bet Car; Constellation Car; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mimosa,62434,4853,191.930385,-59.688764,Bayer/Flamsteed Bet Cru; Constellation Cru; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Minchir,42402,3418,129.689325,3.341435,Bayer/Flamsteed 5Sig Hya; Constellation Hya; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Minelauva,63090,4910,193.900875,3.397470,Bayer/Flamsteed 43Del Vir; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mintaka,25930,1852,83.001675,-0.299092,Bayer/Flamsteed 34Del Ori; Constellation Ori; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mira,10826,681,34.836630,-2.977643,Bayer/Flamsteed 68Omi Cet; Constellation Cet; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mirach,5447,337,17.432910,35.620558,Bayer/Flamsteed 43Bet And; Constellation And; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Miram,13268,834,42.674175,55.895496,Bayer/Flamsteed 15Eta Per; Constellation Per; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mirfak,15863,1017,51.080670,49.861180,Bayer/Flamsteed 33Alp Per; Constellation Per; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mirzam,30324,2294,95.674935,-17.955918,Bayer/Flamsteed 2Bet CMa; Constellation CMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Misam,14668,941,47.373870,44.857544,Bayer/Flamsteed 27Kap Per; Constellation Per; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mizar,65378,5054,200.981205,54.925362,Bayer/Flamsteed 79Zet UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mothallah,8796,544,28.270440,29.578829,Bayer/Flamsteed 2Alp Tri; Constellation Tri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mouhoun,22491,,72.574425,-24.368839,HD 30856; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Muliphein,34045,2657,105.939555,-15.633286,Bayer/Flamsteed 23Gam CMa; Constellation CMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Muphrid,67927,5235,208.671165,18.397717,Bayer/Flamsteed 8Eta Boo; Constellation Boo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Muscida,41704,3323,127.566465,60.718169,Bayer/Flamsteed 1Omi UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Musica,103527,8030,314.608065,10.839286,Bayer/Flamsteed 18    Del; Constellation Del; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Mönch,72339,,221.886360,-0.281476,HD 130322; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nahn,44946,3627,137.339730,22.045446,Bayer/Flamsteed 77Xi  Cnc; Constellation Cnc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Naos,39429,3165,120.896055,-40.003148,Bayer/Flamsteed Zet Pup; Constellation Pup; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nashira,106985,8278,325.022715,-16.662308,Bayer/Flamsteed 40Gam Cap; Constellation Cap; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Natasha,48235,,147.510375,-49.790266,HD 85390; Constellation Vel; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nekkar,73555,5602,225.486540,40.390566,Bayer/Flamsteed 42Bet Boo; Constellation Boo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nembus,7607,464,24.498075,48.628213,Bayer/Flamsteed 51    And; Constellation And; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nenque,5054,,16.167420,-39.488217,HD 6434; Gliese-Jahreiß 9037; Constellation Phe; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nervia,32916,,102.877125,40.867756,HD 49674; Constellation Aur; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nganurganity,33856,2646,105.429780,-27.934830,Bayer/Flamsteed 22Sig CMa; Constellation CMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nihal,25606,1829,82.061340,-20.759441,Bayer/Flamsteed 9Bet Lep; Constellation Lep; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nikawiy,74961,,229.775775,41.733207,HD 136418; Constellation Boo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Noquisi,57087,,175.545960,26.706570,Gliese 436; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nosaxa,31895,,100.007160,-48.541955,HD 48265; Constellation Pup; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nunki,92855,7121,283.816350,-26.296722,Bayer/Flamsteed 34Sig Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nusakan,75695,5747,231.957270,29.105703,Bayer/Flamsteed 3Bet CrB; Constellation CrB; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Nushagak,13192,,42.434880,71.753232,HD 17156; Constellation Cas; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Násti,40687,,124.592040,61.460722,HD 68988; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ogma,80838,,247.623465,38.347310,HD 149026; Constellation Her; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Okab,93747,7235,286.352535,13.863478,Bayer/Flamsteed 17Zet Aql; Constellation Aql; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Onkaria,,,258.827910,4.961607,Gliese-Jahreiß 1214; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+p Eridani,7751,486,24.947535,-56.196400,HD 10360; Gliese 66B; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+p Eridani,,487,24.945045,-56.194620,HD 10361; Gliese 66A; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Paikauhale,81266,6165,248.970645,-28.216016,Bayer/Flamsteed 23Tau Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Peacock,100751,7790,306.411885,-56.735090,Bayer/Flamsteed Alp Pav; Constellation Pav; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Phact,26634,1956,84.912255,-34.074108,Bayer/Flamsteed Alp Col; Constellation Col; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Phecda,58001,4554,178.457520,53.694760,Bayer/Flamsteed 64Gam UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Pherkad,75097,5735,230.182245,71.834016,Bayer/Flamsteed 13Gam UMi; Constellation UMi; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Piautos,40881,3268,125.133900,24.022314,Bayer/Flamsteed 19Lam Cnc; Constellation Cnc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Pincoya,88414,,270.778905,-28.560643,HD 164604; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Pipirima,82545,6252,253.083945,-38.017536,Bayer/Flamsteed Mu 2Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Pleione,17851,1180,57.296730,24.136712,Bayer/Flamsteed 28    Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Poerava,116084,,352.834350,-58.209733,HD 221287; Constellation Tuc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Polaris,11767,424,37.946250,89.264109,Bayer/Flamsteed 1Alp UMi; Constellation UMi; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Polaris Australis,104382,7228,317.191785,-88.956499,Bayer/Flamsteed Sig Oct; Constellation Oct; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Polis,89341,6812,273.440880,-21.058834,Bayer/Flamsteed 13Mu  Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Pollux,37826,2990,116.329155,28.026199,Bayer/Flamsteed 78Bet Gem; Constellation Gem; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Porrima,61941,4825,190.415175,-1.449375,Bayer/Flamsteed 29Gam Vir; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Praecipua,53229,4247,163.327890,34.214871,Bayer/Flamsteed 46    LMi; Constellation LMi; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Prima Hyadum,20205,1346,64.948335,15.627642,Bayer/Flamsteed 54Gam Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Procyon,37279,2943,114.825495,5.224993,Bayer/Flamsteed 10Alp CMi; Constellation CMi; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Propus,29655,2216,93.719415,22.506799,Bayer/Flamsteed 7Eta Gem; Constellation Gem; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Proxima Centauri,70890,,217.439775,-62.679485,Gliese 551; Constellation Cen; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ran,16537,1084,53.232720,-9.458262,Bayer/Flamsteed 18Eps Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Rana,17378,1136,55.812090,-9.763395,Bayer/Flamsteed 23Del Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Rapeto,83547,,256.128525,-43.309770,HD 153950; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ras Elased Australis,47908,3873,146.462820,23.774255,Bayer/Flamsteed 17Eps Leo; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Rasalas,48455,3905,148.190970,26.006951,Bayer/Flamsteed 24Mu  Leo; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Rasalgethi,84345,6406,258.661905,14.390333,Bayer/Flamsteed 64Alp1Her; Constellation Her; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Rasalhague,86032,6556,263.733615,12.560035,Bayer/Flamsteed 55Alp Oph; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Rastaban,85670,6536,262.608195,52.301387,Bayer/Flamsteed 23Bet Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Red Rectangle,30089,,94.992570,-10.637414,HD 44179; Constellation Mon; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Regulus,49669,3982,152.092980,11.967207,Bayer/Flamsteed 32Alp Leo; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Revati,5737,361,18.432855,7.575354,Bayer/Flamsteed 86Zet Psc; Constellation Psc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Rigel,24436,1713,78.634470,-8.201640,Bayer/Flamsteed 19Bet Ori; Constellation Ori; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Rigil Kentaurus,71683,5459,219.911475,-60.833976,Bayer/Flamsteed Alp1Cen; Constellation Cen; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Rosalíadecastro,81022,,248.212710,2.084832,HD 149143; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ross 128,57548,,176.934990,0.804563,Gliese 447; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ross 154,92403,,282.455535,-23.836232,Gliese 729; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ross 248,,,355.475685,44.174924,Gliese 905; Constellation And; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ross 614,30920,,97.347495,-2.813979,Gliese 234A; Constellation Mon; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ross 686,,,135.210075,5.242018,Gliese 333.2A; Constellation Hya; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ross 687,44263,,135.209715,5.241545,Gliese 333.2B; Constellation Hya; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Rotanev,101769,7882,309.387240,14.595087,Bayer/Flamsteed 6Bet Del; Constellation Del; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ruchbah,6686,403,21.453240,60.235283,Bayer/Flamsteed 37Del Cas; Constellation Cas; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Rukbat,95347,7348,290.971545,-40.615940,Bayer/Flamsteed Alp Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sabik,84012,6378,257.594520,-15.724910,Bayer/Flamsteed 35Eta Oph; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Saclateni,23453,1612,75.619515,41.075837,Bayer/Flamsteed 8Zet Aur; Constellation Aur; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sadachbia,110395,8518,335.414070,-1.387331,Bayer/Flamsteed 48Gam Aqr; Constellation Aqr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sadalbari,112748,8684,342.500775,24.601579,Bayer/Flamsteed 48Mu  Peg; Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sadalmelik,109074,8414,331.445985,-0.319851,Bayer/Flamsteed 34Alp Aqr; Constellation Aqr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sadalsuud,106278,8232,322.889730,-5.571172,Bayer/Flamsteed 22Bet Aqr; Constellation Aqr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sadr,100453,7796,305.557095,40.256679,Bayer/Flamsteed 37Gam Cyg; Constellation Cyg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sagarmatha,56572,,173.964675,-4.755697,HD 100777; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Saiph,27366,2004,86.939115,-9.669605,Bayer/Flamsteed 53Kap Ori; Constellation Ori; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Salm,115250,8880,350.159340,23.740337,Bayer/Flamsteed 62Tau Peg; Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sargas,86228,6553,264.329700,-42.997824,Bayer/Flamsteed The Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sarin,84379,6410,258.757965,24.839204,Bayer/Flamsteed 65Del Her; Constellation Her; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sceptrum,21594,1481,69.545100,-14.304020,Bayer/Flamsteed 53    Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Scheat,113881,8775,345.943515,28.082789,Bayer/Flamsteed 53Bet Peg; Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Schedar,3179,168,10.126740,56.537331,Bayer/Flamsteed 18Alp Cas; Constellation Cas; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Secunda Hyadum,20455,1373,65.733705,17.542514,Bayer/Flamsteed 61Del1Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Segin,8886,542,28.598760,63.670101,Bayer/Flamsteed 45Eps Cas; Constellation Cas; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Seginus,71075,5435,218.019540,38.308253,Bayer/Flamsteed 27Gam Boo; Constellation Boo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sham,96757,7479,295.024125,18.013890,Bayer/Flamsteed 5Alp Sge; Constellation Sge; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Shama,55664,,171.072330,-1.529076,HD 99109; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sharjah,79431,,243.174060,-18.875503,Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Shaula,85927,6527,263.402175,-37.103821,Bayer/Flamsteed 35Lam Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sheliak,92420,7106,282.519975,33.362667,Bayer/Flamsteed 10Bet Lyr; Constellation Lyr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sheratan,8903,553,28.660020,20.808035,Bayer/Flamsteed 6Bet Ari; Constellation Ari; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sika,95262,,290.720730,-32.919054,HD 181720; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sirius,32349,2491,101.287215,-16.716116,Bayer/Flamsteed 9Alp CMa; Constellation CMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Situla,111710,8610,339.439095,-4.228056,Bayer/Flamsteed 63Kap Aqr; Constellation Aqr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Skat,113136,8709,343.662555,-15.820820,Bayer/Flamsteed 76Del Aqr; Constellation Aqr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sol,,,0.000000,0.000000,Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Solaris,104780,,318.399945,14.689387,Constellation Peg; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Spica,65474,5056,201.298245,-11.161322,Bayer/Flamsteed 67Alp Vir; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Stribor,43674,,133.461735,33.056812,HD 75898; Constellation Lyn; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Struve 2398 A,91768,,280.697685,59.630396,HD 173739; Gliese 725A; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sualocin,101958,7906,309.909525,15.912072,Bayer/Flamsteed 9Alp Del; Constellation Del; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Subra,47508,3852,145.287645,9.892308,Bayer/Flamsteed 14Omi Leo; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Suhail,44816,3634,136.999020,-43.432589,Bayer/Flamsteed Lam Vel; Constellation Vel; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sulafat,93194,7178,284.735925,32.689557,Bayer/Flamsteed 14Gam Lyr; Constellation Lyr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Syrma,69701,5338,214.003620,-6.000547,Bayer/Flamsteed 99Iot Vir; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Sāmaya,106824,,324.535020,-31.737485,HD 205739; Constellation PsA; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tabit,22449,1543,72.460035,6.961276,Bayer/Flamsteed 1Pi 3Ori; Constellation Ori; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Taiyangshou,57399,4518,176.512725,47.779406,Bayer/Flamsteed 63Chi UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Taiyi,63076,4916,193.868970,65.438474,Bayer/Flamsteed 8    Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Talitha,44127,3569,134.802420,48.041826,Bayer/Flamsteed 9Iot UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tania Australis,50801,4069,155.582325,41.499516,Bayer/Flamsteed 34Mu  UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tania Borealis,50372,4033,154.274280,42.914365,Bayer/Flamsteed 33Lam UMa; Constellation UMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tapecue,38041,,116.956905,-54.264145,HD 63765; Constellation Car; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tarazed,97278,7525,296.564910,10.613261,Bayer/Flamsteed 50Gam Aql; Constellation Aql; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tarf,40526,3249,124.128840,9.185545,Bayer/Flamsteed 17Bet Cnc; Constellation Cnc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Taygeta,17531,1145,56.302050,24.467278,Bayer/Flamsteed 19    Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tegmine,40167,3210,123.053025,17.647771,Bayer/Flamsteed 16Zet2Cnc; Constellation Cnc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tejat,30343,2286,95.740095,22.513586,Bayer/Flamsteed 13Mu  Gem; Constellation Gem; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Terebellum,98066,7597,298.959765,-26.299506,Bayer/Flamsteed 58Ome Sgr; Constellation Sgr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Theemin,21393,1464,68.887680,-30.562341,Bayer/Flamsteed 52Ups2Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Thuban,68756,5291,211.097475,64.375850,Bayer/Flamsteed 11Alp Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tiaki,112122,8636,340.666725,-46.884577,Bayer/Flamsteed Bet Gru; Constellation Gru; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tianguan,26451,1910,84.411195,21.142549,Bayer/Flamsteed 123Zet Tau; Constellation Tau; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tianyi,62423,4863,191.893095,66.790304,Bayer/Flamsteed 7    Dra; Constellation Dra; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Timir,80687,,247.117305,-13.399640,HD 148427; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Titawin,7513,458,24.199485,41.405459,Bayer/Flamsteed 50Ups And; Constellation And; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Toliman,71681,5460,219.905190,-60.838300,Bayer/Flamsteed Alp2Cen; Constellation Cen; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tonatiuh,58952,4609,181.311765,76.905734,HD 104985; Constellation Cam; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Torcular,8198,510,26.348460,9.157736,Bayer/Flamsteed 110Omi Psc; Constellation Psc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tupi,17096,,54.929880,-52.915838,HD 23079; Constellation Ret; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tupã,60644,,186.443355,-64.022088,HD 108147; Constellation Cru; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Tureis,39757,3185,121.886055,-24.304324,Bayer/Flamsteed 15Rho Pup; Constellation Pup; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Ukdah,47431,3845,144.964005,-1.142810,Bayer/Flamsteed 35Iot Hya; Constellation Hya; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Uklun,57291,,176.210400,-58.703709,HD 102117; Constellation Cen; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Unukalhai,77070,5854,236.066970,6.425627,Bayer/Flamsteed 24Alp Ser; Constellation Ser; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Uruk,96078,,293.017335,16.474290,HD 231701; Constellation Sge; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Uúba,117883,,358.667370,-37.627924,Constellation Scl; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Van Maanen's Star,3829,,12.291240,5.388610,Gliese 35; Constellation Psc; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Vega,91262,7001,279.234600,38.783692,Bayer/Flamsteed 3Alp Lyr; Constellation Lyr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Veritate,116076,8930,352.822350,39.236198,Bayer/Flamsteed 14    And; Constellation And; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Vindemiatrix,63608,4932,195.544170,10.959150,Bayer/Flamsteed 47Eps Vir; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Wasat,35550,2777,110.030745,21.982320,Bayer/Flamsteed 55Del Gem; Constellation Gem; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Wazn,27628,2040,87.739935,-35.768309,Bayer/Flamsteed Bet Col; Constellation Col; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Wezen,34444,2693,107.097855,-26.393200,Bayer/Flamsteed 25Del CMa; Constellation CMa; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Wolf 1061,80824,,247.575255,-12.662594,Gliese 628; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Wolf 359,,,164.122260,7.015320,Gliese 406; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Wurren,5348,338,17.096130,-55.245760,Bayer/Flamsteed Zet Phe; Constellation Phe; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Xamidimura,82514,6247,252.967635,-38.047380,Bayer/Flamsteed Mu 1Sco; Constellation Sco; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Xihe,91852,7043,280.900440,36.556605,HD 173416; Constellation Lyr; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Xuange,69732,5351,214.096110,46.088305,Bayer/Flamsteed 19Lam Boo; Constellation Boo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Yed Posterior,79882,6075,244.580370,-4.692511,Bayer/Flamsteed 2Eps Oph; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Yed Prior,79593,6056,243.586410,-3.694323,Bayer/Flamsteed 1Del Oph; Constellation Oph; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Yildun,85822,6789,263.053770,86.586460,Bayer/Flamsteed 23Del UMi; Constellation UMi; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Zaniah,60129,4689,184.976490,-0.666803,Bayer/Flamsteed 15Eta Vir; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Zaurak,18543,1231,59.507355,-13.508515,Bayer/Flamsteed 34Gam Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Zavijava,57757,4540,177.673830,1.764718,Bayer/Flamsteed 5Bet Vir; Constellation Vir; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Zhang,48356,3903,147.869550,-14.846603,Bayer/Flamsteed 39Ups1Hya; Constellation Hya; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Zibal,15197,984,48.958440,-8.819730,Bayer/Flamsteed 13Zet Eri; Constellation Eri; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Zosma,54872,4357,168.527070,20.523717,Bayer/Flamsteed 68Del Leo; Constellation Leo; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Zubenelgenubi,72622,5531,222.719655,-16.041778,Bayer/Flamsteed 9Alp2Lib; Constellation Lib; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Zubenelhakrabi,76333,5787,233.881575,-14.789537,Bayer/Flamsteed 38Gam Lib; Constellation Lib; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+Zubeneschamali,74785,5685,229.251735,-9.382917,Bayer/Flamsteed 27Bet Lib; Constellation Lib; Derived from HYG v4.1 (CC-BY-SA 4.0) WGSN list
+# >>> AUTO-GEN END: AE IAU Star Names (WGSN) v2024-03

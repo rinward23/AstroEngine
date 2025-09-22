@@ -21,6 +21,7 @@ from astroengine.app_api import (
     canonicalize_events,
     run_scan_or_raise,
 )
+
 from astroengine.exporters import write_parquet_canonical, write_sqlite_canonical
 from astroengine.exporters_ics import ics_bytes_from_events
 from astroengine.utils import (
@@ -30,6 +31,12 @@ from astroengine.utils import (
     TARGET_FRAME_BODIES,
     available_frames,
     expand_targets,
+
+from astroengine.chart.config import (
+    DEFAULT_SIDEREAL_AYANAMSHA,
+    SUPPORTED_AYANAMSHAS,
+    VALID_ZODIAC_SYSTEMS,
+
 )
 
 
@@ -260,6 +267,7 @@ with st.sidebar:
     st.write("**Detected Swiss path**:", se_path or "not found")
 
     st.header("Scan Settings")
+
     start_utc = st.text_input(
         "Start (UTC, ISO-8601)",
         key="scan_start",
@@ -291,6 +299,21 @@ with st.sidebar:
         index=0,
         key="scan_entrypoint",
     )
+
+    s, e = _default_window()
+    start_utc = st.text_input("Start (UTC, ISO-8601)", value=s)
+    end_utc = st.text_input("End (UTC, ISO-8601)", value=e)
+    provider = st.selectbox("Provider", options=["auto", "swiss", "pymeeus", "skyfield"], index=0)
+    zodiac_choice = st.selectbox("Zodiac", options=sorted(VALID_ZODIAC_SYSTEMS), index=0)
+    ayanamsha_choice = None
+    if zodiac_choice == "sidereal":
+        ayanamsha_options = sorted(SUPPORTED_AYANAMSHAS)
+        default_index = ayanamsha_options.index(DEFAULT_SIDEREAL_AYANAMSHA)
+        ayanamsha_choice = st.selectbox("Ayanamsha", options=ayanamsha_options, index=default_index)
+    step_minutes = st.slider("Step minutes", min_value=10, max_value=240, value=60, step=10)
+    st.caption("Tip: set SE_EPHE_PATH to your Swiss ephemeris folder if using the swiss provider.")
+    entrypoint_choice = st.selectbox("Scan entrypoint", entrypoint_labels, index=0)
+
     st.caption(
         "Select an explicit scan function or leave on Auto to try detected entrypoints in order.\n"
         "Set ASTROENGINE_SCAN_ENTRYPOINTS for custom modules (format: module:function)."
@@ -472,6 +495,11 @@ with tab_scan:
                     ayanamsha=st.session_state.get("scan_ayanamsha"),
                     frames=frames,
                     entrypoints=entrypoint_arg,
+
+                    zodiac=zodiac_choice,
+                    ayanamsha=ayanamsha_choice,
+                    return_used_entrypoint=True,
+
                 )
                 session_cache[cache_key] = (raw_events, canonical_events, used_entrypoint)
                 progress.progress(100, text="Scan complete")

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Mapping, Sequence
 
+from ..chart.config import ChartConfig
 from ..chart.natal import DEFAULT_BODIES
 from ..ephemeris import SwissEphemerisAdapter
 from ..events import ProgressionEvent
@@ -38,6 +39,7 @@ def secondary_progressions(
     *,
     bodies: Sequence[str] | None = None,
     step_days: float = 30.0,
+    config: ChartConfig | None = None,
 ) -> list[ProgressionEvent]:
     """Return secondary progression samples between ``start`` and ``end``."""
 
@@ -47,7 +49,8 @@ def secondary_progressions(
     if end_dt <= start_dt:
         return []
 
-    adapter = SwissEphemerisAdapter()
+    chart_config = config or ChartConfig()
+    adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
     body_map = _resolve_bodies(bodies)
 
     events: list[ProgressionEvent] = []

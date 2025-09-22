@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 from .target_frames import (
     DEFAULT_TARGET_FRAMES,
     DEFAULT_TARGET_SELECTION,
@@ -22,3 +23,8 @@ __all__ = [
     "DETECTOR_NAMES",
     "ENGINE_FLAG_MAP",
 ]
+
+from .merging import deep_merge
+
+__all__ = ["deep_merge"]
+
