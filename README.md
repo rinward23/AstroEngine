@@ -101,6 +101,13 @@ rows = write_parquet_canonical("events.parquet", events)
 
 Scan commands can call `_cli_export(args, events)` after adding `add_canonical_export_args(parser)` to gain `--sqlite/--parquet` switches.
 
+### CLI enhancements
+
+* Global options `--zodiac`, `--ayanamsha`, and `--house-system` mirror the runtime `ChartConfig`, allowing sidereal and non-Placidus workflows to run directly from the CLI without rewriting chart code.
+* `astroengine ingresses --start … --end …` reports sign changes for any supported body and supports JSON/SQLite/Parquet exports.
+* `astroengine timelords --start … --vimshottari --moon-longitude …` computes Vimshottari dashas; pair with `--zr --fortune-longitude …` to emit zodiacal releasing tables.
+* `astroengine transits … --narrative` summarises the top scored events via the new narrative layer (falls back to a deterministic template when no GPT backend is configured).
+
 # >>> AUTO-GEN END: Canonical Transit Types v1.0
 
 The CI workflow `.github/workflows/ci.yml` covers Python 3.10–3.12 and archives diagnostics output for each run.

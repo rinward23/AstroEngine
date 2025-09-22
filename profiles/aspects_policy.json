@@ -8,7 +8,7 @@
     "opposition": 180,
     "semisextile": 30,
     "semisquare": 45,
-    "sesquisquare": 135,
+    "sesquiquadrate": 135,
     "quincunx": 150
   },
   "enabled": ["conjunction", "sextile", "square", "trine", "opposition"],
@@ -21,7 +21,7 @@
     "sextile":    {"luminary": 5.0, "personal": 4.0, "social": 3.5, "outer": 3.0},
     "semisextile":{"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
     "semisquare": {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
-    "sesquisquare":{"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
+    "sesquiquadrate":{"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0},
     "quincunx":   {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0}
   }
 }

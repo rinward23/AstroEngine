@@ -8,6 +8,7 @@ from datetime import datetime
 
 from ..ephemeris import SwissEphemerisAdapter
 from ..scoring import DEFAULT_ASPECTS, OrbCalculator
+from .config import ChartConfig
 from .natal import DEFAULT_BODIES, NatalChart
 
 __all__ = ["TransitContact", "TransitScanner"]
@@ -41,8 +42,9 @@ class TransitScanner:
         orb_calculator: OrbCalculator | None = None,
         aspect_angles: Sequence[int] | None = None,
         orb_profile: str = "standard",
+        chart_config: ChartConfig | None = None,
     ) -> None:
-        self.adapter = adapter or SwissEphemerisAdapter()
+        self.adapter = adapter or SwissEphemerisAdapter(chart_config=chart_config)
         self.orb_calculator = orb_calculator or OrbCalculator()
         self.aspect_angles = tuple(aspect_angles or DEFAULT_ASPECTS)
         self.orb_profile = orb_profile
