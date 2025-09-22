@@ -27,7 +27,7 @@ def find_lunations(
     start_jd: float,
     end_jd: float,
     *,
-    step_hours: float = 6.0,
+    step_hours: float = 3.0,
 ) -> list[LunationEvent]:
     """Return lunation events between ``start_jd`` and ``end_jd`` inclusive."""
 
@@ -61,8 +61,8 @@ def find_lunations(
                         lambda x, t=target: _phase_delta(x, t),
                         prev_jd,
                         min(jd, end_jd),
-                        tol=1e-5,
-                        tol_deg=1e-4,
+                        tol=5e-6,
+                        value_tol=5e-5,
                     )
                 except ValueError:
                     root = None

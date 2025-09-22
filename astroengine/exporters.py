@@ -45,7 +45,9 @@ class LegacyTransitEvent:
     score: float
     lon_moving: float | None = None
     lon_target: float | None = None
+
     metadata: dict[str, object] = field(default_factory=dict)
+
 
     @property
     def when_iso(self) -> str:

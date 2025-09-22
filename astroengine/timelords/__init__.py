@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 from .active import TimelordCalculator, active_timelords
 from .models import TimelordPeriod, TimelordStack
 from .profections import annual_profections, generate_profection_periods
@@ -17,4 +18,3 @@ __all__ = [
     "TimelordCalculator",
     "TimelordPeriod",
     "TimelordStack",
-]
