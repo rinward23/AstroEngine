@@ -252,6 +252,9 @@ python -m astroengine decl mirror --type contra --lon 10
 python -m astroengine decl parallel --dec1 12.0 --dec2 -11.7 --tol 0.5
 ```
 
+- `astroengine transits ... --decl-only` scans only declination parallels/contraparallels.
+- Override the antiscia axis (Cancer–Capricorn by default) with `--mirror-axis` when running `astroengine transits`.
+
 ### SBDB fetch (with cache)
 
 ```python

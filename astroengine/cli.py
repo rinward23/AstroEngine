@@ -12,6 +12,7 @@ from typing import Iterable, Sequence, Any
 
 from . import engine as engine_module
 from .engine import events_to_dicts, scan_contacts
+from .astro.declination import available_antiscia_axes
 from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
 from .providers import list_providers
 from .validation import (
@@ -211,6 +212,8 @@ def cmd_transits(args: argparse.Namespace) -> int:
     engine_module.FEATURE_DIRECTIONS = args.directions
     engine_module.FEATURE_RETURNS = args.returns
     engine_module.FEATURE_PROFECTIONS = args.profections
+    include_mirrors = not args.decl_only
+    include_aspects = not args.decl_only
     events = scan_contacts(
         start_iso=args.start,
         end_iso=args.end,
@@ -223,6 +226,11 @@ def cmd_transits(args: argparse.Namespace) -> int:
         contra_antiscia_orb=args.mirror_orb,
         step_minutes=args.step,
         aspects_policy_path=args.aspects_policy,
+        profile_id=args.profile,
+        include_declination=True,
+        include_mirrors=include_mirrors,
+        include_aspects=include_aspects,
+        antiscia_axis=args.mirror_axis,
     )
 
     if args.json:
@@ -338,8 +346,28 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--moving", default="sun")
     transits.add_argument("--target", default="moon")
     transits.add_argument("--provider", default="swiss")
-    transits.add_argument("--decl-orb", type=float, default=0.5)
-    transits.add_argument("--mirror-orb", type=float, default=2.0)
+    transits.add_argument(
+        "--decl-orb",
+        type=float,
+        default=None,
+        help="Override declination orb (degrees); defaults to profile policy",
+    )
+    transits.add_argument(
+        "--mirror-orb",
+        type=float,
+        default=None,
+        help="Override antiscia orb (degrees); defaults to profile policy",
+    )
+    transits.add_argument(
+        "--mirror-axis",
+        choices=available_antiscia_axes(),
+        help="Antiscia axis (profile default when omitted)",
+    )
+    transits.add_argument(
+        "--decl-only",
+        action="store_true",
+        help="Emit only declination contacts (skip aspects and antiscia)",
+    )
     transits.add_argument("--step", type=int, default=60)
     transits.add_argument("--aspects-policy")
     transits.add_argument("--target-longitude", type=float, default=None)
