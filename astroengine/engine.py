@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import datetime as dt
+
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, List
 
 from .core.engine import get_active_aspect_angles
 from .detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
+from .detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
 from .detectors_aspects import AspectHit, detect_aspects
 from .exporters import LegacyTransitEvent
 from .providers import get_provider
@@ -23,7 +27,36 @@ FEATURE_RETURNS = False
 FEATURE_PROFECTIONS = False
 # >>> AUTO-GEN END: engine-feature-flags v1.0
 
-__all__ = ["events_to_dicts", "scan_contacts", "get_active_aspect_angles", "resolve_provider"]
+__all__ = [
+    "events_to_dicts",
+    "scan_contacts",
+    "get_active_aspect_angles",
+    "resolve_provider",
+    "fast_scan",
+    "ScanConfig",
+]
+
+_BODY_CODE_TO_NAME = {
+    0: "sun",
+    1: "moon",
+    2: "mercury",
+    3: "venus",
+    4: "mars",
+    5: "jupiter",
+    6: "saturn",
+    7: "uranus",
+    8: "neptune",
+    9: "pluto",
+}
+
+
+@dataclass(slots=True)
+class ScanConfig:
+    body: int
+    natal_lon_deg: float
+    aspect_angle_deg: float
+    orb_deg: float
+    tick_minutes: int = 60
 
 
 def events_to_dicts(events: Iterable[LegacyTransitEvent]) -> List[dict]:
@@ -176,3 +209,45 @@ def resolve_provider(name: str | None) -> object:
     """Compatibility shim used by external callers."""
 
     return get_provider(name or "swiss")
+
+
+def _datetime_to_jd(moment: datetime) -> float:
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    else:
+        moment = moment.astimezone(timezone.utc)
+    iso = moment.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return iso_to_jd(iso)
+
+
+def fast_scan(start: datetime, end: datetime, config: ScanConfig) -> List[dict]:
+    """Lightweight aspect scanner using Swiss Ephemeris positions."""
+
+    body_name = _BODY_CODE_TO_NAME.get(config.body)
+    if body_name is None:
+        raise ValueError(f"Unsupported body code: {config.body}")
+
+    start_jd = _datetime_to_jd(start)
+    end_jd = _datetime_to_jd(end)
+    if end_jd <= start_jd:
+        return []
+
+    step_days = config.tick_minutes / (24.0 * 60.0)
+    target_lon = norm360(config.natal_lon_deg + config.aspect_angle_deg)
+
+    hits: List[dict] = []
+    current = start_jd
+    while current <= end_jd:
+        lon = body_lon(current, body_name)
+        delta = delta_deg(lon, target_lon)
+        if abs(delta) <= config.orb_deg:
+            hits.append(
+                {
+                    "timestamp": jd_to_iso(current),
+                    "body": body_name,
+                    "longitude": lon,
+                    "delta": delta,
+                }
+            )
+        current += step_days
+    return hits

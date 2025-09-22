@@ -21,6 +21,30 @@ from .validation import (
 )
 from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
 
+
+def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for natal vault wiring in lightweight builds."""
+
+    return None
+
+
+def _augment_parser_with_cache(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for cache warmers in lightweight builds."""
+
+    return None
+
+
+def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for parquet dataset integration in lightweight builds."""
+
+    return None
+
+
+def _augment_parser_with_provisioning(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for ephemeris provisioning hooks in lightweight builds."""
+
+    return None
+
 # >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
 from .exporters import write_sqlite_canonical, write_parquet_canonical
 
@@ -103,6 +127,43 @@ def run_experimental(args) -> None:
 
 __all__ = ["build_parser", "main", "serialize_events_to_json", "json"]
 
+
+# >>> AUTO-GEN BEGIN: cli-natal-stub v1.0
+def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for natal vault integration (no-op until implemented)."""
+
+    return None
+
+
+# >>> AUTO-GEN END: cli-natal-stub v1.0
+
+
+# >>> AUTO-GEN BEGIN: cli-cache-stub v1.0
+def _augment_parser_with_cache(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for cache warmers/controls (currently unused)."""
+
+    return None
+
+
+# >>> AUTO-GEN END: cli-cache-stub v1.0
+
+# >>> AUTO-GEN BEGIN: cli-parquet-stub v1.0
+def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for batch-parquet export commands."""
+
+    return None
+
+
+# >>> AUTO-GEN END: cli-parquet-stub v1.0
+
+# >>> AUTO-GEN BEGIN: cli-provision-stub v1.0
+def _augment_parser_with_provisioning(parser: argparse.ArgumentParser) -> None:
+    """Placeholder for provisioning helpers (Swiss downloads etc.)."""
+
+    return None
+
+
+# >>> AUTO-GEN END: cli-provision-stub v1.0
 
 # >>> AUTO-GEN BEGIN: cli-new-detector-flags v1.0
 def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:

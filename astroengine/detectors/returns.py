@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Callable
-
-from .common import delta_deg, jd_to_iso, moon_lon, solve_zero_crossing, sun_lon
 from ..events import ReturnEvent
 
 __all__ = ["solar_lunar_returns"]
@@ -80,5 +77,4 @@ def solar_lunar_returns(
         prev_jd, prev_delta = current, curr_delta
         current += step
 
-    events.sort(key=lambda event: event.jd)
-    return events
+

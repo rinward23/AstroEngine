@@ -94,16 +94,16 @@ def sun_lon(jd_ut: float) -> float:
     if not _ensure_swiss():
         raise RuntimeError("pyswisseph unavailable; install extras: astroengine[ephem]")
     import swisseph as swe  # type: ignore
-    lon, lat, dist, speed_lon = swe.calc_ut(jd_ut, swe.SUN)
-    return float(lon)
+    result, _ = swe.calc_ut(jd_ut, swe.SUN)
+    return float(result[0])
 
 
 def moon_lon(jd_ut: float) -> float:
     if not _ensure_swiss():
         raise RuntimeError("pyswisseph unavailable; install extras: astroengine[ephem]")
     import swisseph as swe  # type: ignore
-    lon, lat, dist, speed_lon = swe.calc_ut(jd_ut, swe.MOON)
-    return float(lon)
+    result, _ = swe.calc_ut(jd_ut, swe.MOON)
+    return float(result[0])
 
 
 
@@ -120,53 +120,19 @@ def body_lon(jd_ut: float, body_name: str) -> float:  # replace previous block i
         'mercury': swe.MERCURY, 'venus': swe.VENUS, 'mars': swe.MARS,
         'jupiter': swe.JUPITER, 'saturn': swe.SATURN, 'uranus': swe.URANUS, 'neptune': swe.NEPTUNE, 'pluto': swe.PLUTO,
     }[name]
-    lon, lat, dist, speed_lon = swe.calc_ut(jd_ut, code)
-    return float(lon)
+    result, _ = swe.calc_ut(jd_ut, code)
+    return float(result[0])
 
 
 # --- Root finding ------------------------------------------------------------
 
 
-def solve_zero_crossing(
+
     f: Callable[[float], float],
     a: float,
     b: float,
     *,
-    tol_deg: float = 1e-5,
-    max_iter: int = 64,
-) -> float:
-    """Return the root of ``f`` inside ``[a, b]`` using a safe secant/bisection mix."""
 
-    fa = f(a)
-    fb = f(b)
-    if math.isnan(fa) or math.isnan(fb):
-        raise ValueError("Root function returned NaN for bracket endpoints")
-    if fa == 0.0:
-        return a
-    if fb == 0.0:
-        return b
-    if fa * fb > 0:
-        raise ValueError("Root bracket does not straddle zero")
-
-    x0, f0 = a, fa
-    x1, f1 = b, fb
-    for _ in range(max_iter):
-        # Attempt a secant update first for faster convergence.
-        if f1 != f0:
-            x2 = x1 - f1 * (x1 - x0) / (f1 - f0)
-        else:
-            x2 = 0.5 * (x0 + x1)
-
-        # Ensure the candidate remains inside the bracket; fall back to bisection.
-        if not (min(x0, x1) <= x2 <= max(x0, x1)):
-            x2 = 0.5 * (x0 + x1)
-
-        f2 = f(x2)
-        if abs(f2) <= tol_deg:
-            return x2
-
-        if f0 * f2 <= 0:
-            x1, f1 = x2, f2
         else:
             x0, f0 = x2, f2
 

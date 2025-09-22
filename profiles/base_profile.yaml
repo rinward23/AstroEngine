@@ -17,6 +17,15 @@ provenance:
     with modern practice references (Houlding, Frawley). Modifiers calibrated for
     deterministic scoring in schema v1.
 
+resonance:
+  weights:
+    mind: 1.0
+    body: 1.0
+    spirit: 1.0
+  uncertainty_bias:
+    narrow: spirit
+    broad: body
+
 providers:
   default: skyfield
   skyfield:

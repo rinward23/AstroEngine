@@ -96,8 +96,16 @@ from .modules.vca import serialize_vca_ruleset
 from .profiles import (  # noqa: F401
     VCA_DOMAIN_PROFILES,
     DomainScoringProfile,
+    ResonanceWeights,
     load_base_profile,
+    load_resonance_weights,
     load_vca_outline,
+)
+from .narrative_overlay import (
+    NarrativeOverlay,
+    apply_resonance_overlay,
+    format_confidence_band,
+    select_resonance_focus,
 )
 from .providers import EphemerisProvider  # noqa: F401  # ENSURE-LINE
 from .providers import get_provider, list_providers  # noqa: F401  # ENSURE-LINE
@@ -108,6 +116,7 @@ from .scoring import (
     ScoreInputs,
     ScoreResult,
     compute_score,
+    compute_uncertainty_confidence,
     load_dignities,
     lookup_dignities,
 )
@@ -150,11 +159,17 @@ __all__ = [
     "combine_valence",
     "DomainScoringProfile",
     "VCA_DOMAIN_PROFILES",
+    "ResonanceWeights",
     "compute_domain_factor",
     "rollup_domain_scores",
     "load_profile_json",
     "profile_into_ctx",
     "apply_profile_if_any",
+    "load_resonance_weights",
+    "NarrativeOverlay",
+    "apply_resonance_overlay",
+    "format_confidence_band",
+    "select_resonance_focus",
     "EphemerisAdapter",
     "EphemerisConfig",
     "EphemerisSample",
@@ -175,6 +190,7 @@ __all__ = [
     "ScoreInputs",
     "ScoreResult",
     "OrbCalculator",
+    "compute_uncertainty_confidence",
     "load_dignities",
     "lookup_dignities",
     "SwissEphemerisAdapter",
