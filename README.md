@@ -242,7 +242,7 @@ working tree so downstream automation stays deterministic.
 
 # >>> AUTO-GEN BEGIN: AE README Stars/SBDB/Decl Addendum v1.0
 ### Fixed stars (Skyfield & Swiss)
-- Dataset: `datasets/star_names_iau.csv` (replace with full WGSN list as needed).
+- Dataset: `datasets/star_names_iau.csv` (official WGSN catalogue derived from HYG Database v4.1, CC-BY-SA 4.0).
 - Skyfield method requires a local JPL kernel (e.g., `de440s.bsp`).
 
 ```bash

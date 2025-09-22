@@ -25,6 +25,8 @@ import sys
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Tuple
 
+from astroengine.ephemeris import EphemerisAdapter
+
 
 @dataclass
 class Check:
@@ -222,6 +224,30 @@ def check_swisseph() -> List[Check]:
     return out
 
 
+def check_ephemeris_config() -> Check:
+    try:
+        adapter = EphemerisAdapter()
+    except Exception as exc:  # pragma: no cover - surface only
+        return Check(
+            name="Ephemeris config",
+            status="WARN",
+            detail=f"adapter unavailable: {exc}",
+        )
+
+    summary = adapter.describe_configuration()
+    observer_mode = summary.get("observer_mode", "geocentric")
+    observer_detail = summary.get("observer_location")
+    detail = f"time-scale {summary.get('time_scale')}  observer={observer_mode}"
+    if observer_detail:
+        detail += f" ({observer_detail})"
+    return Check(
+        name="Ephemeris config",
+        status="PASS",
+        detail=detail,
+        data=summary,
+    )
+
+
 def check_profiles_presence() -> Check:
     # Verify that VCA domain profiles symbol is importable
     ok, _, err = _try_import("astroengine.profiles")
@@ -254,6 +280,7 @@ def collect_diagnostics(strict: bool = False) -> Dict[str, Any]:
     checks.extend(check_optional_deps())
     checks.extend(check_timezone_libs())
     checks.extend(check_swisseph())
+    checks.append(check_ephemeris_config())
     checks.append(check_profiles_presence())
     # summarize
     worst = max((c.status for c in checks), key=_status_order, default="PASS")
