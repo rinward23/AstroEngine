@@ -87,3 +87,5 @@ class ProfectionEvent(BaseEvent):
     method: str
     house: int
     ruler: str
+    end_ts: str
+    midpoint_ts: str

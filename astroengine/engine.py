@@ -15,6 +15,7 @@ from .detectors_aspects import AspectHit, detect_aspects
 from .exporters import LegacyTransitEvent
 from .providers import get_provider
 from .scoring import ScoreInputs, compute_score
+from .timelords.active import TimelordCalculator
 
 # >>> AUTO-GEN BEGIN: engine-feature-flags v1.0
 # Feature flags (default OFF to preserve current behavior)
@@ -25,6 +26,7 @@ FEATURE_PROGRESSIONS = False
 FEATURE_DIRECTIONS = False
 FEATURE_RETURNS = False
 FEATURE_PROFECTIONS = False
+FEATURE_TIMELORDS = False
 # >>> AUTO-GEN END: engine-feature-flags v1.0
 
 __all__ = [
@@ -63,6 +65,21 @@ def events_to_dicts(events: Iterable[LegacyTransitEvent]) -> List[dict]:
     """Convert :class:`LegacyTransitEvent` objects into JSON-friendly dictionaries."""
 
     return [event.to_dict() for event in events]
+
+
+def _parse_iso_datetime(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _attach_timelords(
+    event: LegacyTransitEvent,
+    calculator: TimelordCalculator | None,
+) -> None:
+    if not FEATURE_TIMELORDS or calculator is None:
+        return
+    stack = calculator.active_stack(_parse_iso_datetime(event.timestamp))
+    event.metadata.setdefault("timelord_rulers", stack.rulers())
+    event.metadata.setdefault("timelords", stack.to_dict())
 
 
 def _iso_ticks(start_iso: str, end_iso: str, *, step_minutes: int) -> Iterable[str]:
@@ -162,6 +179,7 @@ def scan_contacts(
     contra_antiscia_orb: float = 2.0,
     step_minutes: int = 60,
     aspects_policy_path: str | None = None,
+    timelord_calculator: TimelordCalculator | None = None,
 ) -> List[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
 
@@ -179,7 +197,9 @@ def scan_contacts(
         decl_contra_orb,
     ):
         allow = decl_parallel_orb if hit.kind == "decl_parallel" else decl_contra_orb
-        events.append(_event_from_decl(hit, orb_allow=allow))
+        event = _event_from_decl(hit, orb_allow=allow)
+        _attach_timelords(event, timelord_calculator)
+        events.append(event)
 
     for hit in detect_antiscia_contacts(
         provider,
@@ -190,7 +210,9 @@ def scan_contacts(
         contra_antiscia_orb,
     ):
         allow = antiscia_orb if hit.kind == "antiscia" else contra_antiscia_orb
-        events.append(_event_from_decl(hit, orb_allow=allow))
+        event = _event_from_decl(hit, orb_allow=allow)
+        _attach_timelords(event, timelord_calculator)
+        events.append(event)
 
     for aspect_hit in detect_aspects(
         provider,
@@ -199,7 +221,9 @@ def scan_contacts(
         target,
         policy_path=aspects_policy_path,
     ):
-        events.append(_event_from_aspect(aspect_hit))
+        event = _event_from_aspect(aspect_hit)
+        _attach_timelords(event, timelord_calculator)
+        events.append(event)
 
     events.sort(key=lambda event: (event.timestamp, -event.score))
     return events
