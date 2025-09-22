@@ -1,3 +1,5 @@
+import json
+
 from astroengine import cli
 
 
@@ -78,3 +80,65 @@ def test_cli_validate_round_trip(tmp_path):
     path = tmp_path / "payload.json"
     path.write_text(cli.json.dumps(payload))
     cli.main(["validate", "contact_gate_v2", str(path)])
+
+
+def test_cli_scan_with_stub(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASTROENGINE_SCAN_ENTRYPOINTS", "tests.fixtures.stub_scan:fake_scan")
+    json_path = tmp_path / "scan.json"
+    ics_path = tmp_path / "scan.ics"
+    sqlite_path = tmp_path / "scan.db"
+
+    args = [
+        "scan",
+        "--start-utc",
+        "2024-01-01T00:00:00Z",
+        "--end-utc",
+        "2024-01-02T00:00:00Z",
+        "--moving",
+        "Sun",
+        "Mars",
+        "--targets",
+        "natal:Sun",
+        "natal:Moon",
+        "--target-frame",
+        "natal",
+        "--detector",
+        "lunations",
+        "--export-json",
+        str(json_path),
+        "--export-ics",
+        str(ics_path),
+        "--export-sqlite",
+        str(sqlite_path),
+        "--step-minutes",
+        "90",
+    ]
+
+    exit_code = cli.main(args)
+    assert exit_code == 0
+    payload = json.loads(json_path.read_text())
+    assert isinstance(payload, list)
+    assert payload[0]["moving"]
+    assert "BEGIN:VCALENDAR" in ics_path.read_text()
+
+
+def test_cli_scan_parser_supports_sidereal():
+    parser = cli.build_parser()
+    ns = parser.parse_args(
+        [
+            "scan",
+            "--start-utc",
+            "2024-01-01T00:00:00Z",
+            "--end-utc",
+            "2024-01-02T00:00:00Z",
+            "--sidereal",
+            "--ayanamsha",
+            "lahiri",
+            "--detector",
+            "lunations",
+        ]
+    )
+    assert ns.command == "scan"
+    assert ns.sidereal is True
+    assert ns.ayanamsha == "lahiri"
+    assert ns.detectors == ["lunations"]
