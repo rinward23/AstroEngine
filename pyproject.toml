@@ -23,7 +23,11 @@ dependencies = [
   "pandas>=2.0",
   "python-dateutil>=2.8",
   "PyYAML>=6.0",
+  "SQLAlchemy>=2.0",
+  "alembic>=1.13",
+  "ics>=0.7",
   "tzdata>=2023.3",
+  "pluggy>=1.5",
 ]
 
 [project.optional-dependencies]
@@ -63,7 +67,7 @@ perf = [
 cli = [
   "click>=8.1",
   "rich>=13.7",
-  "pluggy>=1.3",
+  "pluggy>=1.5",
 ]
 # All the things
 all = [
@@ -76,6 +80,12 @@ Homepage = "https://github.com/rinward23/AstroEngine"
 [project.scripts]
 astroengine = "astroengine.cli:main"
 astroengine-api = "astroengine.api_server:run"  # guarded import; only works with [api]
+
+[project.entry-points."astroengine.plugins"]
+
+fixed_star_hits = "astroengine.plugins.examples.fixed_star_hits"
+example = "astroengine.ux.plugins.example:ExamplePlugin"
+
 
 [tool.setuptools]
 # Install the real package directory (not the generated skeleton only)

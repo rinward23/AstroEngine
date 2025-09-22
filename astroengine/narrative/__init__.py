@@ -1,22 +1,26 @@
-"""Narrative composition helpers for AstroEngine exports."""
+"""Narrative composition and summarisation helpers for AstroEngine."""
 
 from __future__ import annotations
 
 import html
 import json
+import logging
 from collections import defaultdict
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
 from textwrap import dedent
-from typing import Any, Mapping, Sequence
+from typing import Any
 
-from .domains import rollup_domain_scores
-from .infrastructure.paths import profiles_dir
+from ..domains import rollup_domain_scores
+from ..infrastructure.paths import profiles_dir
+from .gpt_api import GPTNarrativeClient
+from .prompts import build_summary_prompt, build_template_summary
 
 try:  # pragma: no cover - optional dependency
     from jinja2 import Template
-except Exception:  # pragma: no cover - handled at runtime
+except Exception:  # pragma: no cover - optional dependency guard
     Template = None  # type: ignore[assignment]
 
 __all__ = [
@@ -27,12 +31,16 @@ __all__ = [
     "NarrativeBundle",
     "compose_narrative",
     "render_simple",
+    "summarize_top_events",
+    "build_summary_prompt",
+    "build_template_summary",
     "markdown_to_html",
     "markdown_to_plaintext",
 ]
 
+_LOG = logging.getLogger(__name__)
 
-_DEFAULT = """
+_DEFAULT_TEMPLATE = """
 {{ title }}\n\n{% for e in events %}- {{ e }}\n{% endfor %}
 """
 
@@ -199,7 +207,7 @@ class NarrativeTimelord:
 
 @dataclass(frozen=True)
 class NarrativeBundle:
-    """Container for generated narrative artefacts."""
+    """Structured narrative result bundle."""
 
     mode: str
     generated_at: str
@@ -237,11 +245,43 @@ _CATEGORY_LABELS = {
 
 
 def render_simple(title: str, events: Mapping[str, Any]) -> str:
-    """Compatibility wrapper for the original narrative skeleton."""
+    """Render a simple narrative block using Jinja templates."""
 
-    if Template is None:
+    if Template is None:  # pragma: no cover - guard for optional extra
         raise RuntimeError("Narrative extra not installed. Use: pip install -e .[narrative]")
-    return Template(_DEFAULT).render(title=title, events=events)
+    return Template(_DEFAULT_TEMPLATE).render(title=title, events=events)
+
+
+def summarize_top_events(
+    events: Sequence[Any] | Iterable[Any],
+    *,
+    top_n: int = 5,
+    client: GPTNarrativeClient | None = None,
+    profile: str = "transits",
+) -> str:
+    """Return a narrative summary of the top-N events."""
+
+    events_list = list(events)
+    if not events_list:
+        return "No events available for narrative summary."
+
+    sorted_events = sorted(events_list, key=_event_score, reverse=True)
+    top_events = sorted_events[: max(top_n, 1)]
+
+    try:
+        prompt = build_summary_prompt(top_events, profile=profile)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        _LOG.debug("Failed to build GPT prompt: %s", exc)
+        return build_template_summary(top_events)
+
+    client = client or GPTNarrativeClient.from_env()
+    if client and client.available:
+        try:
+            return client.summarize(prompt)
+        except Exception as exc:  # pragma: no cover - network or API errors
+            _LOG.warning("GPT narrative generation failed; using template fallback: %s", exc)
+
+    return build_template_summary(top_events)
 
 
 def compose_narrative(
@@ -405,6 +445,16 @@ def _event_timestamp(event: object) -> str:
         return str(ts)
     ts = _event_attr(event, "ts")
     return str(ts) if ts else ""
+
+
+def _event_datetime(event: object) -> datetime:
+    timestamp = _event_timestamp(event)
+    if not timestamp:
+        return datetime(1970, 1, 1, tzinfo=timezone.utc)
+    try:
+        return datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except ValueError:  # pragma: no cover - defensive
+        return datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 def _select_highlights(events: Sequence[object], *, top_n: int) -> list[NarrativeHighlight]:
