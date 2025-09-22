@@ -44,6 +44,8 @@ from .narrative import summarize_top_events
 
 from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
 
+from .plugins import ExportContext, get_plugin_manager
+
 from .providers import list_providers
 
 from .exporters_ics import write_ics_canonical
@@ -429,10 +431,17 @@ def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, in
     if getattr(args, "sqlite", None):
         written["sqlite"] = write_sqlite_canonical(args.sqlite, events)
     if getattr(args, "parquet", None):
-        compression = getattr(args, "parquet_compression", "snappy")
-        written["parquet"] = write_parquet_canonical(
-            args.parquet, events, compression=compression
+
+        written["parquet"] = write_parquet_canonical(args.parquet, events)
+    runtime = get_plugin_manager()
+    runtime.post_export(
+        ExportContext(
+            destinations=dict(written),
+            events=tuple(events),
+            arguments=dict(vars(args)),
         )
+    )
+
     return written
 
 

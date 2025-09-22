@@ -12,6 +12,7 @@ from pathlib import Path
 from ..core.bodies import body_class
 from ..infrastructure.paths import profiles_dir
 from ..refine import fuzzy_membership
+from ..plugins import apply_score_extensions
 
 __all__ = [
     "ScoreInputs",
@@ -170,7 +171,8 @@ def compute_score(
             observers=inputs.observers,
             overlap_count=inputs.overlap_count,
         )
-        return ScoreResult(0.0, {"base_weight": base_weight}, confidence)
+        result = ScoreResult(0.0, {"base_weight": base_weight}, confidence)
+        return apply_score_extensions(inputs, result)
 
     curve = policy_dict.get("curve", {})
     sigma_frac = float(curve.get("sigma_frac_of_orb", 0.5))
@@ -245,8 +247,13 @@ def compute_score(
         "condition_factor": condition_factor,
         "confidence": confidence,
     }
+
+    result = ScoreResult(score=score, components=components, confidence=confidence)
+    return apply_score_extensions(inputs, result)
+
     if dignity_components:
         components["dignity_components"] = len(dignity_components)
     if condition_components:
         components["condition_components"] = len(condition_components)
     return ScoreResult(score=score, components=components, confidence=confidence)
+

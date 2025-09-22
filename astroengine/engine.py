@@ -17,7 +17,10 @@ from .detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
 from .detectors_aspects import AspectHit, detect_aspects
 from .ephemeris import EphemerisConfig
 from .exporters import LegacyTransitEvent
-from .infrastructure.paths import profiles_dir
+
+from .plugins import DetectorContext, get_plugin_manager
+
+
 from .providers import get_provider
 from .profiles import load_base_profile
 from .scoring import ScoreInputs, compute_score
@@ -525,6 +528,28 @@ def scan_contacts(
         ):
             events.append(_event_from_aspect(aspect_hit))
 
+
+    plugin_context = DetectorContext(
+        provider=provider,
+        provider_name=provider_name,
+        start_iso=start_iso,
+        end_iso=end_iso,
+        ticks=tuple(ticks),
+        moving=moving,
+        target=target,
+        options={
+            "decl_parallel_orb": decl_parallel_orb,
+            "decl_contra_orb": decl_contra_orb,
+            "antiscia_orb": antiscia_orb,
+            "contra_antiscia_orb": contra_antiscia_orb,
+            "step_minutes": step_minutes,
+            "aspects_policy_path": aspects_policy_path,
+        },
+        existing_events=tuple(events),
+    )
+    plugin_events = get_plugin_manager().run_detectors(plugin_context)
+    if plugin_events:
+        events.extend(plugin_events)
 
     events.sort(key=lambda event: (event.timestamp, -event.score))
     return events
