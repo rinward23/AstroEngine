@@ -19,6 +19,11 @@ from astroengine.app_api import (
     canonicalize_events,
     run_scan_or_raise,
 )
+from astroengine.chart.config import (
+    DEFAULT_SIDEREAL_AYANAMSHA,
+    SUPPORTED_AYANAMSHAS,
+    VALID_ZODIAC_SYSTEMS,
+)
 
 
 def _event_to_record(event: Any) -> Dict[str, Any]:
@@ -103,6 +108,12 @@ with st.sidebar:
     start_utc = st.text_input("Start (UTC, ISO-8601)", value=s)
     end_utc = st.text_input("End (UTC, ISO-8601)", value=e)
     provider = st.selectbox("Provider", options=["auto", "swiss", "pymeeus", "skyfield"], index=0)
+    zodiac_choice = st.selectbox("Zodiac", options=sorted(VALID_ZODIAC_SYSTEMS), index=0)
+    ayanamsha_choice = None
+    if zodiac_choice == "sidereal":
+        ayanamsha_options = sorted(SUPPORTED_AYANAMSHAS)
+        default_index = ayanamsha_options.index(DEFAULT_SIDEREAL_AYANAMSHA)
+        ayanamsha_choice = st.selectbox("Ayanamsha", options=ayanamsha_options, index=default_index)
     step_minutes = st.slider("Step minutes", min_value=10, max_value=240, value=60, step=10)
     st.caption("Tip: set SE_EPHE_PATH to your Swiss ephemeris folder if using the swiss provider.")
     entrypoint_choice = st.selectbox("Scan entrypoint", entrypoint_labels, index=0)
@@ -156,6 +167,8 @@ with tab_scan:
                     profile_id=profile_id or None,
                     step_minutes=int(step_minutes),
                     entrypoints=entrypoint_arg,
+                    zodiac=zodiac_choice,
+                    ayanamsha=ayanamsha_choice,
                     return_used_entrypoint=True,
                 )
                 events = canonicalize_events(raw_events)

@@ -14,6 +14,11 @@ __all__ = [
     "DirectionEvent",
     "ProfectionEvent",
     "IngressEvent",
+    "OutOfBoundsEvent",
+    "DashaPeriodEvent",
+    "ZodiacalReleasingPeriod",
+
+
 ]
 
 
@@ -43,6 +48,7 @@ class EclipseEvent(BaseEvent):
     sun_longitude: float
     moon_longitude: float
     moon_latitude: float
+    is_visible: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -91,6 +97,7 @@ class ProfectionEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+
 class IngressEvent(BaseEvent):
     """Represents a zodiac sign ingress for a given body."""
 
@@ -100,3 +107,40 @@ class IngressEvent(BaseEvent):
     longitude: float
     motion: str
     speed_deg_per_day: float
+
+
+class OutOfBoundsEvent(BaseEvent):
+    """Represents a declination out-of-bounds crossing for a body."""
+
+    body: str
+    state: str  # "enter" or "exit"
+    hemisphere: str  # "north" or "south"
+    declination: float
+    limit: float
+
+
+@dataclass(frozen=True)
+class TimelordPeriod(BaseEvent):
+    """Base container for timelord periods with start/end metadata."""
+
+    method: str
+    level: str
+    ruler: str
+    end_ts: str
+    end_jd: float
+
+
+@dataclass(frozen=True)
+class DashaPeriodEvent(TimelordPeriod):
+    """Represents a Vimshottari dasha or sub-period."""
+
+    parent: str | None = None
+
+
+@dataclass(frozen=True)
+class ZodiacalReleasingPeriod(TimelordPeriod):
+    """Represents a zodiacal releasing period for a given lot."""
+
+    lot: str
+    sign: str
+

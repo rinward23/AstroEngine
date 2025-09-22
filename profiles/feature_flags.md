@@ -23,7 +23,9 @@ TABLE OF FLAGS
 | `declination_aspects.contraparallels` | bool | true | Emit contraparallel declination events. |
 | `out_of_bounds.enabled` | bool | true | Track out-of-bounds entries/exits. |
 | `out_of_bounds.threshold_deg` | float | 23.45 | Declination threshold for out-of-bounds flagging. |
-| `antiscia.enabled` | bool | false | Enable antiscia/contra-antiscia detection. |
+| `antiscia.enabled` | bool | true | Enable antiscia/contra-antiscia detection. |
+| `antiscia.axis` | enum | `cancer_capricorn` | Mirror axis for antiscia calculations (solstitial default). |
+| `antiscia.axis_variants` | list[str] | `[cancer_capricorn, aries_libra]` | Supported antiscia axis identifiers in profiles. |
 | `midpoints.enabled` | bool | true | Enable midpoint detection. |
 | `midpoints.base_pairs` | list[str] | `[sun_moon, asc_mc, mc_node]` | Core midpoint pairs using Cosmobiology conventions. |
 | `fixed_stars.enabled` | bool | false | Emit fixed-star conjunction events. |

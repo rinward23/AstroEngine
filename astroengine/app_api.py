@@ -235,6 +235,8 @@ def run_scan_or_raise(
     step_minutes: int = 60,
     entrypoints: Optional[Iterable[ScanSpec]] = None,
     return_used_entrypoint: bool = False,
+    zodiac: Optional[str] = None,
+    ayanamsha: Optional[str] = None,
 ) -> Union[List[Dict[str, Any]], Tuple[List[Dict[str, Any]], ScanCandidate]]:
     """
     Try known scan entrypoints, call the first that matches a compatible signature,
@@ -264,6 +266,8 @@ def run_scan_or_raise(
             provider=provider,
             profile_id=profile_id or None,
             step_minutes=step_minutes,
+            zodiac=zodiac,
+            ayanamsha=ayanamsha,
         )
         call_kwargs = _filter_kwargs_for(fn, kwargs)
         try:

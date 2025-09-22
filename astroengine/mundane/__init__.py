@@ -1,3 +1,4 @@
+
 """Mundane astrology helpers (ingress charts, mundane aspecting, etc.)."""
 
 from .ingress import (
@@ -13,3 +14,4 @@ __all__ = [
     "compute_solar_ingress_chart",
     "compute_solar_quartet",
 ]
+
