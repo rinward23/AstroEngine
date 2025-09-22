@@ -61,9 +61,11 @@ from .ephemeris import (  # noqa: F401
     EphemerisAdapter,
     EphemerisConfig,
     EphemerisSample,
+    ObserverLocation,
     RefinementBracket,
     RefinementError,
     SwissEphemerisAdapter,
+    TimeScaleContext,
     refine_event,
 )
 try:
@@ -173,6 +175,7 @@ __all__ = [
     "EphemerisAdapter",
     "EphemerisConfig",
     "EphemerisSample",
+    "ObserverLocation",
     "get_active_aspect_angles",
     "get_feature_flag",
     "maybe_attach_domain_fields",
@@ -194,6 +197,7 @@ __all__ = [
     "load_dignities",
     "lookup_dignities",
     "SwissEphemerisAdapter",
+    "TimeScaleContext",
     "collect_environment_report",
     "environment_report_main",
     "get_vca_aspect",

@@ -5,45 +5,263 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Sequence, Any
 
 
 from . import engine as engine_module
+from .chart.config import ChartConfig, VALID_HOUSE_SYSTEMS, VALID_ZODIAC_SYSTEMS
+from .detectors.ingress import find_ingresses
 from .engine import events_to_dicts, scan_contacts
+
+from .ephemeris import SwissEphemerisAdapter
+from .narrative import summarize_top_events
 from .pipeline.provision import provision_ephemeris, is_provisioned  # ENSURE-LINE
+
 from .providers import list_providers
+from .timelords.dashas import compute_vimshottari_dasha
+from .timelords.zr import compute_zodiacal_releasing
 from .validation import (
     SchemaValidationError,
     available_schema_keys,
     validate_payload,
 )
+
 from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
+from .ux.plugins import setup_cli as setup_plugins
+
 
 
 def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
-    """Placeholder for natal vault wiring in lightweight builds."""
+    if getattr(parser, "_ae_natals_added", False):
+        return
+    subparsers = _ensure_subparsers(parser)
+    natal = subparsers.add_parser("natal", help="Manage the natal vault")
+    natal_sub = natal.add_subparsers(dest="natal_command")
+    natal_sub.required = True
 
-    return None
+    natal_list = natal_sub.add_parser("list", help="List stored natal chart identifiers")
+    natal_list.set_defaults(func=cmd_natal_list)
+
+    natal_show = natal_sub.add_parser("show", help="Display a stored natal chart")
+    natal_show.add_argument("natal_id")
+    natal_show.set_defaults(func=cmd_natal_show)
+
+    natal_save = natal_sub.add_parser("save", help="Persist a natal chart entry")
+    natal_save.add_argument("natal_id")
+    natal_save.add_argument("--utc", required=True, help="Birth time (UTC ISO-8601)")
+    natal_save.add_argument("--lat", type=float, required=True, help="Latitude in decimal degrees")
+    natal_save.add_argument("--lon", type=float, required=True, help="Longitude in decimal degrees")
+    natal_save.add_argument("--name", help="Human-friendly label")
+    natal_save.add_argument("--tz", help="IANA timezone identifier for provenance")
+    natal_save.add_argument("--place", help="Birth location description")
+    natal_save.set_defaults(func=cmd_natal_save)
+
+    natal_delete = natal_sub.add_parser("delete", help="Remove a stored natal chart")
+    natal_delete.add_argument("natal_id")
+    natal_delete.set_defaults(func=cmd_natal_delete)
+
+    parser._ae_natals_added = True
+
+
+def cmd_cache_info(_: argparse.Namespace) -> int:
+    from .cache.positions_cache import CACHE_DIR, DB as POSITIONS_DB
+    import sqlite3
+
+    print(f"cache directory: {CACHE_DIR}")
+    if POSITIONS_DB.exists():
+        size = POSITIONS_DB.stat().st_size
+        row_count = 0
+        con = sqlite3.connect(str(POSITIONS_DB))
+        try:
+            cur = con.execute("SELECT COUNT(*) FROM positions_daily")
+            row = cur.fetchone()
+            if row:
+                row_count = int(row[0])
+        except sqlite3.OperationalError:
+            row_count = 0
+        finally:
+            con.close()
+        print(f"cache database: {POSITIONS_DB} ({size} bytes, {row_count} rows)")
+    else:
+        print(f"cache database: {POSITIONS_DB} (missing)")
+    return 0
+
+
+def cmd_cache_warm(args: argparse.Namespace) -> int:
+    from .cache.positions_cache import warm_daily
+
+    bodies = (
+        [b.strip().lower() for b in args.bodies.split(",") if b.strip()]
+        if args.bodies
+        else [
+            "sun",
+            "moon",
+            "mercury",
+            "venus",
+            "mars",
+            "jupiter",
+            "saturn",
+            "uranus",
+            "neptune",
+            "pluto",
+        ]
+    )
+    if not bodies:
+        print("no bodies specified for cache warm", file=sys.stderr)
+        return 1
+
+    enable_cache(True)
+    start_jd = _iso_to_jd(args.start)
+    end_jd = _iso_to_jd(args.end)
+    if end_jd < start_jd:
+        print("end must be after start", file=sys.stderr)
+        return 1
+
+    entries = warm_daily(bodies, start_jd, end_jd)
+    print(
+        f"warmed {entries} cache entries for bodies {', '.join(bodies)} "
+        f"[{args.start} → {args.end}]"
+    )
+    return 0
 
 
 def _augment_parser_with_cache(parser: argparse.ArgumentParser) -> None:
-    """Placeholder for cache warmers in lightweight builds."""
+    if getattr(parser, "_ae_cache_added", False):
+        return
+    subparsers = _ensure_subparsers(parser)
+    cache = subparsers.add_parser("cache", help="Inspect or warm Swiss ephemeris caches")
+    cache_sub = cache.add_subparsers(dest="cache_command")
+    cache_sub.required = True
 
-    return None
+    cache_info = cache_sub.add_parser("info", help="Display cache metadata")
+    cache_info.set_defaults(func=cmd_cache_info)
+
+    cache_warm = cache_sub.add_parser("warm", help="Warm the daily positions cache")
+    cache_warm.add_argument("--start", required=True, help="Start date (ISO-8601)")
+    cache_warm.add_argument("--end", required=True, help="End date (ISO-8601)")
+    cache_warm.add_argument(
+        "--bodies",
+        help="Comma-separated list of bodies (default: Sun, Moon, Mercury … Pluto)",
+    )
+    cache_warm.set_defaults(func=cmd_cache_warm)
+
+    parser._ae_cache_added = True
+
+
+def cmd_dataset_parquet(args: argparse.Namespace) -> int:
+    if args.input == "-":
+        payload_text = sys.stdin.read()
+    else:
+        payload_text = Path(args.input).read_text(encoding="utf-8")
+
+    try:
+        if args.format == "jsonl":
+            events = [json.loads(line) for line in payload_text.splitlines() if line.strip()]
+        else:
+            document = json.loads(payload_text)
+            if isinstance(document, dict):
+                key = args.key or "events"
+                if key not in document:
+                    raise KeyError(key)
+                events = document[key]
+            elif isinstance(document, list):
+                events = document
+            else:
+                raise TypeError("unsupported JSON payload")
+        if not isinstance(events, list):
+            raise TypeError("event payload must be a list")
+    except Exception as exc:  # pragma: no cover - defensive parsing
+        print(f"failed to load input events: {exc}", file=sys.stderr)
+        return 1
+
+    written = export_parquet_dataset(args.output, events)
+    print(f"wrote {written} events to {args.output}")
+    return 0
 
 
 def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> None:
-    """Placeholder for parquet dataset integration in lightweight builds."""
+    if getattr(parser, "_ae_dataset_added", False):
+        return
+    subparsers = _ensure_subparsers(parser)
+    dataset = subparsers.add_parser("dataset", help="Materialise event datasets")
+    dataset_sub = dataset.add_subparsers(dest="dataset_command")
+    dataset_sub.required = True
 
-    return None
+    parquet_cmd = dataset_sub.add_parser("parquet", help="Write canonical events to Parquet")
+    parquet_cmd.add_argument("input", help="Input JSON/JSONL file (use '-' for stdin)")
+    parquet_cmd.add_argument("output", help="Destination Parquet file or directory")
+    parquet_cmd.add_argument(
+        "--format",
+        choices=("json", "jsonl"),
+        default="jsonl",
+        help="Input format (default: jsonl)",
+    )
+    parquet_cmd.add_argument(
+        "--key",
+        help="JSON key containing events when --format json (default: events)",
+    )
+    parquet_cmd.set_defaults(func=cmd_dataset_parquet)
+
+    parser._ae_dataset_added = True
+
+
+def cmd_provision_status(args: argparse.Namespace) -> int:
+    meta = get_ephemeris_meta()
+    meta["provisioned"] = is_provisioned()
+    if args.json:
+        _print_json(meta)
+    else:
+        status = "provisioned" if meta["provisioned"] else "not provisioned"
+        print(f"Swiss ephemeris status: {status}")
+        if meta.get("swe_version"):
+            print(f"pyswisseph version: {meta['swe_version']}")
+        if meta.get("ephe_path"):
+            print(f"ephemeris path: {meta['ephe_path']}")
+    return 0
+
+
+def cmd_provision_ephemeris(args: argparse.Namespace) -> int:
+    meta = provision_ephemeris()
+    meta["meta_path"] = str(PROVISION_META)
+    if args.json:
+        _print_json(meta)
+    else:
+        print(f"Recorded Swiss ephemeris metadata at {meta['meta_path']}")
+        if meta.get("swe_version"):
+            print(f"pyswisseph version: {meta['swe_version']}")
+        if meta.get("ephe_path"):
+            print(f"ephemeris path: {meta['ephe_path']}")
+    return 0
 
 
 def _augment_parser_with_provisioning(parser: argparse.ArgumentParser) -> None:
-    """Placeholder for ephemeris provisioning hooks in lightweight builds."""
+    if getattr(parser, "_ae_provision_added", False):
+        return
+    subparsers = _ensure_subparsers(parser)
+    provision = subparsers.add_parser("provision", help="Manage Swiss ephemeris provisioning")
+    provision_sub = provision.add_subparsers(dest="provision_command")
+    provision_sub.required = True
 
-    return None
+    status = provision_sub.add_parser("status", help="Show provisioning state")
+    status.add_argument("--json", action="store_true", help="Emit JSON status information")
+    status.set_defaults(func=cmd_provision_status)
+
+
+
+def _chart_config_from_args(args: argparse.Namespace) -> ChartConfig:
+    """Return a :class:`ChartConfig` built from CLI arguments."""
+
+    zodiac = getattr(args, "zodiac", "tropical")
+    ayanamsha = getattr(args, "ayanamsha", None)
+    house_system = getattr(args, "house_system", "placidus")
+    try:
+        return ChartConfig(zodiac=zodiac, ayanamsha=ayanamsha, house_system=house_system)
+    except ValueError as exc:
+        raise SystemExit(f"Invalid chart configuration: {exc}") from exc
+
 
 # >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
 from .exporters import write_sqlite_canonical, write_parquet_canonical
@@ -58,6 +276,29 @@ def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, in
     if getattr(args, "parquet", None):
         written["parquet"] = write_parquet_canonical(args.parquet, events)
     return written
+
+
+def _ingress_to_canonical(event: Any) -> dict[str, Any]:
+    """Convert an ingress dataclass into a canonical export mapping."""
+
+    payload = {
+        "kind": f"ingress_{getattr(event, 'sign', '').lower()}",
+        "timestamp": getattr(event, "ts", None) or getattr(event, "timestamp", None),
+        "moving": getattr(event, "body", ""),
+        "target": getattr(event, "sign", ""),
+        "orb_abs": 0.0,
+        "orb_allow": 0.0,
+        "applying_or_separating": "exact",
+        "score": 0.0,
+        "lon_moving": getattr(event, "longitude", None),
+        "lon_target": None,
+        "metadata": {
+            "jd": getattr(event, "jd", None),
+            "method": getattr(event, "method", "sign_ingress"),
+            "sign_index": getattr(event, "sign_index", -1),
+        },
+    }
+    return payload
 
 
 def add_canonical_export_args(p: argparse.ArgumentParser) -> None:
@@ -128,43 +369,6 @@ def run_experimental(args) -> None:
 __all__ = ["build_parser", "main", "serialize_events_to_json", "json"]
 
 
-# >>> AUTO-GEN BEGIN: cli-natal-stub v1.0
-def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
-    """Placeholder for natal vault integration (no-op until implemented)."""
-
-    return None
-
-
-# >>> AUTO-GEN END: cli-natal-stub v1.0
-
-
-# >>> AUTO-GEN BEGIN: cli-cache-stub v1.0
-def _augment_parser_with_cache(parser: argparse.ArgumentParser) -> None:
-    """Placeholder for cache warmers/controls (currently unused)."""
-
-    return None
-
-
-# >>> AUTO-GEN END: cli-cache-stub v1.0
-
-# >>> AUTO-GEN BEGIN: cli-parquet-stub v1.0
-def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> None:
-    """Placeholder for batch-parquet export commands."""
-
-    return None
-
-
-# >>> AUTO-GEN END: cli-parquet-stub v1.0
-
-# >>> AUTO-GEN BEGIN: cli-provision-stub v1.0
-def _augment_parser_with_provisioning(parser: argparse.ArgumentParser) -> None:
-    """Placeholder for provisioning helpers (Swiss downloads etc.)."""
-
-    return None
-
-
-# >>> AUTO-GEN END: cli-provision-stub v1.0
-
 # >>> AUTO-GEN BEGIN: cli-new-detector-flags v1.0
 def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:
     targets = getattr(p, "_ae_feature_parsers", [p])
@@ -211,12 +415,30 @@ def cmd_transits(args: argparse.Namespace) -> int:
     engine_module.FEATURE_DIRECTIONS = args.directions
     engine_module.FEATURE_RETURNS = args.returns
     engine_module.FEATURE_PROFECTIONS = args.profections
+    observer = None
+    if args.lat is not None and args.lon is not None:
+        observer = ObserverLocation(
+            latitude_deg=float(args.lat),
+            longitude_deg=float(args.lon),
+            elevation_m=float(getattr(args, "elevation_m", 0.0) or 0.0),
+        )
+    if args.topocentric and observer is None:
+        print("topocentric mode requires --lat and --lon", file=sys.stderr)
+        return 1
+    time_scale = TimeScaleContext(ephemeris_scale=args.ephemeris_time_scale.upper())
+    ephemeris_config = EphemerisConfig(
+        topocentric=bool(args.topocentric),
+        observer=observer,
+        sidereal=bool(args.sidereal),
+        time_scale=time_scale,
+    )
     events = scan_contacts(
         start_iso=args.start,
         end_iso=args.end,
         moving=args.moving,
         target=args.target,
         provider_name=args.provider,
+        ephemeris_config=ephemeris_config,
         decl_parallel_orb=args.decl_orb,
         decl_contra_orb=args.decl_orb,
         antiscia_orb=args.mirror_orb,
@@ -247,6 +469,10 @@ def cmd_transits(args: argparse.Namespace) -> int:
     if args.parquet and written.get("parquet"):
         print(f"Parquet export complete: {args.parquet} ({written['parquet']} rows)")
 
+    if getattr(args, "narrative", False):
+        summary = summarize_top_events(events, top_n=getattr(args, "narrative_top", 5))
+        print(summary)
+
     if not any((args.json, args.sqlite, args.parquet)):
         print(serialize_events_to_json(events))
 
@@ -265,6 +491,101 @@ def cmd_validate(args: argparse.Namespace) -> int:
         return 1
 
     print(f"Payload validated against {args.schema}")
+    return 0
+
+
+def cmd_ingresses(args: argparse.Namespace) -> int:
+    chart_config = _chart_config_from_args(args)
+    adapter = SwissEphemerisAdapter(chart_config=chart_config)
+    start_dt = datetime.fromisoformat(args.start.replace("Z", "+00:00")).astimezone(timezone.utc)
+    end_dt = datetime.fromisoformat(args.end.replace("Z", "+00:00")).astimezone(timezone.utc)
+    if end_dt <= start_dt:
+        print("ingresses: end must be after start", file=sys.stderr)
+        return 1
+    start_jd = adapter.julian_day(start_dt)
+    end_jd = adapter.julian_day(end_dt)
+    bodies = [body.strip() for body in args.bodies.split(",") if body.strip()]
+    if not bodies:
+        bodies = ["Sun"]
+    events = find_ingresses(start_jd, end_jd, bodies, step_hours=args.step_hours)
+    canonical = [_ingress_to_canonical(event) for event in events]
+
+    if args.json:
+        payload = {
+            "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "parameters": {
+                "start_timestamp": args.start,
+                "end_timestamp": args.end,
+                "bodies": bodies,
+                "step_hours": args.step_hours,
+                "zodiac": chart_config.zodiac,
+                "ayanamsha": chart_config.ayanamsha,
+                "house_system": chart_config.house_system,
+            },
+            "events": canonical,
+        }
+        Path(args.json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"Wrote {len(events)} ingresses to {args.json}")
+
+    written = _cli_export(args, canonical)
+    if args.sqlite and written.get("sqlite"):
+        print(f"SQLite export complete: {args.sqlite} ({written['sqlite']} rows)")
+    if args.parquet and written.get("parquet"):
+        print(f"Parquet export complete: {args.parquet} ({written['parquet']} rows)")
+
+    if not any((args.json, args.sqlite, args.parquet)):
+        print(json.dumps(canonical, indent=2))
+
+    return 0
+
+
+def cmd_timelords(args: argparse.Namespace) -> int:
+    start_dt = datetime.fromisoformat(args.start.replace("Z", "+00:00")).astimezone(timezone.utc)
+    results: list[dict[str, Any]] = []
+
+    if args.vimshottari:
+        if args.moon_longitude is None:
+            print("timelords: --moon-longitude is required for Vimshottari dashas", file=sys.stderr)
+            return 1
+        levels = [level.strip() for level in args.timelord_levels.split(",") if level.strip()]
+        periods = compute_vimshottari_dasha(
+            args.moon_longitude,
+            start_dt,
+            cycles=args.dasha_cycles,
+            levels=tuple(levels) if levels else ("maha", "antar"),
+        )
+        results.extend(asdict(event) for event in periods)
+
+    if args.zr:
+        if args.fortune_longitude is None:
+            print("timelords: --fortune-longitude is required for zodiacal releasing", file=sys.stderr)
+            return 1
+        zr_levels = [level.strip() for level in args.zr_levels.split(",") if level.strip()]
+        zr_periods = compute_zodiacal_releasing(
+            args.fortune_longitude,
+            start_dt,
+            lot=args.lot,
+            periods=args.zr_periods,
+            levels=tuple(zr_levels) if zr_levels else ("l1", "l2"),
+        )
+        results.extend(asdict(event) for event in zr_periods)
+
+    if not results:
+        print("timelords: no systems selected", file=sys.stderr)
+        return 1
+
+    payload = {
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "start": args.start,
+        "events": results,
+    }
+
+    if args.json:
+        Path(args.json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"Wrote {len(results)} periods to {args.json}")
+    else:
+        print(json.dumps(payload, indent=2))
+
     return 0
 
 
@@ -313,8 +634,46 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--profile", help="Profile identifier to annotate export metadata")
     parser.add_argument("--lat", type=float, help="Latitude for location-sensitive detectors")
     parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")
+    parser.add_argument(
+        "--elevation-m",
+        type=float,
+        default=0.0,
+        help="Observer elevation in meters for topocentric calculations",
+    )
+    parser.add_argument(
+        "--topocentric",
+        action="store_true",
+        help="Use topocentric coordinates (requires --lat and --lon; refraction disabled)",
+    )
+    parser.add_argument(
+        "--ephemeris-time-scale",
+        choices=["tt", "ut"],
+        default="tt",
+        help="Ephemeris time scale (inputs are always treated as UTC)",
+    )
+    parser.add_argument(
+        "--sidereal",
+        action="store_true",
+        help="Enable sidereal zodiac output (ayanamsha configuration handled separately)",
+    )
     parser.add_argument("--aspects", help="Comma-separated aspect angles for natal aspect detectors")
     parser.add_argument("--orb", type=float, help="Orb allowance in degrees for natal aspect detectors")
+    parser.add_argument(
+        "--zodiac",
+        choices=sorted(VALID_ZODIAC_SYSTEMS),
+        default="tropical",
+        help="Zodiac frame for calculations (tropical or sidereal)",
+    )
+    parser.add_argument(
+        "--ayanamsha",
+        help="Sidereal ayanamsha name when --zodiac=sidereal",
+    )
+    parser.add_argument(
+        "--house-system",
+        choices=sorted(VALID_HOUSE_SYSTEMS),
+        default="placidus",
+        help="Preferred house system for derived charts",
+    )
     parser.add_argument("--lunations", action="store_true", help="Run lunation detector")
     parser.add_argument("--eclipses", action="store_true", help="Run eclipse detector")
     parser.add_argument("--stations", action="store_true", help="Run planetary station detector")
@@ -325,6 +684,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--prog-aspects", action="store_true", help="Run progressed natal aspect detector")
     parser.add_argument("--dir-aspects", action="store_true", help="Run directed natal aspect detector")
     sub = parser.add_subparsers(dest="command")
+    parser._ae_subparsers = sub
 
     env_parser = sub.add_parser("env", help="List registered providers")
     env_parser.set_defaults(func=cmd_env)
@@ -344,6 +704,13 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--aspects-policy")
     transits.add_argument("--target-longitude", type=float, default=None)
     transits.add_argument("--json")
+    transits.add_argument("--narrative", action="store_true", help="Summarize detected contacts")
+    transits.add_argument(
+        "--narrative-top",
+        type=int,
+        default=5,
+        help="Number of top-scoring events to include in the narrative summary",
+    )
     add_canonical_export_args(transits)
     transits.set_defaults(func=cmd_transits)
 
@@ -364,12 +731,50 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("path")
     validate.set_defaults(func=cmd_validate)
 
+
+    ingresses = sub.add_parser("ingresses", help="Detect sign ingress events")
+    ingresses.add_argument("--start", required=True)
+    ingresses.add_argument("--end", required=True)
+    ingresses.add_argument("--bodies", default="Sun")
+    ingresses.add_argument("--step-hours", type=float, default=6.0)
+    ingresses.add_argument("--json")
+    add_canonical_export_args(ingresses)
+    ingresses.set_defaults(func=cmd_ingresses)
+
+    timelords = sub.add_parser("timelords", help="Compute timelord periods")
+    timelords.add_argument("--start", required=True)
+    timelords.add_argument("--vimshottari", action="store_true")
+    timelords.add_argument("--moon-longitude", type=float)
+    timelords.add_argument("--dasha-cycles", type=int, default=1)
+    timelords.add_argument(
+        "--timelord-levels",
+        default="maha,antar",
+        help="Comma-separated Vimshottari levels to compute",
+    )
+    timelords.add_argument("--zr", action="store_true")
+    timelords.add_argument("--fortune-longitude", type=float)
+    timelords.add_argument("--zr-periods", type=int, default=12)
+    timelords.add_argument(
+        "--zr-levels",
+        default="l1,l2",
+        help="Comma-separated releasing levels",
+    )
+    timelords.add_argument("--lot", default="fortune")
+    timelords.add_argument("--json")
+    timelords.set_defaults(func=cmd_timelords)
+
+
     _augment_parser_with_features(parser)
+    setup_plugins(parser)
     return parser
 
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
+    _augment_parser_with_natals(parser)
+    _augment_parser_with_cache(parser)
+    _augment_parser_with_parquet_dataset(parser)
+    _augment_parser_with_provisioning(parser)
     _augment_parser_with_features(parser)
     namespace = parser.parse_args(list(argv) if argv is not None else None)
 

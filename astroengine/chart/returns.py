@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Mapping, Sequence
 
+from .config import ChartConfig
 from .natal import (
     ChartLocation,
     NatalChart,
@@ -54,12 +55,13 @@ def compute_return_chart(
     bodies: Mapping[str, int] | None = None,
     aspect_angles: Sequence[int] | None = None,
     orb_profile: str = "standard",
+    chart_config: ChartConfig | None = None,
     adapter: SwissEphemerisAdapter | None = None,
     orb_calculator: OrbCalculator | None = None,
 ) -> ReturnChart:
     """Compute the solar or lunar return chart for ``target_year``."""
 
-    adapter = adapter or SwissEphemerisAdapter()
+    adapter = adapter or SwissEphemerisAdapter(chart_config=chart_config)
     orb_calculator = orb_calculator or OrbCalculator()
     location = location or natal_chart.location
     body_map = bodies or DEFAULT_BODIES
@@ -85,6 +87,7 @@ def compute_return_chart(
         bodies=body_map,
         aspect_angles=angles,
         orb_profile=orb_profile,
+        chart_config=chart_config,
         adapter=adapter,
         orb_calculator=orb_calculator,
     )
