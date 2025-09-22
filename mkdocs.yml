@@ -4,6 +4,18 @@ theme:
   name: material
 nav:
   - Home: index.md
-  - Setup: setup.md
+  - Quickstart: quickstart.md
+  - Guides:
+      - Setup: setup.md
+      - Profiles: profiles.md
+      - Sidereal & Ayanāṁśa: sidereal_ayanamsha.md
+      - Time-lords: timelords.md
+      - Mundane & Ingress: mundane_ingress.md
+      - Plugins: plugins.md
+  - Recipes:
+      - Overview: recipes/index.md
+      - Daily planner: recipes/daily_planner.md
+      - Electional window: recipes/electional_window.md
+      - Transit-to-progressed synastry: recipes/transit_to_progressed_synastry.md
   - Repos: repos.md
 # >>> AUTO-GEN END: MkDocs Config v1.0

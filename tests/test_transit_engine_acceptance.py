@@ -1,7 +1,9 @@
 import random
 from datetime import UTC, datetime, timedelta
 
+
 from astroengine.core.transit_engine import TransitEngine, TransitEngineConfig
+
 
 
 def test_mars_conjunct_natal_venus_acceptance():
@@ -20,6 +22,7 @@ def test_mars_conjunct_natal_venus_acceptance():
     assert event.timestamp is not None
     window_center = datetime(2025, 11, 6, tzinfo=UTC)
     assert abs(event.timestamp - window_center) <= timedelta(hours=12)
+
 
 
 def test_transit_engine_refinement_modes():
@@ -101,3 +104,4 @@ def test_scan_longitude_crossing_fuzz_no_crash():
         for event in events:
             assert event.timestamp is not None
             assert event.orb is not None
+

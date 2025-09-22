@@ -5,16 +5,37 @@ from __future__ import annotations
 import math
 
 __all__ = [
+    "ANTISCIA_AXIS_CENTERS",
+    "DEFAULT_ANTISCIA_AXIS",
     "OBLIQUITY_DEG",
-    "ecl_to_dec",
-    "is_parallel",
-    "is_contraparallel",
     "antiscia_lon",
+    "available_antiscia_axes",
     "contra_antiscia_lon",
+    "ecl_to_dec",
+    "is_contraparallel",
+    "is_parallel",
 ]
 
 OBLIQUITY_DEG = 23.4367  # mean obliquity of the ecliptic (approx J2000)
 OBLIQUITY_RAD = math.radians(OBLIQUITY_DEG)
+
+ANTISCIA_AXIS_CENTERS: dict[str, float] = {
+    "cancer_capricorn": 90.0,
+    "capricorn_cancer": 90.0,
+    "solstitial": 90.0,
+    "aries_libra": 0.0,
+    "libra_aries": 0.0,
+    "equinoctial": 0.0,
+}
+"""Mapping of supported antiscia axes to their central longitude in degrees."""
+
+DEFAULT_ANTISCIA_AXIS = "cancer_capricorn"
+
+
+def available_antiscia_axes() -> tuple[str, ...]:
+    """Return the tuple of supported antiscia axis identifiers."""
+
+    return tuple(sorted(set(ANTISCIA_AXIS_CENTERS)))
 
 
 def ecl_to_dec(lon_deg: float) -> float:
@@ -39,9 +60,26 @@ def is_contraparallel(dec1: float, dec2: float, orb: float | None = None, *, tol
     return abs(dec1 + dec2) <= abs(threshold)
 
 
-def antiscia_lon(lon_deg: float) -> float:
-    return (180.0 - lon_deg) % 360.0
+def _axis_center(axis: str | None) -> float:
+    if not axis:
+        axis = DEFAULT_ANTISCIA_AXIS
+    key = axis.lower()
+    try:
+        return ANTISCIA_AXIS_CENTERS[key]
+    except KeyError as exc:  # pragma: no cover - defensive guard
+        raise ValueError(f"Unsupported antiscia axis: {axis}") from exc
 
 
-def contra_antiscia_lon(lon_deg: float) -> float:
-    return (360.0 - lon_deg) % 360.0
+def antiscia_lon(lon_deg: float, axis: str = DEFAULT_ANTISCIA_AXIS) -> float:
+    """Return the antiscia mirror of ``lon_deg`` across the supplied axis."""
+
+    center = _axis_center(axis)
+    return (2.0 * center - lon_deg) % 360.0
+
+
+def contra_antiscia_lon(lon_deg: float, axis: str = DEFAULT_ANTISCIA_AXIS) -> float:
+    """Return the contra-antiscia mirror of ``lon_deg`` across the supplied axis."""
+
+    # Contra-antiscia mirrors lie 90° away from the antiscia axis.
+    center = (_axis_center(axis) + 90.0) % 360.0
+    return (2.0 * center - lon_deg) % 360.0

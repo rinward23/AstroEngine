@@ -68,7 +68,7 @@ that are missing provenance metadata, ensuring the module hierarchy always resol
 Notes:
 
 - The runtime orb is derived from `VCA_RULESET.orb_class_defaults`. If an aspect class is not listed in that map the engine falls back to `default_orb_deg`.
-- Declination contacts (`parallel`, `contraparallel`) share the same 1° class orb and are further bounded by the declination policy in the profile file.
+- Declination contacts (`parallel`, `contraparallel`) use the declination orb policy in `profiles/base_profile.yaml` (0°30′ default, 0°40′ when the Moon is involved) on top of the shared 1° class orb.
 
 ## Orb policies and combustion windows
 
@@ -77,7 +77,8 @@ Notes:
 - **Angular priority**: natal angles receive a 3° gate (`angular_priority_orb_deg`).
 - **Transit body orbs (degrees)**: Sun 8, Moon 6, Mercury–Mars 6, Jupiter–Pluto 6/5, Ceres–Vesta 4, Eris/Sedna 3.
 - **Fixed stars**: default longitude orb 0.333°, bright stars (<1 magnitude) tighten to 0.1667° (`fixed_star_orbs_deg`).
-- **Declination aspects**: 0.5° default, Moon 0.6667° (`declination_aspect_orb_deg`).
+- **Declination aspects**: 0.5° default, Moon 0.6667° with per-type overrides under `declination_aspect_orb_deg`.
+- **Antiscia mirrors**: 1.5° default, 2.5° when a natal angle participates; axis defaults to Cancer–Capricorn with Aries–Libra available via `feature_flags.antiscia.axis`.
 - **Midpoints**: 1° default, 1.5° on angular pairs (`midpoint_orb_deg`).
 - **Combustion**: cazimi 0.2833°, under beams 15°, combust 8° (`combustion` block).
 
@@ -107,6 +108,8 @@ The JSON document in `schemas/orbs_policy.json` mirrors the major aspect familie
 | Sedna | 0.60 | Reserved for deep background transits |
 
 The dignity table (`profiles/dignities.csv`) lists the rulership/fall/triplicity modifiers that feed additional severity multipliers (e.g., benefic/malefic adjustments, essential dignity bonuses). Each record contains explicit source citations (Solar Fire export IDs and classical text references) and the table is indexed by `(planet, sign)` so profile loaders can join deterministically. Fixed-star bonuses originate from `profiles/fixed_stars.csv`, which includes longitude/declination positions, magnitudes, default orbs, and source manifest hashes for the FK6 reduction bundled with Solar Fire.
+
+Visibility thresholds that gate whether an event is surfaced are stored in `profiles/visibility_policy.json`. The policy exposes a default minimum score together with per-contact overrides. Callers retrieve the resolved payload via `astroengine.profiles.load_profile`, which merges the base policy with any per-user overrides before attaching the mapping to the execution context.
 
 ## Domain scoring
 

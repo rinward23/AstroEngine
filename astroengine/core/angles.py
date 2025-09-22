@@ -31,7 +31,23 @@ EPSILON_DEG: Final[float] = 1e-9
 
 
 def normalize_degrees(angle: float) -> float:
-    """Return ``angle`` normalised to the [0, 360) interval."""
+    """Return ``angle`` normalised to the ``[0, 360)`` interval.
+
+    Parameters
+    ----------
+    angle:
+        Value in **degrees**. Inputs outside the canonical range are
+        wrapped by multiples of 360° without altering the underlying
+        provenance.
+
+    Returns
+    -------
+    float
+        A degree value in ``[0, 360)``. Values within ``1e-9`` of
+        ``360`` are coerced to ``0`` so callers can rely on a consistent
+        wrap-around contract when comparing angles sourced from Solar
+        Fire or Swiss Ephemeris data.
+    """
 
     wrapped = float(angle) % 360.0
     if wrapped >= 360.0 - EPSILON_DEG:
@@ -40,7 +56,12 @@ def normalize_degrees(angle: float) -> float:
 
 
 def signed_delta(angle: float) -> float:
-    """Return ``angle`` wrapped to the [-180, 180) interval."""
+    """Return ``angle`` wrapped to the ``[-180, 180)`` interval.
+
+    This helper is commonly used when comparing longitudinal
+    separations. The value is expressed in **degrees** so downstream
+    scoring code can feed it directly into orb calculations.
+    """
 
     wrapped = normalize_degrees(angle)
     if wrapped >= 180.0:

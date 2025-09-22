@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Mapping, Sequence
 
+from ..chart.config import ChartConfig
 from ..chart.natal import DEFAULT_BODIES
 from ..ephemeris import SwissEphemerisAdapter
 from ..events import ProgressionEvent
@@ -38,8 +39,29 @@ def secondary_progressions(
     *,
     bodies: Sequence[str] | None = None,
     step_days: float = 30.0,
+    config: ChartConfig | None = None,
 ) -> list[ProgressionEvent]:
-    """Return secondary progression samples between ``start`` and ``end``."""
+    """Return secondary progression samples between ``start`` and ``end``.
+
+    Parameters
+    ----------
+    natal_iso, start_iso, end_iso:
+        ISO-8601 timestamps in UTC.
+    bodies:
+        Iterable of body names (matching ``DEFAULT_BODIES`` keys). When
+        ``None`` the full default set is used.
+    step_days:
+        Sampling cadence expressed in **days** of real time. Each sample
+        converts elapsed days into day-for-a-year offsets using the
+        sidereal year (365.2422 days).
+
+    Returns
+    -------
+    list[ProgressionEvent]
+        Events ordered by Julian day. ``ProgressionEvent.positions``
+        stores geocentric ecliptic longitudes in degrees normalized to
+        ``[0, 360)``.
+    """
 
     natal_dt = _parse_iso(natal_iso)
     start_dt = _parse_iso(start_iso)
@@ -47,7 +69,8 @@ def secondary_progressions(
     if end_dt <= start_dt:
         return []
 
-    adapter = SwissEphemerisAdapter()
+    chart_config = config or ChartConfig()
+    adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
     body_map = _resolve_bodies(bodies)
 
     events: list[ProgressionEvent] = []

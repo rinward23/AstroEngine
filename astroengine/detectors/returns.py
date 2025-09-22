@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Callable
+import swisseph as swe
 
+from ..ephemeris import SwissEphemerisAdapter
 from ..events import ReturnEvent
-from .common import delta_deg, jd_to_iso, moon_lon, solve_zero_crossing, sun_lon
+from .common import delta_deg, jd_to_iso, solve_zero_crossing
 
 __all__ = ["solar_lunar_returns"]
 
 
-def _body_accessor(kind: str) -> tuple[str, Callable[[float], float]]:
+def _body_accessor(kind: str) -> tuple[str, int]:
     key = kind.lower()
     if key == "solar":
-        return "Sun", sun_lon
+        return "Sun", swe.SUN
     if key == "lunar":
-        return "Moon", moon_lon
+        return "Moon", swe.MOON
     raise ValueError(f"Unsupported return kind '{kind}'")
 
 
@@ -26,30 +27,36 @@ def solar_lunar_returns(
     kind: str = "solar",
     *,
     step_days: float | None = None,
+    adapter: SwissEphemerisAdapter | None = None,
 ) -> list[ReturnEvent]:
     """Return solar or lunar return events within a Julian day window."""
 
     if end_jd <= start_jd:
         return []
 
-    body_name, accessor = _body_accessor(kind)
-    target_lon = accessor(natal_jd) % 360.0
+    adapter = adapter or SwissEphemerisAdapter.get_default_adapter()
+    body_name, body_code = _body_accessor(kind)
+
+    def lon_at(jd: float) -> float:
+        return adapter.body_position(jd, body_code, body_name=body_name).longitude % 360.0
+
+    target_lon = lon_at(natal_jd) % 360.0
     step = step_days if step_days is not None else (1.0 if body_name == "Sun" else 0.5)
 
     events: list[ReturnEvent] = []
     seen: set[int] = set()
 
     prev_jd = start_jd
-    prev_delta = delta_deg(accessor(prev_jd), target_lon)
+    prev_delta = delta_deg(lon_at(prev_jd), target_lon)
     current = start_jd + step
     while current <= end_jd + step:
-        curr_delta = delta_deg(accessor(current), target_lon)
+        curr_delta = delta_deg(lon_at(current), target_lon)
         if prev_delta == 0.0:
             root = prev_jd
         elif prev_delta * curr_delta <= 0.0:
             try:
                 root = solve_zero_crossing(
-                    lambda x, fn=accessor, tgt=target_lon: delta_deg(fn(x), tgt),
+                    lambda x, tgt=target_lon: delta_deg(lon_at(x), tgt),
                     prev_jd,
                     min(current, end_jd),
                     tol=1e-5,
@@ -66,7 +73,7 @@ def solar_lunar_returns(
 
         key = int(round(root * 86400))
         if key not in seen and start_jd <= root <= end_jd:
-            longitude = accessor(root) % 360.0
+            longitude = lon_at(root) % 360.0
             events.append(
                 ReturnEvent(
                     ts=jd_to_iso(root),

@@ -31,6 +31,7 @@ def test_collect_diagnostics_smoke():
     assert isinstance(summary.get("exit_code"), int)
     names = [check["name"] for check in payload["checks"]]
     assert any(name.startswith("Python") for name in names)
+    assert "Ephemeris config" in names
 
 
 def test_json_roundtrip():
