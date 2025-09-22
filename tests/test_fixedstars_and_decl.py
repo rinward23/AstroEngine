@@ -25,6 +25,7 @@ def test_skyfield_star_regulus_lon_lat_range():
 def test_declination_utils():
     from astroengine.astro.declination import (
         antiscia_lon,
+        available_antiscia_axes,
         contra_antiscia_lon,
         ecl_to_dec,
         is_contraparallel,
@@ -40,6 +41,11 @@ def test_declination_utils():
     # Mirrors
     assert math.isclose(antiscia_lon(10.0), 170.0)
     assert math.isclose(contra_antiscia_lon(10.0), 350.0)
+    assert math.isclose(antiscia_lon(10.0, axis="aries_libra"), 350.0)
+    assert math.isclose(contra_antiscia_lon(10.0, axis="aries_libra"), 170.0)
+    assert "cancer_capricorn" in available_antiscia_axes()
+    with pytest.raises(ValueError):
+        antiscia_lon(10.0, axis="bogus_axis")
     # Parallels
     assert is_parallel(10.0, 10.3, tol_deg=0.5)
     assert is_contraparallel(10.0, -10.3, tol_deg=0.5)
