@@ -21,4 +21,5 @@ def test_eclipses_basic_window():
     end = iso_to_jd("2025-12-31T00:00:00Z")
     ev = find_eclipses(start, end)
     assert isinstance(ev, list)
+    assert ev
 # >>> AUTO-GEN END: tests-eclipses v1.0

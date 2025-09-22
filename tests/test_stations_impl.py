@@ -28,4 +28,5 @@ def test_stations_basic():
     end = iso_to_jd("2025-12-31T00:00:00Z")
     ev = find_stations(start, end)
     assert isinstance(ev, list)
+    assert ev
 # >>> AUTO-GEN END: tests-stations v1.0

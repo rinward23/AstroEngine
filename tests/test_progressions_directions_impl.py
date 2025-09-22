@@ -21,6 +21,7 @@ def test_secondary_progressions_annual_samples():
     start = "2020-01-01T00:00:00Z"
     end = "2025-01-01T00:00:00Z"
     ev = secondary_progressions(natal, start, end)
+    assert ev
     assert all(e.method == "secondary" for e in ev)
 
 
@@ -29,5 +30,6 @@ def test_solar_arc_directions_annual_samples():
     start = "2020-01-01T00:00:00Z"
     end = "2025-01-01T00:00:00Z"
     ev = solar_arc_directions(natal, start, end)
+    assert ev
     assert all(e.method == "solar_arc" for e in ev)
 # >>> AUTO-GEN END: tests-prog-dir v1.0

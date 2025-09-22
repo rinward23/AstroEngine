@@ -5,6 +5,17 @@ from typing import Callable
 import math
 from datetime import datetime, timezone, timedelta
 
+__all__ = [
+    "norm360",
+    "delta_deg",
+    "jd_to_iso",
+    "iso_to_jd",
+    "sun_lon",
+    "moon_lon",
+    "body_lon",
+    "solve_zero_crossing",
+]
+
 # --- Angle helpers -----------------------------------------------------------
 
 def norm360(x: float) -> float:
@@ -116,33 +127,48 @@ def body_lon(jd_ut: float, body_name: str) -> float:  # replace previous block i
 # --- Root finding ------------------------------------------------------------
 
 
-    if abs(fa) <= tol_deg:
+def solve_zero_crossing(
+    f: Callable[[float], float],
+    a: float,
+    b: float,
+    *,
+    tol_deg: float = 1e-5,
+    max_iter: int = 64,
+) -> float:
+    """Return the root of ``f`` inside ``[a, b]`` using a safe secant/bisection mix."""
+
+    fa = f(a)
+    fb = f(b)
+    if math.isnan(fa) or math.isnan(fb):
+        raise ValueError("Root function returned NaN for bracket endpoints")
+    if fa == 0.0:
         return a
-    if abs(fb) <= tol_deg:
+    if fb == 0.0:
         return b
-    x0, x1 = a, b
-    f0, f1 = fa, fb
+    if fa * fb > 0:
+        raise ValueError("Root bracket does not straddle zero")
+
+    x0, f0 = a, fa
+    x1, f1 = b, fb
     for _ in range(max_iter):
-
-        if (f1 - f0) == 0:
-            xm = 0.5 * (x0 + x1)
+        # Attempt a secant update first for faster convergence.
+        if f1 != f0:
+            x2 = x1 - f1 * (x1 - x0) / (f1 - f0)
         else:
-            xm = x1 - f1 * (x1 - x0) / (f1 - f0)
-        fm = f(xm)
+            x2 = 0.5 * (x0 + x1)
 
-        if (f0 > 0 and fm < 0) or (f0 < 0 and fm > 0):
-            x1, f1 = xm, fm
-        else:
-            x0, f0 = xm, fm
+        # Ensure the candidate remains inside the bracket; fall back to bisection.
+        if not (min(x0, x1) <= x2 <= max(x0, x1)):
+            x2 = 0.5 * (x0 + x1)
 
-    for _ in range(32):
-        xm = 0.5 * (x0 + x1)
-        fm = f(xm)
-        if abs(fm) <= tol_deg:
-            return xm
-        if (f0 > 0 and fm < 0) or (f0 < 0 and fm > 0):
-            x1, f1 = xm, fm
+        f2 = f(x2)
+        if abs(f2) <= tol_deg:
+            return x2
+
+        if f0 * f2 <= 0:
+            x1, f1 = x2, f2
         else:
-            x0, f0 = xm, fm
+            x0, f0 = x2, f2
+
     return 0.5 * (x0 + x1)
 

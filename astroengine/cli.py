@@ -249,7 +249,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--export-parquet", help="Write precomputed events to this Parquet file")
     parser.add_argument("--export-ics", help="Write precomputed events to this ICS calendar file")
     parser.add_argument("--ics-title", default="AstroEngine Events", help="Title to use for ICS export events")
-    parser.add_argument("--natal-id", help="Identifier for the natal chart driving precompute outputs")
     parser.add_argument("--profile", help="Profile identifier to annotate export metadata")
     parser.add_argument("--lat", type=float, help="Latitude for location-sensitive detectors")
     parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")
@@ -304,11 +303,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("path")
     validate.set_defaults(func=cmd_validate)
 
-    _augment_parser_with_natals(parser)  # ENSURE-LINE
-    _augment_parser_with_cache(parser)  # ENSURE-LINE
-    _augment_parser_with_parquet_dataset(parser)  # ENSURE-LINE
     _augment_parser_with_features(parser)
-    _augment_parser_with_provisioning(parser)  # ENSURE-LINE
     return parser
 
 
