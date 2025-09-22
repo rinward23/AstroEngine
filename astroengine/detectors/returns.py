@@ -1,8 +1,11 @@
-"""Solar and lunar return detector."""
+"""Solar and lunar return detection using Swiss longitudes."""
 
 from __future__ import annotations
 
+from typing import Callable
+
 from ..events import ReturnEvent
+from .common import delta_deg, jd_to_iso, moon_lon, solve_zero_crossing, sun_lon
 
 __all__ = ["solar_lunar_returns"]
 
@@ -49,6 +52,7 @@ def solar_lunar_returns(
                     lambda x, fn=accessor, tgt=target_lon: delta_deg(fn(x), tgt),
                     prev_jd,
                     min(current, end_jd),
+                    tol=1e-5,
                     tol_deg=1e-4,
                 )
             except ValueError:
@@ -77,4 +81,5 @@ def solar_lunar_returns(
         prev_jd, prev_delta = current, curr_delta
         current += step
 
-
+    events.sort(key=lambda event: event.jd)
+    return events

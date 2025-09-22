@@ -1,4 +1,4 @@
-"""Eclipse detector deriving from lunation data."""
+"""Eclipse detection using Swiss Ephemeris."""
 
 from __future__ import annotations
 
@@ -17,12 +17,13 @@ __all__ = ["find_eclipses"]
 def _moon_latitude(jd_ut: float) -> float:
     """Return Moon ecliptic latitude in degrees."""
 
-    # Ensure Swiss ephemeris path configured via longitude helper.
     if swe is None:
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
     moon_lon(jd_ut)
-    lon, lat, _, _, _, _ = swe.calc_ut(jd_ut, swe.MOON, swe.FLG_SWIEPH | swe.FLG_SPEED)
-    return float(lat)
+    values, _ = swe.calc_ut(jd_ut, swe.MOON, swe.FLG_SWIEPH | swe.FLG_SPEED)
+    if len(values) < 2:
+        raise RuntimeError("Swiss ephemeris did not return latitude component")
+    return float(values[1])
 
 
 def find_eclipses(

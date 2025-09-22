@@ -1,4 +1,4 @@
-"""Aspect detection utilities for longitudinal contacts."""
+"""Aspect detection utilities for coarse scans."""
 
 from __future__ import annotations
 
@@ -8,10 +8,12 @@ from pathlib import Path
 from typing import Dict, Iterable, List
 
 from .core.bodies import body_class
-from .utils.angles import classify_applying_separating, delta_angle
+from .utils.angles import classify_applying_separating, delta_angle, is_within_orb
+
+__all__ = ["AspectHit", "detect_aspects"]
 
 
-@dataclass
+@dataclass(frozen=True)
 class AspectHit:
     """Represents a single longitudinal aspect detection."""
 
@@ -27,7 +29,7 @@ class AspectHit:
     applying_or_separating: str
 
 
-_DEF_PATH = Path(__file__).resolve().parent.parent / "profiles" / "aspects_policy.json"
+_DEF_PATH = Path(__file__).resolve().parents[1] / "profiles" / "aspects_policy.json"
 
 
 def _load_policy(path: str | None = None) -> dict:
@@ -64,9 +66,9 @@ def detect_aspects(
 
     for iso in iso_ticks:
         positions = provider.positions_ecliptic(iso, [moving, target])
-        lon_moving = positions[moving]["lon"]
-        lon_target = positions[target]["lon"]
-        speed = positions[moving].get("speed_lon", 0.0)
+        lon_moving = float(positions[moving]["lon"])
+        lon_target = float(positions[target]["lon"])
+        speed = float(positions[moving].get("speed_lon", 0.0))
         delta_mt = (lon_target - lon_moving) % 360.0
 
         for aspect_name, angle in angles_map.items():

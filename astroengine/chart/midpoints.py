@@ -1,4 +1,4 @@
-"""Midpoint composite chart helpers."""
+"""Legacy midpoint composite helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Mapping, Sequence
 
 from .natal import NatalChart
 
-__all__ = ["CompositePosition", "MidpointCompositeChart", "compute_composite_chart"]
+__all__ = ["CompositePosition", "MidpointCompositeChart", "compute_midpoint_composite"]
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,7 @@ def _midpoint(a: float, b: float) -> float:
     return midpoint if midpoint >= 0 else midpoint + 360.0
 
 
-def compute_composite_chart(
+def compute_midpoint_composite(
     chart_a: NatalChart,
     chart_b: NatalChart,
     *,
