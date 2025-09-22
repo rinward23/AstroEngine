@@ -18,6 +18,24 @@ from ..astro.declination import (
     is_contraparallel,
     is_parallel,
 )
+from .lunations import find_lunations
+from .eclipses import find_eclipses
+from .stations import find_stations
+from .progressions import secondary_progressions
+from .directions import solar_arc_directions
+from .returns import solar_lunar_returns
+
+__all__ = [
+    "CoarseHit",
+    "detect_decl_contacts",
+    "detect_antiscia_contacts",
+    "find_lunations",
+    "find_eclipses",
+    "find_stations",
+    "secondary_progressions",
+    "solar_arc_directions",
+    "solar_lunar_returns",
+]
 from ..utils.angles import (
     classify_applying_separating,
     delta_angle,

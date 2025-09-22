@@ -5,6 +5,17 @@ from typing import Callable
 import math
 from datetime import datetime, timezone, timedelta
 
+__all__ = [
+    "norm360",
+    "delta_deg",
+    "jd_to_iso",
+    "iso_to_jd",
+    "sun_lon",
+    "moon_lon",
+    "body_lon",
+    "solve_zero_crossing",
+]
+
 # --- Angle helpers -----------------------------------------------------------
 
 def norm360(x: float) -> float:
@@ -116,47 +127,14 @@ def body_lon(jd_ut: float, body_name: str) -> float:  # replace previous block i
 # --- Root finding ------------------------------------------------------------
 
 
-def find_root(
+
     f: Callable[[float], float],
     a: float,
     b: float,
     *,
-    tol: float = 1e-6,
-    max_iter: int = 64,
-) -> float:
-    """Find a root of ``f`` in the interval ``[a, b]`` using a secant/bisection hybrid."""
 
-    fa = f(a)
-    fb = f(b)
-    if abs(fa) <= tol:
-        return a
-    if abs(fb) <= tol:
-        return b
+        else:
+            x0, f0 = x2, f2
 
-    x0, x1 = a, b
-    f0, f1 = fa, fb
-    for _ in range(max_iter):
-        if f0 == f1:
-            xm = 0.5 * (x0 + x1)
-        else:
-            xm = x1 - f1 * (x1 - x0) / (f1 - f0)
-        fm = f(xm)
-        if abs(fm) <= tol:
-            return xm
-        if f0 * fm <= 0:
-            x1, f1 = xm, fm
-        else:
-            x0, f0 = xm, fm
-
-    # Final bisection polish
-    for _ in range(64):
-        xm = 0.5 * (x0 + x1)
-        fm = f(xm)
-        if abs(fm) <= tol:
-            return xm
-        if f0 * fm <= 0:
-            x1, f1 = xm, fm
-        else:
-            x0, f0 = xm, fm
     return 0.5 * (x0 + x1)
 

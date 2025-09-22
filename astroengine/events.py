@@ -1,9 +1,6 @@
+"""Structured event records produced by AstroEngine detectors."""
 
 
-from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import Mapping, Sequence
 
 __all__ = [
     "BaseEvent",
@@ -19,44 +16,39 @@ __all__ = [
 
 @dataclass(frozen=True)
 class BaseEvent:
-    ts: float
-    kind: str
-    metadata: Mapping[str, object] | None = None
+
 
 
 @dataclass(frozen=True)
 class LunationEvent(BaseEvent):
-    phase: str | None = None
+
 
 
 @dataclass(frozen=True)
 class EclipseEvent(BaseEvent):
-    magnitude: float | None = None
+
 
 
 @dataclass(frozen=True)
 class StationEvent(BaseEvent):
-    body: str | None = None
-    motion: str | None = None
+
 
 
 @dataclass(frozen=True)
 class ReturnEvent(BaseEvent):
-    body: str | None = None
-    cycle: str | None = None
+
 
 
 @dataclass(frozen=True)
 class ProgressionEvent(BaseEvent):
-    method: str | None = None
+
 
 
 @dataclass(frozen=True)
 class DirectionEvent(BaseEvent):
-    method: str | None = None
+
 
 
 @dataclass(frozen=True)
 class ProfectionEvent(BaseEvent):
-    lord: str | None = None
-    houses: Sequence[int] | None = None
+

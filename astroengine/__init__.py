@@ -13,6 +13,24 @@ from .catalogs import (
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
 )
+from .chart import (
+    ChartLocation,
+    NatalChart,
+    ProgressedChart,
+    ReturnChart,
+    HarmonicChart,
+    HarmonicPosition,
+    MidpointCompositeChart,
+    CompositePosition,
+    DirectedChart,
+    compute_natal_chart,
+    compute_secondary_progressed_chart,
+    compute_return_chart,
+    compute_harmonic_chart,
+    compute_composite_chart,
+    compute_solar_arc_chart,
+)
+from .chart.config import ChartConfig
 from .core import (  # noqa: F401
     DOMAINS,
     ELEMENTS,
@@ -38,6 +56,7 @@ from .core import (  # noqa: F401
 from .canonical import TransitEvent  # ENSURE-LINE
 from .canonical import BodyPosition  # ENSURE-LINE
 from .diagnostics import collect_diagnostics  # ENSURE-LINE
+from .esoteric import DECANS, DecanAssignment, DecanDefinition, assign_decans, decan_for_longitude
 from .ephemeris import (  # noqa: F401
     EphemerisAdapter,
     EphemerisConfig,
@@ -105,10 +124,25 @@ from .scoring import (
 __all__ = [
     "__version__",
     "ChartConfig",
+    "ChartLocation",
+    "NatalChart",
+    "ProgressedChart",
+    "ReturnChart",
+    "HarmonicChart",
+    "HarmonicPosition",
+    "MidpointCompositeChart",
+    "CompositePosition",
+    "DirectedChart",
     "TransitEngine",  # ENSURE-LINE
     "TransitEvent",  # ENSURE-LINE
     "TransitScanConfig",  # ENSURE-LINE
     "BodyPosition",
+    "compute_natal_chart",
+    "compute_secondary_progressed_chart",
+    "compute_return_chart",
+    "compute_harmonic_chart",
+    "compute_composite_chart",
+    "compute_solar_arc_chart",
     "DomainResolver",
     "DomainResolution",
     "ELEMENTS",
@@ -164,6 +198,11 @@ __all__ = [
     "environment_report_main",
     "get_vca_aspect",
     "vca_orb_for",
+    "DECANS",
+    "DecanAssignment",
+    "DecanDefinition",
+    "assign_decans",
+    "decan_for_longitude",
     "VCA_CORE_BODIES",
     "VCA_EXT_ASTEROIDS",
     "VCA_CENTAURS",

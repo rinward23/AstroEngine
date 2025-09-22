@@ -1,15 +1,19 @@
-# >>> AUTO-GEN BEGIN: detector-returns v1.0
-from __future__ import annotations
-from typing import List
+"""Solar and lunar return detector."""
 
-from .common import body_lon, delta_deg, find_root
+from __future__ import annotations
+
 from ..events import ReturnEvent
 
+__all__ = ["solar_lunar_returns"]
 
-def _body_for_kind(kind: str) -> str:
-    if kind not in {"solar", "lunar"}:
-        raise ValueError(f"Unsupported return kind: {kind}")
-    return "sun" if kind == "solar" else "moon"
+
+def _body_accessor(kind: str) -> tuple[str, Callable[[float], float]]:
+    key = kind.lower()
+    if key == "solar":
+        return "Sun", sun_lon
+    if key == "lunar":
+        return "Moon", moon_lon
+    raise ValueError(f"Unsupported return kind '{kind}'")
 
 
 def solar_lunar_returns(
@@ -17,44 +21,60 @@ def solar_lunar_returns(
     start_jd: float,
     end_jd: float,
     kind: str = "solar",
-) -> List[ReturnEvent]:
+    *,
+    step_days: float | None = None,
+) -> list[ReturnEvent]:
+    """Return solar or lunar return events within a Julian day window."""
+
     if end_jd <= start_jd:
         return []
 
-    body = _body_for_kind(kind)
-    natal_lon = body_lon(natal_jd, body)
-    step = 7.0 if body == "sun" else 0.5
-    events: List[ReturnEvent] = []
-    t0 = start_jd
-    delta0 = delta_deg(body_lon(t0, body), natal_lon)
-    while t0 < end_jd:
-        t1 = min(t0 + step, end_jd)
-        delta1 = delta_deg(body_lon(t1, body), natal_lon)
-        if abs(delta0) < 1e-5:
-            root = t0
-        elif delta0 * delta1 > 0:
-            t0, delta0 = t1, delta1
-            continue
+    body_name, accessor = _body_accessor(kind)
+    target_lon = accessor(natal_jd) % 360.0
+    step = step_days if step_days is not None else (1.0 if body_name == "Sun" else 0.5)
+
+    events: list[ReturnEvent] = []
+    seen: set[int] = set()
+
+    prev_jd = start_jd
+    prev_delta = delta_deg(accessor(prev_jd), target_lon)
+    current = start_jd + step
+    while current <= end_jd + step:
+        curr_delta = delta_deg(accessor(current), target_lon)
+        if prev_delta == 0.0:
+            root = prev_jd
+        elif prev_delta * curr_delta <= 0.0:
+            try:
+                root = solve_zero_crossing(
+                    lambda x, fn=accessor, tgt=target_lon: delta_deg(fn(x), tgt),
+                    prev_jd,
+                    min(current, end_jd),
+                    tol_deg=1e-4,
+                )
+            except ValueError:
+                prev_jd, prev_delta = current, curr_delta
+                current += step
+                continue
         else:
-            root = find_root(
-                lambda jd: delta_deg(body_lon(jd, body), natal_lon),
-                t0,
-                t1,
-                tol=1e-6,
-            )
-        longitude = body_lon(root, body)
-        if events and abs(events[-1].ts - root) < 1e-4 and events[-1].body == body:
-            t0, delta0 = t1, delta1
+            prev_jd, prev_delta = current, curr_delta
+            current += step
             continue
-        events.append(
-            ReturnEvent(
-                ts=root,
-                body=body,
-                kind=kind,
-                longitude=longitude,
+
+        key = int(round(root * 86400))
+        if key not in seen and start_jd <= root <= end_jd:
+            longitude = accessor(root) % 360.0
+            events.append(
+                ReturnEvent(
+                    ts=jd_to_iso(root),
+                    jd=root,
+                    body=body_name,
+                    method=kind.lower(),
+                    longitude=longitude,
+                )
             )
-        )
-        t0, delta0 = t1, delta1
-    events.sort(key=lambda ev: ev.ts)
-    return events
-# >>> AUTO-GEN END: detector-returns v1.0
+            seen.add(key)
+
+        prev_jd, prev_delta = current, curr_delta
+        current += step
+
+

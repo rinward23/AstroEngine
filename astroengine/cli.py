@@ -364,11 +364,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("path")
     validate.set_defaults(func=cmd_validate)
 
-    _augment_parser_with_natals(parser)  # ENSURE-LINE
-    _augment_parser_with_cache(parser)  # ENSURE-LINE
-    _augment_parser_with_parquet_dataset(parser)  # ENSURE-LINE
     _augment_parser_with_features(parser)
-    _augment_parser_with_provisioning(parser)  # ENSURE-LINE
     return parser
 
 
