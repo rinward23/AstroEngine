@@ -13,9 +13,11 @@ __all__ = [
     "ProgressionEvent",
     "DirectionEvent",
     "ProfectionEvent",
+    "OutOfBoundsEvent",
     "IngressEvent",
     "DashaPeriodEvent",
     "ZodiacalReleasingPeriod",
+
 ]
 
 
@@ -45,6 +47,7 @@ class EclipseEvent(BaseEvent):
     sun_longitude: float
     moon_longitude: float
     moon_latitude: float
+    is_visible: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -93,6 +96,16 @@ class ProfectionEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+
+class OutOfBoundsEvent(BaseEvent):
+    """Represents a declination out-of-bounds crossing for a body."""
+
+    body: str
+    state: str  # "enter" or "exit"
+    hemisphere: str  # "north" or "south"
+    declination: float
+    limit: float
+
 class IngressEvent(BaseEvent):
     """Represents a zodiac sign ingress for a single body."""
 
@@ -127,3 +140,4 @@ class ZodiacalReleasingPeriod(TimelordPeriod):
 
     lot: str
     sign: str
+

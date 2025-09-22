@@ -77,10 +77,11 @@ try:
         ProgressionEvent,
         DirectionEvent,
         ProfectionEvent,
+        OutOfBoundsEvent,
     )
 except ImportError:  # pragma: no cover - optional legacy surface
     LunationEvent = EclipseEvent = StationEvent = ReturnEvent = None  # type: ignore
-    ProgressionEvent = DirectionEvent = ProfectionEvent = None  # type: ignore
+    ProgressionEvent = DirectionEvent = ProfectionEvent = OutOfBoundsEvent = None  # type: ignore
 from .fixedstars import skyfield_stars  # ENSURE-LINE
 from .infrastructure.environment import collect_environment_report
 from .infrastructure.environment import main as environment_report_main
@@ -226,6 +227,7 @@ __all__ = [
     "ProgressionEvent",
     "DirectionEvent",
     "ProfectionEvent",
+    "OutOfBoundsEvent",
 ]
 
 try:  # pragma: no cover - package metadata not available during tests

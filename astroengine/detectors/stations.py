@@ -41,7 +41,7 @@ def find_stations(
     end_jd: float,
     bodies: Optional[Sequence[str]] = None,
     *,
-    step_days: float = 1.0,
+    step_days: float = 0.5,
 ) -> list[StationEvent]:
     """Return planetary station events between ``start_jd`` and ``end_jd``."""
 
@@ -76,8 +76,8 @@ def find_stations(
                         lambda x, c=code: _speed(x, c),
                         prev_jd,
                         min(current, end_jd),
-                        tol=1e-5,
-                        tol_deg=1e-6,
+                        tol=5e-6,
+                        value_tol=5e-7,
                     )
                 except ValueError:
                     root = None
