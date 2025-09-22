@@ -16,12 +16,7 @@ except Exception:  # pragma: no cover - optional dependency at runtime
 from ..events import IngressEvent
 from .common import body_lon, jd_to_iso, norm360, solve_zero_crossing
 
-__all__ = [
-    "ZODIAC_SIGNS",
-    "sign_index",
-    "sign_name",
-    "find_sign_ingresses",
-]
+__all__ = ["ZODIAC_SIGNS", "sign_index", "sign_name", "find_sign_ingresses"]
 
 
 ZODIAC_SIGNS: Sequence[str] = (
@@ -55,7 +50,6 @@ _DEFAULT_BODIES: Sequence[str] = (
 
 @dataclass(frozen=True)
 class _Sample:
-    """Ephemeris sample with an unwrapped longitude for continuity checks."""
 
     jd: float
     longitude: float
@@ -143,13 +137,72 @@ def find_sign_ingresses(
     start_jd: float,
     end_jd: float,
     *,
-    bodies: Iterable[str] | None = None,
+
+    bodies: Sequence[str] | None = None,
+
     step_hours: float = 6.0,
 ) -> list[IngressEvent]:
     """Detect sign ingress events between ``start_jd`` and ``end_jd`` inclusive."""
 
     if end_jd <= start_jd:
         return []
+
+
+    body_list = tuple(bodies or _DEFAULT_BODIES)
+    step_days = max(step_hours, 1.0) / 24.0
+    events: list[IngressEvent] = []
+
+    for body in body_list:
+        samples = list(_generate_samples(body, start_jd, end_jd, step_days))
+        for idx in range(1, len(samples)):
+            prev = samples[idx - 1]
+            curr = samples[idx]
+            if prev.longitude == curr.longitude:
+                continue
+            lower = min(prev.longitude, curr.longitude)
+            upper = max(prev.longitude, curr.longitude)
+            if math.isclose(lower, upper):
+                continue
+            start_index = math.floor(lower / 30.0)
+            end_index = math.floor(upper / 30.0)
+            if start_index == end_index:
+                continue
+
+            direction = 1 if curr.longitude > prev.longitude else -1
+            boundary_indices = range(start_index + 1, end_index + 1)
+            if direction < 0:
+                boundary_indices = reversed(list(boundary_indices))
+
+            left_sample = prev
+            for boundary_index in boundary_indices:
+                boundary = boundary_index * 30.0
+                if not (lower - 1e-6 <= boundary <= upper + 1e-6):
+                    continue
+                jd_root = _refine_ingress(body, left_sample, curr, boundary)
+                if not (start_jd <= jd_root <= end_jd):
+                    left_sample = _Sample(jd=jd_root, longitude=boundary)
+                    continue
+                lon_exact = norm360(body_lon(jd_root, body))
+                speed = _estimate_speed(body, jd_root)
+                retrograde = speed < 0
+                if direction >= 0:
+                    from_idx = sign_index(boundary - 1e-6)
+                    to_idx = sign_index(boundary + 1e-6)
+                else:
+                    from_idx = sign_index(boundary + 1e-6)
+                    to_idx = sign_index(boundary - 1e-6)
+                event = IngressEvent(
+                    ts=jd_to_iso(jd_root),
+                    jd=jd_root,
+                    body=body,
+                    sign_from=sign_name(from_idx),
+                    sign_to=sign_name(to_idx),
+                    longitude=lon_exact,
+                    speed_longitude=float(speed),
+                    retrograde=retrograde,
+                )
+                events.append(event)
+                left_sample = _Sample(jd=jd_root, longitude=boundary)
 
     if step_hours <= 0:
         raise ValueError("step_hours must be positive")
@@ -241,6 +294,7 @@ def find_sign_ingresses(
                     prev_index = boundary_index - 1
                     boundary_index += direction
                 prev_sample = _Sample(jd=jd_root, longitude=boundary)
+
 
             prev_sample = sample
             prev_index = current_index

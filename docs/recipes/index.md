@@ -12,6 +12,11 @@ modules involved.
 3. [Transit-to-progressed synastry](transit_to_progressed_synastry.md) —
    fuses secondary progressions with live transits for relationship or
    event analysis.
+4. [Narrative profiles and time-lords](narrative_profiles.md) — configure
+   sidereal ayanāṁśas, electional narratives, and active timelord stacks.
+5. [Locational maps and outer-cycle timelines](locational_timelines.md) —
+   emit astrocartography linework, local space vectors, and outer planet
+   windows for dashboards.
 
 Every script uses Swiss Ephemeris data (or the documented PyMeeus
 fallback) and references profiles stored in this repository. No synthetic

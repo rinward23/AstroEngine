@@ -14,6 +14,7 @@ __all__ = [
     "IngressChart",
     "MundaneAspect",
     "SolarIngressChart",
+    "IngressChart",
     "compute_cardinal_ingress_charts",
     "compute_solar_ingress_chart",
     "compute_solar_quartet",

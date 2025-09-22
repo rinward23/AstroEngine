@@ -10,6 +10,7 @@ from typing import Any, Iterable, List, Mapping
 
 import yaml
 
+
 from .astro.declination import DEFAULT_ANTISCIA_AXIS
 from .chart.config import ChartConfig
 
@@ -29,6 +30,7 @@ from .infrastructure.paths import profiles_dir
 from .plugins import DetectorContext, get_plugin_manager
 
 
+from .infrastructure.paths import profiles_dir
 from .providers import get_provider
 from .profiles import load_base_profile, load_resonance_weights
 from .scoring import ScoreInputs, compute_score
@@ -428,6 +430,9 @@ def scan_contacts(
     target: str,
     provider_name: str = "swiss",
     *,
+
+    ephemeris_config: EphemerisConfig | None = None,
+
     decl_parallel_orb: float | None = None,
     decl_contra_orb: float | None = None,
     antiscia_orb: float | None = None,
@@ -435,14 +440,15 @@ def scan_contacts(
     step_minutes: int = 60,
     aspects_policy_path: str | None = None,
     timelord_calculator: TimelordCalculator | None = None,
-    ephemeris_config: EphemerisConfig | None = None,
+
+    chart_config: ChartConfig | None = None,
+
     profile: Mapping[str, Any] | None = None,
     profile_id: str | None = None,
     include_declination: bool = True,
     include_mirrors: bool = True,
     include_aspects: bool = True,
     antiscia_axis: str | None = None,
-    chart_config: ChartConfig | None = None,
 
 
 ) -> List[LegacyTransitEvent]:
@@ -536,11 +542,10 @@ def scan_contacts(
     events: List[LegacyTransitEvent] = []
 
 
-    def append_event(event: LegacyTransitEvent) -> None:
+    def _append_event(event: LegacyTransitEvent) -> None:
         _attach_timelords(event, timelord_calculator)
         events.append(event)
 
-    if do_parallels or do_contras:
 
         for hit in detect_decl_contacts(
             provider,
@@ -560,7 +565,7 @@ def scan_contacts(
                 else decl_contra_allow
             )
 
-            append_event(_event_from_decl(hit, orb_allow=allow))
+            _append_event(_event_from_decl(hit, orb_allow=allow))
 
 
     if do_mirrors:
@@ -579,7 +584,7 @@ def scan_contacts(
                 else contra_antiscia_allow
             )
 
-            append_event(_event_from_decl(hit, orb_allow=allow))
+            _append_event(_event_from_decl(hit, orb_allow=allow))
 
 
     if do_aspects:
@@ -591,7 +596,7 @@ def scan_contacts(
             policy_path=aspects_policy_path,
         ):
 
-            append_event(_event_from_aspect(aspect_hit))
+            _append_event(_event_from_aspect(aspect_hit))
 
 
     plugin_context = DetectorContext(

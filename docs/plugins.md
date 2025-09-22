@@ -1,8 +1,9 @@
 # Plugin Architecture
 
 AstroEngine is designed to accept external modules without breaking the
-module → submodule → channel → subchannel layout. Two plugin surfaces are
-stable today: ephemeris providers and scan entrypoints.
+module → submodule → channel → subchannel layout. Three plugin surfaces are
+stable today: ephemeris providers, scan entrypoints, and detector/scoring
+hooks exposed through ``astroengine.plugins``.
 
 ## Ephemeris providers
 
@@ -62,6 +63,42 @@ python -m astroengine transits --start 2024-01-01T00:00:00Z \
 
 The command must succeed and produce real transits derived from the data
 source documented above.
+
+## Detector and scoring hooks
+
+``astroengine.plugins`` exposes a Pluggy manager. Third-party packages can
+register detectors, scoring extensions, and lightweight UI panels by
+implementing the hook specifications defined in
+``astroengine.plugins.HookSpecs``. A detector registration looks like:
+
+```python
+from astroengine.plugins import hookimpl
+
+
+class MyPlugin:
+    ASTROENGINE_PLUGIN_API = "1.0"
+
+    @hookimpl
+    def register_detectors(self, registry):
+        registry.register("my.detector", my_detector_fn)
+
+    @hookimpl
+    def extend_scoring(self, registry):
+        registry.register("my.score", my_extension_fn, namespace="custom")
+```
+
+Callables receive typed contexts and may emit metadata describing the source
+of their calculations. The plugin API is versioned so upgrades of
+AstroEngine can flag incompatible packages early.
+
+Runtime inspection is available from the CLI:
+
+```bash
+astroengine plugins --entrypoints --detectors --score-extensions
+```
+
+The command prints loaded entry points, detector names, score extension
+namespaces, and UI panels. ``--json`` produces a machine-readable summary.
 
 ## Scan entrypoints
 

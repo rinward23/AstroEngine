@@ -1,4 +1,6 @@
-"""ICS exporters for canonical AstroEngine events."""
+
+"""ICS exporters for canonical transit events and templated calendar output."""
+
 
 from __future__ import annotations
 
@@ -7,6 +9,10 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, Mapping, Sequence
+
+
+from ics.grammar.parse import ContentLine
+
 
 from .canonical import TransitEvent, event_from_legacy, events_from_any
 from .events import ReturnEvent
@@ -18,6 +24,9 @@ __all__ = [
     "ics_bytes_from_events",
     "write_ics",
     "write_ics_canonical",
+    "DEFAULT_DESCRIPTION_TEMPLATE",
+    "DEFAULT_SUMMARY_TEMPLATE",
+    "write_ics",
 ]
 
 _PRODID = "-//AstroEngine//Transit Scanner//EN"
@@ -143,13 +152,17 @@ def _base_context(ts: str, meta: Mapping[str, Any]) -> Dict[str, Any]:
     profile_id = meta.get("profile_id")
     if profile_id is None and isinstance(meta.get("profile"), Mapping):
         profile_id = meta["profile"].get("id")
+    if natal_id in (None, ""):
+        natal_id = "unknown"
+    if profile_id in (None, ""):
+        profile_id = "unknown"
     return {
         "ts": ts,
         "start": ts,
         "meta": dict(meta),
         "meta_json": json.dumps(meta, sort_keys=True),
-        "natal_id": natal_id or "unknown",
-        "profile_id": profile_id or "unknown",
+        "natal_id": natal_id,
+        "profile_id": profile_id,
     }
 
 

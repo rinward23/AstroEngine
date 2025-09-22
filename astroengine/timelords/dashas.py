@@ -1,19 +1,22 @@
-"""Vimśottarī dasha utilities (legacy period lists and event timelines)."""
+
+"""Vimśottarī daśā timelines derived from the natal Moon nakṣatra."""
+
 
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import List, Sequence
+
+from typing import Iterable, List, Sequence
+
 
 from ..detectors.common import UNIX_EPOCH_JD, iso_to_jd, jd_to_iso, moon_lon
 from ..events import DashaPeriod, DashaPeriodEvent
 from ..utils.angles import norm360
 
-__all__ = ["vimsottari_dashas", "compute_vimshottari_dasha"]
 
-NAKSHATRA_DEGREES = 360.0 / 27.0
+YEAR_IN_DAYS = 365.2425
 SIDEREAL_YEAR_DAYS = 365.25636
-TROPICAL_YEAR_DAYS = 365.2425
+NAKSHATRA_SIZE = 360.0 / 27.0
 
 _DASHA_SEQUENCE: tuple[str, ...] = (
     "Ketu",
@@ -42,11 +45,15 @@ _DASHA_YEARS = {
 _TOTAL_SEQUENCE_YEARS = sum(_DASHA_YEARS.values())
 
 
+__all__ = ["vimsottari_dashas", "compute_vimshottari_dasha"]
+
+
 def _major_index_and_fraction(natal_jd: float) -> tuple[int, float]:
-    moon_longitude = moon_lon(natal_jd) % 360.0
-    nak_index = int(moon_longitude // NAKSHATRA_DEGREES)
-    within = moon_longitude - nak_index * NAKSHATRA_DEGREES
-    fraction = within / NAKSHATRA_DEGREES
+    longitude = norm360(moon_lon(natal_jd))
+    nak_index = int(longitude // NAKSHATRA_SIZE)
+    within = longitude - nak_index * NAKSHATRA_SIZE
+    fraction = within / NAKSHATRA_SIZE
+
     major_index = nak_index % len(_DASHA_SEQUENCE)
     return major_index, fraction
 
@@ -63,7 +70,7 @@ def _iterate_major_periods(
     major_index: int,
     start_fraction: float,
     end_jd: float,
-):
+) -> Iterable[tuple[int, str, float, float, float]]:
     current_start = start_jd
     index = major_index
     fraction = start_fraction
@@ -84,9 +91,12 @@ def _sub_periods(
     major_start: float,
     major_end: float,
     start_fraction: float,
-):
-    major_length = major_end - major_start
+) -> Iterable[tuple[int, str, float, float]]:
+    major_length = max(major_end - major_start, 0.0)
+    if major_length <= 0.0:
+        return []
     cumulative = 0.0
+    results: list[tuple[int, str, float, float]] = []
     for offset in range(len(_DASHA_SEQUENCE)):
         sub_index = (major_index + offset) % len(_DASHA_SEQUENCE)
         sub_lord = _DASHA_SEQUENCE[sub_index]
@@ -100,10 +110,11 @@ def _sub_periods(
 
         start = major_start + max(sub_start_fraction, start_fraction) * major_length
         end = major_start + min(sub_end_fraction, 1.0) * major_length
-        yield sub_index, sub_lord, start, end
+        results.append((sub_index, sub_lord, start, end))
 
         if sub_end_fraction >= 1.0:
             break
+    return results
 
 
 def vimsottari_dashas(
@@ -113,7 +124,7 @@ def vimsottari_dashas(
     *,
     include_partial: bool = True,
 ) -> List[DashaPeriod]:
-    """Return Vimsottari dasha sub-periods intersecting ``start_ts`` → ``end_ts``."""
+    """Return Vimśottarī daśā sub-periods intersecting ``start_ts`` → ``end_ts``."""
 
     start_jd = iso_to_jd(start_ts)
     end_jd = iso_to_jd(end_ts)
@@ -169,13 +180,12 @@ def _ensure_utc(moment: datetime) -> datetime:
 
 
 def _to_iso(moment: datetime) -> str:
-    moment = _ensure_utc(moment)
-    return moment.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return _ensure_utc(moment).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _to_jd(moment: datetime) -> float:
-    moment = _ensure_utc(moment)
-    return (moment.timestamp() / 86400.0) + UNIX_EPOCH_JD
+    moment_utc = _ensure_utc(moment)
+    return (moment_utc.timestamp() / 86400.0) + UNIX_EPOCH_JD
 
 
 def _generate_antar_periods(
@@ -185,13 +195,15 @@ def _generate_antar_periods(
     maha_total_years: float,
     skip_years: float,
     method: str,
-) -> list[DashaPeriodEvent]:
+) -> List[DashaPeriodEvent]:
     if maha_start >= maha_end:
         return []
 
     order = _DASHA_SEQUENCE[ruler_index:] + _DASHA_SEQUENCE[:ruler_index]
     parent = _DASHA_SEQUENCE[ruler_index]
-    current = maha_start
+
+    current = _ensure_utc(maha_start)
+
     remaining_skip = max(skip_years, 0.0)
     produced_years = 0.0
     active_years = max(maha_total_years - skip_years, 0.0)
@@ -256,20 +268,23 @@ def compute_vimshottari_dasha(
     cycles: int = 1,
     levels: Sequence[str] = ("maha", "antar"),
     method: str = "vimshottari",
-) -> list[DashaPeriodEvent]:
-    """Return structured Vimsottari periods from a Moon longitude snapshot."""
+
+) -> List[DashaPeriodEvent]:
+    """Return ordered daśā periods beginning from ``start``."""
+
 
     if cycles <= 0:
         raise ValueError("cycles must be >= 1")
-    levels_normalized = {level.lower() for level in levels}
-    if not levels_normalized:
-        raise ValueError("at least one level must be requested")
-    if not levels_normalized.issubset({"maha", "antar"}):
+    normalized_levels = {level.lower() for level in levels}
+    if not normalized_levels:
+        raise ValueError("at least one dasha level must be requested")
+    if not normalized_levels.issubset({"maha", "antar"}):
         raise ValueError("unsupported dasha levels requested")
 
     start = _ensure_utc(start)
     longitude = norm360(moon_longitude_deg)
-    nak_index = int(longitude // NAKSHATRA_DEGREES)
+
+    nak_index = int(longitude // NAKSHATRA_SIZE)
     ruler_index = nak_index % len(_DASHA_SEQUENCE)
     ruler = _DASHA_SEQUENCE[ruler_index]
     total_years = _DASHA_YEARS[ruler]
@@ -294,7 +309,7 @@ def compute_vimshottari_dasha(
                 continue
             delta = timedelta(days=active_years * TROPICAL_YEAR_DAYS)
             maha_end = current + delta
-            if "maha" in levels_normalized:
+            if "maha" in normalized_levels:
                 events.append(
                     DashaPeriodEvent(
                         ts=_to_iso(current),
@@ -307,7 +322,7 @@ def compute_vimshottari_dasha(
                         parent=None,
                     )
                 )
-            if "antar" in levels_normalized:
+            if "antar" in normalized_levels:
                 events.extend(
                     _generate_antar_periods(
                         idx,

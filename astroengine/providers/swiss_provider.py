@@ -112,6 +112,7 @@ class SwissProvider:
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str]
     ) -> Dict[str, Dict[str, float]]:
+
         conversion = self._time_conversion(iso_utc)
         out: Dict[str, Dict[str, float]] = {}
         for name in bodies:
@@ -119,6 +120,7 @@ class SwissProvider:
                 body_id = self._body_id(name)
             except KeyError:
                 continue
+
             sample = self._adapter.sample(body_id, conversion)
             out[name] = {
                 "lon": sample.longitude % 360.0,
