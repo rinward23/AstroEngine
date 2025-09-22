@@ -19,6 +19,7 @@ from .policy import (
     load_severity_policy,
     load_visibility_policy,
 )
+from .tradition import TraditionSpec, get_tradition_spec
 
 __all__ = [
     "compute_domain_factor",
@@ -37,4 +38,6 @@ __all__ = [
     "load_orb_policy",
     "load_severity_policy",
     "load_visibility_policy",
+    "TraditionSpec",
+    "get_tradition_spec",
 ]
