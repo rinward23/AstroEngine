@@ -6,7 +6,6 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cache, lru_cache
-from pathlib import Path
 
 __all__ = ["DEFAULT_ASPECTS", "OrbCalculator", "AspectPolicy"]
 
@@ -42,6 +41,9 @@ _BODY_CLASSIFICATION = {
 }
 
 
+from ..infrastructure.paths import schemas_dir
+
+
 @dataclass(frozen=True)
 class AspectPolicy:
     """In-memory representation of a single aspect entry."""
@@ -52,17 +54,9 @@ class AspectPolicy:
     profile_overrides: Mapping[str, float]
 
 
-def _repository_root() -> Path:
-    here = Path(__file__).resolve()
-    for parent in here.parents:
-        if (parent / "schemas").is_dir():
-            return parent
-    raise FileNotFoundError("Unable to locate repository root containing 'schemas'.")
-
-
 @lru_cache(maxsize=1)
 def _load_policy() -> Mapping[str, object]:
-    path = _repository_root() / "schemas" / "orbs_policy.json"
+    path = schemas_dir() / "orbs_policy.json"
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 

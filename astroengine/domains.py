@@ -15,6 +15,7 @@ from .core.domains import (
     DomainResolver,
     natal_domain_factor,
 )
+from .infrastructure.paths import profiles_dir
 
 __all__ = [
     "DOMAINS",
@@ -61,8 +62,8 @@ class DomainScore:
         return sum(ch.score for ch in self.channels.values())
 
 
-_DEF_TREE = Path(__file__).resolve().parent.parent / "profiles" / "domain_tree.json"
-_DEF_MAP = Path(__file__).resolve().parent.parent / "profiles" / "domain_mapping.json"
+_DEF_TREE = profiles_dir() / "domain_tree.json"
+_DEF_MAP = profiles_dir() / "domain_mapping.json"
 
 
 def _load_json(path: Path) -> dict:

@@ -40,7 +40,9 @@ import sys
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
-ROOT = Path(__file__).resolve().parents[1]
+from .infrastructure.paths import project_root
+
+ROOT = project_root()
 REQ_DEV = ROOT / "requirements-dev.txt"
 
 

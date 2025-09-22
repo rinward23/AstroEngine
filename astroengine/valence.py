@@ -4,9 +4,11 @@ import json
 from pathlib import Path
 from typing import Literal, Optional, Tuple
 
+from .infrastructure.paths import profiles_dir
+
 Valence = Literal["positive", "neutral", "negative"]
 
-_DEF = Path(__file__).resolve().parent.parent / "profiles" / "valence_policy.json"
+_DEF = profiles_dir() / "valence_policy.json"
 
 
 def _load(path: Optional[str] = None) -> dict:

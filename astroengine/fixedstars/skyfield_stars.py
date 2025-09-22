@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import csv
-from pathlib import Path
 from typing import Tuple
+
+from ..infrastructure.paths import datasets_dir
 
 try:
     from skyfield.api import Star, load
@@ -11,7 +12,7 @@ except Exception:  # pragma: no cover
     Star = None
     load = None
 
-DATASET = Path(__file__).resolve().parent.parent / "datasets" / "star_names_iau.csv"
+DATASET = datasets_dir() / "star_names_iau.csv"
 
 
 def _load_kernel():

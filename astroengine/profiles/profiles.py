@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import Path
 from typing import Any, Mapping
 
 import yaml
+
+from ..infrastructure.paths import profiles_dir
 
 __all__ = [
     "load_base_profile",
@@ -40,21 +41,11 @@ class ResonanceWeights:
         weights = self.normalized()
         return {"mind": weights.mind, "body": weights.body, "spirit": weights.spirit}
 
-
-def _repository_root() -> Path:
-    here = Path(__file__).resolve()
-    for parent in here.parents:
-        candidate = parent / "profiles"
-        if (candidate / "vca_outline.json").is_file():
-            return parent
-    raise FileNotFoundError("Unable to locate repository root containing 'profiles'.")
-
-
 @lru_cache(maxsize=1)
 def load_vca_outline() -> dict[str, Any]:
     """Return the canonical VCA outline JSON payload."""
 
-    outline_path = _repository_root() / "profiles" / "vca_outline.json"
+    outline_path = profiles_dir() / "vca_outline.json"
     with outline_path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
@@ -63,7 +54,7 @@ def load_vca_outline() -> dict[str, Any]:
 def load_base_profile() -> dict[str, Any]:
     """Load and parse the baseline AstroEngine profile definition."""
 
-    profile_path = _repository_root() / "profiles" / "base_profile.yaml"
+    profile_path = profiles_dir() / "base_profile.yaml"
     with profile_path.open("r", encoding="utf-8") as handle:
         return yaml.safe_load(handle)
 

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List
 
 from .core.bodies import body_class
+from .infrastructure.paths import profiles_dir
 from .utils.angles import classify_applying_separating, delta_angle, is_within_orb
 
 __all__ = ["AspectHit", "detect_aspects"]
@@ -29,7 +30,7 @@ class AspectHit:
     applying_or_separating: str
 
 
-_DEF_PATH = Path(__file__).resolve().parents[1] / "profiles" / "aspects_policy.json"
+_DEF_PATH = profiles_dir() / "aspects_policy.json"
 
 
 def _load_policy(path: str | None = None) -> dict:

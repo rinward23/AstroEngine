@@ -35,6 +35,25 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT_STR = str(PROJECT_ROOT)
 GENERATED_ROOT = PROJECT_ROOT / "generated"
 GENERATED_STR = str(GENERATED_ROOT)
+DATASETS_ROOT = PROJECT_ROOT / "datasets"
+
+
+def _refresh_paths_from_package() -> None:
+    try:
+        from astroengine.infrastructure.paths import (
+            datasets_dir,
+            generated_dir,
+            project_root as pkg_project_root,
+        )
+    except Exception:
+        return
+
+    global PROJECT_ROOT, PROJECT_ROOT_STR, GENERATED_ROOT, GENERATED_STR, DATASETS_ROOT
+    PROJECT_ROOT = pkg_project_root()
+    PROJECT_ROOT_STR = str(PROJECT_ROOT)
+    GENERATED_ROOT = generated_dir()
+    GENERATED_STR = str(GENERATED_ROOT)
+    DATASETS_ROOT = datasets_dir()
 
 
 def _ensure_repo_package() -> None:
@@ -68,6 +87,8 @@ def _ensure_repo_package() -> None:
         importlib.invalidate_caches()
         importlib.import_module("astroengine")
 
+    _refresh_paths_from_package()
+
 
 _ensure_repo_package()
 
@@ -75,7 +96,7 @@ _ensure_repo_package()
 def _ensure_swiss_stub() -> None:
     if os.getenv("SE_EPHE_PATH"):
         return
-    stub = PROJECT_ROOT / "datasets" / "swisseph_stub"
+    stub = DATASETS_ROOT / "swisseph_stub"
     if stub.is_dir():
         os.environ.setdefault("SE_EPHE_PATH", str(stub))
 
