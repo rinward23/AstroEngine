@@ -30,6 +30,43 @@ python -m astroengine.maint --full --strict --auto-install all --yes
 See `docs/DIAGNOSTICS.md`, `docs/SWISS_EPHEMERIS.md`, and `docs/QUALITY_GATE.md` for details.
 # >>> AUTO-GEN END: README Quick Start v1.1
 
+# >>> AUTO-GEN BEGIN: Minimal App Quickstart v1.1
+## Run the minimal application
+
+1. **Python 3.11** recommended. Create a venv and install runtime + optional UI deps:
+   ```bash
+   python -m venv .venv && source .venv/bin/activate
+   pip install -e . streamlit
+   # optional exports/providers:
+   pip install pandas pyarrow skyfield jplephem
+   ```
+
+2. Ensure Swiss ephemeris files exist and set `SE_EPHE_PATH` (if using swiss provider):
+
+   ```bash
+   export SE_EPHE_PATH="$HOME/.sweph/ephe"    # Windows: $env:SE_EPHE_PATH="C:/sweph"
+   ```
+
+3. (Optional) Pin scan functions by exporting `ASTROENGINE_SCAN_ENTRYPOINTS` (comma/space separated `module:function`):
+
+   ```bash
+   export ASTROENGINE_SCAN_ENTRYPOINTS="astroengine.engine:scan_window astroengine.core.transit_engine:scan_contacts"
+   ```
+
+4. Launch the app:
+
+   ```bash
+   streamlit run apps/streamlit_transit_scanner.py
+   ```
+
+* **Scan Transits**: choose provider/time window/bodies/targets; optionally pin an entrypoint; previews canonical events and exports to SQLite/Parquet.
+* **Swiss Smoketest**: runs `scripts/swe_smoketest.py` to validate Swiss setup.
+* The sidebar lists detected scan entrypoints and environment overrides; install `pandas` for the tabular preview.
+
+> If import fails about `get_se_ephe_path`, this CP also restores `astroengine/ephemeris/utils.py`.
+
+# >>> AUTO-GEN END: Minimal App Quickstart v1.1
+
 # >>> AUTO-GEN BEGIN: README Import Snippet v1.0
 ### Import the package
 

@@ -1,35 +1,25 @@
-"""Swiss Ephemeris path helpers."""
-
+# >>> AUTO-GEN BEGIN: Ephemeris Utils v1.0
 from __future__ import annotations
-
 import os
 from pathlib import Path
-from typing import Optional
 
-
-def get_se_ephe_path(preferred: Optional[str] = None) -> Optional[str]:
-    """Resolve the Swiss Ephemeris data directory.
-
-    The helper checks the provided path first, then the ``SWISSEPH_PATH``
-    environment variable, and finally common installation locations. It returns
-    ``None`` when no candidate is available so callers can fall back gracefully.
+def get_se_ephe_path() -> str | None:
     """
-
-    if preferred:
-        candidate = Path(preferred).expanduser()
-        if candidate.exists():
-            return str(candidate)
-    env_path = os.environ.get("SWISSEPH_PATH")
-    if env_path:
-        candidate = Path(env_path).expanduser()
-        if candidate.exists():
-            return str(candidate)
-    defaults = [
-        Path.home() / "swisseph",
-        Path("/usr/share/ephe"),
-        Path("/usr/local/share/ephe"),
-    ]
-    for candidate in defaults:
-        if candidate.exists():
-            return str(candidate)
+    Return the Swiss Ephemeris data directory, or None if unknown.
+    Resolution order:
+    1) SE_EPHE_PATH env var
+    2) Common locations (~/.sweph/ephe, ~/.sweph, /usr/share/astro/se, C:\\sweph)
+    """
+    p = os.getenv("SE_EPHE_PATH")
+    if p:
+        return p
+    for c in (
+        Path.home() / ".sweph" / "ephe",
+        Path.home() / ".sweph",
+        Path("/usr/share/astro/se"),
+        Path("C:/sweph"),
+    ):
+        if c.exists():
+            return str(c)
     return None
+# >>> AUTO-GEN END: Ephemeris Utils v1.0
