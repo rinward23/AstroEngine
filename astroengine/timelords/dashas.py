@@ -1,34 +1,21 @@
-
-"""Vimsottari dasha timelines derived from the natal Moon nakshatra."""
-
-from __future__ import annotations
-
-from typing import List
-
-from ..detectors.common import iso_to_jd, jd_to_iso, moon_lon
-from ..events import DashaPeriod
-
-__all__ = ["vimsottari_dashas"]
-
-
-_DASHA_SEQUENCE: tuple[str, ...] = (
-
-"""Vimshottari dasha timelines derived from the Moon's nakshatra."""
+"""Vimśottarī daśā utilities."""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import Sequence
+from typing import List, Sequence
 
-from ..detectors.common import UNIX_EPOCH_JD
-from ..events import DashaPeriodEvent
+from ..detectors.common import UNIX_EPOCH_JD, iso_to_jd, jd_to_iso, moon_lon
+from ..events import DashaPeriod, DashaPeriodEvent
 from ..utils.angles import norm360
 
+__all__ = ["vimsottari_dashas", "compute_vimshottari_dasha"]
+
 YEAR_IN_DAYS = 365.2425
+SIDEREAL_YEAR_DAYS = 365.25636
 NAKSHATRA_SIZE = 360.0 / 27.0
 
-_DASHA_ORDER = [
-
+_DASHA_SEQUENCE: tuple[str, ...] = (
     "Ketu",
     "Venus",
     "Sun",
@@ -38,14 +25,9 @@ _DASHA_ORDER = [
     "Jupiter",
     "Saturn",
     "Mercury",
-
 )
 
-
-]
-
 _DASHA_YEARS = {
-
     "Ketu": 7.0,
     "Venus": 20.0,
     "Sun": 6.0,
@@ -57,23 +39,21 @@ _DASHA_YEARS = {
     "Mercury": 17.0,
 }
 
-_TOTAL_SEQUENCE_YEARS = sum(_DASHA_LENGTH_YEARS.values())
-_NAKSHATRA_DEG = 360.0 / 27.0
-_SIDEREAL_YEAR_DAYS = 365.25636
+_TOTAL_SEQUENCE_YEARS = float(sum(_DASHA_YEARS.values()))
 
 
 def _major_index_and_fraction(natal_jd: float) -> tuple[int, float]:
     moon_longitude = moon_lon(natal_jd) % 360.0
-    nak_index = int(moon_longitude // _NAKSHATRA_DEG)
-    within = moon_longitude - nak_index * _NAKSHATRA_DEG
-    fraction = within / _NAKSHATRA_DEG
+    nak_index = int(moon_longitude // NAKSHATRA_SIZE)
+    within = moon_longitude - nak_index * NAKSHATRA_SIZE
+    fraction = within / NAKSHATRA_SIZE
     major_index = nak_index % len(_DASHA_SEQUENCE)
     return major_index, fraction
 
 
 def _major_start_jd(natal_jd: float, major_index: int, fraction: float) -> float:
     major_lord = _DASHA_SEQUENCE[major_index]
-    major_days = _DASHA_LENGTH_YEARS[major_lord] * _SIDEREAL_YEAR_DAYS
+    major_days = _DASHA_YEARS[major_lord] * SIDEREAL_YEAR_DAYS
     elapsed_days = major_days * fraction
     return natal_jd - elapsed_days
 
@@ -90,7 +70,7 @@ def _iterate_major_periods(
     first = True
     while current_start <= end_jd:
         lord = _DASHA_SEQUENCE[index]
-        length_days = _DASHA_LENGTH_YEARS[lord] * _SIDEREAL_YEAR_DAYS
+        length_days = _DASHA_YEARS[lord] * SIDEREAL_YEAR_DAYS
         current_end = current_start + length_days
         yield index, lord, current_start, current_end, (fraction if first else 0.0)
         current_start = current_end
@@ -110,7 +90,7 @@ def _sub_periods(
     for offset in range(len(_DASHA_SEQUENCE)):
         sub_index = (major_index + offset) % len(_DASHA_SEQUENCE)
         sub_lord = _DASHA_SEQUENCE[sub_index]
-        fraction = _DASHA_LENGTH_YEARS[sub_lord] / _TOTAL_SEQUENCE_YEARS
+        fraction = _DASHA_YEARS[sub_lord] / _TOTAL_SEQUENCE_YEARS
         sub_start_fraction = cumulative
         sub_end_fraction = cumulative + fraction
         cumulative = sub_end_fraction
@@ -133,7 +113,7 @@ def vimsottari_dashas(
     *,
     include_partial: bool = True,
 ) -> List[DashaPeriod]:
-    """Return Vimsottari dasha sub-periods intersecting ``start_ts`` → ``end_ts``."""
+    """Return Vimśottarī daśā sub-periods intersecting ``start_ts`` → ``end_ts``."""
 
     start_jd = iso_to_jd(start_ts)
     end_jd = iso_to_jd(end_ts)
@@ -153,7 +133,9 @@ def vimsottari_dashas(
         if seg_end < start_jd and not include_partial:
             continue
 
-        for sub_idx, sub_lord, sub_start, sub_end in _sub_periods(idx, seg_start, seg_end, start_frac):
+        for sub_idx, sub_lord, sub_start, sub_end in _sub_periods(
+            idx, seg_start, seg_end, start_frac
+        ):
             if sub_end < start_jd and not include_partial:
                 continue
             if sub_end < start_jd:
@@ -178,10 +160,6 @@ def vimsottari_dashas(
 
     periods.sort(key=lambda period: period.jd)
     return periods
-
-_TOTAL_CYCLE_YEARS = sum(_DASHA_YEARS.values())
-
-__all__ = ["compute_vimshottari_dasha"]
 
 
 def _ensure_utc(moment: datetime) -> datetime:
@@ -211,8 +189,8 @@ def _generate_antar_periods(
     if maha_start >= maha_end:
         return []
 
-    order = _DASHA_ORDER[ruler_index:] + _DASHA_ORDER[:ruler_index]
-    parent = _DASHA_ORDER[ruler_index]
+    order = _DASHA_SEQUENCE[ruler_index:] + _DASHA_SEQUENCE[:ruler_index]
+    parent = _DASHA_SEQUENCE[ruler_index]
     current = maha_start
     remaining_skip = max(skip_years, 0.0)
     produced_years = 0.0
@@ -222,7 +200,7 @@ def _generate_antar_periods(
     epsilon = timedelta(days=1e-6)
 
     for sub in order:
-        full_years = maha_total_years * (_DASHA_YEARS[sub] / _TOTAL_CYCLE_YEARS)
+        full_years = maha_total_years * (_DASHA_YEARS[sub] / _TOTAL_SEQUENCE_YEARS)
         if remaining_skip >= full_years:
             remaining_skip -= full_years
             continue
@@ -290,8 +268,8 @@ def compute_vimshottari_dasha(
     start = _ensure_utc(start)
     longitude = norm360(moon_longitude_deg)
     nak_index = int(longitude // NAKSHATRA_SIZE)
-    ruler_index = nak_index % len(_DASHA_ORDER)
-    ruler = _DASHA_ORDER[ruler_index]
+    ruler_index = nak_index % len(_DASHA_SEQUENCE)
+    ruler = _DASHA_SEQUENCE[ruler_index]
     total_years = _DASHA_YEARS[ruler]
     offset = longitude % NAKSHATRA_SIZE
     fraction_elapsed = offset / NAKSHATRA_SIZE
@@ -300,9 +278,9 @@ def compute_vimshottari_dasha(
     events: list[DashaPeriodEvent] = []
 
     for cycle in range(cycles):
-        for offset_index in range(len(_DASHA_ORDER)):
-            idx = (ruler_index + offset_index) % len(_DASHA_ORDER)
-            lord = _DASHA_ORDER[idx]
+        for offset_index in range(len(_DASHA_SEQUENCE)):
+            idx = (ruler_index + offset_index) % len(_DASHA_SEQUENCE)
+            lord = _DASHA_SEQUENCE[idx]
             full_years = _DASHA_YEARS[lord]
             if cycle == 0 and offset_index == 0:
                 skip_years = min(elapsed_years, full_years)
@@ -340,4 +318,3 @@ def compute_vimshottari_dasha(
                 )
             current = maha_end
     return events
-

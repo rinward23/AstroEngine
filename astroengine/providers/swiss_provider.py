@@ -1,24 +1,21 @@
-# >>> AUTO-GEN BEGIN: AE Swiss Provider v1.0
+"""Swiss ephemeris provider integrating the :class:`SwissEphemerisAdapter`."""
+
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Dict, Iterable
 
-
-
 from astroengine.canonical import BodyPosition
-from astroengine.core.time import TimeConversion, to_tt
-from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation, TimeScaleContext
+from astroengine.chart.config import ChartConfig
+from astroengine.core.time import to_tt
+from astroengine.ephemeris import ObserverLocation, TimeScaleContext, SwissEphemerisAdapter
 
-from astroengine.ephemeris.utils import get_se_ephe_path
-
-try:
-    import swisseph as swe  # pyswisseph imports the module name 'swisseph'
+try:  # pragma: no cover - optional dependency guard
+    import swisseph as swe
 except Exception:  # pragma: no cover
     swe = None
 
-try:  # pragma: no cover - exercised via runtime fallback
+try:  # pragma: no cover - runtime fallback support
     from pymeeus.Epoch import Epoch
     from pymeeus.Jupiter import Jupiter as _Jupiter
     from pymeeus.Mars import Mars as _Mars
@@ -52,111 +49,147 @@ except Exception:  # pragma: no cover
 
 from . import register_provider
 
+__all__ = ["SwissProvider"]
+
 _BODY_IDS = {
-    "sun": 0,
-    "moon": 1,
-    "mercury": 2,
-    "venus": 3,
-    "mars": 4,
-    "jupiter": 5,
-    "saturn": 6,
-    "uranus": 7,
-    "neptune": 8,
-    "pluto": 9,
+    "sun": swe.SUN if swe is not None else None,
+    "moon": swe.MOON if swe is not None else None,
+    "mercury": swe.MERCURY if swe is not None else None,
+    "venus": swe.VENUS if swe is not None else None,
+    "mars": swe.MARS if swe is not None else None,
+    "jupiter": swe.JUPITER if swe is not None else None,
+    "saturn": swe.SATURN if swe is not None else None,
+    "uranus": swe.URANUS if swe is not None else None,
+    "neptune": swe.NEPTUNE if swe is not None else None,
+    "pluto": swe.PLUTO if swe is not None else None,
 }
 
 
 class SwissProvider:
+    """Ephemeris provider backed by :class:`SwissEphemerisAdapter`."""
+
     def __init__(self) -> None:
         if swe is None:
             raise ImportError("pyswisseph is not installed")
-        eph = get_se_ephe_path()
-        if eph:
-            swe.set_ephe_path(eph)
-        self._config = EphemerisConfig(ephemeris_path=str(eph) if eph else None)
-        self._adapter = EphemerisAdapter(self._config)
+        self._chart_config = ChartConfig()
+        self._topocentric = False
+        self._observer: ObserverLocation | None = None
+        self._time_scale = TimeScaleContext()
+        self._adapter = self._create_adapter()
 
-    def configure(
-        self,
-        *,
-        topocentric: bool | None = None,
-        observer: ObserverLocation | None = None,
-        sidereal: bool | None = None,
-        time_scale: TimeScaleContext | None = None,
-    ) -> None:
-        """Update ephemeris configuration used by the provider."""
-
-        cfg = self._config
-        updates: dict[str, object] = {}
-        if topocentric is not None:
-            updates["topocentric"] = topocentric
-        if observer is not None or (topocentric is False and cfg.observer is not None):
-            updates["observer"] = observer
-        if sidereal is not None:
-            updates["sidereal"] = sidereal
-        if time_scale is not None:
-            updates["time_scale"] = time_scale
-        if updates:
-            cfg = replace(cfg, **updates)
-            self._config = cfg
-            self._adapter = EphemerisAdapter(cfg)
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+    def _create_adapter(self) -> SwissEphemerisAdapter:
+        return SwissEphemerisAdapter(
+            chart_config=self._chart_config,
+            topocentric=self._topocentric,
+            observer=self._observer,
+            time_scale=self._time_scale,
+        )
 
     @staticmethod
     def _normalize_iso(iso_utc: str) -> datetime:
         dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
         return dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
-    def _time_conversion(self, iso_utc: str) -> TimeConversion:
-        return to_tt(self._normalize_iso(iso_utc))
+    def _reconfigure_chart(
+        self,
+        *,
+        zodiac: str | None = None,
+        ayanamsha: str | None = None,
+        house_system: str | None = None,
+    ) -> None:
+        current = self._chart_config
+        zodiac_target = (zodiac or current.zodiac).lower()
+        house_target = house_system or current.house_system
+        ayan_target: str | None = None
+        if zodiac_target == "sidereal":
+            ayan_target = ayanamsha or current.ayanamsha
+        elif current.zodiac == "sidereal" and zodiac is None:
+            ayan_target = ayanamsha or current.ayanamsha
+
+        data = {"zodiac": zodiac_target, "house_system": house_target}
+        if ayan_target is not None:
+            data["ayanamsha"] = ayan_target
+        self._chart_config = ChartConfig(**data)
 
     def _body_id(self, name: str) -> int:
         key = name.lower()
-        if key not in _BODY_IDS:
-            raise KeyError(key)
-        return _BODY_IDS[key]
+        value = _BODY_IDS.get(key)
+        if value is None:
+            raise KeyError(f"Unknown or unsupported body '{name}'")
+        return int(value)
+
+    def _refresh_adapter(self) -> None:
+        self._adapter = self._create_adapter()
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+    def configure(
+        self,
+        *,
+        topocentric: bool | None = None,
+        observer: ObserverLocation | None = None,
+        sidereal: bool | None = None,
+        ayanamsha: str | None = None,
+        house_system: str | None = None,
+        time_scale: TimeScaleContext | None = None,
+    ) -> None:
+        """Update ephemeris configuration used by the provider."""
+
+        if topocentric is not None:
+            if topocentric and observer is None and self._observer is None:
+                raise ValueError("topocentric mode requires an observer location")
+            self._topocentric = topocentric
+            if not topocentric:
+                self._observer = None
+        if observer is not None:
+            self._observer = observer
+            if topocentric is None:
+                self._topocentric = True
+        if sidereal is not None:
+            zodiac = "sidereal" if sidereal else "tropical"
+        else:
+            zodiac = None
+        if time_scale is not None:
+            self._time_scale = time_scale
+        self._reconfigure_chart(
+            zodiac=zodiac,
+            ayanamsha=ayanamsha,
+            house_system=house_system,
+        )
+        self._refresh_adapter()
 
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str]
     ) -> Dict[str, Dict[str, float]]:
-
-        dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
-        dt_utc = dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-
-        adapter = SwissEphemerisAdapter.get_default_adapter()
-        jd_ut = adapter.julian_day(dt_utc)
-
-        conversion = self._time_conversion(iso_utc)
-
-        out: Dict[str, Dict[str, float]] = {}
+        conversion = to_tt(self._normalize_iso(iso_utc))
+        jd_ut = conversion.jd_utc
+        results: Dict[str, Dict[str, float]] = {}
         for name in bodies:
             try:
                 body_id = self._body_id(name)
             except KeyError:
                 continue
-
-            ipl = _BODY_IDS[name.lower()]
-            position = adapter.body_position(jd_ut, ipl, body_name=name)
-            out[name] = {
-                "lon": position.longitude,
-                "decl": position.latitude,
+            position = self._adapter.body_position(jd_ut, body_id, body_name=name)
+            results[name] = {
+                "lon": position.longitude % 360.0,
+                "decl": position.declination,
                 "speed_lon": position.speed_longitude,
-
-            sample = self._adapter.sample(body_id, conversion)
-            out[name] = {
-                "lon": sample.longitude % 360.0,
-                "decl": sample.declination,
-                "speed_lon": sample.speed_longitude,
-
             }
-        return out
+        return results
 
     def position(self, body: str, ts_utc: str) -> BodyPosition:
-        sample = self._adapter.sample(self._body_id(body), self._time_conversion(ts_utc))
+        conversion = to_tt(self._normalize_iso(ts_utc))
+        body_id = self._body_id(body)
+        position = self._adapter.body_position(conversion.jd_utc, body_id, body_name=body)
         return BodyPosition(
-            lon=sample.longitude % 360.0,
-            lat=sample.latitude,
-            dec=sample.declination,
-            speed_lon=sample.speed_longitude,
+            lon=position.longitude % 360.0,
+            lat=position.latitude,
+            dec=position.declination,
+            speed_lon=position.speed_longitude,
         )
 
 
@@ -267,4 +300,3 @@ def _register() -> None:
 
 
 _register()
-# >>> AUTO-GEN END: AE Swiss Provider v1.0

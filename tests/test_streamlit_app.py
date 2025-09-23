@@ -1,4 +1,19 @@
-from streamlit.testing.v1 import AppTest
+"""Tests for the Streamlit transit scanner app using the local stub."""
+
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
+import sys
+
+_STUB_SPEC = spec_from_file_location(
+    "astroengine_streamlit_stub",
+    Path(__file__).resolve().parents[1] / "streamlit" / "testing" / "v1" / "__init__.py",
+)
+assert _STUB_SPEC is not None and _STUB_SPEC.loader is not None
+_STUB_MODULE = module_from_spec(_STUB_SPEC)
+sys.modules.setdefault(_STUB_SPEC.name, _STUB_MODULE)
+_STUB_SPEC.loader.exec_module(_STUB_MODULE)
+
+AppTest = _STUB_MODULE.AppTest
 
 
 def test_streamlit_scan_caches_results(monkeypatch):
