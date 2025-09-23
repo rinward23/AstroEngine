@@ -1,4 +1,3 @@
-
 """Streamlit UI for running AstroEngine transit scans interactively."""
 
 
@@ -22,13 +21,11 @@ from astroengine.app_api import (
     canonicalize_events,
     run_scan_or_raise,
 )
-
 from astroengine.chart.config import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,
     VALID_ZODIAC_SYSTEMS,
 )
-
 from astroengine.exporters import write_parquet_canonical, write_sqlite_canonical
 from astroengine.exporters_ics import ics_bytes_from_events
 from astroengine.utils import (
@@ -37,14 +34,7 @@ from astroengine.utils import (
     DETECTOR_NAMES,
     TARGET_FRAME_BODIES,
     available_frames,
-
     expand_targets,
-)
-from astroengine.chart.config import (
-    DEFAULT_SIDEREAL_AYANAMSHA,
-    SUPPORTED_AYANAMSHAS,
-    VALID_ZODIAC_SYSTEMS,
-
 )
 
 

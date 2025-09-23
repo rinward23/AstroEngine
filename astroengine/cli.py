@@ -9,22 +9,13 @@ import sys
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-
-from typing import Iterable, Sequence, Any, Optional
-
-
-from . import engine as engine_module
-
-from .engine import events_to_dicts, scan_contacts, TargetFrameResolver
-
-from .chart.config import ChartConfig, VALID_HOUSE_SYSTEMS, VALID_ZODIAC_SYSTEMS
-from .detectors.ingress import find_ingresses
-
-from typing import Any, Iterable, List, Mapping, Sequence
+from typing import Any, Iterable, List, Mapping, Optional, Sequence
 
 from . import engine as engine_module
 from .app_api import canonicalize_events, run_scan_or_raise
 from .astro.declination import available_antiscia_axes
+from .chart import ChartLocation, NatalChart, compute_natal_chart
+from .chart.composite import compute_composite_chart
 from .chart.config import (
     ChartConfig,
     DEFAULT_SIDEREAL_AYANAMSHA,
@@ -33,8 +24,13 @@ from .chart.config import (
     VALID_ZODIAC_SYSTEMS,
 )
 from .detectors.ingress import find_ingresses
-from .engine import events_to_dicts, scan_contacts
-from .ephemeris import EphemerisConfig, ObserverLocation, SwissEphemerisAdapter, TimeScaleContext
+from .engine import TargetFrameResolver, events_to_dicts, scan_contacts
+from .ephemeris import (
+    EphemerisConfig,
+    ObserverLocation,
+    SwissEphemerisAdapter,
+    TimeScaleContext,
+)
 from .exporters_ics import (
     DEFAULT_DESCRIPTION_TEMPLATE as ICS_DEFAULT_DESCRIPTION_TEMPLATE,
     DEFAULT_SUMMARY_TEMPLATE as ICS_DEFAULT_SUMMARY_TEMPLATE,
@@ -42,34 +38,23 @@ from .exporters_ics import (
     write_ics_calendar,
     write_ics_canonical,
 )
-
-from .astro.declination import available_antiscia_axes
-from .ephemeris import EphemerisConfig, ObserverLocation, SwissEphemerisAdapter, TimeScaleContext
-
+from .infrastructure.storage.sqlite import SQLiteMigrator, ensure_sqlite_schema
+from .infrastructure.storage.sqlite.query import top_events_by_score
 from .narrative import compose_narrative, summarize_top_events
 from .pipeline.provision import is_provisioned, provision_ephemeris  # ENSURE-LINE
 from .plugins import ExportContext, get_plugin_manager
 from .providers import list_providers
-
-
 from .timelords import TimelordCalculator, active_timelords
 from .timelords.context import build_context
-
 from .timelords.dashas import compute_vimshottari_dasha
 from .timelords.zr import compute_zodiacal_releasing
-
-from .validation import (
-    SchemaValidationError,
-    available_schema_keys,
-    validate_payload,
-)
-
-from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
-
-
-from .chart import ChartLocation, NatalChart, compute_natal_chart
-from .chart.composite import compute_composite_chart
-
+from .userdata.vault import (
+    Natal,
+    delete_natal,
+    list_natals,
+    load_natal,
+    save_natal,
+)  # ENSURE-LINE
 from .utils import (
     DEFAULT_TARGET_FRAMES,
     DEFAULT_TARGET_SELECTION,
@@ -78,14 +63,14 @@ from .utils import (
     available_frames,
     expand_targets,
 )
-
-from .infrastructure.storage.sqlite import SQLiteMigrator, ensure_sqlite_schema
-from .infrastructure.storage.sqlite.query import top_events_by_score
-
-
-from .ux.plugins import setup_cli as setup_plugins
 from .ux.maps import astrocartography_lines, local_space_vectors
+from .ux.plugins import setup_cli as setup_plugins
 from .ux.timelines import outer_cycle_windows
+from .validation import (
+    SchemaValidationError,
+    available_schema_keys,
+    validate_payload,
+)
 
 
 def _ensure_subparsers(parser: argparse.ArgumentParser) -> argparse._SubParsersAction:
@@ -139,16 +124,6 @@ def cmd_natal_delete(args: argparse.Namespace) -> int:
         return 0
     print(f"natal '{args.natal_id}' not found", file=sys.stderr)
     return 1
-
-def _ensure_subparsers(parser: argparse.ArgumentParser) -> argparse._SubParsersAction:
-    subparsers = getattr(parser, "_ae_subparsers", None)
-    if subparsers is None:
-        subparsers = parser.add_subparsers(dest="command")
-        parser._ae_subparsers = subparsers
-    return subparsers
-
-
-
 
 def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
     if getattr(parser, "_ae_natals_added", False):
@@ -239,52 +214,6 @@ def cmd_plugins(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(payload, indent=2))
     return 0
-
-
-
-def cmd_natal_list(_: argparse.Namespace) -> int:
-    natals = list_natals()
-    if not natals:
-        print("No natals stored.")
-        return 0
-    for natal_id in natals:
-        print(natal_id)
-    return 0
-
-
-def cmd_natal_show(args: argparse.Namespace) -> int:
-    try:
-        natal = load_natal(args.natal_id)
-    except FileNotFoundError:
-        print(f"natal '{args.natal_id}' not found", file=sys.stderr)
-        return 1
-    print(json.dumps(asdict(natal), indent=2))
-    return 0
-
-
-def cmd_natal_save(args: argparse.Namespace) -> int:
-    natal = Natal(
-        natal_id=args.natal_id,
-        name=args.name,
-        utc=args.utc,
-        lat=args.lat,
-        lon=args.lon,
-        tz=args.tz,
-        place=args.place,
-    )
-    path = save_natal(natal)
-    print(f"Saved natal '{args.natal_id}' to {path}")
-    return 0
-
-
-def cmd_natal_delete(args: argparse.Namespace) -> int:
-    if delete_natal(args.natal_id):
-        print(f"Deleted natal '{args.natal_id}'")
-        return 0
-    print(f"natal '{args.natal_id}' not found", file=sys.stderr)
-    return 1
-
-
 def cmd_cache_info(_: argparse.Namespace) -> int:
     from .cache.positions_cache import CACHE_DIR, DB as POSITIONS_DB
     import sqlite3
