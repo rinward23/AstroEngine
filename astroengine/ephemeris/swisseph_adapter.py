@@ -438,19 +438,3 @@ class SwissEphemerisAdapter:
         return self._is_sidereal
 
 
-    def _resolve_house_system(self, system: str | None) -> tuple[str, bytes]:
-        if system is None:
-            key = self.chart_config.house_system.lower()
-        else:
-            key = system.lower()
-
-        code = self._HOUSE_SYSTEM_CODES.get(key)
-        if code is not None:
-            return key, code
-
-        if len(key) == 1:
-            return key, key.upper().encode("ascii")
-
-        raise ValueError(f"Unsupported house system '{system}'")
-
-

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from dataclasses import asdict, is_dataclass
@@ -391,8 +392,6 @@ with st.sidebar:
             merged_options.append(existing)
 
     targets = st.multiselect(
-ct(
-
         "Targets",
         options=merged_options,
         default=st.session_state.get(
@@ -409,8 +408,6 @@ ct(
         key="scan_sidereal",
         on_change=_mark_custom,
     )
-
-    profile_id = st.text_input(
 
     ayanamsha_value = st.session_state.get("scan_ayanamsha", "lahiri")
     if sidereal:
@@ -557,6 +554,7 @@ with col_scan:
             st.session_state.get("scan_ayanamsha"),
             frames,
             entrypoint_arg,
+            st.session_state.get("scan_zodiac"),
         )
         session_cache = st.session_state.setdefault("scan_cache", {})
         from_cache = cache_key in session_cache
@@ -577,6 +575,7 @@ with col_scan:
                 st.session_state.get("scan_ayanamsha"),
                 frames,
                 entrypoint_arg,
+                st.session_state.get("scan_zodiac", "tropical"),
             )
             session_cache[cache_key] = (raw_events, canonical_events, used_entrypoint)
         st.session_state["scan_results"] = (raw_events, canonical_events, used_entrypoint)

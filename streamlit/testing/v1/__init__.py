@@ -9,6 +9,9 @@ from typing import Any, Dict
 
 import streamlit as st
 
+from ... import set_runtime
+from ..._runtime import StreamlitRuntime
+
 
 def _reset_widgets() -> None:
     st._WIDGETS["main"].clear()  # type: ignore[attr-defined]
@@ -17,6 +20,11 @@ def _reset_widgets() -> None:
 
 
 def _run_app(path: Path) -> None:
+    runtime = getattr(st, "_RUNTIME", None)
+    if runtime is None:
+        runtime = StreamlitRuntime()
+        set_runtime(runtime)
+    runtime.prepare_for_run()
     _reset_widgets()
     runpy.run_path(str(path), run_name="__main__")
 

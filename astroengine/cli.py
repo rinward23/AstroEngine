@@ -1664,15 +1664,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--aspects", help="Comma-separated aspect angles for natal aspect detectors")
     parser.add_argument("--orb", type=float, help="Orb allowance in degrees for natal aspect detectors")
 
-    # --zodiac and --ayanamsha are defined above for the top-level CLI; avoid
-    # redefining them here so argparse does not raise duplicate option errors.
-    parser.add_argument(
-        "--house-system",
-        choices=sorted(VALID_HOUSE_SYSTEMS),
-        default="placidus",
-        help="Preferred house system for derived charts",
-    )
-
     parser.add_argument("--lunations", action="store_true", help="Run lunation detector")
     parser.add_argument("--eclipses", action="store_true", help="Run eclipse detector")
     parser.add_argument("--stations", action="store_true", help="Run planetary station detector")
