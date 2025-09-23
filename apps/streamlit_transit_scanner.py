@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from dataclasses import asdict, is_dataclass
@@ -20,6 +21,21 @@ from astroengine.app_api import (
     available_scan_entrypoints,
     canonicalize_events,
     run_scan_or_raise,
+)
+from astroengine.chart.config import (
+    DEFAULT_SIDEREAL_AYANAMSHA,
+    SUPPORTED_AYANAMSHAS,
+    VALID_ZODIAC_SYSTEMS,
+)
+from astroengine.exporters import write_parquet_canonical, write_sqlite_canonical
+from astroengine.exporters_ics import ics_bytes_from_events
+from astroengine.utils import (
+    DEFAULT_TARGET_FRAMES,
+    DEFAULT_TARGET_SELECTION,
+    DETECTOR_NAMES,
+    TARGET_FRAME_BODIES,
+    available_frames,
+    expand_targets,
 )
 
 from astroengine.chart.config import (
@@ -367,6 +383,7 @@ with st.sidebar:
         default=st.session_state.get("scan_moving", ["Sun", "Mars", "Jupiter"]),
         key="scan_moving",
         on_change=_mark_custom,
+
     )
 
     st.header("Frames & Targets")
@@ -378,6 +395,7 @@ with st.sidebar:
         key="scan_frames",
         on_change=_mark_custom,
     )
+
     selected_frames = frame_selection or list(DEFAULT_TARGET_FRAMES)
     merged_options: List[str] = []
     for frame in selected_frames:
@@ -391,7 +409,6 @@ with st.sidebar:
             merged_options.append(existing)
 
     targets = st.multiselect(
-ct(
 
         "Targets",
         options=merged_options,
@@ -408,9 +425,8 @@ ct(
         value=st.session_state.get("scan_sidereal", False),
         key="scan_sidereal",
         on_change=_mark_custom,
-    )
 
-    profile_id = st.text_input(
+    )
 
     ayanamsha_value = st.session_state.get("scan_ayanamsha", "lahiri")
     if sidereal:
@@ -434,6 +450,7 @@ ct(
         key="scan_profile",
         on_change=_mark_custom,
     )
+
 
     if st.session_state.get("scan_provider") in {"swiss", "auto"} and not se_path:
         st.warning(
@@ -557,6 +574,9 @@ with col_scan:
             st.session_state.get("scan_ayanamsha"),
             frames,
             entrypoint_arg,
+
+            st.session_state.get("scan_zodiac"),
+
         )
         session_cache = st.session_state.setdefault("scan_cache", {})
         from_cache = cache_key in session_cache
@@ -577,6 +597,9 @@ with col_scan:
                 st.session_state.get("scan_ayanamsha"),
                 frames,
                 entrypoint_arg,
+
+                st.session_state.get("scan_zodiac", "tropical"),
+
             )
             session_cache[cache_key] = (raw_events, canonical_events, used_entrypoint)
         st.session_state["scan_results"] = (raw_events, canonical_events, used_entrypoint)

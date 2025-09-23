@@ -7,7 +7,8 @@ import datetime as dt
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from typing import Iterable, List, Mapping, MutableMapping
+from typing import Any, Iterable, List, Mapping, MutableMapping
+
 
 
 
@@ -32,8 +33,6 @@ from .exporters import LegacyTransitEvent
 from .infrastructure.paths import profiles_dir
 from .plugins import DetectorContext, get_plugin_manager
 
-
-from .infrastructure.paths import profiles_dir
 from .providers import get_provider
 from .profiles import load_base_profile, load_resonance_weights
 from .scoring import ScoreInputs, compute_score
@@ -626,14 +625,35 @@ def scan_contacts(
     step_minutes: int = 60,
     aspects_policy_path: str | None = None,
 
-
     provider: object | None = None,
     target_frame: str = "transit",
     target_resolver: TargetFrameResolver | None = None,
+    timelord_calculator: TimelordCalculator | None = None,
+    chart_config: ChartConfig | None = None,
+
+    profile: Mapping[str, Any] | None = None,
+    profile_id: str | None = None,
+    include_declination: bool = True,
+    include_mirrors: bool = True,
+    include_aspects: bool = True,
+    antiscia_axis: str | None = None,
+
+    tradition_profile: str | None = None,
+    chart_sect: str | None = None,
 ) -> List[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
 
     base_provider = provider or get_provider(provider_name)
+    if ephemeris_config is not None:
+        configure = getattr(base_provider, "configure", None)
+        if callable(configure):
+            configure(
+                topocentric=ephemeris_config.topocentric,
+                observer=ephemeris_config.observer,
+                sidereal=ephemeris_config.sidereal,
+                time_scale=ephemeris_config.time_scale,
+            )
+
     frame = (target_frame or "transit").lower()
     resolver = target_resolver
     if resolver is not None and frame != "transit" and resolver.frame != frame:
@@ -643,26 +663,11 @@ def scan_contacts(
             composite_chart=target_resolver.composite_chart,
             static_positions=target_resolver.static_positions,
         )
+
+    scan_provider: object = base_provider
     if resolver is not None and resolver.overrides_target():
-        provider_obj = FrameAwareProvider(base_provider, target, resolver)
-    else:
-        provider_obj = base_provider
+        scan_provider = FrameAwareProvider(base_provider, target, resolver)
 
-    timelord_calculator: TimelordCalculator | None = None,
-
-    chart_config: ChartConfig | None = None,
-
-
-    profile: Mapping[str, Any] | None = None,
-    profile_id: str | None = None,
-    include_declination: bool = True,
-    include_mirrors: bool = True,
-    include_aspects: bool = True,
-    antiscia_axis: str | None = None,
-
-
-) -> List[LegacyTransitEvent]:
-    """Scan for declination, antiscia, and aspect contacts between two bodies."""
 
     if chart_config is not None:
         SwissEphemerisAdapter.configure_defaults(chart_config=chart_config)
@@ -676,13 +681,31 @@ def scan_contacts(
     if isinstance(resonance_section, Mapping):
         bias_section = resonance_section.get("uncertainty_bias")
         if isinstance(bias_section, Mapping):
-            uncertainty_bias_map = {str(key): str(value) for key, value in bias_section.items()}
+
+            uncertainty_bias_map = {
+                str(key): str(value) for key, value in bias_section.items()
+            }
+
     tradition = tradition_profile
-    tradition_section = profile_data.get("tradition") if isinstance(profile_data, Mapping) else None
+    tradition_section = (
+        profile_data.get("tradition") if isinstance(profile_data, Mapping) else None
+    )
+
     if not tradition and isinstance(tradition_section, Mapping):
         default_trad = tradition_section.get("default")
         if isinstance(default_trad, str):
             tradition = default_trad
+
+
+    chart_sect_value = chart_sect
+    natal_section = (
+        profile_data.get("natal") if isinstance(profile_data, Mapping) else None
+    )
+    if not chart_sect_value and isinstance(natal_section, Mapping):
+        candidate_sect = natal_section.get("chart_sect")
+        if isinstance(candidate_sect, str):
+            chart_sect_value = candidate_sect
+
 
     decl_parallel_allow = _resolve_declination_orb(
         profile_data,
@@ -714,7 +737,11 @@ def scan_contacts(
     )
     axis = _resolve_antiscia_axis(profile_data, antiscia_axis)
 
-    feature_flags = profile_data.get("feature_flags")
+
+    feature_flags = (
+        profile_data.get("feature_flags") if isinstance(profile_data, Mapping) else None
+    )
+
     decl_flags: Mapping[str, Any] = {}
     antiscia_flags: Mapping[str, Any] = {}
     if isinstance(feature_flags, Mapping):
@@ -736,6 +763,7 @@ def scan_contacts(
     do_mirrors = include_mirrors and antiscia_enabled
     do_aspects = include_aspects
 
+
     provider = get_provider(provider_name)
     if ephemeris_config is not None:
         configure = getattr(provider, "configure", None)
@@ -747,42 +775,112 @@ def scan_contacts(
                 time_scale=ephemeris_config.time_scale,
             )
 
+
     ticks = list(_iso_ticks(start_iso, end_iso, step_minutes=step_minutes))
 
     events: List[LegacyTransitEvent] = []
 
 
+    def _append_event(event: LegacyTransitEvent) -> None:
+        _attach_timelords(event, timelord_calculator)
+        events.append(event)
 
-    for hit in detect_decl_contacts(
-        provider_obj,
-        ticks,
-        moving,
-        target,
-        decl_parallel_orb,
-        decl_contra_orb,
-    ):
-        allow = decl_parallel_orb if hit.kind == "decl_parallel" else decl_contra_orb
-        events.append(_event_from_decl(hit, orb_allow=allow))
+    if do_declination:
+        for hit in detect_decl_contacts(
+            scan_provider,
+            ticks,
+            moving,
+            target,
+            decl_parallel_allow,
+            decl_contra_allow,
+        ):
+            if hit.kind == "decl_parallel" and not do_parallels:
+                continue
+            if hit.kind == "decl_contra" and not do_contras:
+                continue
+            allow = (
+                decl_parallel_allow if hit.kind == "decl_parallel" else decl_contra_allow
+            )
+            _append_event(
+                _event_from_decl(
+                    hit,
+                    orb_allow=allow,
+                    resonance_weights=resonance_weights_map,
+                    tradition=tradition,
+                    chart_sect=chart_sect_value,
+                    uncertainty_bias=uncertainty_bias_map,
+                )
+            )
 
-    for hit in detect_antiscia_contacts(
-        provider_obj,
-        ticks,
-        moving,
-        target,
-        antiscia_orb,
-        contra_antiscia_orb,
-    ):
-        allow = antiscia_orb if hit.kind == "antiscia" else contra_antiscia_orb
-        events.append(_event_from_decl(hit, orb_allow=allow))
+    if do_mirrors:
+        for hit in detect_antiscia_contacts(
+            scan_provider,
+            ticks,
+            moving,
+            target,
+            antiscia_allow,
+            contra_antiscia_allow,
+            axis=axis,
+        ):
+            allow = (
+                antiscia_allow if hit.kind == "antiscia" else contra_antiscia_allow
+            )
+            _append_event(
+                _event_from_decl(
+                    hit,
+                    orb_allow=allow,
+                    resonance_weights=resonance_weights_map,
+                    tradition=tradition,
+                    chart_sect=chart_sect_value,
+                    uncertainty_bias=uncertainty_bias_map,
+                )
+            )
 
-    for aspect_hit in detect_aspects(
-        provider_obj,
-        ticks,
-        moving,
-        target,
-        policy_path=aspects_policy_path,
-    ):
-        events.append(_event_from_aspect(aspect_hit))
+    if do_aspects:
+        for aspect_hit in detect_aspects(
+            scan_provider,
+            ticks,
+            moving,
+            target,
+            policy_path=aspects_policy_path,
+        ):
+            _append_event(
+                _event_from_aspect(
+                    aspect_hit,
+                    resonance_weights=resonance_weights_map,
+                    tradition=tradition,
+                    chart_sect=chart_sect_value,
+                    uncertainty_bias=uncertainty_bias_map,
+                )
+            )
+
+    plugin_context = DetectorContext(
+        provider=scan_provider,
+        provider_name=provider_name,
+        start_iso=start_iso,
+        end_iso=end_iso,
+        ticks=tuple(ticks),
+        moving=moving,
+        target=target,
+        options={
+            "decl_parallel_orb": decl_parallel_allow,
+            "decl_contra_orb": decl_contra_allow,
+            "antiscia_orb": antiscia_allow,
+            "contra_antiscia_orb": contra_antiscia_allow,
+            "step_minutes": step_minutes,
+            "aspects_policy_path": aspects_policy_path,
+            "include_declination": include_declination,
+            "include_mirrors": include_mirrors,
+            "include_aspects": include_aspects,
+            "antiscia_axis": axis,
+        },
+        existing_events=tuple(events),
+    )
+    plugin_events = get_plugin_manager().run_detectors(plugin_context)
+    if plugin_events:
+        for plugin_event in plugin_events:
+            _append_event(plugin_event)
+
 
     if do_declination:
 
@@ -875,7 +973,6 @@ def scan_contacts(
 
     events.sort(key=lambda event: (event.timestamp, -event.score))
     return events
-
 
 def resolve_provider(name: str | None) -> object:
     """Compatibility shim used by external callers."""

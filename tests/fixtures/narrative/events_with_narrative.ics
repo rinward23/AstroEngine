@@ -1,0 +1,95 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//AstroEngine//Narrative Calendar 1.0//EN
+X-WR-CALNAME:Sample Calendar
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+UID:a3d4ff897d78724469dcea4599439c317e73f88a@astroengine
+DTSTAMP:20250301T080000Z
+DTSTART:20250301T080000Z
+DTEND:20250301T083000Z
+SUMMARY:Venus Aspect_Trine Mars
+DESCRIPTION:Moving: venus\nTarget: mars\nKind: aspect_trine\nOrb: 0.85° (al
+ low 2.00°)\nPhase: Applying\nScore: 88.4\nAngle_Deg: 120.0\nTimelord: {'na
+ me': 'Annual Profection'\, 'description': 'Year of Venus'\, 'weight': 2.0}
+ \n\nNarrative Summary:\nAstroEngine Narrative Summary\nGenerated at 2025-0
+ 3-05T12:00:00Z\n\n\nEvent Highlights\n\nAspect Contacts (score 143.4)\n\n*
+  **Venus Trine Mars** — within 0.85° (allow 2.00°)\, Applying (2025-03-01T
+ 08:00:00Z\, score 88.4)\n\n* **Mars Square Saturn** — within 0.45° (allow 
+ 3.00°)\, Separating (2025-03-04T18:20:00Z\, score 55.0)\n\n\nDeclination A
+ lignments (score 72.0)\n\n* **Sun Decl Parallel Moon** — within 0.12° (all
+ ow 0.50°)\, Separating (2025-03-02T15:30:00Z\, score 72.0)\n\n\nMirror Con
+ tacts (score 65.5)\n\n* **Mercury Antiscia Sun** — within 1.50° (allow 2.0
+ 0°)\, Applying (2025-03-03T09:45:00Z\, score 65.5)\n\n\n\n\n\nDominant Dom
+ ains\n\n* Mind (score 44.4)\n\n\n* Relationships: 61.9\n\n* Cognition: -17
+ .5\n\n\n\n* Spirit (score 26.5)\n\n\n* Growth: 26.5\n\n\n\n* Body (score -
+ 4.1)\n\n\n* Vitality: 23.4\n\n* Habits: -27.5\n\n\n\n\n\n\nTimelord Period
+ s\n\n* Annual Profection — Year of Venus (intensity 2.0)
+END:VEVENT
+BEGIN:VEVENT
+UID:50c88724bbb02f9b18d91ee619acc25efc77a5ec@astroengine
+DTSTAMP:20250302T153000Z
+DTSTART:20250302T153000Z
+DTEND:20250302T160000Z
+SUMMARY:Sun Decl_Parallel Moon
+DESCRIPTION:Moving: sun\nTarget: moon\nKind: decl_parallel\nOrb: 0.12° (all
+ ow 0.50°)\nPhase: Separating\nScore: 72.0\nDec_Moving: 10.23\nDec_Target: 
+ 11.02\n\nNarrative Summary:\nAstroEngine Narrative Summary\nGenerated at 2
+ 025-03-05T12:00:00Z\n\n\nEvent Highlights\n\nAspect Contacts (score 143.4)
+ \n\n* **Venus Trine Mars** — within 0.85° (allow 2.00°)\, Applying (2025-0
+ 3-01T08:00:00Z\, score 88.4)\n\n* **Mars Square Saturn** — within 0.45° (a
+ llow 3.00°)\, Separating (2025-03-04T18:20:00Z\, score 55.0)\n\n\nDeclinat
+ ion Alignments (score 72.0)\n\n* **Sun Decl Parallel Moon** — within 0.12°
+  (allow 0.50°)\, Separating (2025-03-02T15:30:00Z\, score 72.0)\n\n\nMirro
+ r Contacts (score 65.5)\n\n* **Mercury Antiscia Sun** — within 1.50° (allo
+ w 2.00°)\, Applying (2025-03-03T09:45:00Z\, score 65.5)\n\n\n\n\n\nDominan
+ t Domains\n\n* Mind (score 44.4)\n\n\n* Relationships: 61.9\n\n* Cognition
+ : -17.5\n\n\n\n* Spirit (score 26.5)\n\n\n* Growth: 26.5\n\n\n\n* Body (sc
+ ore -4.1)\n\n\n* Vitality: 23.4\n\n* Habits: -27.5\n\n\n\n\n\n\nTimelord P
+ eriods\n\n* Annual Profection — Year of Venus (intensity 2.0)
+END:VEVENT
+BEGIN:VEVENT
+UID:debd30e7d8ddcdb28d9b9393492249151d442433@astroengine
+DTSTAMP:20250303T094500Z
+DTSTART:20250303T094500Z
+DTEND:20250303T101500Z
+SUMMARY:Mercury Antiscia Sun
+DESCRIPTION:Moving: mercury\nTarget: sun\nKind: antiscia\nOrb: 1.50° (allow
+  2.00°)\nPhase: Applying\nScore: 65.5\n\nNarrative Summary:\nAstroEngine N
+ arrative Summary\nGenerated at 2025-03-05T12:00:00Z\n\n\nEvent Highlights\
+ n\nAspect Contacts (score 143.4)\n\n* **Venus Trine Mars** — within 0.85° 
+ (allow 2.00°)\, Applying (2025-03-01T08:00:00Z\, score 88.4)\n\n* **Mars S
+ quare Saturn** — within 0.45° (allow 3.00°)\, Separating (2025-03-04T18:20
+ :00Z\, score 55.0)\n\n\nDeclination Alignments (score 72.0)\n\n* **Sun Dec
+ l Parallel Moon** — within 0.12° (allow 0.50°)\, Separating (2025-03-02T15
+ :30:00Z\, score 72.0)\n\n\nMirror Contacts (score 65.5)\n\n* **Mercury Ant
+ iscia Sun** — within 1.50° (allow 2.00°)\, Applying (2025-03-03T09:45:00Z\
+ , score 65.5)\n\n\n\n\n\nDominant Domains\n\n* Mind (score 44.4)\n\n\n* Re
+ lationships: 61.9\n\n* Cognition: -17.5\n\n\n\n* Spirit (score 26.5)\n\n\n
+ * Growth: 26.5\n\n\n\n* Body (score -4.1)\n\n\n* Vitality: 23.4\n\n* Habit
+ s: -27.5\n\n\n\n\n\n\nTimelord Periods\n\n* Annual Profection — Year of Ve
+ nus (intensity 2.0)
+END:VEVENT
+BEGIN:VEVENT
+UID:1b7cd68c5edee65e06b94e2680c45c1caf141e24@astroengine
+DTSTAMP:20250304T182000Z
+DTSTART:20250304T182000Z
+DTEND:20250304T185000Z
+SUMMARY:Mars Aspect_Square Saturn
+DESCRIPTION:Moving: mars\nTarget: saturn\nKind: aspect_square\nOrb: 0.45° (
+ allow 3.00°)\nPhase: Separating\nScore: 55.0\nAngle_Deg: 90.0\n\nNarrative
+  Summary:\nAstroEngine Narrative Summary\nGenerated at 2025-03-05T12:00:00
+ Z\n\n\nEvent Highlights\n\nAspect Contacts (score 143.4)\n\n* **Venus Trin
+ e Mars** — within 0.85° (allow 2.00°)\, Applying (2025-03-01T08:00:00Z\, s
+ core 88.4)\n\n* **Mars Square Saturn** — within 0.45° (allow 3.00°)\, Sepa
+ rating (2025-03-04T18:20:00Z\, score 55.0)\n\n\nDeclination Alignments (sc
+ ore 72.0)\n\n* **Sun Decl Parallel Moon** — within 0.12° (allow 0.50°)\, S
+ eparating (2025-03-02T15:30:00Z\, score 72.0)\n\n\nMirror Contacts (score 
+ 65.5)\n\n* **Mercury Antiscia Sun** — within 1.50° (allow 2.00°)\, Applyin
+ g (2025-03-03T09:45:00Z\, score 65.5)\n\n\n\n\n\nDominant Domains\n\n* Min
+ d (score 44.4)\n\n\n* Relationships: 61.9\n\n* Cognition: -17.5\n\n\n\n* S
+ pirit (score 26.5)\n\n\n* Growth: 26.5\n\n\n\n* Body (score -4.1)\n\n\n* V
+ itality: 23.4\n\n* Habits: -27.5\n\n\n\n\n\n\nTimelord Periods\n\n* Annual
+  Profection — Year of Venus (intensity 2.0)
+END:VEVENT
+END:VCALENDAR

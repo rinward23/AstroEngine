@@ -14,5 +14,9 @@
 | I-7 | Update governance artefacts | Governance Board | ✅ Complete | 2024-05-27 | Docs listed above | `docs/governance/spec_completion.md`, `docs/governance/acceptance_checklist.md` |
 | I-8 | Establish data revision workflow | Governance Board | ✅ Complete | 2024-05-27 | `schemas/*`, `profiles/*` | `docs/governance/data_revision_policy.md`, revision log entries |
 | I-9 | Capture Solar Fire dataset provenance for runtime outputs | Data Stewardship | 🚧 In progress | 2024-06-15 | Solar Fire exports (transits, returns), planned SQLite indexes | Pending ingestion scripts, checksums to be logged |
+| I-10 | Implement event detector runtime for reserved registry paths | Transit Working Group | ⏳ Planned | 2024-07-15 | `astroengine/modules/event_detectors/`, `docs/module/event-detectors/overview.md` | TODO payloads recorded in registry metadata; awaiting indexed datasets |
+| I-11 | Backfill mundane ingress dataset ingestion | Mundane Astrology Guild | ⏳ Planned | 2024-07-22 | `astroengine/modules/mundane/`, Solar Fire ingress exports | Registry placeholders and TODO lists committed; ingestion scripts pending |
+| I-12 | Finalise narrative bundle persistence and templates | Narrative Collective | ⏳ Planned | 2024-07-29 | `astroengine/modules/narrative/`, `docs/recipes/narrative_profiles.md` | Placeholder channels added; needs provenance logging & regression tests |
+| I-13 | Ship UX overlays with documented data sources | UX & Maps Team | ⏳ Planned | 2024-08-05 | `astroengine/modules/ux/`, `docs/module/interop.md` | Registry placeholders recorded; must document atlas/tz datasets before release |
 
 Future work: add new rows when detectors, providers, or export channels are implemented so progress remains auditable.

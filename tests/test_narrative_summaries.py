@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
 
-from astroengine.narrative import GPTNarrativeClient, summarize_top_events
-from astroengine.timelords.models import TimelordPeriod, TimelordStack
+from astroengine.narrative import summarize_top_events
+from astroengine.narrative.gpt_api import GPTNarrativeClient
+
 
 
 _EVENTS = [
@@ -34,7 +34,6 @@ def test_summarize_top_events_template_fallback() -> None:
     summary = summarize_top_events(_EVENTS, client=GPTNarrativeClient())
     assert summary.startswith("Transit Highlights")
     assert "Sun" in summary
-
 
 def test_summarize_top_events_with_timelords() -> None:
     stack = TimelordStack(

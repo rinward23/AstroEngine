@@ -180,20 +180,9 @@ class SwissEphemerisAdapter:
                 config_kwargs["ayanamsha"] = ayanamsha
             chart = _ChartConfig(**config_kwargs)
         else:
+
+            chart = chart_config
             if zodiac is not None and zodiac.lower() != chart_config.zodiac.lower():
-
-        zodiac_normalized = (zodiac or cls._DEFAULT_ZODIAC).lower()
-        if zodiac_normalized not in {"tropical", "sidereal"}:
-            options = ", ".join(sorted({"tropical", "sidereal"}))
-            raise ValueError(f"Unknown zodiac mode '{zodiac}'. Valid options: {options}")
-        cls._DEFAULT_ZODIAC = zodiac_normalized
-
-        if zodiac_normalized == "sidereal":
-            ayanamsha_value = ayanamsha or cls._DEFAULT_AYANAMSHA or DEFAULT_SIDEREAL_AYANAMSHA
-            normalized = normalize_ayanamsha_name(ayanamsha_value)
-            if normalized not in SUPPORTED_AYANAMSHAS:
-                options = ", ".join(sorted(SUPPORTED_AYANAMSHAS))
-
                 raise ValueError(
                     "zodiac override must match chart_config.zodiac when both are provided"
                 )
@@ -207,10 +196,31 @@ class SwissEphemerisAdapter:
                     raise ValueError(
                         "ayanamsha override must match chart_config.ayanamsha when both are provided"
                     )
-            chart = chart_config
+
+
+        zodiac_value = zodiac or chart.zodiac
+        zodiac_normalized = (zodiac_value or cls._DEFAULT_ZODIAC).lower()
+        if zodiac_normalized not in {"tropical", "sidereal"}:
+            options = ", ".join(sorted({"tropical", "sidereal"}))
+            raise ValueError(f"Unknown zodiac mode '{zodiac_value}'. Valid options: {options}")
+        cls._DEFAULT_ZODIAC = zodiac_normalized
+
+        if zodiac_normalized == "sidereal":
+            ayanamsha_value = (
+                ayanamsha
+                or chart.ayanamsha
+                or cls._DEFAULT_AYANAMSHA
+                or DEFAULT_SIDEREAL_AYANAMSHA
+            )
+            normalized = normalize_ayanamsha_name(ayanamsha_value)
+            if normalized not in SUPPORTED_AYANAMSHAS:
+                options = ", ".join(sorted(SUPPORTED_AYANAMSHAS))
+                raise ValueError(f"Unknown ayanamsha '{ayanamsha_value}'. Valid options: {options}")
+        else:
+            normalized = chart.ayanamsha
 
         cls._DEFAULT_ZODIAC = chart.zodiac
-        cls._DEFAULT_AYANAMSHA = chart.ayanamsha
+        cls._DEFAULT_AYANAMSHA = normalized
 
         cls._DEFAULT_ADAPTER = None
 
@@ -431,6 +441,7 @@ class SwissEphemerisAdapter:
     @property
     def is_sidereal(self) -> bool:
         return self._is_sidereal
+
 
 
     def _resolve_house_system(self, system: str | None) -> tuple[str, bytes]:

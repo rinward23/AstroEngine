@@ -22,10 +22,5 @@ __all__ = [
     "TimelordCalculator",
     "TimelordPeriod",
     "TimelordStack",
-    "compute_vimshottari_dasha",
-    "vimsottari_dashas",
-]
-
-
 
 ]
