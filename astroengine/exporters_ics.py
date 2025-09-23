@@ -1,4 +1,4 @@
-"""ICS export helpers for canonical transit events."""
+"""ICS export helpers for canonical transit events and templated outputs."""
 
 
 from __future__ import annotations
@@ -7,14 +7,20 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Any, Dict, Iterable, Mapping, Sequence
 
-from .canonical import TransitEvent, events_from_any
+from ics.grammar.parse import ContentLine
+
+from .canonical import TransitEvent, event_from_legacy, events_from_any
+from .events import ReturnEvent
 
 __all__ = [
     "canonical_events_to_ics",
     "ics_bytes_from_events",
     "write_ics_canonical",
+    "DEFAULT_DESCRIPTION_TEMPLATE",
+    "DEFAULT_SUMMARY_TEMPLATE",
+    "write_ics",
 ]
 
 _PRODID = "-//AstroEngine//Transit Scanner//EN"
@@ -120,25 +126,11 @@ def write_ics_canonical(
     Path(path).write_text(ics_payload, encoding="utf-8")
     return len(canonical_events)
 
-"""ICS exporter with template-driven summaries for AstroEngine events."""
-
-from __future__ import annotations
-
-import json
-from pathlib import Path
-from typing import Any, Dict, Iterable, Mapping
-
-from .canonical import TransitEvent, event_from_legacy
-from .events import ReturnEvent
-from ics.grammar.parse import ContentLine
-
 DEFAULT_SUMMARY_TEMPLATE = "{label}: {moving} {aspect} {target}"
 DEFAULT_DESCRIPTION_TEMPLATE = (
     "Orb {orb:+.2f}° (|{orb_abs:.2f}°|); "
     "Score {score_label}; Profile {profile_id}; Natal {natal_id}"
 )
-
-__all__ = ["DEFAULT_DESCRIPTION_TEMPLATE", "DEFAULT_SUMMARY_TEMPLATE", "write_ics"]
 
 
 class _TemplateContext(dict):

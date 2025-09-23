@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
-from ..ephemeris import SwissEphemerisAdapter
+from ..ephemeris import BodyPosition, SwissEphemerisAdapter
 
 __all__ = [
     "norm360",
@@ -17,6 +17,7 @@ __all__ = [
     "sun_lon",
     "moon_lon",
     "body_lon",
+    "body_position",
     "solve_zero_crossing",
 ]
 
@@ -68,6 +69,24 @@ class _SwissCtx:
 
 
 _SWISS = _SwissCtx()
+
+_BODY_CODES = {
+    "sun": "SUN",
+    "moon": "MOON",
+    "mercury": "MERCURY",
+    "venus": "VENUS",
+    "mars": "MARS",
+    "jupiter": "JUPITER",
+    "saturn": "SATURN",
+    "uranus": "URANUS",
+    "neptune": "NEPTUNE",
+    "pluto": "PLUTO",
+    "ceres": "CERES",
+    "pallas": "PALLAS",
+    "juno": "JUNO",
+    "vesta": "VESTA",
+    "chiron": "CHIRON",
+}
 
 
 USE_CACHE = False
@@ -163,24 +182,30 @@ def body_lon(jd_ut: float, body_name: str) -> float:
     import swisseph as swe  # type: ignore
 
     name = body_name.lower()
-    code = {
-        "sun": swe.SUN,
-        "moon": swe.MOON,
-        "mercury": swe.MERCURY,
-        "venus": swe.VENUS,
-        "mars": swe.MARS,
-        "jupiter": swe.JUPITER,
-        "saturn": swe.SATURN,
-        "uranus": swe.URANUS,
-        "neptune": swe.NEPTUNE,
-        "pluto": swe.PLUTO,
-        "ceres": swe.CERES,
-        "pallas": swe.PALLAS,
-        "juno": swe.JUNO,
-        "vesta": swe.VESTA,
-        "chiron": swe.CHIRON,
-    }[name]
-    return adapter.body_position(jd_ut, code, body_name=body_name.title()).longitude
+    code_name = _BODY_CODES.get(name)
+    if code_name is None:
+        raise KeyError(name)
+    code = getattr(swe, code_name)
+    position = adapter.body_position(jd_ut, code, body_name=body_name.title())
+    return position.longitude
+
+
+def body_position(jd_ut: float, body_name: str) -> BodyPosition:
+    """Return the canonical body position for ``body_name`` at ``jd_ut``."""
+
+    if not _ensure_swiss():
+        raise RuntimeError("Swiss ephemeris unavailable (data files required)")
+
+    import swisseph as swe  # type: ignore
+
+    name = body_name.lower()
+    code_name = _BODY_CODES.get(name)
+    if code_name is None:
+        raise KeyError(name)
+
+    adapter = SwissEphemerisAdapter.get_default_adapter()
+    code = getattr(swe, code_name)
+    return adapter.body_position(jd_ut, code, body_name=body_name.title())
 
 
 # --- Root finding ------------------------------------------------------------

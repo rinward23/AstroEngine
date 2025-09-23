@@ -22,3 +22,18 @@ def test_serialize_vca_ruleset_matches_registry():
     aspects = rulesets.get_channel("aspects")
     definitions = aspects.get_subchannel("definitions").describe()
     assert payload["id"] == definitions["payload"]["id"]
+
+
+def test_cycles_module_registered():
+    module = DEFAULT_REGISTRY.get_module("cycles")
+    fixedstars = module.get_submodule("fixedstars")
+    parans = fixedstars.get_channel("parans")
+    assert "daily_windows" in parans.subchannels
+    heliacal = fixedstars.get_channel("heliacal")
+    assert "visibility" in heliacal.subchannels
+    generational = module.get_submodule("generational_cycles")
+    outer = generational.get_channel("outer_planets")
+    assert "timeline" in outer.subchannels
+    ages = module.get_submodule("astrological_ages")
+    sidereal = ages.get_channel("sidereal_projection")
+    assert "series" in sidereal.subchannels

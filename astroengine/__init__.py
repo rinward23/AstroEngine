@@ -83,7 +83,8 @@ try:
 except ImportError:  # pragma: no cover - optional legacy surface
     LunationEvent = EclipseEvent = StationEvent = ReturnEvent = None  # type: ignore
     ProgressionEvent = DirectionEvent = ProfectionEvent = OutOfBoundsEvent = None  # type: ignore
-from .fixedstars import skyfield_stars  # ENSURE-LINE
+from . import cycles
+from .fixedstars import parans, skyfield_stars  # ENSURE-LINE
 from .infrastructure.environment import collect_environment_report
 from .infrastructure.environment import main as environment_report_main
 from .maint import main as maint_main  # ENSURE-LINE
@@ -231,6 +232,8 @@ __all__ = [
     "VCA_SENSITIVE_POINTS",
     "sbdb",
     "skyfield_stars",
+    "parans",
+    "cycles",
     "declination",
     "VALID_ZODIAC_SYSTEMS",
     "VALID_HOUSE_SYSTEMS",

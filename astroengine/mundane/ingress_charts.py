@@ -85,7 +85,7 @@ def compute_cardinal_ingress_charts(
             bodies=body_map,
             aspect_angles=angles,
             orb_profile=orb_profile,
-            chart_config=chart_config,
+            config=chart_config,
             adapter=adapter,
         )
         results[sign_key] = IngressChart(sign=match.sign, event=match, chart=natal)

@@ -13,6 +13,7 @@ pluggy>=1.5
 click>=8.1
 rich>=13.7
 ics>=0.7
+streamlit>=1.30
 # QA / property-based testing (used by tests)
 hypothesis>=6.112
 # Optional groups (comment in as needed):

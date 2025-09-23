@@ -31,12 +31,11 @@ from astroengine.utils import (
     TARGET_FRAME_BODIES,
     available_frames,
     expand_targets,
+)
 
 from astroengine.chart.config import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,
-    VALID_ZODIAC_SYSTEMS,
-
 )
 
 
@@ -215,6 +214,7 @@ def cached_scan(
 
 
 def _ensure_defaults() -> None:
+    first_init = not st.session_state.get("_scan_defaults_initialized", False)
     start, end = _default_window()
     _set_session_default("scan_start", start)
     _set_session_default("scan_end", end)
@@ -231,8 +231,10 @@ def _ensure_defaults() -> None:
     _set_session_default("scan_preset", "Transit scan — Daily")
     _set_session_default("scan_active_preset", "Transit scan — Daily")
     _set_session_default("scan_ics_title", "AstroEngine Events")
-    if st.session_state["scan_active_preset"] != "Custom":
+    if first_init and st.session_state["scan_active_preset"] != "Custom":
         _apply_preset(st.session_state["scan_active_preset"])
+    if first_init:
+        st.session_state["_scan_defaults_initialized"] = True
 
 
 _ensure_defaults()
@@ -293,27 +295,15 @@ with st.sidebar:
         key="scan_step",
         on_change=_mark_custom,
     )
-    entrypoint_choice = st.selectbox(
+    st.caption(
+        "Tip: set SE_EPHE_PATH to your Swiss ephemeris folder if using the swiss provider."
+    )
+    st.selectbox(
         "Scan entrypoint",
         entrypoint_labels,
         index=0,
         key="scan_entrypoint",
     )
-
-    s, e = _default_window()
-    start_utc = st.text_input("Start (UTC, ISO-8601)", value=s)
-    end_utc = st.text_input("End (UTC, ISO-8601)", value=e)
-    provider = st.selectbox("Provider", options=["auto", "swiss", "pymeeus", "skyfield"], index=0)
-    zodiac_choice = st.selectbox("Zodiac", options=sorted(VALID_ZODIAC_SYSTEMS), index=0)
-    ayanamsha_choice = None
-    if zodiac_choice == "sidereal":
-        ayanamsha_options = sorted(SUPPORTED_AYANAMSHAS)
-        default_index = ayanamsha_options.index(DEFAULT_SIDEREAL_AYANAMSHA)
-        ayanamsha_choice = st.selectbox("Ayanamsha", options=ayanamsha_options, index=default_index)
-    step_minutes = st.slider("Step minutes", min_value=10, max_value=240, value=60, step=10)
-    st.caption("Tip: set SE_EPHE_PATH to your Swiss ephemeris folder if using the swiss provider.")
-    entrypoint_choice = st.selectbox("Scan entrypoint", entrypoint_labels, index=0)
-
     st.caption(
         "Select an explicit scan function or leave on Auto to try detected entrypoints in order.\n"
         "Set ASTROENGINE_SCAN_ENTRYPOINTS for custom modules (format: module:function)."
@@ -362,8 +352,10 @@ with st.sidebar:
     for existing in st.session_state.get("scan_targets", []):
         if existing not in merged_options:
             merged_options.append(existing)
-    default_targets = st.session_state.get("scan_targets", [f"natal:{body}" for body in DEFAULT_TARGET_SELECTION])
-    targets = st.multiselect(
+    default_targets = st.session_state.get(
+        "scan_targets", [f"natal:{body}" for body in DEFAULT_TARGET_SELECTION]
+    )
+    st.multiselect(
         "Targets",
         options=merged_options,
         default=default_targets,
@@ -372,52 +364,53 @@ with st.sidebar:
     )
 
     st.header("Toggles")
+    previous_detectors = list(st.session_state.get("scan_detectors", []))
     detectors = st.multiselect(
         "Detectors",
         options=sorted(DETECTOR_NAMES),
-        default=st.session_state.get("scan_detectors", []),
-        key="scan_detectors",
-        on_change=_mark_custom,
+        default=previous_detectors,
+        key="Detectors",
     )
+    if list(detectors) != previous_detectors:
+        _mark_custom()
+    st.session_state["scan_detectors"] = list(detectors)
+
     sidereal = st.checkbox(
         "Use sidereal zodiac",
         value=st.session_state.get("scan_sidereal", False),
         key="scan_sidereal",
         on_change=_mark_custom,
     )
-    ayanamsha_value = st.session_state.get("scan_ayanamsha", "lahiri")
-    known_ayanamshas = [
-        "lahiri",
-        "krishnamurti",
-        "raman",
-        "fagan_bradley",
-        "yukteshwar",
-        "de_luce",
-        "true_citra",
-        "custom",
-    ]
-    ayanamsha_choice = ayanamsha_value if ayanamsha_value in known_ayanamshas else "custom"
+    ayanamsha_current = st.session_state.get(
+        "scan_ayanamsha", DEFAULT_SIDEREAL_AYANAMSHA
+    )
     if sidereal:
-        default_index = known_ayanamshas.index(ayanamsha_choice)
+        ayanamsha_options = sorted(SUPPORTED_AYANAMSHAS)
+        if ayanamsha_current not in ayanamsha_options:
+            ayanamsha_current = DEFAULT_SIDEREAL_AYANAMSHA
+        selectable_options = ayanamsha_options + ["custom"]
+        default_option = (
+            ayanamsha_current if ayanamsha_current in ayanamsha_options else "custom"
+        )
         ayanamsha_choice = st.selectbox(
             "Ayanāṁśa",
-            options=known_ayanamshas,
-            index=default_index,
+            options=selectable_options,
+            index=selectable_options.index(default_option),
             key="scan_ayanamsha_choice",
+            on_change=_mark_custom,
         )
         if ayanamsha_choice == "custom":
-            ayanamsha_value = st.text_input(
+            custom_value = st.text_input(
                 "Custom ayanāṁśa",
-                value=ayanamsha_value,
+                value=ayanamsha_current,
                 key="scan_ayanamsha",
                 on_change=_mark_custom,
             )
-            st.session_state["scan_ayanamsha"] = ayanamsha_value
+            st.session_state["scan_ayanamsha"] = custom_value
         else:
-            ayanamsha_value = ayanamsha_choice
             st.session_state["scan_ayanamsha"] = ayanamsha_choice
     else:
-        st.session_state["scan_ayanamsha"] = ayanamsha_value
+        st.session_state["scan_ayanamsha"] = ayanamsha_current
 
     profile_id = st.text_input(
         "Profile (optional)",
@@ -448,7 +441,7 @@ tab_scan, tab_smoke = st.tabs(["Scan Transits", "Swiss Smoketest"])
 
 with tab_scan:
     st.subheader("Run Scan")
-    run = st.button("Run scan")
+    run = st.button("Run scan", key="Run scan")
     if run:
         entrypoint_override = entrypoint_lookup.get(st.session_state.get("scan_entrypoint"))
         entrypoint_arg = tuple([entrypoint_override]) if entrypoint_override else tuple()
@@ -470,9 +463,12 @@ with tab_scan:
             frames,
             entrypoint_arg,
         )
-        session_cache = st.session_state.setdefault("scan_cache", {})
+        session_cache = dict(st.session_state.get("scan_cache", {}))
         from_cache = cache_key in session_cache
         st.session_state["scan_last_cache_hit"] = from_cache
+        st.session_state["scan_cache"] = session_cache
+        if from_cache:
+            st.session_state.pop("scan_last_error", None)
         progress = st.progress(0, text="Preparing scan…")
         status = st.status("Checking cache…", expanded=False)
         if from_cache:
@@ -496,17 +492,16 @@ with tab_scan:
                     frames=frames,
                     entrypoints=entrypoint_arg,
 
-                    zodiac=zodiac_choice,
-                    ayanamsha=ayanamsha_choice,
-                    return_used_entrypoint=True,
-
                 )
                 session_cache[cache_key] = (raw_events, canonical_events, used_entrypoint)
+                st.session_state["scan_cache"] = session_cache
+                st.session_state.pop("scan_last_error", None)
                 progress.progress(100, text="Scan complete")
                 status.update(label="Scan complete", state="complete")
             except Exception as exc:  # pragma: no cover - run-time errors displayed in UI
                 status.update(label=f"Scan failed: {exc}", state="error")
                 st.error(f"Scan failed: {exc}")
+                st.session_state["scan_last_error"] = str(exc)
                 raw_events = canonical_events = []
                 used_entrypoint = ("?", "?")
         if canonical_events:
@@ -525,7 +520,7 @@ with tab_scan:
                     df = df.sort_values("ts")
                 except Exception:  # pragma: no cover - sorting defensive
                     pass
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.dataframe(df, width="stretch", hide_index=True)
             st.caption("Click column headers to sort or filter results interactively.")
         elif records:
             st.json(records)
@@ -578,7 +573,7 @@ with tab_scan:
 with tab_smoke:
     st.subheader("Swiss Smoketest (script)")
     st.write("Runs scripts/swe_smoketest.py with the start time above to validate your Swiss setup.")
-    if st.button("Run smoketest"):
+    if st.button("Run smoketest", key="Run smoketest"):
         try:
             cmd = [sys.executable, "scripts/swe_smoketest.py", "--utc", st.session_state.get("scan_start")]
             proc = subprocess.run(cmd, capture_output=True, text=True)
