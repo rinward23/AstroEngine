@@ -1,9 +1,11 @@
 """ICS export helpers for canonical, templated, and narrative event exports."""
 
+
 from __future__ import annotations
 
 import hashlib
 import json
+
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -18,11 +20,13 @@ DEFAULT_DESCRIPTION_TEMPLATE = (
     "Score {score_label}; Profile {profile_id}; Natal {natal_id}"
 )
 
+
 __all__ = [
     "DEFAULT_DESCRIPTION_TEMPLATE",
     "DEFAULT_SUMMARY_TEMPLATE",
     "canonical_events_to_ics",
     "ics_bytes_from_events",
+
     "write_ics_canonical",
     "write_ics",
     "format_ics_calendar",
@@ -31,6 +35,7 @@ __all__ = [
 
 _PRODID = "-//AstroEngine//Transit Scanner//EN"
 _NARRATIVE_PRODID = "-//AstroEngine//Narrative Calendar 1.0//EN"
+
 
 
 def _escape_text(value: str) -> str:
@@ -134,29 +139,35 @@ def write_ics_canonical(
     return len(canonical_events)
 
 
+
 class _TemplateContext(dict):
     def __missing__(self, key: str) -> Any:  # pragma: no cover - formatting fallback
         return ""
 
 
+
 def _base_context(ts: str, meta: Mapping[str, Any]) -> dict[str, Any]:
+
     natal_id = meta.get("natal_id")
     if natal_id is None and isinstance(meta.get("natal"), Mapping):
         natal_id = meta["natal"].get("id")
     profile_id = meta.get("profile_id")
     if profile_id is None and isinstance(meta.get("profile"), Mapping):
         profile_id = meta["profile"].get("id")
+
     return {
         "ts": ts,
         "start": ts,
         "meta": dict(meta),
         "meta_json": json.dumps(meta, sort_keys=True),
+
         "natal_id": natal_id or "unknown",
         "profile_id": profile_id or "unknown",
     }
 
 
 def _context_from_transit(event: TransitEvent) -> dict[str, Any]:
+
     meta = dict(event.meta or {})
     ctx = _base_context(event.ts, meta)
     ctx.update(
@@ -191,16 +202,20 @@ def _context_from_transit(event: TransitEvent) -> dict[str, Any]:
         type=kind,
         label=label,
         ingress_sign=ingress_sign,
+
     )
     ctx.setdefault(
         "uid",
         meta.get("uid")
         or f"{event.ts}-{event.moving}-{ctx['target']}-{kind}-{abs(hash(json.dumps(meta, sort_keys=True)))%10_000}",
+
     )
     return ctx
 
 
+
 def _context_from_return(event: ReturnEvent) -> dict[str, Any]:
+
     meta = dict(getattr(event, "meta", {}) or {})
     ctx = _base_context(event.ts, meta)
     method = getattr(event, "method", "return")
@@ -227,7 +242,9 @@ def _context_from_return(event: ReturnEvent) -> dict[str, Any]:
     return ctx
 
 
+
 def _context_from_mapping(payload: Mapping[str, Any]) -> dict[str, Any]:
+
     kind = (payload.get("type") or payload.get("event_type") or "").lower()
     if kind == "return":
         ts_val = payload.get("ts") or payload.get("timestamp")
@@ -248,7 +265,10 @@ def _context_from_mapping(payload: Mapping[str, Any]) -> dict[str, Any]:
     return _context_from_transit(event_from_legacy(payload))
 
 
+
 def _coerce_context(event: Any) -> dict[str, Any]:
+
+
     if isinstance(event, TransitEvent):
         return _context_from_transit(event)
     if isinstance(event, ReturnEvent):
@@ -277,6 +297,7 @@ def write_ics(
     description_template: str = DEFAULT_DESCRIPTION_TEMPLATE,
 ) -> int:
     """Write events to an ICS file using summary/description templates."""
+
 
     contexts = [_coerce_context(event) for event in events]
     now_stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -502,3 +523,4 @@ def _fold_ics_line(line: str) -> list[str]:
         remaining = " " + remaining[75:]
     segments.append(remaining)
     return segments
+

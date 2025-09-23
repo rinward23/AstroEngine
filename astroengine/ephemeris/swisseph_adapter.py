@@ -172,6 +172,7 @@ class SwissEphemerisAdapter:
         if chart_config is None:
             from ..chart.config import ChartConfig as _ChartConfig
 
+
             config_kwargs: dict[str, object] = {}
             if zodiac is not None:
                 config_kwargs["zodiac"] = zodiac
@@ -179,11 +180,13 @@ class SwissEphemerisAdapter:
                 config_kwargs["ayanamsha"] = ayanamsha
             chart = _ChartConfig(**config_kwargs)
         else:
+
             chart = chart_config
             if zodiac is not None and zodiac.lower() != chart_config.zodiac.lower():
                 raise ValueError(
                     "zodiac override must match chart_config.zodiac when both are provided"
                 )
+
             if ayanamsha is not None:
                 if chart_config.zodiac.lower() != "sidereal":
                     raise ValueError("ayanamsha can only be specified for sidereal charts")
@@ -193,6 +196,7 @@ class SwissEphemerisAdapter:
                     raise ValueError(
                         "ayanamsha override must match chart_config.ayanamsha when both are provided"
                     )
+
 
         zodiac_value = zodiac or chart.zodiac
         zodiac_normalized = (zodiac_value or cls._DEFAULT_ZODIAC).lower()
@@ -217,6 +221,7 @@ class SwissEphemerisAdapter:
 
         cls._DEFAULT_ZODIAC = chart.zodiac
         cls._DEFAULT_AYANAMSHA = normalized
+
         cls._DEFAULT_ADAPTER = None
 
     @classmethod
@@ -436,5 +441,22 @@ class SwissEphemerisAdapter:
     @property
     def is_sidereal(self) -> bool:
         return self._is_sidereal
+
+
+
+    def _resolve_house_system(self, system: str | None) -> tuple[str, bytes]:
+        if system is None:
+            key = self.chart_config.house_system.lower()
+        else:
+            key = system.lower()
+
+        code = self._HOUSE_SYSTEM_CODES.get(key)
+        if code is not None:
+            return key, code
+
+        if len(key) == 1:
+            return key, key.upper().encode("ascii")
+
+        raise ValueError(f"Unsupported house system '{system}'")
 
 

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import functools
+
 from contextlib import contextmanager
+
 from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
 from ._runtime import ButtonWidget, MultiSelectWidget, StreamlitRuntime, Widget as _Widget
@@ -26,6 +28,7 @@ class AppTestUnavailableError(RuntimeError):
 
 
 _RUNTIME: StreamlitRuntime | None = None
+
 _WIDGETS: dict[str, dict[str, _Widget]] = {"main": {}, "sidebar": {}}
 _CURRENT_CONTAINER: list[str] = ["main"]
 
@@ -54,6 +57,7 @@ def _container_scope(name: str) -> Iterator[None]:
 
 def _trigger_key(label: str, key: str | None = None) -> str:
     return key or f"button:{label}"
+
 
 
 class _SessionStateProxy:
@@ -114,12 +118,14 @@ session_state = _SessionStateProxy()
 
 class _Sidebar:
     def __enter__(self) -> "_Sidebar":
+
         _CURRENT_CONTAINER.append("sidebar")
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:
         if len(_CURRENT_CONTAINER) > 1:
             _CURRENT_CONTAINER.pop()
+
         return False
 
     def header(self, *_args: Any, **_kwargs: Any) -> None:
@@ -135,13 +141,16 @@ class _Sidebar:
         key = kwargs.get("key")
         if key is None:
             kwargs["key"] = f"sidebar-selectbox:{label}"
+
         with _container_scope("sidebar"):
             return selectbox(label, options, **kwargs)
+
 
     def multiselect(self, label: str, options: Sequence[Any], **kwargs: Any) -> list[Any]:
         key = kwargs.get("key")
         if key is None:
             kwargs["key"] = f"sidebar-multiselect:{label}"
+
         with _container_scope("sidebar"):
             return multiselect(label, options, **kwargs)
 
@@ -149,6 +158,7 @@ class _Sidebar:
         key = kwargs.get("key")
         if key is None:
             kwargs["key"] = f"sidebar-text:{label}"
+
         with _container_scope("sidebar"):
             return text_input(label, **kwargs)
 
@@ -156,22 +166,28 @@ class _Sidebar:
         key = kwargs.get("key")
         if key is None:
             kwargs["key"] = f"sidebar-slider:{label}"
+
         with _container_scope("sidebar"):
             return slider(label, **kwargs)
+
 
     def checkbox(self, label: str, **kwargs: Any) -> bool:
         key = kwargs.get("key")
         if key is None:
             kwargs["key"] = f"sidebar-checkbox:{label}"
+
         with _container_scope("sidebar"):
             return checkbox(label, **kwargs)
+
 
     def button(self, label: str, **kwargs: Any) -> bool:
         key = kwargs.get("key")
         if key is None:
             kwargs["key"] = f"sidebar-button:{label}"
+
         with _container_scope("sidebar"):
             return button(label, **kwargs)
+
 
 
 sidebar = _Sidebar()
@@ -186,9 +202,11 @@ def _require_runtime() -> StreamlitRuntime:
 def set_runtime(runtime: StreamlitRuntime) -> None:
     global _RUNTIME
     _RUNTIME = runtime
+
     for container in _WIDGETS.values():
         container.clear()
     _CURRENT_CONTAINER[:] = ["main"]
+
 
 
 def cache_data(func: Callable | None = None, **_kwargs: Any) -> Callable:
@@ -298,7 +316,9 @@ def selectbox(
         value = stored
     widget_key = key or f"selectbox:{label}"
     runtime.store_value(widget_key, value)
+
     _register_widget(
+
         _Widget(runtime=runtime, kind="selectbox", key=widget_key, label=label)
     )
     return value
@@ -324,7 +344,10 @@ def multiselect(
     widget_key = key or f"multiselect:{label}"
     runtime.store_value(widget_key, list(value))
     runtime.session_state.setdefault(widget_key, list(value))
+
     _register_widget(
+gister(
+
         MultiSelectWidget(
             runtime=runtime,
             kind="multiselect",
@@ -352,9 +375,11 @@ def text_input(
     else:
         widget_key = f"text:{label}"
     runtime.store_value(widget_key, resolved)
+
     _register_widget(
         _Widget(runtime=runtime, kind="text_input", key=widget_key, label=label)
     )
+
     return resolved
 
 
@@ -380,9 +405,11 @@ def slider(
     else:
         widget_key = f"slider:{label}"
     runtime.store_value(widget_key, value)
+
     _register_widget(
         _Widget(runtime=runtime, kind="slider", key=widget_key, label=label)
     )
+
     return value
 
 
@@ -402,9 +429,11 @@ def checkbox(
     else:
         widget_key = f"checkbox:{label}"
     runtime.store_value(widget_key, value)
+
     _register_widget(
         _Widget(runtime=runtime, kind="checkbox", key=widget_key, label=label)
     )
+
     return value
 
 
@@ -412,10 +441,12 @@ def button(label: str, *, key: str | None = None, **_kwargs: Any) -> bool:
     runtime = _require_runtime()
     widget_key = key or f"button:{label}"
     value = runtime.consume_click(widget_key)
+
     trigger_key = _trigger_key(label, key)
     if runtime.session_state.pop(trigger_key, False):
         runtime.schedule_click(widget_key)
         value = True
+
     runtime.store_value(widget_key, value)
     button_widget = ButtonWidget(
         runtime=runtime,
@@ -423,7 +454,9 @@ def button(label: str, *, key: str | None = None, **_kwargs: Any) -> bool:
         key=widget_key,
         label=label,
     )
+
     _register_widget(button_widget)
+
     return value
 
 

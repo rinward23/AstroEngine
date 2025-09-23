@@ -195,11 +195,13 @@ def find_sign_ingresses(
                     ts=jd_to_iso(jd_root),
                     jd=jd_root,
                     body=body,
+
                     from_sign=sign_name(from_idx),
                     to_sign=sign_name(to_idx),
                     longitude=lon_exact,
                     speed_longitude=float(speed),
                     motion="retrograde" if retrograde else "direct",
+
                     retrograde=retrograde,
                 )
                 events.append(event)

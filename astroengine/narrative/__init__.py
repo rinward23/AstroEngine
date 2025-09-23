@@ -1,3 +1,4 @@
+
 """Narrative composition and summarisation helpers for AstroEngine."""
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from .gpt_api import GPTNarrativeClient
 from .profiles import render_profile, timelord_outline
 from .prompts import build_summary_prompt, build_template_summary
 
+
 try:  # pragma: no cover - optional dependency
     from jinja2 import Template
 except Exception:  # pragma: no cover - stub fallback
@@ -30,14 +32,17 @@ __all__ = [
     "NarrativeTimelord",
     "NarrativeBundle",
     "compose_narrative",
+
     "render_simple",
     "summarize_top_events",
     "render_profile",
     "timelord_outline",
     "build_summary_prompt",
     "build_template_summary",
+
     "markdown_to_html",
     "markdown_to_plaintext",
+
 ]
 
 _LOG = logging.getLogger(__name__)
@@ -222,6 +227,7 @@ def render_simple(title: str, events: Mapping[str, Any]) -> str:
     return _render_simple_template(title, events)
 
 
+
 def summarize_top_events(
     events: Sequence[Any] | Iterable[Any],
     *,
@@ -248,12 +254,14 @@ def summarize_top_events(
         return offline
 
     try:
+
         prompt = build_summary_prompt(
             top_events,
             profile=profile,
             timelords=timelords,
             context=context,
         )
+
     except Exception as exc:  # pragma: no cover - defensive fallback
         _LOG.debug("Failed to build GPT prompt: %s", exc)
         return offline
@@ -266,6 +274,7 @@ def summarize_top_events(
             _LOG.warning("GPT narrative generation failed; using template fallback: %s", exc)
 
     return offline
+
 
 
 def compose_narrative(
@@ -743,3 +752,4 @@ def _summarise_timelords(highlights: Sequence[NarrativeHighlight]) -> list[Narra
     ]
     timelords.sort(key=lambda entry: (-entry.weight, entry.name))
     return timelords
+

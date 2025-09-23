@@ -274,6 +274,7 @@ def run_scan_or_raise(
             step_minutes=step_minutes,
             zodiac=zodiac,
             ayanamsha=ayanamsha,
+
         )
         optional_kwargs: Dict[str, Any] = {}
         if profile_id is not None:

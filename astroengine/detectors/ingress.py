@@ -58,11 +58,13 @@ def _to_ingress_event(
         ts=jd_to_iso(jd_ut),
         jd=jd_ut,
         body=body_label,
+
         from_sign=sign_from,
         to_sign=sign_to,
         longitude=longitude,
         speed_longitude=speed,
         motion="retrograde" if retrograde else "direct",
+
         retrograde=retrograde,
     )
 
