@@ -3,7 +3,9 @@
 The predictive module organises timing and derived chart techniques under
 the shared module → submodule → channel → subchannel hierarchy. All data
 is sourced from Swiss Ephemeris calculations; no synthetic coordinates are
-emitted.
+emitted. The CLI transit scanner exposes this hierarchy via the
+``--target-frame`` option allowing callers to select natal, progressed,
+directed, or composite chart targets when resolving contacts.
 
 ## Submodules
 
@@ -41,3 +43,10 @@ derived positions.
 
 - `astroengine.chart.harmonics.compute_harmonic_chart`
 - `astroengine.chart.midpoints.compute_composite_chart`
+
+### `relationships`
+
+Composite and synastry transit scans provide biwheel targeting between two
+natal charts. The composite channel describes midpoint overlays derived
+from both charts, while the synastry channel records transit scans across a
+paired biwheel configuration.

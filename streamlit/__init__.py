@@ -1,113 +1,179 @@
-"""Lightweight Streamlit stub used for automated tests.
-
-The real Streamlit package is large and not available in the execution
-environment for unit tests.  This stub implements enough of the API for the
-`apps/streamlit_transit_scanner.py` script to run deterministically.  The goal
-is not to render a UI but to provide predictable hooks that record widget
-configuration and persist ``session_state`` between runs.
-"""
+"""Minimal Streamlit shim for automated testing."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+import functools
+from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
-session_state: Dict[str, Any] = {}
+from ._runtime import ButtonWidget, MultiSelectWidget, StreamlitRuntime, Widget as _Widget
 
-_WIDGETS: Dict[str, Dict[str, "_Widget"]] = {"main": {}, "sidebar": {}}
-_CURRENT_CONTAINER: List[str] = ["main"]
-
-
-def _container_name() -> str:
-    return _CURRENT_CONTAINER[-1]
-
-
-@dataclass
-class _Widget:
-    kind: str
-    label: str
-    options: Sequence[Any] | None = None
-    value: Any = None
-
-    def __iter__(self):  # pragma: no cover - compatibility
-        if isinstance(self.value, Iterable) and not isinstance(self.value, (str, bytes)):
-            return iter(self.value)
-        return iter([self.value])
+__all__ = [
+    "AppTestUnavailableError",
+    "ButtonWidget",
+    "MultiSelectWidget",
+    "cache_data",
+    "columns",
+    "set_runtime",
+    "sidebar",
+    "session_state",
+    "tabs",
+]
 
 
-class _Context:
-    def __init__(self, name: str):
-        self.name = name
+class AppTestUnavailableError(RuntimeError):
+    """Raised when the shim is used without an active runtime."""
 
-    def __enter__(self):
-        _CURRENT_CONTAINER.append(self.name)
+
+_RUNTIME: StreamlitRuntime | None = None
+
+
+class _SessionStateProxy:
+    def __getitem__(self, key: str) -> Any:
+        return _require_runtime().session_state[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        _require_runtime().session_state[key] = value
+
+    def __contains__(self, key: object) -> bool:
+        return key in _require_runtime().session_state
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return _require_runtime().session_state.get(key, default)
+
+    def setdefault(self, key: str, default: Any = None) -> Any:
+        return _require_runtime().session_state.setdefault(key, default)
+
+    def update(self, *args: Any, **kwargs: Any) -> None:
+        _require_runtime().session_state.update(*args, **kwargs)
+
+    def pop(self, key: str, default: Any = None) -> Any:
+        return _require_runtime().session_state.pop(key, default)
+
+    def clear(self) -> None:
+        _require_runtime().session_state.clear()
+
+    def keys(self):  # pragma: no cover - convenience passthrough
+        return _require_runtime().session_state.keys()
+
+    def items(self):  # pragma: no cover - convenience passthrough
+        return _require_runtime().session_state.items()
+
+    def values(self):  # pragma: no cover - convenience passthrough
+        return _require_runtime().session_state.values()
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(_require_runtime().session_state)
+
+    def __len__(self) -> int:
+        return len(_require_runtime().session_state)
+
+    def __getattr__(self, name: str) -> Any:
+        try:
+            return self[name]
+        except KeyError as exc:  # pragma: no cover - attribute access fallback
+            raise AttributeError(name) from exc
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name.startswith("_"):
+            super().__setattr__(name, value)
+        else:  # pragma: no cover - attribute access fallback
+            self[name] = value
+
+
+session_state = _SessionStateProxy()
+
+
+class _Sidebar:
+    def __enter__(self) -> "_Sidebar":
         return self
 
-    def __exit__(self, exc_type, exc, tb):
-        _CURRENT_CONTAINER.pop()
+    def __exit__(self, exc_type, exc, tb) -> bool:
         return False
 
-    # UI helpers simply record that the call occurred.
-    def header(self, _label: str, **_kwargs: Any) -> None:
+    def header(self, *_args: Any, **_kwargs: Any) -> None:
         pass
 
-    def caption(self, _text: str, **_kwargs: Any) -> None:
+    def caption(self, *_args: Any, **_kwargs: Any) -> None:
         pass
 
-    def write(self, _text: Any = "", **_kwargs: Any) -> None:
+    def write(self, *_args: Any, **_kwargs: Any) -> None:
         pass
 
-    def subheader(self, _label: str, **_kwargs: Any) -> None:
-        pass
+    def selectbox(self, label: str, options: Sequence[Any], **kwargs: Any) -> Any:
+        key = kwargs.get("key")
+        if key is None:
+            kwargs["key"] = f"sidebar-selectbox:{label}"
+        return selectbox(label, options, **kwargs)
 
-    def markdown(self, _text: str, **_kwargs: Any) -> None:
-        pass
+    def multiselect(self, label: str, options: Sequence[Any], **kwargs: Any) -> list[Any]:
+        key = kwargs.get("key")
+        if key is None:
+            kwargs["key"] = f"sidebar-multiselect:{label}"
+        return multiselect(label, options, **kwargs)
 
-    def json(self, _obj: Any, **_kwargs: Any) -> None:
-        pass
+    def text_input(self, label: str, **kwargs: Any) -> str:
+        key = kwargs.get("key")
+        if key is None:
+            kwargs["key"] = f"sidebar-text:{label}"
+        return text_input(label, **kwargs)
 
-    def code(self, _code: str, **_kwargs: Any) -> None:
-        pass
+    def slider(self, label: str, **kwargs: Any) -> Any:
+        key = kwargs.get("key")
+        if key is None:
+            kwargs["key"] = f"sidebar-slider:{label}"
+        return slider(label, **kwargs)
 
-    def dataframe(self, _df: Any, **_kwargs: Any) -> None:
-        pass
+    def checkbox(self, label: str, **kwargs: Any) -> bool:
+        key = kwargs.get("key")
+        if key is None:
+            kwargs["key"] = f"sidebar-checkbox:{label}"
+        return checkbox(label, **kwargs)
 
-    def info(self, _msg: str, **_kwargs: Any) -> None:
-        pass
-
-    def warning(self, _msg: str, **_kwargs: Any) -> None:
-        pass
-
-    def error(self, _msg: str, **_kwargs: Any) -> None:
-        pass
-
-    def success(self, _msg: str, **_kwargs: Any) -> None:
-        pass
-
-
-sidebar = _Context("sidebar")
-
-
-def _record_widget(widget: _Widget) -> _Widget:
-    _WIDGETS[_container_name()][widget.label] = widget
-    return widget
+    def button(self, label: str, **kwargs: Any) -> bool:
+        key = kwargs.get("key")
+        if key is None:
+            kwargs["key"] = f"sidebar-button:{label}"
+        return button(label, **kwargs)
 
 
-def cache_data(**_kwargs: Any):  # pragma: no cover - simple passthrough
-    def decorator(func):
-        cache: Dict[Tuple[Any, ...], Any] = {}
+sidebar = _Sidebar()
 
-        def wrapped(*args: Any, **kwargs: Any):
-            key = args + tuple(sorted(kwargs.items()))
+
+def _require_runtime() -> StreamlitRuntime:
+    if _RUNTIME is None:
+        raise AppTestUnavailableError("Streamlit runtime not initialised")
+    return _RUNTIME
+
+
+def set_runtime(runtime: StreamlitRuntime) -> None:
+    global _RUNTIME
+    _RUNTIME = runtime
+
+
+def cache_data(func: Callable | None = None, **_kwargs: Any) -> Callable:
+    def decorator(inner: Callable) -> Callable:
+        cache: dict[tuple[Any, ...], Any] = {}
+
+        @functools.wraps(inner)
+        def wrapped(*args: Any, **kwargs: Any) -> Any:
+            key = args
+            if kwargs:
+                items = tuple(sorted(kwargs.items()))
+                key = args + items
             if key in cache:
                 return cache[key]
-            result = func(*args, **kwargs)
+            result = inner(*args, **kwargs)
             cache[key] = result
             return result
 
-        wrapped.cache = cache  # type: ignore[attr-defined]
+        def clear() -> None:  # pragma: no cover - auxiliary helper
+            cache.clear()
+
+        wrapped.clear = clear  # type: ignore[attr-defined]
         return wrapped
 
+    if func is not None:
+        return decorator(func)
     return decorator
 
 
@@ -115,228 +181,270 @@ def set_page_config(**_kwargs: Any) -> None:
     pass
 
 
-def title(_text: str) -> None:
+def title(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def header(_text: str) -> None:
+def header(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def subheader(_text: str) -> None:
+def subheader(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def caption(_text: str) -> None:
+def caption(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def write(_text: Any = "", **_kwargs: Any) -> None:
+def write(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def markdown(_text: str, **_kwargs: Any) -> None:
+def markdown(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def info(_text: str, **_kwargs: Any) -> None:
+def info(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def warning(_text: str, **_kwargs: Any) -> None:
+def success(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def error(_text: str, **_kwargs: Any) -> None:
+def warning(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def success(_text: str, **_kwargs: Any) -> None:
+def error(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def json(_obj: Any, **_kwargs: Any) -> None:
+def code(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def dataframe(_df: Any, **_kwargs: Any) -> None:
+def json(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
-def code(_text: str, **_kwargs: Any) -> None:
+def dataframe(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
 def selectbox(
     label: str,
     options: Sequence[Any],
-    index: int = 0,
     *,
-    key: Optional[str] = None,
+    index: int = 0,
+    key: str | None = None,
+    format_func: Callable[[Any], Any] | None = None,
     **_kwargs: Any,
 ) -> Any:
-    chosen_key = key or label
-    if chosen_key in session_state:
-        value = session_state[chosen_key]
+    runtime = _require_runtime()
+    options_list = list(options)
+    if not options_list:
+        value = None
     else:
-        try:
-            value = options[index]
-        except Exception:
-            value = options[0] if options else None
-        session_state[chosen_key] = value
-    return _record_widget(_Widget("selectbox", label, options=list(options), value=value)).value
+        idx = index if 0 <= index < len(options_list) else 0
+        value = options_list[idx]
+    if format_func is not None and value is not None:
+        value = format_func(value)
+    if key is not None:
+        stored = runtime.session_state.get(key, value)
+        runtime.session_state[key] = stored
+        value = stored
+    widget_key = key or f"selectbox:{label}"
+    runtime.store_value(widget_key, value)
+    runtime.register(
+        _Widget(runtime=runtime, kind="selectbox", key=widget_key, label=label)
+    )
+    return value
 
 
 def multiselect(
     label: str,
     options: Sequence[Any],
     *,
-    default: Optional[Sequence[Any]] = None,
-    key: Optional[str] = None,
+    default: Iterable[Any] | None = None,
+    key: str | None = None,
     **_kwargs: Any,
-) -> List[Any]:
-    chosen_key = key or label
-    if chosen_key in session_state:
-        value = list(session_state[chosen_key])
+) -> list[Any]:
+    runtime = _require_runtime()
+    options_list = list(options)
+    if key is not None and key in runtime.session_state:
+        value = list(runtime.session_state[key])
     else:
-        value = list(default) if default is not None else []
-        session_state[chosen_key] = value
-    widget = _Widget("multiselect", label, options=list(options), value=list(value))
-    _record_widget(widget)
-    return widget.value
+        default_values = list(default or [])
+        value = [item for item in default_values if item in options_list]
+        if key is not None:
+            runtime.session_state[key] = list(value)
+    widget_key = key or f"multiselect:{label}"
+    runtime.store_value(widget_key, list(value))
+    runtime.session_state.setdefault(widget_key, list(value))
+    runtime.register(
+        MultiSelectWidget(
+            runtime=runtime,
+            kind="multiselect",
+            key=widget_key,
+            label=label,
+            options=options_list,
+        )
+    )
+    return list(value)
 
 
 def text_input(
     label: str,
-    value: str = "",
+    value: str | None = "",
     *,
-    key: Optional[str] = None,
+    key: str | None = None,
     **_kwargs: Any,
 ) -> str:
-    chosen_key = key or label
-    if chosen_key in session_state:
-        result = str(session_state[chosen_key])
+    runtime = _require_runtime()
+    resolved = "" if value is None else str(value)
+    if key is not None:
+        resolved = str(runtime.session_state.get(key, resolved))
+        runtime.session_state[key] = resolved
+        widget_key = key
     else:
-        result = str(value)
-        session_state[chosen_key] = result
-    return result
+        widget_key = f"text:{label}"
+    runtime.store_value(widget_key, resolved)
+    runtime.register(_Widget(runtime=runtime, kind="text_input", key=widget_key, label=label))
+    return resolved
 
 
 def slider(
     label: str,
+    *,
     min_value: int,
     max_value: int,
-    *,
-    value: Optional[int] = None,
+    value: int | None = None,
     step: int = 1,
-    key: Optional[str] = None,
+    key: str | None = None,
     **_kwargs: Any,
 ) -> int:
-    chosen_key = key or label
-    if chosen_key in session_state:
-        result = int(session_state[chosen_key])
+    runtime = _require_runtime()
+    if value is None:
+        value = min_value
+    value = int(value)
+    if key is not None:
+        stored = runtime.session_state.get(key, value)
+        runtime.session_state[key] = int(stored)
+        widget_key = key
+        value = int(stored)
     else:
-        result = int(value if value is not None else min_value)
-        session_state[chosen_key] = result
-    return result
+        widget_key = f"slider:{label}"
+    runtime.store_value(widget_key, value)
+    runtime.register(_Widget(runtime=runtime, kind="slider", key=widget_key, label=label))
+    return value
 
 
 def checkbox(
     label: str,
     *,
     value: bool = False,
-    key: Optional[str] = None,
+    key: str | None = None,
     **_kwargs: Any,
 ) -> bool:
-    chosen_key = key or label
-    if chosen_key in session_state:
-        result = bool(session_state[chosen_key])
+    runtime = _require_runtime()
+    if key is not None:
+        stored = bool(runtime.session_state.get(key, value))
+        runtime.session_state[key] = stored
+        widget_key = key
+        value = stored
     else:
-        result = bool(value)
-        session_state[chosen_key] = result
-    return result
+        widget_key = f"checkbox:{label}"
+    runtime.store_value(widget_key, value)
+    runtime.register(_Widget(runtime=runtime, kind="checkbox", key=widget_key, label=label))
+    return value
 
 
-def _trigger_key(label: str, key: Optional[str]) -> str:
-    return f"__trigger__:{key or label}"
+def button(label: str, *, key: str | None = None, **_kwargs: Any) -> bool:
+    runtime = _require_runtime()
+    widget_key = key or f"button:{label}"
+    value = runtime.consume_click(widget_key)
+    runtime.store_value(widget_key, value)
+    button_widget = ButtonWidget(
+        runtime=runtime,
+        kind="button",
+        key=widget_key,
+        label=label,
+    )
+    runtime.register(button_widget)
+    return value
 
 
-def button(label: str, *, key: Optional[str] = None, **_kwargs: Any) -> bool:
-    trigger_key = _trigger_key(label, key)
-    if session_state.pop(trigger_key, False):
-        return True
+def download_button(*_args: Any, **_kwargs: Any) -> bool:
     return False
 
 
-def download_button(
-    _label: str,
-    _data: Any,
-    *,
-    file_name: str,
-    mime: str,
-    disabled: bool = False,
-    **_kwargs: Any,
-) -> bool:
-    return not disabled
-
-
 class _Progress:
-    def progress(self, _value: int, **_kwargs: Any) -> None:
-        pass
+    def __init__(self) -> None:
+        self.value = 0
+
+    def progress(self, value: int, *, text: str | None = None) -> None:
+        self.value = int(value)
 
 
 class _Status:
-    def update(self, **_kwargs: Any) -> None:
-        pass
+    def __init__(self, label: str) -> None:
+        self.label = label
+        self.state = "running"
+
+    def update(self, *, label: str | None = None, state: str | None = None) -> None:
+        if label is not None:
+            self.label = label
+        if state is not None:
+            self.state = state
 
 
-def progress(_value: int, **_kwargs: Any) -> _Progress:
-    return _Progress()
+def progress(value: int, *, text: str | None = None) -> _Progress:
+    widget = _Progress()
+    widget.progress(value, text=text)
+    return widget
 
 
-def status(_label: str, **_kwargs: Any) -> _Status:
-    return _Status()
+def status(label: str, *, expanded: bool = False) -> _Status:
+    return _Status(label)
 
 
-def tabs(labels: Sequence[str]) -> Tuple[_Context, ...]:
-    return tuple(_Context(f"tab:{label}") for label in labels)
+class _Tab:
+    def __init__(self, label: str) -> None:
+        self.label = label
+
+    def __enter__(self) -> "_Tab":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
 
 
-def columns(count: int) -> Tuple[_Context, ...]:
-    return tuple(_Context(f"column:{idx}") for idx in range(count))
+def tabs(labels: Sequence[str]) -> tuple[_Tab, ...]:
+    return tuple(_Tab(label) for label in labels)
 
 
-def columns_from_list(labels: Sequence[str]) -> Tuple[_Context, ...]:  # pragma: no cover
-    return tuple(_Context(f"column:{label}") for label in labels)
+class _Column:
+    def __init__(self, weight: float | None = None) -> None:
+        self.weight = weight
+
+    def __enter__(self) -> "_Column":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
 
 
-__all__ = [
-    "session_state",
-    "cache_data",
-    "set_page_config",
-    "title",
-    "header",
-    "subheader",
-    "caption",
-    "write",
-    "markdown",
-    "info",
-    "warning",
-    "error",
-    "success",
-    "json",
-    "dataframe",
-    "code",
-    "selectbox",
-    "multiselect",
-    "text_input",
-    "slider",
-    "checkbox",
-    "button",
-    "download_button",
-    "tabs",
-    "columns",
-    "progress",
-    "status",
-    "sidebar",
-]
+def columns(spec: int | Sequence[int | float], *, gap: str | None = None) -> tuple[_Column, ...]:
+    if isinstance(spec, int):
+        count = spec
+        weights: tuple[float | None, ...] = (None,) * count
+    else:
+        weights = tuple(float(value) for value in spec)
+        count = len(weights)
+
+    if count < 1:
+        raise ValueError("columns: at least one column required")
+
+    return tuple(_Column(weight) for weight in weights)

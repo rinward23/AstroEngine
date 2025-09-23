@@ -1,5 +1,7 @@
 # AstroEngine — Runtime & Schema Contracts
 
+![Coverage](docs/badges/coverage.svg)
+
 AstroEngine provides schema definitions and Python helpers for building
 real-time astrology pipelines.  The codebase has been rebuilt to avoid
 Conda-specific tooling and now organises assets using a
@@ -29,6 +31,28 @@ python -m astroengine.maint --full --strict --auto-install all --yes
 
 See `docs/DIAGNOSTICS.md`, `docs/SWISS_EPHEMERIS.md`, and `docs/QUALITY_GATE.md` for details.
 # >>> AUTO-GEN END: README Quick Start v1.1
+
+### First transit sanity check
+
+Once the virtual environment is ready, confirm that the bundled CLI can
+resolve ephemeris data and emit real transits. The command below scans
+for aspects between the Moon and Sun over the first week of 2024 and
+writes a JSON payload containing every hit and its severity score:
+
+```bash
+python -m astroengine transits \
+  --start 2024-01-01T00:00:00Z \
+  --end 2024-01-07T00:00:00Z \
+  --moving moon \
+  --target sun \
+  --provider swiss \
+  --step 180 \
+  --json moon_sun_transits.json
+```
+
+Inspecting the generated file is a convenient way to verify that Swiss
+Ephemeris (or the PyMeeus fallback) is configured correctly before
+trying richer recipes.
 
 # >>> AUTO-GEN BEGIN: Minimal App Quickstart v1.1
 ## Run the minimal application
@@ -66,6 +90,22 @@ See `docs/DIAGNOSTICS.md`, `docs/SWISS_EPHEMERIS.md`, and `docs/QUALITY_GATE.md`
 > If import fails about `get_se_ephe_path`, this CP also restores `astroengine/ephemeris/utils.py`.
 
 # >>> AUTO-GEN END: Minimal App Quickstart v1.1
+
+### Next steps
+
+The documentation set now includes step-by-step recipes for three common
+workflows:
+
+- Daily planner view that combines transiting bodies with natal
+  positions.
+- Electional window sweeps that surface promising aspect windows for
+  a specific transiting body.
+- Transit-to-progressed synastry comparisons for relationship or event
+  tracking.
+
+Start with `docs/quickstart.md` for an annotated walkthrough, then jump
+to `docs/recipes/` to reproduce the detailed examples without additional
+setup.
 
 # >>> AUTO-GEN BEGIN: README Import Snippet v1.0
 ### Import the package

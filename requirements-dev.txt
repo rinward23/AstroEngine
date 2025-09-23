@@ -3,3 +3,7 @@ pip-tools>=7.4.0  # ENSURE-LINE
 pipdeptree>=2.20.0  # ENSURE-LINE
 pyswisseph==2.10.3.2  # ENSURE-LINE
 jinja2>=3.1
+pytest>=8.0.0  # ENSURE-LINE
+pytest-cov>=4.1.0  # ENSURE-LINE
+hypothesis>=6.92.0  # ENSURE-LINE
+genbadge[coverage]>=1.1.1  # ENSURE-LINE

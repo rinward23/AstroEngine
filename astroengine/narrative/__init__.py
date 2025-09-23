@@ -15,7 +15,13 @@ from typing import Any
 from ..domains import rollup_domain_scores
 from ..infrastructure.paths import profiles_dir
 from .gpt_api import GPTNarrativeClient
+from .profiles import render_profile, timelord_outline
 from .prompts import build_summary_prompt, build_template_summary
+
+try:  # pragma: no cover - optional dependency
+    from jinja2 import Template
+except Exception:  # pragma: no cover - stub fallback
+    Template = None  # type: ignore
 
 __all__ = [
     "NarrativeHighlight",
@@ -26,6 +32,8 @@ __all__ = [
     "compose_narrative",
     "render_simple",
     "summarize_top_events",
+    "render_profile",
+    "timelord_outline",
     "build_summary_prompt",
     "build_template_summary",
     "markdown_to_html",
@@ -33,6 +41,10 @@ __all__ = [
 ]
 
 _LOG = logging.getLogger(__name__)
+
+_DEFAULT_TEMPLATE = """
+{{ title }}\n\n{% for e in events %}- {{ e }}\n{% endfor %}
+"""
 
 def _render_simple_template(title: str, events: Mapping[str, Any]) -> str:
     lines = [str(title).strip()]
@@ -203,8 +215,10 @@ _CATEGORY_LABELS = {
 
 
 def render_simple(title: str, events: Mapping[str, Any]) -> str:
-    """Render a deterministic narrative block without optional dependencies."""
+    """Render a deterministic narrative block with optional templating."""
 
+    if Template is not None:
+        return Template(_DEFAULT_TEMPLATE).render(title=title, events=events)
     return _render_simple_template(title, events)
 
 
@@ -214,6 +228,9 @@ def summarize_top_events(
     top_n: int = 5,
     client: GPTNarrativeClient | None = None,
     profile: str = "transits",
+    timelords: Any | None = None,
+    profile_context: Mapping[str, Any] | None = None,
+    prefer_template: bool = False,
 ) -> str:
     """Return a narrative summary of the top-N events."""
 
@@ -224,11 +241,22 @@ def summarize_top_events(
     sorted_events = sorted(events_list, key=_event_score, reverse=True)
     top_events = sorted_events[: max(top_n, 1)]
 
+    context = dict(profile_context or {})
+    offline = render_profile(profile, top_events, timelords=timelords, context=context)
+
+    if prefer_template:
+        return offline
+
     try:
-        prompt = build_summary_prompt(top_events, profile=profile)
+        prompt = build_summary_prompt(
+            top_events,
+            profile=profile,
+            timelords=timelords,
+            context=context,
+        )
     except Exception as exc:  # pragma: no cover - defensive fallback
         _LOG.debug("Failed to build GPT prompt: %s", exc)
-        return build_template_summary(top_events)
+        return offline
 
     client = client or GPTNarrativeClient.from_env()
     if client and client.available:
@@ -237,7 +265,7 @@ def summarize_top_events(
         except Exception as exc:  # pragma: no cover - network or API errors
             _LOG.warning("GPT narrative generation failed; using template fallback: %s", exc)
 
-    return build_template_summary(top_events)
+    return offline
 
 
 def compose_narrative(

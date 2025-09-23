@@ -6,7 +6,11 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Literal, Mapping, Optional, Protocol, Union
 
-from .infrastructure.storage.sqlite import ensure_sqlite_schema
+try:  # pragma: no cover - optional storage dependency
+    from .infrastructure.storage.sqlite import ensure_sqlite_schema
+except ModuleNotFoundError as exc:  # pragma: no cover - allows lightweight imports
+    def ensure_sqlite_schema(*_args, **_kwargs):  # type: ignore
+        raise RuntimeError("SQLite storage support unavailable") from exc
 
 AspectName = Literal[
     "conjunction",

@@ -30,5 +30,5 @@ def test_summarize_top_events_uses_transport() -> None:
 
 def test_summarize_top_events_template_fallback() -> None:
     summary = summarize_top_events(_EVENTS, client=GPTNarrativeClient())
-    assert summary.startswith("Top events:")
+    assert summary.startswith("Transit Highlights")
     assert "Sun" in summary

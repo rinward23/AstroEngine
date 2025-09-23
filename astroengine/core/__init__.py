@@ -49,6 +49,7 @@ __all__ = [
     "maybe_attach_domain_fields",
     "compute_domain_factor",
     "TransitEngine",
+    "TransitEngineConfig",
 ]
 
 
@@ -57,4 +58,8 @@ def __getattr__(name: str):
         from .transit_engine import TransitEngine as _TransitEngine
 
         return _TransitEngine
+    if name == "TransitEngineConfig":
+        from .transit_engine import TransitEngineConfig as _TransitEngineConfig
+
+        return _TransitEngineConfig
     raise AttributeError(name)

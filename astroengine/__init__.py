@@ -39,6 +39,7 @@ from .core import (  # noqa: F401
     DomainResolution,
     DomainResolver,
     TransitEngine,  # ENSURE-LINE
+    TransitEngineConfig,
     TransitEvent,  # ENSURE-LINE
     TransitScanConfig,  # ENSURE-LINE
     apply_profile_if_any,
@@ -56,7 +57,36 @@ from .core import (  # noqa: F401
 from .canonical import TransitEvent  # ENSURE-LINE
 from .canonical import BodyPosition  # ENSURE-LINE
 from .diagnostics import collect_diagnostics  # ENSURE-LINE
-from .esoteric import DECANS, DecanAssignment, DecanDefinition, assign_decans, decan_for_longitude
+from .esoteric import (
+    ALCHEMY_STAGES,
+    DECANS,
+    ELDER_FUTHARK_RUNES,
+    GOLDEN_DAWN_GRADES,
+    I_CHING_HEXAGRAMS,
+    MASTER_NUMBERS,
+    NUMEROLOGY_NUMBERS,
+    SEVEN_RAYS,
+    TAROT_COURTS,
+    TAROT_MAJORS,
+    TAROT_SPREADS,
+    TREE_OF_LIFE_PATHS,
+    TREE_OF_LIFE_SEPHIROTH,
+    AlchemyStage,
+    DecanAssignment,
+    DecanDefinition,
+    GoldenDawnGrade,
+    Hexagram,
+    NumerologyNumber,
+    PathDefinition,
+    RayDefinition,
+    Rune,
+    SephiraDefinition,
+    TarotCourtCard,
+    TarotMajorArcana,
+    TarotSpread,
+    assign_decans,
+    decan_for_longitude,
+)
 from .ephemeris import (  # noqa: F401
     EphemerisAdapter,
     EphemerisConfig,
@@ -111,6 +141,16 @@ from .narrative_overlay import (
     format_confidence_band,
     select_resonance_focus,
 )
+from .ritual import (
+    CHALDEAN_ORDER,
+    ELECTIONAL_WINDOWS,
+    PLANETARY_DAYS,
+    PLANETARY_HOUR_TABLE,
+    VOID_OF_COURSE_RULES,
+    ElectionalWindow,
+    PlanetaryDay,
+    VoidOfCourseRule,
+)
 from .providers import EphemerisProvider  # noqa: F401  # ENSURE-LINE
 from .providers import get_provider, list_providers  # noqa: F401  # ENSURE-LINE
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
@@ -144,6 +184,7 @@ __all__ = [
     "CompositePosition",
     "DirectedChart",
     "TransitEngine",  # ENSURE-LINE
+    "TransitEngineConfig",
     "TransitEvent",  # ENSURE-LINE
     "TransitScanConfig",  # ENSURE-LINE
     "BodyPosition",
@@ -218,8 +259,39 @@ __all__ = [
     "get_vca_aspect",
     "vca_orb_for",
     "DECANS",
+    "TREE_OF_LIFE_SEPHIROTH",
+    "TREE_OF_LIFE_PATHS",
+    "ALCHEMY_STAGES",
+    "SEVEN_RAYS",
+    "GOLDEN_DAWN_GRADES",
+    "TAROT_MAJORS",
+    "TAROT_COURTS",
+    "TAROT_SPREADS",
+    "NUMEROLOGY_NUMBERS",
+    "MASTER_NUMBERS",
+    "I_CHING_HEXAGRAMS",
+    "ELDER_FUTHARK_RUNES",
+    "PLANETARY_DAYS",
+    "PLANETARY_HOUR_TABLE",
+    "VOID_OF_COURSE_RULES",
+    "ELECTIONAL_WINDOWS",
+    "CHALDEAN_ORDER",
     "DecanAssignment",
     "DecanDefinition",
+    "SephiraDefinition",
+    "PathDefinition",
+    "AlchemyStage",
+    "RayDefinition",
+    "GoldenDawnGrade",
+    "TarotMajorArcana",
+    "TarotCourtCard",
+    "TarotSpread",
+    "NumerologyNumber",
+    "Hexagram",
+    "Rune",
+    "PlanetaryDay",
+    "VoidOfCourseRule",
+    "ElectionalWindow",
     "assign_decans",
     "decan_for_longitude",
     "VCA_CORE_BODIES",

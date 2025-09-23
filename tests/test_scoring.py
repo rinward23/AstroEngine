@@ -53,7 +53,7 @@ def test_corridor_width_modulates_score() -> None:
             applying_or_separating="separating",
             corridor_width_deg=1.0,
         )
-    ).score
+    )
     wide = compute_score(
         ScoreInputs(
             kind="antiscia",
@@ -64,8 +64,8 @@ def test_corridor_width_modulates_score() -> None:
             applying_or_separating="separating",
             corridor_width_deg=3.0,
         )
-    ).score
-    assert tight > wide
+    )
+    assert tight.components["confidence"] > wide.components["confidence"]
 
 
 def test_uncertainty_confidence_penalizes_observers() -> None:
@@ -83,14 +83,14 @@ def test_condition_and_dignity_modifiers_applied() -> None:
         target="sun",
         applying_or_separating="applying",
         severity_modifiers={"retrograde": 0.9, "combust": 0.8, "out_of_bounds": 1.1},
-        dignity_modifiers={"rulership": 1.05, "triplicity": 1.02},
+        dignity_modifiers={"primary": "rulership", "support": "triplicity"},
         retrograde=True,
         combust_state="combust",
         out_of_bounds=True,
     )
     result = compute_score(inputs)
     assert result.components["condition_factor"] == pytest.approx(0.9 * 0.8 * 1.1)
-    assert result.components["dignity_factor"] == pytest.approx(1.05 * 1.02)
+    assert result.components["dignity_factor"] == pytest.approx(1.10 * 1.05)
 
 
 def test_score_deterministic_for_same_inputs() -> None:
@@ -160,3 +160,71 @@ def test_policy_override_changes_score() -> None:
     ).to_mapping()
     boosted = compute_score(inputs, policy=override_policy)
     assert boosted.score > baseline.score
+
+
+def test_uncertainty_confidence_respects_precision() -> None:
+    tight = compute_uncertainty_confidence(
+        2.0,
+        2.0,
+        orb_abs_deg=0.1,
+        resonance_weights={"mind": 1.0, "body": 1.0, "spirit": 1.0},
+        uncertainty_bias={"narrow": "spirit", "broad": "body", "standard": "mind"},
+    )
+    loose = compute_uncertainty_confidence(
+        2.0,
+        2.0,
+        orb_abs_deg=1.5,
+        resonance_weights={"mind": 1.0, "body": 1.0, "spirit": 1.0},
+        uncertainty_bias={"narrow": "spirit", "broad": "body", "standard": "mind"},
+    )
+    assert tight > loose
+
+
+def test_tradition_profile_increases_drishti_focus() -> None:
+    base = ScoreInputs(
+        kind="aspect_square",
+        orb_abs_deg=0.1,
+        orb_allow_deg=6.0,
+        moving="mars",
+        target="saturn",
+        applying_or_separating="applying",
+        angle_deg=90.0,
+        corridor_width_deg=2.0,
+        resonance_weights={"mind": 1.0, "body": 1.0, "spirit": 1.0},
+    )
+    without_tradition = compute_score(base)
+    with_tradition = compute_score(
+        ScoreInputs(
+            kind=base.kind,
+            orb_abs_deg=base.orb_abs_deg,
+            orb_allow_deg=base.orb_allow_deg,
+            moving=base.moving,
+            target=base.target,
+            applying_or_separating=base.applying_or_separating,
+            corridor_width_deg=base.corridor_width_deg,
+            corridor_profile=base.corridor_profile,
+            resonance_weights=base.resonance_weights,
+            angle_deg=base.angle_deg,
+            tradition_profile="vedic",
+        )
+    )
+    assert with_tradition.score >= without_tradition.score
+    assert with_tradition.components["tradition_factor"] >= 1.0
+
+
+def test_fractal_factor_contributes_for_harmonic_angles() -> None:
+    result = compute_score(
+        ScoreInputs(
+            kind="aspect_trine",
+            orb_abs_deg=0.2,
+            orb_allow_deg=4.0,
+            moving="jupiter",
+            target="sun",
+            applying_or_separating="separating",
+            angle_deg=120.0,
+            corridor_width_deg=2.0,
+            resonance_weights={"mind": 1.0, "body": 1.0, "spirit": 1.0},
+        )
+    )
+    assert "fractal_factor" in result.components
+    assert result.components["fractal_factor"] > 0.0

@@ -10,6 +10,7 @@ from typing import Dict, Iterable, List
 from .core.angles import DeltaLambdaTracker, classify_relative_motion, signed_delta
 from .core.bodies import body_class
 from .infrastructure.paths import profiles_dir
+from .refine import adaptive_corridor_width
 
 __all__ = ["AspectHit", "detect_aspects"]
 
@@ -32,6 +33,8 @@ class AspectHit:
     is_partile: bool
     applying_or_separating: str
     family: str
+    corridor_width_deg: float | None = None
+    corridor_profile: str | None = None
 
 
 _DEF_PATH = profiles_dir() / "aspects_policy.json"
@@ -196,6 +199,10 @@ def detect_aspects(
         return []
 
     partile_threshold = float(policy.get("partile_threshold_deg", _DEFAULT_PARTILE_THRESHOLD_DEG))
+    corridor_cfg = policy.get("corridor", {})
+    corridor_profile = str(corridor_cfg.get("profile", "gaussian"))
+    corridor_minimum = float(corridor_cfg.get("minimum_deg", 0.1))
+    default_orb = float(policy.get("default_orb_deg", 2.0))
     delta_tracker = DeltaLambdaTracker()
     out: List[AspectHit] = []
     cls_m = body_class(moving)
@@ -207,6 +214,7 @@ def detect_aspects(
         lon_target = float(positions[target]["lon"])
         speed_moving = float(positions[moving].get("speed_lon", 0.0))
         speed_target = float(positions[target].get("speed_lon", 0.0))
+        retrograde = speed_moving < 0 or speed_target < 0
 
         delta_lambda = delta_tracker.update(lon_target, lon_moving)
         for aspect_name, (angle, family) in angles_map.items():
@@ -221,6 +229,15 @@ def detect_aspects(
                     speed_target,
                 )
                 is_partile = abs(offset) <= partile_threshold
+                aspect_strength = max(orb_allow / max(default_orb, 1e-9), 0.25)
+                corridor_width = adaptive_corridor_width(
+                    orb_allow,
+                    speed_moving,
+                    speed_target,
+                    aspect_strength=aspect_strength,
+                    retrograde=retrograde,
+                    minimum_orb_deg=corridor_minimum,
+                )
                 out.append(
                     AspectHit(
                         kind=f"aspect_{aspect_name}",
@@ -237,6 +254,8 @@ def detect_aspects(
                         is_partile=bool(is_partile),
                         applying_or_separating=motion.state,
                         family=family,
+                        corridor_width_deg=float(corridor_width),
+                        corridor_profile=corridor_profile,
                     )
                 )
     return out

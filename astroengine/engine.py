@@ -3,32 +3,58 @@
 from __future__ import annotations
 
 import datetime as dt
-import yaml
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, List, Mapping
+
+from typing import Iterable, List, Mapping, MutableMapping
 
 
+
+import yaml
+
+
+from .astro.declination import DEFAULT_ANTISCIA_AXIS
 from .chart.config import ChartConfig
 
 from .core.engine import get_active_aspect_angles
 from .detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
 from .detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
+
+try:  # pragma: no cover - optional for environments without pyswisseph
+    import swisseph as swe  # type: ignore
+except Exception:  # pragma: no cover
+    swe = None  # type: ignore
 from .detectors_aspects import AspectHit, detect_aspects
 from .ephemeris import EphemerisConfig
-from .ephemeris import SwissEphemerisAdapter
 from .exporters import LegacyTransitEvent
-from .infrastructure.paths import profiles_dir
 
+from .infrastructure.paths import profiles_dir
 from .plugins import DetectorContext, get_plugin_manager
 
 
+from .infrastructure.paths import profiles_dir
 from .providers import get_provider
-from .profiles import load_base_profile
+from .profiles import load_base_profile, load_resonance_weights
 from .scoring import ScoreInputs, compute_score
+from .canonical import BodyPosition
+from .chart.natal import NatalChart
+from .chart.progressions import ProgressedChart, compute_secondary_progressed_chart
+from .chart.directions import DirectedChart, compute_solar_arc_chart
+from .chart.composite import CompositeChart
 
-from .timelords.active import TimelordCalculator
+try:  # pragma: no cover - optional systems ship without full timelord stack
+    from .timelords.active import TimelordCalculator
+except Exception:  # pragma: no cover - SyntaxError/import failures treated as optional
+
+    class TimelordCalculator:  # type: ignore[no-redef]
+        """Fallback that signals the timelord stack is unavailable."""
+
+        def __init__(self, *_args, **_kwargs) -> None:  # pragma: no cover - error path
+            raise RuntimeError("timelord subsystem unavailable")
+
+
+from .ephemeris import SwissEphemerisAdapter
 
 
 # >>> AUTO-GEN BEGIN: engine-feature-flags v1.0
@@ -50,6 +76,7 @@ __all__ = [
     "resolve_provider",
     "fast_scan",
     "ScanConfig",
+    "TargetFrameResolver",
 ]
 
 _BODY_CODE_TO_NAME = {
@@ -64,6 +91,195 @@ _BODY_CODE_TO_NAME = {
     8: "neptune",
     9: "pluto",
 }
+
+if swe is not None:  # pragma: no cover - availability tested via swiss-marked tests
+    for attr, name in (
+        ("CERES", "ceres"),
+        ("PALLAS", "pallas"),
+        ("JUNO", "juno"),
+        ("VESTA", "vesta"),
+        ("CHIRON", "chiron"),
+    ):
+        code = getattr(swe, attr, None)
+        if code is not None:
+            _BODY_CODE_TO_NAME[int(code)] = name
+
+
+class TargetFrameResolver:
+    """Resolve target body positions for alternate reference frames."""
+
+    def __init__(
+        self,
+        frame: str,
+        *,
+        natal_chart: NatalChart | None = None,
+        composite_chart: CompositeChart | None = None,
+        static_positions: Mapping[str, float] | None = None,
+    ) -> None:
+        self.frame = frame.lower()
+        self.natal_chart = natal_chart
+        self.composite_chart = composite_chart
+        self._static_positions: MutableMapping[str, float] = {
+            key.lower(): float(value) % 360.0 for key, value in (static_positions or {}).items()
+        }
+        self._progressed_cache: MutableMapping[str, ProgressedChart] = {}
+        self._directed_cache: MutableMapping[str, DirectedChart] = {}
+
+    @staticmethod
+    def _normalize_iso(ts: str) -> str:
+        dt_obj = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        dt_utc = dt_obj.astimezone(timezone.utc) if dt_obj.tzinfo else dt_obj.replace(tzinfo=timezone.utc)
+        return dt_utc.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+    def overrides_target(self) -> bool:
+        if self.frame == "natal":
+            return bool(self._static_positions) or self.natal_chart is not None
+        if self.frame in {"progressed", "directed", "composite"}:
+            return True
+        return False
+
+    @property
+    def static_positions(self) -> Mapping[str, float]:
+        return dict(self._static_positions)
+
+    def _available_names(self) -> set[str]:
+        names: set[str] = set(self._static_positions.keys())
+        if self.natal_chart is not None:
+            names.update(self.natal_chart.positions.keys())
+        if self.composite_chart is not None:
+            names.update(self.composite_chart.positions.keys())
+        return names
+
+    def _resolve_body_name(self, body: str) -> str:
+        body_lower = body.lower()
+        for name in self._available_names():
+            if name.lower() == body_lower:
+                return name
+        return body
+
+    def _natal_body(self, body: str) -> BodyPosition | None:
+        if self.natal_chart is None:
+            return None
+        name = self._resolve_body_name(body)
+        return self.natal_chart.positions.get(name)
+
+    def _progressed_for(self, iso_ts: str) -> ProgressedChart:
+        key = self._normalize_iso(iso_ts)
+        cached = self._progressed_cache.get(key)
+        if cached is not None:
+            return cached
+        if self.natal_chart is None:
+            raise ValueError("Progressed frame requires a natal chart")
+        dt_obj = datetime.fromisoformat(key.replace("Z", "+00:00"))
+        progressed = compute_secondary_progressed_chart(self.natal_chart, dt_obj)
+        self._progressed_cache[key] = progressed
+        return progressed
+
+    def _directed_for(self, iso_ts: str) -> DirectedChart:
+        key = self._normalize_iso(iso_ts)
+        cached = self._directed_cache.get(key)
+        if cached is not None:
+            return cached
+        if self.natal_chart is None:
+            raise ValueError("Directed frame requires a natal chart")
+        dt_obj = datetime.fromisoformat(key.replace("Z", "+00:00"))
+        directed = compute_solar_arc_chart(self.natal_chart, dt_obj)
+        self._directed_cache[key] = directed
+        return directed
+
+    def _static_position(self, body: str) -> Mapping[str, float] | None:
+        body_lower = body.lower()
+        if body_lower not in self._static_positions:
+            return None
+        lon = self._static_positions[body_lower]
+        return {"lon": lon, "lat": 0.0, "decl": 0.0, "speed_lon": 0.0}
+
+    def position_dict(self, iso_ts: str, body: str) -> Mapping[str, float]:
+        frame = self.frame
+        if frame == "natal":
+            static = self._static_position(body)
+            if static is not None:
+                return static
+            natal = self._natal_body(body)
+            if natal is None:
+                raise KeyError(f"Body '{body}' not present in natal chart")
+            return {
+                "lon": natal.longitude % 360.0,
+                "lat": natal.latitude,
+                "decl": natal.declination,
+                "speed_lon": natal.speed_longitude,
+            }
+
+        if frame == "progressed":
+            progressed = self._progressed_for(iso_ts).chart
+            name = self._resolve_body_name(body)
+            pos = progressed.positions.get(name)
+            if pos is None:
+                raise KeyError(f"Body '{body}' not present in progressed chart")
+            return {
+                "lon": pos.longitude % 360.0,
+                "lat": pos.latitude,
+                "decl": pos.declination,
+                "speed_lon": pos.speed_longitude,
+            }
+
+        if frame == "directed":
+            directed = self._directed_for(iso_ts)
+            name = self._resolve_body_name(body)
+            lon = directed.positions.get(name)
+            if lon is None:
+                raise KeyError(f"Body '{body}' not present in directed chart")
+            natal = self._natal_body(body)
+            lat = natal.latitude if natal is not None else 0.0
+            decl = natal.declination if natal is not None else 0.0
+            return {"lon": lon % 360.0, "lat": lat, "decl": decl, "speed_lon": 0.0}
+
+        if frame == "composite":
+            if self.composite_chart is None:
+                raise ValueError("Composite frame requires a composite chart")
+            name = self._resolve_body_name(body)
+            pos = self.composite_chart.positions.get(name)
+            if pos is None:
+                raise KeyError(f"Body '{body}' not present in composite chart")
+            return {
+                "lon": pos.midpoint_longitude % 360.0,
+                "lat": pos.latitude,
+                "decl": pos.declination,
+                "speed_lon": pos.speed_longitude,
+            }
+
+        raise ValueError(f"Unsupported target frame '{self.frame}'")
+
+
+class FrameAwareProvider:
+    """Provider wrapper that injects alternate frame target positions."""
+
+    def __init__(self, provider, target: str, resolver: TargetFrameResolver) -> None:
+        self._provider = provider
+        self._target = target.lower()
+        self._resolver = resolver
+
+    def positions_ecliptic(self, iso_utc: str, bodies: Iterable[str]):
+        base = dict(self._provider.positions_ecliptic(iso_utc, bodies))
+        if self._resolver.overrides_target():
+            for name in bodies:
+                if name.lower() == self._target:
+                    base[name] = dict(self._resolver.position_dict(iso_utc, name))
+        return base
+
+    def position(self, body: str, ts_utc: str) -> BodyPosition:
+        if self._resolver.overrides_target() and body.lower() == self._target:
+            data = self._resolver.position_dict(ts_utc, body)
+            return BodyPosition(
+                lon=float(data["lon"]),
+                lat=float(data.get("lat", 0.0)),
+                dec=float(data.get("decl", 0.0)),
+                speed_lon=float(data.get("speed_lon", 0.0)),
+            )
+        return self._provider.position(body, ts_utc)
+
+    def __getattr__(self, item):  # pragma: no cover - passthrough
+        return getattr(self._provider, item)
 
 
 @dataclass(slots=True)
@@ -260,6 +476,14 @@ def _score_from_hit(
     moving: str,
     target: str,
     phase: str,
+    *,
+    corridor_width: float | None = None,
+    corridor_profile: str | None = None,
+    resonance_weights: Mapping[str, float] | None = None,
+    tradition: str | None = None,
+    chart_sect: str | None = None,
+    angle_deg: float | None = None,
+    uncertainty_bias: Mapping[str, str] | None = None,
 ) -> float:
     """Use the scoring policy to assign a score for a detected contact."""
 
@@ -270,18 +494,41 @@ def _score_from_hit(
         moving=moving,
         target=target,
         applying_or_separating=phase,
+        corridor_width_deg=corridor_width,
+        corridor_profile=corridor_profile or "gaussian",
+        resonance_weights=resonance_weights,
+        tradition_profile=tradition,
+        chart_sect=chart_sect,
+        angle_deg=angle_deg,
+        uncertainty_bias=uncertainty_bias,
     )
     return compute_score(score_inputs).score
 
 
-def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> LegacyTransitEvent:
+def _event_from_decl(
+    hit: CoarseHit,
+    *,
+    orb_allow: float,
+    resonance_weights: Mapping[str, float] | None,
+    tradition: str | None,
+    chart_sect: str | None,
+    uncertainty_bias: Mapping[str, str] | None,
+) -> LegacyTransitEvent:
+    effective_orb = float(hit.orb_allow) if hit.orb_allow is not None else float(orb_allow)
     score = _score_from_hit(
         hit.kind,
         abs(hit.delta),
-        orb_allow,
+        effective_orb,
         hit.moving,
         hit.target,
         hit.applying_or_separating,
+        corridor_width=hit.corridor_width_deg,
+        corridor_profile=hit.corridor_profile,
+        resonance_weights=resonance_weights,
+        tradition=tradition,
+        chart_sect=chart_sect,
+        angle_deg=None,
+        uncertainty_bias=uncertainty_bias,
     )
     metadata: dict[str, float | str] = {
         "dec_moving": hit.dec_moving,
@@ -294,13 +541,17 @@ def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> LegacyTransitEvent:
         metadata["mirror_lon"] = hit.mirror_lon
     if hit.axis:
         metadata["mirror_axis"] = hit.axis
+    if hit.corridor_width_deg is not None:
+        metadata["corridor_width_deg"] = float(hit.corridor_width_deg)
+    if hit.corridor_profile:
+        metadata["corridor_profile"] = hit.corridor_profile
     return LegacyTransitEvent(
         kind=hit.kind,
         timestamp=hit.when_iso,
         moving=hit.moving,
         target=hit.target,
         orb_abs=abs(hit.delta),
-        orb_allow=float(orb_allow),
+        orb_allow=effective_orb,
         applying_or_separating=hit.applying_or_separating,
         score=score,
         lon_moving=hit.lon_moving,
@@ -309,7 +560,14 @@ def _event_from_decl(hit: CoarseHit, *, orb_allow: float) -> LegacyTransitEvent:
     )
 
 
-def _event_from_aspect(hit: AspectHit) -> LegacyTransitEvent:
+def _event_from_aspect(
+    hit: AspectHit,
+    *,
+    resonance_weights: Mapping[str, float] | None,
+    tradition: str | None,
+    chart_sect: str | None,
+    uncertainty_bias: Mapping[str, str] | None,
+) -> LegacyTransitEvent:
     score = _score_from_hit(
         hit.kind,
         hit.orb_abs,
@@ -317,7 +575,25 @@ def _event_from_aspect(hit: AspectHit) -> LegacyTransitEvent:
         hit.moving,
         hit.target,
         hit.applying_or_separating,
+        corridor_width=hit.corridor_width_deg,
+        corridor_profile=hit.corridor_profile,
+        resonance_weights=resonance_weights,
+        tradition=tradition,
+        chart_sect=chart_sect,
+        angle_deg=hit.angle_deg,
+        uncertainty_bias=uncertainty_bias,
     )
+    metadata = {
+        "angle_deg": float(hit.angle_deg),
+        "delta_lambda_deg": float(hit.delta_lambda_deg),
+        "offset_deg": float(hit.offset_deg),
+        "partile": bool(hit.is_partile),
+        "family": hit.family,
+    }
+    if hit.corridor_width_deg is not None:
+        metadata["corridor_width_deg"] = float(hit.corridor_width_deg)
+    if hit.corridor_profile:
+        metadata["corridor_profile"] = hit.corridor_profile
     return LegacyTransitEvent(
         kind=hit.kind,
         timestamp=hit.when_iso,
@@ -329,13 +605,7 @@ def _event_from_aspect(hit: AspectHit) -> LegacyTransitEvent:
         score=score,
         lon_moving=hit.lon_moving,
         lon_target=hit.lon_target,
-        metadata={
-            "angle_deg": float(hit.angle_deg),
-            "delta_lambda_deg": float(hit.delta_lambda_deg),
-            "offset_deg": float(hit.offset_deg),
-            "partile": bool(hit.is_partile),
-            "family": hit.family,
-        },
+        metadata=metadata,
     )
 
 
@@ -346,21 +616,51 @@ def scan_contacts(
     target: str,
     provider_name: str = "swiss",
     *,
+
+    ephemeris_config: EphemerisConfig | None = None,
+
     decl_parallel_orb: float | None = None,
     decl_contra_orb: float | None = None,
     antiscia_orb: float | None = None,
     contra_antiscia_orb: float | None = None,
     step_minutes: int = 60,
     aspects_policy_path: str | None = None,
+
+
+    provider: object | None = None,
+    target_frame: str = "transit",
+    target_resolver: TargetFrameResolver | None = None,
+) -> List[LegacyTransitEvent]:
+    """Scan for declination, antiscia, and aspect contacts between two bodies."""
+
+    base_provider = provider or get_provider(provider_name)
+    frame = (target_frame or "transit").lower()
+    resolver = target_resolver
+    if resolver is not None and frame != "transit" and resolver.frame != frame:
+        resolver = TargetFrameResolver(
+            frame,
+            natal_chart=target_resolver.natal_chart,
+            composite_chart=target_resolver.composite_chart,
+            static_positions=target_resolver.static_positions,
+        )
+    if resolver is not None and resolver.overrides_target():
+        provider_obj = FrameAwareProvider(base_provider, target, resolver)
+    else:
+        provider_obj = base_provider
+
+    timelord_calculator: TimelordCalculator | None = None,
+
+    chart_config: ChartConfig | None = None,
+
+
     profile: Mapping[str, Any] | None = None,
     profile_id: str | None = None,
     include_declination: bool = True,
     include_mirrors: bool = True,
     include_aspects: bool = True,
     antiscia_axis: str | None = None,
-    timelord_calculator: TimelordCalculator | None = None,
-    ephemeris_config: EphemerisConfig | None = None,
-    chart_config: ChartConfig | None = None,
+
+
 ) -> List[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
 
@@ -368,6 +668,21 @@ def scan_contacts(
         SwissEphemerisAdapter.configure_defaults(chart_config=chart_config)
 
     profile_data = _resolve_profile(profile, profile_id)
+    resonance_weights_map = load_resonance_weights(profile_data).as_mapping()
+    uncertainty_bias_map: Mapping[str, str] | None = None
+    resonance_section = (
+        profile_data.get("resonance") if isinstance(profile_data, Mapping) else None
+    )
+    if isinstance(resonance_section, Mapping):
+        bias_section = resonance_section.get("uncertainty_bias")
+        if isinstance(bias_section, Mapping):
+            uncertainty_bias_map = {str(key): str(value) for key, value in bias_section.items()}
+    tradition = tradition_profile
+    tradition_section = profile_data.get("tradition") if isinstance(profile_data, Mapping) else None
+    if not tradition and isinstance(tradition_section, Mapping):
+        default_trad = tradition_section.get("default")
+        if isinstance(default_trad, str):
+            tradition = default_trad
 
     decl_parallel_allow = _resolve_declination_orb(
         profile_data,
@@ -433,9 +748,50 @@ def scan_contacts(
             )
 
     ticks = list(_iso_ticks(start_iso, end_iso, step_minutes=step_minutes))
+
     events: List[LegacyTransitEvent] = []
 
+
+
+    for hit in detect_decl_contacts(
+        provider_obj,
+        ticks,
+        moving,
+        target,
+        decl_parallel_orb,
+        decl_contra_orb,
+    ):
+        allow = decl_parallel_orb if hit.kind == "decl_parallel" else decl_contra_orb
+        events.append(_event_from_decl(hit, orb_allow=allow))
+
+    for hit in detect_antiscia_contacts(
+        provider_obj,
+        ticks,
+        moving,
+        target,
+        antiscia_orb,
+        contra_antiscia_orb,
+    ):
+        allow = antiscia_orb if hit.kind == "antiscia" else contra_antiscia_orb
+        events.append(_event_from_decl(hit, orb_allow=allow))
+
+    for aspect_hit in detect_aspects(
+        provider_obj,
+        ticks,
+        moving,
+        target,
+        policy_path=aspects_policy_path,
+    ):
+        events.append(_event_from_aspect(aspect_hit))
+
     if do_declination:
+
+    def _append_event(event: LegacyTransitEvent) -> None:
+        _attach_timelords(event, timelord_calculator)
+        events.append(event)
+
+
+
         for hit in detect_decl_contacts(
             provider,
             ticks,
@@ -453,9 +809,9 @@ def scan_contacts(
                 if hit.kind == "decl_parallel"
                 else decl_contra_allow
             )
-            event = _event_from_decl(hit, orb_allow=allow)
-            _attach_timelords(event, timelord_calculator)
-            events.append(event)
+
+            _append_event(_event_from_decl(hit, orb_allow=allow))
+
 
     if do_mirrors:
         for hit in detect_antiscia_contacts(
@@ -472,9 +828,9 @@ def scan_contacts(
                 if hit.kind == "antiscia"
                 else contra_antiscia_allow
             )
-            event = _event_from_decl(hit, orb_allow=allow)
-            _attach_timelords(event, timelord_calculator)
-            events.append(event)
+
+            _append_event(_event_from_decl(hit, orb_allow=allow))
+
 
     if do_aspects:
         for aspect_hit in detect_aspects(
@@ -484,9 +840,9 @@ def scan_contacts(
             target,
             policy_path=aspects_policy_path,
         ):
-            event = _event_from_aspect(aspect_hit)
-            _attach_timelords(event, timelord_calculator)
-            events.append(event)
+
+            _append_event(_event_from_aspect(aspect_hit))
+
 
     plugin_context = DetectorContext(
         provider=provider,
@@ -503,17 +859,19 @@ def scan_contacts(
             "contra_antiscia_orb": contra_antiscia_allow,
             "step_minutes": step_minutes,
             "aspects_policy_path": aspects_policy_path,
-            "include_declination": do_declination,
-            "include_mirrors": do_mirrors,
-            "include_aspects": do_aspects,
+
+            "include_declination": include_declination,
+            "include_mirrors": include_mirrors,
+            "include_aspects": include_aspects,
+            "antiscia_axis": axis,
+
         },
         existing_events=tuple(events),
     )
     plugin_events = get_plugin_manager().run_detectors(plugin_context)
     if plugin_events:
-        for plugin_event in plugin_events:
-            _attach_timelords(plugin_event, timelord_calculator)
         events.extend(plugin_events)
+
 
     events.sort(key=lambda event: (event.timestamp, -event.score))
     return events

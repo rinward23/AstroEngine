@@ -41,7 +41,27 @@ def secondary_progressions(
     step_days: float = 30.0,
     config: ChartConfig | None = None,
 ) -> list[ProgressionEvent]:
-    """Return secondary progression samples between ``start`` and ``end``."""
+    """Return secondary progression samples between ``start`` and ``end``.
+
+    Parameters
+    ----------
+    natal_iso, start_iso, end_iso:
+        ISO-8601 timestamps in UTC.
+    bodies:
+        Iterable of body names (matching ``DEFAULT_BODIES`` keys). When
+        ``None`` the full default set is used.
+    step_days:
+        Sampling cadence expressed in **days** of real time. Each sample
+        converts elapsed days into day-for-a-year offsets using the
+        sidereal year (365.2422 days).
+
+    Returns
+    -------
+    list[ProgressionEvent]
+        Events ordered by Julian day. ``ProgressionEvent.positions``
+        stores geocentric ecliptic longitudes in degrees normalized to
+        ``[0, 360)``.
+    """
 
     natal_dt = _parse_iso(natal_iso)
     start_dt = _parse_iso(start_iso)
