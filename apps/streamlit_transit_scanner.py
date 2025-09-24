@@ -1,15 +1,15 @@
-
 """Streamlit UI for running AstroEngine transit scans interactively."""
-
 
 from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
+import tempfile
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 try:  # pragma: no cover - Streamlit import guarded for test environments
     import streamlit as st
@@ -36,30 +36,6 @@ from astroengine.utils import (
     TARGET_FRAME_BODIES,
     available_frames,
     expand_targets,
-)
-
-from astroengine.chart.config import (
-    DEFAULT_SIDEREAL_AYANAMSHA,
-    SUPPORTED_AYANAMSHAS,
-    VALID_ZODIAC_SYSTEMS,
-)
-
-from astroengine.exporters import write_parquet_canonical, write_sqlite_canonical
-from astroengine.exporters_ics import ics_bytes_from_events
-from astroengine.utils import (
-    DEFAULT_TARGET_FRAMES,
-    DEFAULT_TARGET_SELECTION,
-    DETECTOR_NAMES,
-    TARGET_FRAME_BODIES,
-    available_frames,
-
-    expand_targets,
-)
-from astroengine.chart.config import (
-    DEFAULT_SIDEREAL_AYANAMSHA,
-    SUPPORTED_AYANAMSHAS,
-    VALID_ZODIAC_SYSTEMS,
-
 )
 
 
@@ -135,6 +111,53 @@ def _mark_custom() -> None:
 def _set_session_default(key: str, value: Any) -> None:
     if key not in st.session_state:
         st.session_state[key] = value
+
+
+def _tempfile_bytes(
+    suffix: str,
+    writer: Callable[[str], int],
+) -> Tuple[bytes, int]:
+    """Return the bytes written by ``writer`` using a temporary ``suffix`` path."""
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    tmp_path = tmp.name
+    tmp.close()
+    try:
+        rows_written = writer(tmp_path)
+        with open(tmp_path, "rb") as handle:
+            payload = handle.read()
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:  # pragma: no cover - best-effort cleanup
+            pass
+    return payload, rows_written
+
+
+def _prepare_quick_exports(events: Sequence[Any]) -> Dict[str, Any]:
+    """Build in-memory quick export payloads for the latest scan results."""
+
+    summary: Dict[str, Any] = {"event_count": len(events)}
+    if not events:
+        return summary
+
+    try:
+        sqlite_payload, sqlite_rows = _tempfile_bytes(
+            ".db", lambda path: write_sqlite_canonical(path, events)
+        )
+        summary["sqlite"] = {"payload": sqlite_payload, "rows": sqlite_rows}
+    except Exception as exc:  # pragma: no cover - surfaced to UI
+        summary["sqlite_error"] = str(exc)
+
+    try:
+        parquet_payload, parquet_rows = _tempfile_bytes(
+            ".parquet", lambda path: write_parquet_canonical(path, events)
+        )
+        summary["parquet"] = {"payload": parquet_payload, "rows": parquet_rows}
+    except Exception as exc:  # pragma: no cover - surfaced to UI
+        summary["parquet_error"] = str(exc)
+
+    return summary
 
 
 PRESETS: Dict[str, Dict[str, Any]] = {
@@ -266,6 +289,7 @@ def _ensure_defaults() -> None:
     _set_session_default("scan_ics_title", "AstroEngine Events")
 
     _set_session_default("scan_cache", {})
+    _set_session_default("scan_quick_exports", {})
     _set_session_default("scan_last_cache_key", None)
     _set_session_default("scan_last_cache_hit", False)
     _set_session_default("scan_preset_initialized", False)
@@ -546,8 +570,13 @@ with tab_run:
                 used_entrypoint = ("?", "?")
         st.session_state["scan_cache"] = session_cache
         st.session_state["scan_last_cache_key"] = cache_key
+        quick_exports_state = st.session_state.setdefault("scan_quick_exports", {})
         if canonical_events:
+            quick_exports_state[cache_key] = _prepare_quick_exports(canonical_events)
             st.success(f"Scan complete — {len(canonical_events)} events")
+        else:
+            quick_exports_state.pop(cache_key, None)
+        st.session_state["scan_results"] = (raw_events, canonical_events, used_entrypoint)
 
 col_scan, col_results = st.columns((1, 2))
 
@@ -603,6 +632,12 @@ with col_scan:
             )
             session_cache[cache_key] = (raw_events, canonical_events, used_entrypoint)
         st.session_state["scan_results"] = (raw_events, canonical_events, used_entrypoint)
+        st.session_state["scan_last_cache_key"] = cache_key
+        quick_exports_state = st.session_state.setdefault("scan_quick_exports", {})
+        if canonical_events:
+            quick_exports_state[cache_key] = _prepare_quick_exports(canonical_events)
+        else:
+            quick_exports_state.pop(cache_key, None)
 
 with col_results:
     st.subheader("Results")
@@ -626,25 +661,68 @@ with col_results:
     export_col1, export_col2, export_col3 = st.columns(3)
     if results:
         raw_events, canonical_events, _ = results
+        quick_cache_key = st.session_state.get("scan_last_cache_key")
+        quick_exports_state = st.session_state.setdefault("scan_quick_exports", {})
+        quick_exports = None
+        if quick_cache_key is not None:
+            quick_exports = quick_exports_state.get(quick_cache_key)
+        if quick_exports is None or quick_exports.get("event_count") != len(canonical_events):
+            quick_exports = _prepare_quick_exports(canonical_events)
+            if quick_cache_key is not None:
+                quick_exports_state[quick_cache_key] = quick_exports
+
         with export_col1:
-            if st.button("Export SQLite"):
-                path = write_sqlite_canonical(canonical_events)
-                st.success(f"Wrote SQLite export to {path}")
-        with export_col2:
-            if st.button("Export Parquet"):
-                path = write_parquet_canonical(canonical_events)
-                st.success(f"Wrote Parquet export to {path}")
-        with export_col3:
-            if st.button("Download ICS"):
-                payload = ics_bytes_from_events(
-                    canonical_events,
-                    title=st.session_state.get("scan_ics_title", "AstroEngine Events"),
+            sqlite_info = (quick_exports or {}).get("sqlite")
+            sqlite_error = (quick_exports or {}).get("sqlite_error")
+            if sqlite_info:
+                st.download_button(
+                    "Export SQLite",
+                    data=sqlite_info["payload"],
+                    file_name="astroengine_events.sqlite",
+                    mime="application/vnd.sqlite3",
+                    key="scan_quick_sqlite_download",
                 )
+                st.caption(f"{sqlite_info['rows']} rows written")
+            elif sqlite_error:
+                st.error(f"SQLite export unavailable: {sqlite_error}")
+            else:
+                st.write("No events available for SQLite export.")
+
+        with export_col2:
+            parquet_info = (quick_exports or {}).get("parquet")
+            parquet_error = (quick_exports or {}).get("parquet_error")
+            if parquet_info:
+                st.download_button(
+                    "Export Parquet",
+                    data=parquet_info["payload"],
+                    file_name="astroengine_events.parquet",
+                    mime="application/parquet",
+                    key="scan_quick_parquet_download",
+                )
+                st.caption(f"{parquet_info['rows']} rows written")
+            elif parquet_error:
+                st.error(f"Parquet export unavailable: {parquet_error}")
+            else:
+                st.write("Parquet export available once events are detected.")
+
+        with export_col3:
+            ics_title_quick = st.session_state.get("scan_ics_title", "AstroEngine Events")
+            try:
+                ics_payload = ics_bytes_from_events(
+                    canonical_events,
+                    calendar_name=ics_title_quick or "AstroEngine Events",
+                )
+            except Exception as export_exc:
+                st.error(f"ICS export unavailable: {export_exc}")
+            else:
                 st.download_button(
                     "Download ICS",
-                    data=payload,
+                    data=ics_payload,
                     file_name="astroengine_events.ics",
+                    mime="text/calendar",
+                    key="scan_quick_ics_download",
                 )
+                st.caption(f"{len(canonical_events)} events included")
 
 
         st.markdown("### Export")
@@ -693,6 +771,7 @@ with col_results:
                 file_name="transits.ics",
                 mime="text/calendar",
                 disabled=not canonical_events,
+                key="scan_full_ics_download",
             )
     else:
         st.info("Configure the scan in the sidebar and click **Run scan** to generate events.")
