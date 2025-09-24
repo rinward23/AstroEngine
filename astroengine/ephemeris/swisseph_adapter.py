@@ -65,14 +65,18 @@ class HousePositions:
     cusps: tuple[float, ...]
     ascendant: float
     midheaven: float
+    system_name: str | None = None
 
-    def to_dict(self) -> Mapping[str, float | tuple[float, ...]]:
-        return {
+    def to_dict(self) -> Mapping[str, float | str | tuple[float, ...] | None]:
+        payload: dict[str, float | str | tuple[float, ...] | None] = {
             "system": self.system,
             "cusps": self.cusps,
             "ascendant": self.ascendant,
             "midheaven": self.midheaven,
         }
+        if self.system_name is not None:
+            payload["system_name"] = self.system_name
+        return payload
 
 
 class SwissEphemerisAdapter:
@@ -288,21 +292,6 @@ class SwissEphemerisAdapter:
         if self._sidereal_mode is not None:
             swe.set_sid_mode(self._sidereal_mode, 0.0, 0.0)
 
-    def _resolve_house_system(self, system: str | None) -> bytes:
-        if system is None:
-            key = self.chart_config.house_system.lower()
-        elif len(system) == 1:
-            return system.upper().encode("ascii")
-        else:
-            key = system.lower()
-
-        code = self._HOUSE_SYSTEM_CODES.get(key)
-        if not code:
-            options = ", ".join(sorted(self._HOUSE_SYSTEM_CODES))
-            raise ValueError(f"Unsupported house system '{system or self.chart_config.house_system}'. "
-                             f"Valid options: {options}")
-        return code
-
     # ------------------------------------------------------------------
     # Public helpers
     # ------------------------------------------------------------------
@@ -407,7 +396,7 @@ class SwissEphemerisAdapter:
         """Compute house cusps for a given location."""
 
 
-        sys_code = self._resolve_house_system(system)
+        system_key, sys_code = self._resolve_house_system(system)
 
         self._apply_sidereal_mode()
         cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, sys_code)
@@ -421,18 +410,17 @@ class SwissEphemerisAdapter:
             ascendant = angles[0]
             midheaven = angles[1]
 
-
         if isinstance(sys_code, (bytes, bytearray)):
-            sys_label = sys_code.decode("ascii")
+            system_label = sys_code.decode("ascii")
         else:
-            sys_label = str(sys_code)
+            system_label = str(sys_code)
 
         return HousePositions(
-            system=sys_label,
-
+            system=system_label,
             cusps=tuple(cusps),
             ascendant=ascendant,
             midheaven=midheaven,
+            system_name=system_key,
         )
 
     # ------------------------------------------------------------------
@@ -445,6 +433,7 @@ class SwissEphemerisAdapter:
 
 
     def _resolve_house_system(self, system: str | None) -> tuple[str, bytes]:
+        """Return the canonical house system key and Swiss code."""
         if system is None:
             key = self.chart_config.house_system.lower()
         else:
@@ -455,8 +444,16 @@ class SwissEphemerisAdapter:
             return key, code
 
         if len(key) == 1:
-            return key, key.upper().encode("ascii")
+            code = key.upper().encode("ascii")
+            canonical = next(
+                (name for name, candidate in self._HOUSE_SYSTEM_CODES.items() if candidate == code),
+                key,
+            )
+            return canonical, code
 
-        raise ValueError(f"Unsupported house system '{system}'")
+        options = ", ".join(sorted(self._HOUSE_SYSTEM_CODES))
+        raise ValueError(
+            f"Unsupported house system '{system or self.chart_config.house_system}'. Valid options: {options}"
+        )
 
 
