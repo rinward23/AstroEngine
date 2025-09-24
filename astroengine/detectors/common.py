@@ -20,6 +20,27 @@ __all__ = [
     "solve_zero_crossing",
 ]
 
+_BODY_NAME_TO_ATTR = {
+    "sun": "SUN",
+    "moon": "MOON",
+    "mercury": "MERCURY",
+    "venus": "VENUS",
+    "mars": "MARS",
+    "jupiter": "JUPITER",
+    "saturn": "SATURN",
+    "uranus": "URANUS",
+    "neptune": "NEPTUNE",
+    "pluto": "PLUTO",
+    "ceres": "CERES",
+    "pallas": "PALLAS",
+    "juno": "JUNO",
+    "vesta": "VESTA",
+    "chiron": "CHIRON",
+}
+
+_CACHEABLE_BODIES = frozenset(_BODY_NAME_TO_ATTR.keys())
+_BODY_CODE_CACHE: dict[str, int] | None = None
+
 # --- Angle helpers -----------------------------------------------------------
 
 def norm360(x: float) -> float:
@@ -127,32 +148,35 @@ def moon_lon(jd_ut: float) -> float:
     return adapter.body_position(jd_ut, swe.MOON, body_name="Moon").longitude
 
 
+def _resolve_body_code(name: str, swe_module) -> int:
+    """Return the Swiss ephemeris body code for ``name``."""
+
+    global _BODY_CODE_CACHE
+    normalized = name.lower()
+    cache = _BODY_CODE_CACHE
+    if cache is None:
+        cache = {}
+        for key, attr in _BODY_NAME_TO_ATTR.items():
+            try:
+                cache[key] = int(getattr(swe_module, attr))
+            except AttributeError:
+                continue
+        _BODY_CODE_CACHE = cache
+    try:
+        return cache[normalized]
+    except KeyError:  # pragma: no cover - defensive guard
+        raise ValueError(f"Body '{name}' is not supported by Swiss ephemeris adapter") from None
+
+
 def body_lon(jd_ut: float, body_name: str) -> float:
     """Return the geocentric ecliptic longitude for ``body_name`` at ``jd_ut``."""
 
-    cacheable_bodies = {
-        "sun",
-        "moon",
-        "mercury",
-        "venus",
-        "mars",
-        "jupiter",
-        "saturn",
-        "uranus",
-        "neptune",
-        "pluto",
-        "ceres",
-        "pallas",
-        "juno",
-        "vesta",
-        "chiron",
-    }
     adapter = SwissEphemerisAdapter.get_default_adapter()
 
     if (
         USE_CACHE
         and get_lon_daily is not None
-        and body_name.lower() in cacheable_bodies
+        and body_name.lower() in _CACHEABLE_BODIES
         and not adapter.is_sidereal
     ):
         return float(get_lon_daily(jd_ut, body_name))
@@ -162,24 +186,7 @@ def body_lon(jd_ut: float, body_name: str) -> float:
 
     import swisseph as swe  # type: ignore
 
-    name = body_name.lower()
-    code = {
-        "sun": swe.SUN,
-        "moon": swe.MOON,
-        "mercury": swe.MERCURY,
-        "venus": swe.VENUS,
-        "mars": swe.MARS,
-        "jupiter": swe.JUPITER,
-        "saturn": swe.SATURN,
-        "uranus": swe.URANUS,
-        "neptune": swe.NEPTUNE,
-        "pluto": swe.PLUTO,
-        "ceres": swe.CERES,
-        "pallas": swe.PALLAS,
-        "juno": swe.JUNO,
-        "vesta": swe.VESTA,
-        "chiron": swe.CHIRON,
-    }[name]
+    code = _resolve_body_code(body_name, swe)
     return adapter.body_position(jd_ut, code, body_name=body_name.title()).longitude
 
 
