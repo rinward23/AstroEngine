@@ -346,8 +346,6 @@ def multiselect(
     runtime.session_state.setdefault(widget_key, list(value))
 
     _register_widget(
-gister(
-
         MultiSelectWidget(
             runtime=runtime,
             kind="multiselect",

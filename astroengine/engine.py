@@ -116,19 +116,45 @@ class TargetFrameResolver:
         static_positions: Mapping[str, float] | None = None,
     ) -> None:
         self.frame = frame.lower()
-        self.natal_chart = natal_chart
-        self.composite_chart = composite_chart
-        self._static_positions: MutableMapping[str, float] = {
-            key.lower(): float(value) % 360.0 for key, value in (static_positions or {}).items()
-        }
         self._progressed_cache: MutableMapping[str, ProgressedChart] = {}
         self._directed_cache: MutableMapping[str, DirectedChart] = {}
+        self._static_positions: MutableMapping[str, float] = {}
+        self._natal_chart: NatalChart | None = None
+        self._composite_chart: CompositeChart | None = None
+        self._name_lookup: dict[str, str] = {}
+        self.static_positions = static_positions
+        self.natal_chart = natal_chart
+        self.composite_chart = composite_chart
+
+    @property
+    def natal_chart(self) -> NatalChart | None:
+        return self._natal_chart
+
+    @natal_chart.setter
+    def natal_chart(self, chart: NatalChart | None) -> None:
+        self._natal_chart = chart
+        self._progressed_cache.clear()
+        self._directed_cache.clear()
+        self._name_lookup = self._build_name_lookup()
+
+    @property
+    def composite_chart(self) -> CompositeChart | None:
+        return self._composite_chart
+
+    @composite_chart.setter
+    def composite_chart(self, chart: CompositeChart | None) -> None:
+        self._composite_chart = chart
+        self._name_lookup = self._build_name_lookup()
 
     @staticmethod
-    def _normalize_iso(ts: str) -> str:
+    def _normalize_iso(ts: str) -> tuple[str, datetime]:
+        """Return a normalized ISO string and UTC datetime for ``ts``."""
+
         dt_obj = datetime.fromisoformat(ts.replace("Z", "+00:00"))
         dt_utc = dt_obj.astimezone(timezone.utc) if dt_obj.tzinfo else dt_obj.replace(tzinfo=timezone.utc)
-        return dt_utc.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        dt_utc = dt_utc.replace(microsecond=0)
+        normalized = dt_utc.isoformat().replace("+00:00", "Z")
+        return normalized, dt_utc
 
     def overrides_target(self) -> bool:
         if self.frame == "natal":
@@ -141,20 +167,58 @@ class TargetFrameResolver:
     def static_positions(self) -> Mapping[str, float]:
         return dict(self._static_positions)
 
-    def _available_names(self) -> set[str]:
-        names: set[str] = set(self._static_positions.keys())
+    @static_positions.setter
+    def static_positions(self, positions: Mapping[str, float] | None) -> None:
+        source = positions or {}
+        self._static_positions = {
+            str(key).lower(): float(value) % 360.0 for key, value in source.items()
+        }
+        self._name_lookup = self._build_name_lookup()
+
+    def set_static_position(self, name: str, longitude: float) -> None:
+        """Register or update a static position and refresh cached lookups."""
+
+        self._static_positions[str(name).lower()] = float(longitude) % 360.0
+        self._name_lookup = self._build_name_lookup()
+
+    def remove_static_position(self, name: str) -> None:
+        """Remove a static position override when present."""
+
+        normalized = str(name).lower()
+        if normalized in self._static_positions:
+            del self._static_positions[normalized]
+            self._name_lookup = self._build_name_lookup()
+
+    def clear_temporal_caches(self) -> None:
+        """Drop progressed/directed caches, forcing recomputation on next access."""
+
+        self._progressed_cache.clear()
+        self._directed_cache.clear()
+
+    def _build_name_lookup(self) -> dict[str, str]:
+        """Return mapping from lowercase body names to canonical identifiers."""
+
+        lookup: dict[str, str] = {}
+
+        def _record(names: Iterable[str]) -> None:
+            for raw_name in names:
+                normalized = str(raw_name).lower()
+                lookup.setdefault(normalized, str(raw_name))
+
+        _record(self._static_positions.keys())
         if self.natal_chart is not None:
-            names.update(self.natal_chart.positions.keys())
+            _record(self.natal_chart.positions.keys())
         if self.composite_chart is not None:
-            names.update(self.composite_chart.positions.keys())
-        return names
+            _record(self.composite_chart.positions.keys())
+        return lookup
 
     def _resolve_body_name(self, body: str) -> str:
         body_lower = body.lower()
-        for name in self._available_names():
-            if name.lower() == body_lower:
-                return name
-        return body
+        name = self._name_lookup.get(body_lower)
+        if name is not None:
+            return name
+        self._name_lookup = self._build_name_lookup()
+        return self._name_lookup.get(body_lower, body)
 
     def _natal_body(self, body: str) -> BodyPosition | None:
         if self.natal_chart is None:
@@ -163,26 +227,24 @@ class TargetFrameResolver:
         return self.natal_chart.positions.get(name)
 
     def _progressed_for(self, iso_ts: str) -> ProgressedChart:
-        key = self._normalize_iso(iso_ts)
+        key, moment = self._normalize_iso(iso_ts)
         cached = self._progressed_cache.get(key)
         if cached is not None:
             return cached
         if self.natal_chart is None:
             raise ValueError("Progressed frame requires a natal chart")
-        dt_obj = datetime.fromisoformat(key.replace("Z", "+00:00"))
-        progressed = compute_secondary_progressed_chart(self.natal_chart, dt_obj)
+        progressed = compute_secondary_progressed_chart(self.natal_chart, moment)
         self._progressed_cache[key] = progressed
         return progressed
 
     def _directed_for(self, iso_ts: str) -> DirectedChart:
-        key = self._normalize_iso(iso_ts)
+        key, moment = self._normalize_iso(iso_ts)
         cached = self._directed_cache.get(key)
         if cached is not None:
             return cached
         if self.natal_chart is None:
             raise ValueError("Directed frame requires a natal chart")
-        dt_obj = datetime.fromisoformat(key.replace("Z", "+00:00"))
-        directed = compute_solar_arc_chart(self.natal_chart, dt_obj)
+        directed = compute_solar_arc_chart(self.natal_chart, moment)
         self._directed_cache[key] = directed
         return directed
 
@@ -260,10 +322,22 @@ class FrameAwareProvider:
 
     def positions_ecliptic(self, iso_utc: str, bodies: Iterable[str]):
         base = dict(self._provider.positions_ecliptic(iso_utc, bodies))
-        if self._resolver.overrides_target():
-            for name in bodies:
-                if name.lower() == self._target:
-                    base[name] = dict(self._resolver.position_dict(iso_utc, name))
+        if not self._resolver.overrides_target():
+            return base
+
+        target_lower = self._target
+        replaced = False
+        for name in list(base.keys()):
+            if name.lower() == target_lower:
+                base[name] = dict(self._resolver.position_dict(iso_utc, name))
+                replaced = True
+        if not replaced:
+            for requested in bodies:
+                if str(requested).lower() == target_lower:
+                    base[str(requested)] = dict(
+                        self._resolver.position_dict(iso_utc, str(requested))
+                    )
+                    break
         return base
 
     def position(self, body: str, ts_utc: str) -> BodyPosition:
@@ -764,18 +838,6 @@ def scan_contacts(
     do_aspects = include_aspects
 
 
-    provider = get_provider(provider_name)
-    if ephemeris_config is not None:
-        configure = getattr(provider, "configure", None)
-        if callable(configure):
-            configure(
-                topocentric=ephemeris_config.topocentric,
-                observer=ephemeris_config.observer,
-                sidereal=ephemeris_config.sidereal,
-                time_scale=ephemeris_config.time_scale,
-            )
-
-
     ticks = list(_iso_ticks(start_iso, end_iso, step_minutes=step_minutes))
 
     events: List[LegacyTransitEvent] = []
@@ -880,95 +942,6 @@ def scan_contacts(
     if plugin_events:
         for plugin_event in plugin_events:
             _append_event(plugin_event)
-
-
-    if do_declination:
-
-    def _append_event(event: LegacyTransitEvent) -> None:
-        _attach_timelords(event, timelord_calculator)
-        events.append(event)
-
-
-
-        for hit in detect_decl_contacts(
-            provider,
-            ticks,
-            moving,
-            target,
-            decl_parallel_allow,
-            decl_contra_allow,
-        ):
-            if hit.kind == "decl_parallel" and not do_parallels:
-                continue
-            if hit.kind == "decl_contra" and not do_contras:
-                continue
-            allow = (
-                decl_parallel_allow
-                if hit.kind == "decl_parallel"
-                else decl_contra_allow
-            )
-
-            _append_event(_event_from_decl(hit, orb_allow=allow))
-
-
-    if do_mirrors:
-        for hit in detect_antiscia_contacts(
-            provider,
-            ticks,
-            moving,
-            target,
-            antiscia_allow,
-            contra_antiscia_allow,
-            axis=axis,
-        ):
-            allow = (
-                antiscia_allow
-                if hit.kind == "antiscia"
-                else contra_antiscia_allow
-            )
-
-            _append_event(_event_from_decl(hit, orb_allow=allow))
-
-
-    if do_aspects:
-        for aspect_hit in detect_aspects(
-            provider,
-            ticks,
-            moving,
-            target,
-            policy_path=aspects_policy_path,
-        ):
-
-            _append_event(_event_from_aspect(aspect_hit))
-
-
-    plugin_context = DetectorContext(
-        provider=provider,
-        provider_name=provider_name,
-        start_iso=start_iso,
-        end_iso=end_iso,
-        ticks=tuple(ticks),
-        moving=moving,
-        target=target,
-        options={
-            "decl_parallel_orb": decl_parallel_allow,
-            "decl_contra_orb": decl_contra_allow,
-            "antiscia_orb": antiscia_allow,
-            "contra_antiscia_orb": contra_antiscia_allow,
-            "step_minutes": step_minutes,
-            "aspects_policy_path": aspects_policy_path,
-
-            "include_declination": include_declination,
-            "include_mirrors": include_mirrors,
-            "include_aspects": include_aspects,
-            "antiscia_axis": axis,
-
-        },
-        existing_events=tuple(events),
-    )
-    plugin_events = get_plugin_manager().run_detectors(plugin_context)
-    if plugin_events:
-        events.extend(plugin_events)
 
 
     events.sort(key=lambda event: (event.timestamp, -event.score))
