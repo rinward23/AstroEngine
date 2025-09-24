@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List
@@ -11,6 +10,7 @@ from .core.angles import DeltaLambdaTracker, classify_relative_motion, signed_de
 from .core.bodies import body_class
 from .infrastructure.paths import profiles_dir
 from .refine import adaptive_corridor_width
+from .utils.io import load_json_document
 
 __all__ = ["AspectHit", "detect_aspects"]
 
@@ -94,9 +94,7 @@ _HARMONIC_FAMILY_TO_NAMES: Dict[int, tuple[str, ...]] = {
 
 def _load_policy(path: str | None = None) -> dict:
     policy_path = Path(path) if path else _DEF_PATH
-    raw_lines = policy_path.read_text(encoding="utf-8").splitlines()
-    payload = "\n".join(line for line in raw_lines if not line.strip().startswith("#"))
-    return json.loads(payload)
+    return load_json_document(policy_path)
 
 
 def _normalize_name(name: str) -> str:

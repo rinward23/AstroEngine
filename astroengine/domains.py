@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, Mapping
@@ -16,6 +15,7 @@ from .core.domains import (
     natal_domain_factor,
 )
 from .infrastructure.paths import profiles_dir
+from .utils import load_json_document
 
 __all__ = [
     "DOMAINS",
@@ -67,9 +67,7 @@ _DEF_MAP = profiles_dir() / "domain_mapping.json"
 
 
 def _load_json(path: Path) -> dict:
-    lines = path.read_text(encoding="utf-8").splitlines()
-    payload = "\n".join(line for line in lines if not line.strip().startswith("#"))
-    return json.loads(payload) if payload.strip() else {}
+    return load_json_document(path, default={})
 
 
 def _make_empty_scores(tree: Mapping[str, Any]) -> Dict[str, DomainScore]:

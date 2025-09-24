@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import html
-import json
 import logging
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
@@ -15,6 +14,7 @@ from typing import Any
 
 from ..domains import rollup_domain_scores
 from ..infrastructure.paths import profiles_dir
+from ..utils import load_json_document
 from .gpt_api import GPTNarrativeClient
 from .profiles import render_profile, timelord_outline
 from .prompts import build_summary_prompt, build_template_summary
@@ -651,9 +651,7 @@ def _build_categories(highlights: Sequence[NarrativeHighlight]) -> list[Narrativ
 @lru_cache(maxsize=1)
 def _domain_tree() -> Mapping[str, Any]:
     path = profiles_dir() / "domain_tree.json"
-    lines = path.read_text(encoding="utf-8").splitlines()
-    payload = "\n".join(line for line in lines if not line.strip().startswith("#"))
-    return json.loads(payload) if payload.strip() else {}
+    return load_json_document(path, default={})
 
 
 def _domain_names() -> tuple[dict[str, str], dict[str, dict[str, str]]]:

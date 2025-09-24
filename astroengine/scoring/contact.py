@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -15,7 +14,7 @@ from ..core.bodies import body_class
 from ..infrastructure.paths import profiles_dir
 from ..refine import branch_sensitive_angles, fuzzy_membership
 from ..plugins import apply_score_extensions
-from ..utils import deep_merge
+from ..utils import deep_merge, load_json_document
 from ..utils.angles import delta_angle
 from .tradition import get_tradition_spec
 
@@ -63,9 +62,7 @@ class ScoreResult:
 @lru_cache(maxsize=None)
 def _load_policy(path: str | None) -> dict:
     policy_path = Path(path) if path else _DEF_POLICY
-    raw = policy_path.read_text().splitlines()
-    payload = "\n".join(line for line in raw if not line.strip().startswith("#"))
-    return json.loads(payload)
+    return load_json_document(policy_path)
 
 
 def _resolve_policy(policy: Mapping[str, object] | None, policy_path: str | None) -> dict:

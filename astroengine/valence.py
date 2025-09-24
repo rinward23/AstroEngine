@@ -1,27 +1,36 @@
 # >>> AUTO-GEN BEGIN: AE Valence Module v1.0
 from __future__ import annotations
-import json
+
+from copy import deepcopy
 from pathlib import Path
 from typing import Literal, Optional, Tuple
 
 from .infrastructure.paths import profiles_dir
+from .utils import load_json_document
 
 Valence = Literal["positive", "neutral", "negative"]
 
 _DEF = profiles_dir() / "valence_policy.json"
 
+_DEFAULT_POLICY_TEMPLATE = {
+    "scale": {"positive": 1, "neutral": 0, "negative": -1},
+    "neutral_effects": {"amplify_factor": 1.15, "attenuate_factor": 0.85},
+    "bodies": {},
+    "aspects": {},
+    "contacts": {},
+    "overrides": {},
+}
+
+
+def _default_policy() -> dict:
+    return deepcopy(_DEFAULT_POLICY_TEMPLATE)
+
 
 def _load(path: Optional[str] = None) -> dict:
-    p = Path(path) if path else _DEF
-    if p.exists():
-        raw = p.read_text()
-        clean = "\n".join(line for line in raw.splitlines() if not line.strip().startswith("# >>>"))
-        return json.loads(clean)
-    return {
-        "scale": {"positive": 1, "neutral": 0, "negative": -1},
-        "neutral_effects": {"amplify_factor": 1.15, "attenuate_factor": 0.85},
-        "bodies": {}, "aspects": {}, "contacts": {}, "overrides": {}
-    }
+    policy_path = Path(path) if path else _DEF
+    if policy_path.exists():
+        return load_json_document(policy_path, comment_prefixes=("# >>>",))
+    return _default_policy()
 
 
 def body_valence(name: str, pol: dict) -> Tuple[Valence, float, str]:
