@@ -90,10 +90,18 @@ class SwissProvider:
             updates["sidereal"] = sidereal
         if time_scale is not None:
             updates["time_scale"] = time_scale
-        if updates:
-            cfg = replace(cfg, **updates)
-            self._config = cfg
-            self._adapter = EphemerisAdapter(cfg)
+        if not updates:
+            return
+
+        new_config = replace(cfg, **updates)
+        if new_config == self._config:
+            return
+
+        self._config = new_config
+        try:
+            self._adapter.reconfigure(new_config)
+        except AttributeError:  # pragma: no cover - legacy adapter fallback
+            self._adapter = EphemerisAdapter(new_config)
 
     @staticmethod
     def _normalize_iso(iso_utc: str) -> datetime:

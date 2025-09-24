@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import datetime as dt
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, List, Mapping
+from itertools import tee
+from typing import Any, List, Mapping
 
 from ..chart.config import ChartConfig
 from ..core.engine import get_active_aspect_angles
 from ..detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
+from ..detectors import common as detectors_common
 from ..detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
 from ..detectors_aspects import AspectHit, detect_aspects
 from ..ephemeris import EphemerisConfig, SwissEphemerisAdapter
@@ -83,6 +86,45 @@ _BODY_CODE_TO_NAME = {
     8: "neptune",
     9: "pluto",
 }
+
+
+class _TickCachingProvider:
+    """Memoize ``positions_ecliptic`` calls for a single scan session."""
+
+    __slots__ = ("_provider", "_cache")
+
+    def __init__(self, provider: object) -> None:
+        self._provider = provider
+        self._cache: dict[tuple[str, tuple[str, ...]], Mapping[str, Mapping[str, float]]] = {}
+
+    def positions_ecliptic(
+        self, iso_utc: str, bodies: Iterable[str] | None
+    ) -> Mapping[str, Mapping[str, float]]:
+        if bodies is None:
+            raise TypeError("positions_ecliptic requires an iterable of body names")
+
+        bodies_tuple = tuple(bodies)
+        if not bodies_tuple:
+            return {}
+
+        canonical = tuple(sorted({name.lower() for name in bodies_tuple}))
+        key = (iso_utc, canonical)
+
+        normalized = self._cache.get(key)
+        if normalized is None:
+            result = self._provider.positions_ecliptic(iso_utc, bodies_tuple)
+            normalized = {name.lower(): data for name, data in result.items()}
+            self._cache[key] = normalized
+
+        return {
+            name: normalized[name_lower]
+            for name in bodies_tuple
+            if (name_lower := name.lower()) in normalized
+        }
+
+    def __getattr__(self, name: str):  # pragma: no cover - delegation passthrough
+        return getattr(self._provider, name)
+
 
 if swe is not None:  # pragma: no cover - availability tested via swiss-marked tests
     for attr, name in (
@@ -479,7 +521,11 @@ def scan_contacts(
 
     feature_metadata = feature_plan.plugin_metadata()
 
-    ticks = tuple(_iso_ticks(start_iso, end_iso, step_minutes=step_minutes))
+    tick_source = _iso_ticks(start_iso, end_iso, step_minutes=step_minutes)
+    decl_ticks, mirror_ticks, aspect_ticks, plugin_ticks = tee(tick_source, 4)
+
+    cached_provider = _TickCachingProvider(scan_provider)
+
     events: List[LegacyTransitEvent] = []
 
     def _append_event(event: LegacyTransitEvent) -> None:
@@ -487,8 +533,8 @@ def scan_contacts(
         events.append(event)
 
     for event in _declination_events(
-        scan_provider,
-        ticks,
+        cached_provider,
+        decl_ticks,
         moving=moving,
         target=target,
         parallel_orb=decl_parallel_allow,
@@ -499,8 +545,8 @@ def scan_contacts(
         _append_event(event)
 
     for event in _mirror_events(
-        scan_provider,
-        ticks,
+        cached_provider,
+        mirror_ticks,
         moving=moving,
         target=target,
         antiscia_orb=antiscia_allow,
@@ -512,8 +558,8 @@ def scan_contacts(
         _append_event(event)
 
     for event in _aspect_events(
-        scan_provider,
-        ticks,
+        cached_provider,
+        aspect_ticks,
         moving=moving,
         target=target,
         policy_path=aspects_policy_path,
@@ -523,11 +569,11 @@ def scan_contacts(
         _append_event(event)
 
     plugin_context = DetectorContext(
-        provider=scan_provider,
+        provider=cached_provider,
         provider_name=provider_name,
         start_iso=start_iso,
         end_iso=end_iso,
-        ticks=tuple(ticks),
+        ticks=tuple(plugin_ticks),
         moving=moving,
         target=target,
         options={
@@ -583,20 +629,32 @@ def fast_scan(start: datetime, end: datetime, config: ScanConfig) -> List[dict]:
     step_days = config.tick_minutes / (24.0 * 60.0)
     target_lon = norm360(config.natal_lon_deg + config.aspect_angle_deg)
 
+    restore_cache_flag = detectors_common.USE_CACHE
+    cache_available = getattr(detectors_common, "get_lon_daily", None) is not None
+    dense_sampling = config.tick_minutes < 720
+    toggled_cache = False
+    if cache_available and dense_sampling and not restore_cache_flag:
+        detectors_common.enable_cache(True)
+        toggled_cache = True
+
     hits: List[dict] = []
-    current = start_jd
-    while current <= end_jd:
-        lon = body_lon(current, body_name)
-        delta = delta_deg(lon, target_lon)
-        if abs(delta) <= config.orb_deg:
-            hits.append(
-                {
-                    "timestamp": jd_to_iso(current),
-                    "body": body_name,
-                    "longitude": lon,
-                    "delta": delta,
-                }
-            )
-        current += step_days
+    try:
+        current = start_jd
+        while current <= end_jd:
+            lon = body_lon(current, body_name)
+            delta = delta_deg(lon, target_lon)
+            if abs(delta) <= config.orb_deg:
+                hits.append(
+                    {
+                        "timestamp": jd_to_iso(current),
+                        "body": body_name,
+                        "longitude": lon,
+                        "delta": delta,
+                    }
+                )
+            current += step_days
+    finally:
+        if toggled_cache:
+            detectors_common.enable_cache(restore_cache_flag)
     return hits
 
