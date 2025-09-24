@@ -1,8 +1,8 @@
 # >>> AUTO-GEN BEGIN: positions-cache v1.0
 from __future__ import annotations
 from typing import Iterable
-from pathlib import Path
 import sqlite3
+from ..ephemeris import SwissEphemerisAdapter
 from ..infrastructure.home import ae_home
 
 CACHE_DIR = ae_home() / "cache"
@@ -59,7 +59,13 @@ def get_lon_daily(jd_ut: float, body: str) -> float:
         'mercury': swe.MERCURY, 'venus': swe.VENUS, 'mars': swe.MARS,
         'jupiter': swe.JUPITER, 'saturn': swe.SATURN, 'uranus': swe.URANUS, 'neptune': swe.NEPTUNE, 'pluto': swe.PLUTO,
     }[body.lower()]
-    lon, lat, dist, speed = swe.calc_ut(float(_day_jd(jd_ut)), code)
+    adapter = SwissEphemerisAdapter.get_default_adapter()
+    sample = adapter.body_position(
+        float(_day_jd(jd_ut)), code, body_name=body.title()
+    )
+    lon = float(sample.longitude)
+    lat = float(sample.latitude)
+    speed = float(sample.speed_longitude)
     con = _connect()
     try:
         con.execute(_SQL["upsert"], (_day_jd(jd_ut), body.lower(), float(lon), float(lat), float(speed)))

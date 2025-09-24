@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as _dt
 import logging
 import os
+from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -12,6 +13,11 @@ from typing import Final, cast
 
 from ..core.angles import AspectMotion, DeltaLambdaTracker, classify_relative_motion
 from ..core.time import TimeConversion, to_tt
+from .sidereal import (
+    DEFAULT_SIDEREAL_AYANAMSHA,
+    SUPPORTED_AYANAMSHAS,
+    normalize_ayanamsha_name,
+)
 
 try:  # pragma: no cover - import guarded for environments without SWE
     import swisseph as swe
@@ -20,6 +26,22 @@ except ModuleNotFoundError:  # pragma: no cover - fallback exercised in tests
     swe = None
 
 _HAS_SWE: Final[bool] = swe is not None
+
+if _HAS_SWE:
+    assert swe is not None
+    _SIDEREAL_MODE_MAP: dict[str, int] = {}
+    for key, attr in (
+        ("lahiri", "SIDM_LAHIRI"),
+        ("fagan_bradley", "SIDM_FAGAN_BRADLEY"),
+        ("krishnamurti", "SIDM_KRISHNAMURTI"),
+        ("raman", "SIDM_RAMAN"),
+        ("deluce", "SIDM_DELUCE"),
+    ):
+        value = getattr(swe, attr, None)
+        if value is not None:
+            _SIDEREAL_MODE_MAP[key] = int(value)
+else:
+    _SIDEREAL_MODE_MAP: dict[str, int] = {}
 
 __all__ = [
     "EphemerisAdapter",
@@ -107,15 +129,19 @@ class RefinementError(RuntimeError):
 class EphemerisAdapter:
     """Swiss Ephemeris front-end with deterministic caching."""
 
+    _DEFAULT_CACHE_SIZE: Final[int] = 2048
+
     def __init__(self, config: EphemerisConfig | None = None) -> None:
-        self._config = config or EphemerisConfig()
-        if self._config.topocentric and self._config.observer is None:
+        initial_config = config or EphemerisConfig()
+        if initial_config.topocentric and initial_config.observer is None:
             raise ValueError("EphemerisConfig.topocentric requires an observer location")
-        self._cache: dict[tuple[float, int, int], EphemerisSample] = {}
-        self._cache_order: list[tuple[float, int, int]] = []
-        self._use_tt = self._config.time_scale.ephemeris_scale == "TT"
-        self._probe_path()
-        self._configure_observer()
+        self._cache: "OrderedDict[tuple[float, int, int], EphemerisSample]" = OrderedDict()
+        self._cache_capacity: int = 0
+        self._config = initial_config
+        self._use_tt = False
+        self._sidereal_mode_code: int | None = None
+        self._sidereal_mode_key: str | None = None
+        self.reconfigure(initial_config)
 
     # ------------------------------------------------------------------
     # Core public API
@@ -137,9 +163,14 @@ class EphemerisAdapter:
         flags = self._resolve_flags(flags)
         cache_jd = moment.jd_tt if self._use_tt else moment.jd_utc
         cache_key = (cache_jd, body, flags)
-        cached = self._cache.get(cache_key)
-        if cached is not None:
-            return cached
+        if self._cache_capacity > 0:
+            try:
+                cached = self._cache[cache_key]
+            except KeyError:
+                cached = None
+            else:
+                self._cache.move_to_end(cache_key)
+                return cached
 
         backend = self._select_backend()
         (
@@ -206,25 +237,46 @@ class EphemerisAdapter:
         base = cast(int, swe.FLG_SWIEPH | swe.FLG_SPEED)
         if self._config.topocentric:
             base |= cast(int, swe.FLG_TOPOCTR)
+        if self._config.sidereal:
+            base |= cast(int, swe.FLG_SIDEREAL)
         return base
 
     def _store(self, key: tuple[float, int, int], sample: EphemerisSample) -> None:
-        if self._config.cache_size is None:
-            self._cache[key] = sample
-            self._cache_order.append(key)
-            return
-
-        cache_size = self._config.cache_size
-        if cache_size <= 0:
+        if self._cache_capacity <= 0:
             return
         if key in self._cache:
+            self._cache[key] = sample
+            self._cache.move_to_end(key)
             return
-
-        if len(self._cache_order) >= cache_size:
-            oldest = self._cache_order.pop(0)
-            self._cache.pop(oldest, None)
         self._cache[key] = sample
-        self._cache_order.append(key)
+        if len(self._cache) > self._cache_capacity:
+            self._cache.popitem(last=False)
+
+    def _apply_config(self, config: EphemerisConfig) -> None:
+        self._config = config
+        self._cache_capacity = self._resolve_cache_capacity(config.cache_size)
+        self._use_tt = self._config.time_scale.ephemeris_scale == "TT"
+        self._probe_path()
+        self._configure_observer()
+        self._configure_sidereal()
+
+    def _resolve_cache_capacity(self, requested: int | None) -> int:
+        if requested is None:
+            return self._DEFAULT_CACHE_SIZE
+        if requested <= 0:
+            return 0
+        return int(requested)
+
+    def reconfigure(self, config: EphemerisConfig) -> None:
+        """Apply ``config`` to the adapter, resetting caches if needed."""
+
+        if config == self._config and self._cache_capacity == self._resolve_cache_capacity(
+            config.cache_size
+        ):
+            return
+        self._cache.clear()
+        self._cache = OrderedDict()
+        self._apply_config(config)
 
     def _probe_path(self) -> None:
         if not _HAS_SWE or self._config.prefer_moshier:
@@ -259,6 +311,29 @@ class EphemerisAdapter:
             return
         lon, lat, elev = self._config.observer.as_tuple()
         swe.set_topo(lon, lat, elev)
+
+    def _configure_sidereal(self) -> None:
+        self._sidereal_mode_code = None
+        self._sidereal_mode_key = None
+        if not self._config.sidereal:
+            return
+        if not _HAS_SWE:
+            raise RuntimeError("Sidereal calculations require pyswisseph to be installed")
+        assert swe is not None
+        desired = self._config.sidereal_mode or DEFAULT_SIDEREAL_AYANAMSHA
+        key = normalize_ayanamsha_name(desired)
+        if key not in SUPPORTED_AYANAMSHAS:
+            options = ", ".join(sorted(SUPPORTED_AYANAMSHAS))
+            raise ValueError(f"Unsupported sidereal mode '{desired}'. Supported options: {options}")
+        try:
+            mode_code = _SIDEREAL_MODE_MAP[key]
+        except KeyError as exc:  # pragma: no cover - defensive guard for incomplete SWE builds
+            raise ValueError(
+                f"Swiss Ephemeris does not expose a sidereal constant for '{key}'"
+            ) from exc
+        swe.set_sid_mode(mode_code, 0.0, 0.0)
+        self._sidereal_mode_code = mode_code
+        self._sidereal_mode_key = key
 
     def _select_backend(
         self,
@@ -351,4 +426,5 @@ class EphemerisAdapter:
             "observer_mode": observer_mode,
             "observer_location": observer_summary,
             "sidereal": "enabled" if self._config.sidereal else "disabled",
+            "sidereal_mode": self._sidereal_mode_key,
         }
