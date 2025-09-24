@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Mapping, Sequence
 
 from ..infrastructure.paths import profiles_dir
+from ..utils import load_json_document
 
 __all__ = ["TraditionSpec", "get_tradition_spec", "load_tradition_table"]
 
@@ -21,9 +21,7 @@ def _tradition_policy_path() -> Path:
 @lru_cache(maxsize=1)
 def load_tradition_table() -> Mapping[str, object]:
     path = _tradition_policy_path()
-    raw_lines = path.read_text(encoding="utf-8").splitlines()
-    payload = "\n".join(line for line in raw_lines if not line.strip().startswith("#"))
-    return json.loads(payload)
+    return load_json_document(path)
 
 
 @dataclass(frozen=True)

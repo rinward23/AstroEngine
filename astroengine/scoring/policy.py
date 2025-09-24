@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
@@ -11,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from ..infrastructure.paths import profiles_dir
-from ..utils import deep_merge
+from ..utils import deep_merge, load_json_document
 
 __all__ = [
     "OrbPolicy",
@@ -28,9 +27,7 @@ _DEF_VISIBILITY_POLICY = profiles_dir() / "visibility_policy.json"
 
 
 def _load_json(path: Path) -> dict[str, Any]:
-    raw_lines = path.read_text(encoding="utf-8").splitlines()
-    payload = "\n".join(line for line in raw_lines if not line.strip().startswith("#"))
-    return json.loads(payload)
+    return load_json_document(path)
 
 
 @lru_cache(maxsize=1)
