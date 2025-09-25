@@ -10,6 +10,7 @@ __all__ = [
     "LunationEvent",
     "EclipseEvent",
     "StationEvent",
+    "ShadowPeriod",
     "IngressEvent",
     "ReturnEvent",
     "DashaPeriod",
@@ -63,6 +64,7 @@ class StationEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+
 class ReturnEvent(BaseEvent):
     """Represents a solar or lunar return event."""
 
