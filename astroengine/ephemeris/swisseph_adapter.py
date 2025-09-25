@@ -688,6 +688,18 @@ class SwissEphemerisAdapter:
                 fallback_info["reason"] = fallback_reason
             provenance["house_fallback"] = fallback_info
 
+        self._last_house_metadata = {
+            "house_system": {
+                "requested": requested_key,
+                "used": used_key,
+                "code": system_label,
+            }
+        }
+        if fallback_from is not None:
+            fallback_info = {"from": fallback_from, "to": "whole_sign"}
+            if fallback_reason:
+                fallback_info["reason"] = fallback_reason
+            self._last_house_metadata["fallback"] = fallback_info
 
         return HousePositions(
             system=system_label,

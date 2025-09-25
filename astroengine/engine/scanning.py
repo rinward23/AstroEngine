@@ -230,16 +230,22 @@ def _resolution_from_minutes(step_minutes: int) -> str:
 
 
 def _gated_step_minutes(step_minutes: int | None, moving: str) -> tuple[int, str]:
-    """Return a gated step in minutes and the inferred resolution label."""
 
-    base_minutes = 60 if step_minutes is None else int(step_minutes)
+    """Apply body gating to the requested cadence.
+
+    ``step_minutes`` may be ``None`` (callers rely on legacy defaults). We clamp
+    to at least one minute and ensure the resulting cadence honours the body
+    gating multiplier while never decreasing below the user-provided interval.
+    """
+
+    base_minutes = int(step_minutes) if step_minutes and step_minutes > 0 else 60
     resolution = _resolution_from_minutes(base_minutes)
     gated = choose_step(resolution, moving)
-    gated_minutes = int(round(gated.total_seconds() / 60.0))
-    if gated_minutes <= 0:
-        gated_minutes = base_minutes
+    gated_minutes = max(int(round(gated.total_seconds() / 60.0)), 1)
     effective = max(base_minutes, gated_minutes)
-    return effective, resolution
+    effective_resolution = _resolution_from_minutes(effective)
+    return effective, effective_resolution
+
 
 
 def _score_from_hit(
@@ -616,6 +622,9 @@ def scan_contacts(
     skip_metadata = {"skipped_bodies": list(skipped_bodies)} if skipped_bodies else None
 
     events: list[LegacyTransitEvent] = []
+    skip_metadata_payload: dict[str, object] | None = None
+    if skipped_bodies:
+        skip_metadata_payload = {"skipped_bodies": list(skipped_bodies)}
 
     skip_metadata: dict[str, object] | None = None
     supported_bodies, support_issues = filter_supported((moving, target), scan_provider)
@@ -645,6 +654,10 @@ def scan_contacts(
         start_iso,
         end_iso,
 
+
+    tick_source = _iso_ticks(
+        start_iso,
+        end_iso,
         step=dt.timedelta(minutes=gated_step_minutes),
 
     )
@@ -656,10 +669,12 @@ def scan_contacts(
 
     def _append_event(event: LegacyTransitEvent) -> None:
         _attach_timelords(event, timelord_calculator)
-        if skip_metadata:
+        if skip_metadata_payload:
             provenance = event.metadata.setdefault("provenance", {})
             if isinstance(provenance, dict):
-                provenance.setdefault("skipped_bodies", skip_metadata["skipped_bodies"])
+                provenance.setdefault(
+                    "skipped_bodies", skip_metadata_payload["skipped_bodies"]
+                )
         events.append(event)
 
     for event in _declination_events(
