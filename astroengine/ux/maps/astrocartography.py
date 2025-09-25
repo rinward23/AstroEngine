@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Iterable, Mapping, Sequence
 
 from astroengine.ephemeris import SwissEphemerisAdapter
 
@@ -115,11 +115,15 @@ def _normalize_longitude(value: float) -> float:
     return wrapped
 
 
-def _meridian_track(longitude: float, *, step_deg: float = 2.0) -> tuple[tuple[float, float], ...]:
+def _meridian_track(
+    longitude: float, *, step_deg: float = 2.0
+) -> tuple[tuple[float, float], ...]:
     coordinates: list[tuple[float, float]] = []
     lat = -90.0
     while lat <= 90.0 + 1e-6:
-        coordinates.append((_normalize_longitude(longitude), max(min(lat, 90.0), -90.0)))
+        coordinates.append(
+            (_normalize_longitude(longitude), max(min(lat, 90.0), -90.0))
+        )
         lat += step_deg
     return tuple(coordinates)
 
@@ -203,7 +207,9 @@ def astrocartography_lines(
             )
         )
 
-        asc_track, dsc_track = _horizon_tracks(ra_deg, decl_deg, gst_deg, step_deg=lat_step)
+        asc_track, dsc_track = _horizon_tracks(
+            ra_deg, decl_deg, gst_deg, step_deg=lat_step
+        )
         if asc_track:
             lines.append(
                 MapLine(
@@ -237,7 +243,9 @@ def _horizontal_coordinates(
     hour_angle = math.radians(hour_angle_deg)
     delta = math.radians(decl_deg)
     phi = math.radians(latitude_deg)
-    sin_alt = math.sin(delta) * math.sin(phi) + math.cos(delta) * math.cos(phi) * math.cos(hour_angle)
+    sin_alt = math.sin(delta) * math.sin(phi) + math.cos(delta) * math.cos(
+        phi
+    ) * math.cos(hour_angle)
     sin_alt = max(-1.0, min(1.0, sin_alt))
     alt = math.degrees(math.asin(sin_alt))
     cos_az_numerator = math.sin(delta) - math.sin(math.radians(alt)) * math.sin(phi)
@@ -287,4 +295,3 @@ def local_space_vectors(
             )
         )
     return vectors
-

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 __all__ = ["RayDefinition", "SEVEN_RAYS"]
 
@@ -15,9 +14,9 @@ class RayDefinition:
     number: int
     name: str
     color: str
-    planetary_rulers: Tuple[str, ...]
-    virtues: Tuple[str, ...]
-    vices: Tuple[str, ...]
+    planetary_rulers: tuple[str, ...]
+    virtues: tuple[str, ...]
+    vices: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -30,7 +29,7 @@ class RayDefinition:
         }
 
 
-SEVEN_RAYS: Tuple[RayDefinition, ...] = (
+SEVEN_RAYS: tuple[RayDefinition, ...] = (
     RayDefinition(
         number=1,
         name="Will or Power",

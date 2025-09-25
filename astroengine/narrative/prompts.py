@@ -38,14 +38,20 @@ def build_summary_prompt(
     )
     lines.append(f"Context profile: {profile}.")
     if context:
-        context_bits = ", ".join(f"{k}={v}" for k, v in context.items() if v not in (None, ""))
+        context_bits = ", ".join(
+            f"{k}={v}" for k, v in context.items() if v not in (None, "")
+        )
         if context_bits:
             lines.append(f"Profile context: {context_bits}.")
     lines.append("Events:")
     for index, event in enumerate(events, 1):
         payload = event_to_mapping(event)
         timestamp = payload.get("timestamp") or payload.get("ts")
-        moving = payload.get("moving") or payload.get("body") or payload.get("transiting_body")
+        moving = (
+            payload.get("moving")
+            or payload.get("body")
+            or payload.get("transiting_body")
+        )
         target = payload.get("target") or payload.get("natal_body")
         kind = payload.get("kind") or payload.get("sign")
         score = payload.get("score")
@@ -76,8 +82,14 @@ def build_template_summary(
     for event in events:
         payload = event_to_mapping(event)
         timestamp = payload.get("timestamp") or payload.get("ts")
-        moving = payload.get("moving") or payload.get("body") or payload.get("transiting_body")
-        target = payload.get("target") or payload.get("natal_body") or payload.get("sign")
+        moving = (
+            payload.get("moving")
+            or payload.get("body")
+            or payload.get("transiting_body")
+        )
+        target = (
+            payload.get("target") or payload.get("natal_body") or payload.get("sign")
+        )
         kind = payload.get("kind") or payload.get("level")
         score = payload.get("score")
         lines.append(f"- {timestamp}: {moving} → {target} ({kind}), score={score}")

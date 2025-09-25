@@ -71,6 +71,7 @@ if pluggy is not None:  # pragma: no branch
         return _MANAGER
 
 else:  # pragma: no cover - pluggy unavailable
+
     def setup_cli(parser: Any) -> None:
         """No-op fallback when :mod:`pluggy` is missing."""
 
@@ -78,7 +79,9 @@ else:  # pragma: no cover - pluggy unavailable
         return None
 
     class _Marker:
-        def __call__(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover - debug aid
+        def __call__(
+            self, *args: Any, **kwargs: Any
+        ) -> Any:  # pragma: no cover - debug aid
             return None
 
     hookimpl = hookspec = _Marker()

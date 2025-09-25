@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 __all__ = ["GoldenDawnGrade", "GOLDEN_DAWN_GRADES"]
 
@@ -17,7 +16,7 @@ class GoldenDawnGrade:
     sephira_number: int | None
     sephira_name: str | None
     element: str | None
-    notes: Tuple[str, ...]
+    notes: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -30,7 +29,7 @@ class GoldenDawnGrade:
         }
 
 
-GOLDEN_DAWN_GRADES: Tuple[GoldenDawnGrade, ...] = (
+GOLDEN_DAWN_GRADES: tuple[GoldenDawnGrade, ...] = (
     GoldenDawnGrade(
         grade="0°=0□",
         title="Neophyte",
@@ -77,7 +76,10 @@ GOLDEN_DAWN_GRADES: Tuple[GoldenDawnGrade, ...] = (
         sephira_number=None,
         sephira_name=None,
         element=None,
-        notes=("Transition between Outer and Inner Order", "Balances Netzach-Hod-Yesod"),
+        notes=(
+            "Transition between Outer and Inner Order",
+            "Balances Netzach-Hod-Yesod",
+        ),
     ),
     GoldenDawnGrade(
         grade="5°=6□",

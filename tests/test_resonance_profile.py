@@ -19,4 +19,3 @@ def test_custom_resonance_weights_normalize():
     weights = ResonanceWeights(2.0, 1.0, 1.0).normalized()
     assert pytest.approx(weights.mind + weights.body + weights.spirit) == 1.0
     assert weights.mind > weights.body
-

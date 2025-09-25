@@ -61,7 +61,9 @@ def julian_day(moment: _dt.datetime) -> float:
     month = moment.month
     day = moment.day
     frac = (
-        moment.hour + moment.minute / 60.0 + (moment.second + moment.microsecond / 1e6) / 3600.0
+        moment.hour
+        + moment.minute / 60.0
+        + (moment.second + moment.microsecond / 1e6) / 3600.0
     ) / 24.0
 
     if month <= 2:

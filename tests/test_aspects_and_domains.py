@@ -7,7 +7,7 @@ from astroengine.domains import rollup_domain_scores
 
 class StubProvider:
     def __init__(self):
-        self.base = dt.datetime(2024, 6, 1, 0, 0, 0, tzinfo=dt.timezone.utc)
+        self.base = dt.datetime(2024, 6, 1, 0, 0, 0, tzinfo=dt.UTC)
 
     def positions_ecliptic(self, iso: str, bodies):
         t = dt.datetime.fromisoformat(iso.replace("Z", "+00:00"))
@@ -72,5 +72,6 @@ def test_domain_rollup_has_three_domains():
     ]
     report = rollup_domain_scores(events)
     assert set(report.keys()) >= {"mind", "body", "spirit"}
+
 
 # >>> AUTO-GEN END: AE Aspects & Domains Tests v1.0

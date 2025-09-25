@@ -68,7 +68,9 @@ def _aspect_policy(name: str) -> AspectPolicy:
         name=name,
         category=policy["category"],
         base_orb=float(policy["base_orb"]),
-        profile_overrides={k: float(v) for k, v in policy.get("profile_overrides", {}).items()},
+        profile_overrides={
+            k: float(v) for k, v in policy.get("profile_overrides", {}).items()
+        },
     )
 
 

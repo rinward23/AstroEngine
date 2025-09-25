@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Sequence
 
 from .natal import NatalChart
 
@@ -46,7 +46,9 @@ def compute_midpoint_composite(
     if bodies is None:
         selected = available_a & available_b
     else:
-        selected = {body for body in bodies if body in available_a and body in available_b}
+        selected = {
+            body for body in bodies if body in available_a and body in available_b
+        }
     if not selected:
         raise ValueError("No overlapping bodies to compute midpoint composite")
 

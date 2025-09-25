@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal, Optional, Tuple
+from typing import Literal
 
 from .infrastructure.paths import profiles_dir
 from .utils import load_json_document
@@ -26,36 +26,54 @@ def _default_policy() -> dict:
     return deepcopy(_DEFAULT_POLICY_TEMPLATE)
 
 
-def _load(path: Optional[str] = None) -> dict:
+def _load(path: str | None = None) -> dict:
     policy_path = Path(path) if path else _DEF
     if policy_path.exists():
         return load_json_document(policy_path, comment_prefixes=("# >>>",))
     return _default_policy()
 
 
-def body_valence(name: str, pol: dict) -> Tuple[Valence, float, str]:
-    b = pol.get("bodies", {}).get(name.lower(), {"valence": "neutral", "weight": 1.0, "neutral_mode": "amplify"})
-    return b.get("valence", "neutral"), float(b.get("weight", 1.0)), b.get("neutral_mode", "amplify")
+def body_valence(name: str, pol: dict) -> tuple[Valence, float, str]:
+    b = pol.get("bodies", {}).get(
+        name.lower(), {"valence": "neutral", "weight": 1.0, "neutral_mode": "amplify"}
+    )
+    return (
+        b.get("valence", "neutral"),
+        float(b.get("weight", 1.0)),
+        b.get("neutral_mode", "amplify"),
+    )
 
 
-def aspect_valence(name: str, pol: dict) -> Tuple[Valence, float, str]:
-    a = pol.get("aspects", {}).get(name.lower(), {"valence": "neutral", "weight": 1.0, "neutral_mode": "amplify"})
-    return a.get("valence", "neutral"), float(a.get("weight", 1.0)), a.get("neutral_mode", "amplify")
+def aspect_valence(name: str, pol: dict) -> tuple[Valence, float, str]:
+    a = pol.get("aspects", {}).get(
+        name.lower(), {"valence": "neutral", "weight": 1.0, "neutral_mode": "amplify"}
+    )
+    return (
+        a.get("valence", "neutral"),
+        float(a.get("weight", 1.0)),
+        a.get("neutral_mode", "amplify"),
+    )
 
 
-def contact_valence(name: str, pol: dict) -> Tuple[Valence, float, str]:
-    c = pol.get("contacts", {}).get(name, {"valence": "neutral", "weight": 1.0, "neutral_mode": "amplify"})
-    return c.get("valence", "neutral"), float(c.get("weight", 1.0)), c.get("neutral_mode", "amplify")
+def contact_valence(name: str, pol: dict) -> tuple[Valence, float, str]:
+    c = pol.get("contacts", {}).get(
+        name, {"valence": "neutral", "weight": 1.0, "neutral_mode": "amplify"}
+    )
+    return (
+        c.get("valence", "neutral"),
+        float(c.get("weight", 1.0)),
+        c.get("neutral_mode", "amplify"),
+    )
 
 
 def combine_valence(
     *,
     moving: str,
     target: str,
-    contact_kind: str,             # e.g., 'aspect_trine' or 'decl_parallel' or 'antiscia'
-    aspect_name: str | None,       # e.g., 'trine' when contact_kind startswith 'aspect_'
-    policy_path: Optional[str] = None,
-) -> Tuple[Valence, float]:
+    contact_kind: str,  # e.g., 'aspect_trine' or 'decl_parallel' or 'antiscia'
+    aspect_name: str | None,  # e.g., 'trine' when contact_kind startswith 'aspect_'
+    policy_path: str | None = None,
+) -> tuple[Valence, float]:
     """Return (valence, factor) for an event, where factor >= 0 scales magnitude.
     - Non-neutral valence yields factor = bodies_weight * aspect/contact weight.
     - Neutral valence yields factor multiplied by amplify/attenuate factor per policy.
@@ -70,7 +88,9 @@ def combine_valence(
 
     # Contact/aspect
     if contact_kind.startswith("aspect_"):
-        va, wa, nm_a = aspect_valence(aspect_name or contact_kind.split("_", 1)[-1], pol)
+        va, wa, nm_a = aspect_valence(
+            aspect_name or contact_kind.split("_", 1)[-1], pol
+        )
     else:
         va, wa, nm_a = contact_valence(contact_kind, pol)
 
@@ -81,7 +101,9 @@ def combine_valence(
             va = ov[moving.lower()]
 
     # Combine signs: aspect/contact dominates when non-neutral; otherwise bodies vote
-    def sign_of(v: Valence) -> int: return int(scale.get(v, 0))
+    def sign_of(v: Valence) -> int:
+        return int(scale.get(v, 0))
+
     s_a = sign_of(va)
     if s_a != 0:
         sign = s_a
@@ -98,8 +120,12 @@ def combine_valence(
     # Neutral handling -> amplify/attenuate but do not introduce direction
     if sign == 0:
         mode = nm_a if s_a == 0 else (nm_m if s_m == 0 else nm_t)
-        factor *= ne.get("amplify_factor" if mode == "amplify" else "attenuate_factor", 1.0)
+        factor *= ne.get(
+            "amplify_factor" if mode == "amplify" else "attenuate_factor", 1.0
+        )
         return "neutral", max(0.0, factor)
 
     return ("positive" if sign > 0 else "negative"), max(0.0, factor)
+
+
 # >>> AUTO-GEN END: AE Valence Module v1.0

@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Mapping, Sequence
 
 from ..chart.config import ChartConfig
 from ..chart.natal import (
+    DEFAULT_BODIES,
     ChartLocation,
     NatalChart,
-    DEFAULT_BODIES,
     compute_natal_chart,
 )
 from ..detectors.ingress import find_ingresses
-from ..events import IngressEvent
 from ..ephemeris import SwissEphemerisAdapter
+from ..events import IngressEvent
 from ..scoring import DEFAULT_ASPECTS
 
 __all__ = ["IngressChart", "compute_cardinal_ingress_charts"]
@@ -77,7 +77,9 @@ def compute_cardinal_ingress_charts(
                 match = event
                 break
         if match is None:
-            raise ValueError(f"No solar ingress for {sign_key} between {start_dt.isoformat()} and {end_dt.isoformat()}")
+            raise ValueError(
+                f"No solar ingress for {sign_key} between {start_dt.isoformat()} and {end_dt.isoformat()}"
+            )
         moment = datetime.fromisoformat(match.ts.replace("Z", "+00:00")).astimezone(UTC)
         natal = compute_natal_chart(
             moment,

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List
 
 from ..events import ProfectionEvent
 from .context import TimelordContext
@@ -49,7 +48,7 @@ SIGN_RULERS = {
 
 def _days_in_month(year: int, month: int) -> int:
     if month == 2:
-        leap = (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0))
+        leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
         return 29 if leap else 28
     if month in {1, 3, 5, 7, 8, 10, 12}:
         return 31
@@ -81,7 +80,9 @@ def _sign_for_house(asc_index: int, offset: int) -> str:
     return SIGN_SEQUENCE[(asc_index + offset) % len(SIGN_SEQUENCE)]
 
 
-def _profection_periods(context: TimelordContext, until: datetime) -> list[TimelordPeriod]:
+def _profection_periods(
+    context: TimelordContext, until: datetime
+) -> list[TimelordPeriod]:
     asc_index = _house_index(context.chart.houses.ascendant)
     periods: list[TimelordPeriod] = []
     year = 0
@@ -193,18 +194,18 @@ def annual_profections(
     end_ts: str,
     lat: float,
     lon: float,
-) -> List[ProfectionEvent]:
+) -> list[ProfectionEvent]:
     """Backwards-compatible annual profection API returning events."""
 
-    from .utils import parse_iso
     from .context import build_context
+    from .utils import parse_iso
 
     natal_moment = parse_iso(natal_ts)
     context = build_context(natal_moment, lat, lon)
     start = parse_iso(start_ts)
     end = parse_iso(end_ts)
     periods = _profection_periods(context, end)
-    events: List[ProfectionEvent] = []
+    events: list[ProfectionEvent] = []
     for period in periods:
         if period.level != "annual":
             continue

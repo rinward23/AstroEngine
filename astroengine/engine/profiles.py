@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 import yaml
 
-from ..profiles import load_base_profile
 from ..infrastructure.paths import profiles_dir
+from ..profiles import load_base_profile
 
 __all__ = [
     "load_profile_by_id",
@@ -26,7 +27,9 @@ def load_profile_by_id(profile_id: str) -> Mapping[str, Any]:
             continue
         try:
             data = yaml.safe_load(candidate.read_text(encoding="utf-8"))
-        except Exception:  # pragma: no cover - file parse errors bubble to callers later
+        except (
+            Exception
+        ):  # pragma: no cover - file parse errors bubble to callers later
             break
         if isinstance(data, Mapping):
             return data
@@ -47,4 +50,3 @@ def resolve_profile(
             return load_base_profile()
         return load_profile_by_id(profile_id)
     return load_base_profile()
-

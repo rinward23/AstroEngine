@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from types import ModuleType
 
+from . import scanning as _scanning
 from .context import (
     ScanFeaturePlan,
     ScanFeatureToggles,
@@ -13,7 +14,6 @@ from .context import (
     build_scan_profile_context,
 )
 from .frames import TargetFrameResolver
-from . import scanning as _scanning
 from .scanning import (
     ScanConfig,
     events_to_dicts,
@@ -75,4 +75,3 @@ __all__ = [
     "FEATURE_PROFECTIONS",
     "FEATURE_TIMELORDS",
 ]
-

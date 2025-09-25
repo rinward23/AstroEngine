@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from .registry import AstroChannel, AstroModule, AstroRegistry, AstroSubchannel, AstroSubmodule
 from .esoteric import register_esoteric_module
-
 from .event_detectors import register_event_detectors_module
 from .mundane import register_mundane_module
 from .narrative import register_narrative_module
-
 from .predictive import register_predictive_module
+from .registry import (
+    AstroChannel,
+    AstroModule,
+    AstroRegistry,
+    AstroSubchannel,
+    AstroSubmodule,
+)
 from .ritual import register_ritual_module
 from .ux import register_ux_module
 from .vca import register_vca_module

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
-from typing import Mapping, Sequence
 
 from ..infrastructure.paths import profiles_dir
 from ..utils import load_json_document
@@ -65,7 +65,7 @@ class TraditionSpec:
         return None
 
 
-@lru_cache(maxsize=None)
+@cache
 def get_tradition_spec(name: str) -> TraditionSpec | None:
     table = load_tradition_table()
     traditions = table.get("traditions") if isinstance(table, Mapping) else None

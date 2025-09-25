@@ -1,7 +1,7 @@
 # >>> AUTO-GEN BEGIN: AE Skyfield Provider v1.0
 from __future__ import annotations
 
-from typing import Dict, Iterable
+from collections.abc import Iterable
 
 try:
     from skyfield.api import load
@@ -38,15 +38,17 @@ class SkyfieldProvider:
         if self.kernel is None:
             raise FileNotFoundError("No local JPL kernel found (e.g., de440s.bsp)")
         self.ts = load.timescale()
-        self.ecliptic = None  # skyfield computes ecliptic-of-date via .ecliptic_position()
+        self.ecliptic = (
+            None  # skyfield computes ecliptic-of-date via .ecliptic_position()
+        )
 
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str]
-    ) -> Dict[str, Dict[str, float]]:
+    ) -> dict[str, dict[str, float]]:
         t = self.ts.from_datetime64([iso_utc]).at(
             0
         )  # accepts numpy datetime64 or str in newer versions
-        out: Dict[str, Dict[str, float]] = {}
+        out: dict[str, dict[str, float]] = {}
         earth = self.kernel["earth"]
         for name in bodies:
             key = _PLANET_KEYS.get(name.lower())
@@ -54,7 +56,9 @@ class SkyfieldProvider:
                 continue
             body = self.kernel[key]
             ecl = earth.at(t).observe(body).ecliptic_position()
-            lon, lat, distance = ecl.spherical_latlon()  # skyfield returns lat, lon order
+            lon, lat, distance = (
+                ecl.spherical_latlon()
+            )  # skyfield returns lat, lon order
             out[name] = {"lon": float(lon.degrees % 360.0), "decl": float(lat.degrees)}
         return out
 

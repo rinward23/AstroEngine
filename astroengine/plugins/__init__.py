@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from importlib import metadata
-import logging
-from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence
+from typing import TYPE_CHECKING, Any
 
 import pluggy
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - imports for static typing only
     from astroengine.exporters import LegacyTransitEvent
@@ -30,19 +29,19 @@ class HookSpecs:
     """Declarations of public hook specifications."""
 
     @hookspec
-    def register_detectors(self, registry: "DetectorRegistry") -> None:
+    def register_detectors(self, registry: DetectorRegistry) -> None:
         """Register additional detector callables."""
 
     @hookspec
-    def extend_scoring(self, registry: "ScoreExtensionRegistry") -> None:
+    def extend_scoring(self, registry: ScoreExtensionRegistry) -> None:
         """Attach additional computed components to score results."""
 
     @hookspec
-    def post_export(self, context: "ExportContext") -> None:
+    def post_export(self, context: ExportContext) -> None:
         """Run after an export command completes."""
 
     @hookspec
-    def ui_panels(self) -> Iterable["UIPanelSpec"]:
+    def ui_panels(self) -> Iterable[UIPanelSpec]:
         """Return lightweight UI panel descriptors for downstream apps."""
 
 
@@ -121,13 +120,15 @@ class ScoreExtensionRegistry:
         if not callable(callback):  # pragma: no cover - sanity guard
             raise TypeError("score extension callback must be callable")
         self._extensions.append(
-            ScoreExtensionSpec(name=name, callback=callback, namespace=namespace or name)
+            ScoreExtensionSpec(
+                name=name, callback=callback, namespace=namespace or name
+            )
         )
 
     def iter_extensions(self) -> Iterable[ScoreExtensionSpec]:
         return tuple(self._extensions)
 
-    def apply(self, inputs: "ScoreInputs", result: "ScoreResult") -> None:
+    def apply(self, inputs: ScoreInputs, result: ScoreResult) -> None:
         for spec in self._extensions:
             payload = spec.callback(inputs, result) or {}
             for key, value in payload.items():
@@ -179,7 +180,7 @@ class DetectorContext:
     moving: str
     target: str
     options: Mapping[str, Any]
-    existing_events: Sequence["LegacyTransitEvent"]
+    existing_events: Sequence[LegacyTransitEvent]
 
 
 class PluginRuntime:
@@ -240,7 +241,9 @@ class PluginRuntime:
     # Registration helpers
     # ------------------------------------------------------------------
     def register_plugin(self, plugin: Any, *, name: str | None = None) -> None:
-        self._validate_plugin_version(plugin, source=name or getattr(plugin, "__name__", "?"))
+        self._validate_plugin_version(
+            plugin, source=name or getattr(plugin, "__name__", "?")
+        )
         self._pm.register(plugin, name=name)
         # Reset caches so hooks re-run on next access
         self._detectors = None
@@ -280,7 +283,9 @@ class PluginRuntime:
                         panels.append(
                             UIPanelSpec(
                                 identifier=str(entry.get("identifier")),
-                                label=str(entry.get("label", entry.get("identifier", ""))),
+                                label=str(
+                                    entry.get("label", entry.get("identifier", ""))
+                                ),
                                 component=str(entry.get("component")),
                                 props=dict(entry.get("props", {})),
                             )
@@ -293,9 +298,9 @@ class PluginRuntime:
             self._ui_panels = tuple(panels)
         return self._ui_panels
 
-    def run_detectors(self, context: DetectorContext) -> list["LegacyTransitEvent"]:
+    def run_detectors(self, context: DetectorContext) -> list[LegacyTransitEvent]:
         registry = self.detectors()
-        events: list["LegacyTransitEvent"] = []
+        events: list[LegacyTransitEvent] = []
         for spec in registry:
             try:
                 produced = list(spec.callback(context) or [])
@@ -306,7 +311,7 @@ class PluginRuntime:
                 events.append(_coerce_legacy_event(event))
         return events
 
-    def apply_score_extensions(self, inputs: "ScoreInputs", result: "ScoreResult") -> None:
+    def apply_score_extensions(self, inputs: ScoreInputs, result: ScoreResult) -> None:
         registry = self.score_extensions()
         if registry:
             registry.apply(inputs, result)
@@ -333,7 +338,11 @@ class PluginRuntime:
 
 
 def _extract_plugin_api(plugin: Any) -> str | None:
-    for attr in ("ASTROENGINE_PLUGIN_API", "astroengine_plugin_api", "plugin_api_version"):
+    for attr in (
+        "ASTROENGINE_PLUGIN_API",
+        "astroengine_plugin_api",
+        "plugin_api_version",
+    ):
         value = getattr(plugin, attr, None)
         if value is not None:
             return str(value)
@@ -348,7 +357,7 @@ def _is_version_compatible(declared: str, runtime: str) -> bool:
     return _version_major(declared) == _version_major(runtime)
 
 
-def _coerce_legacy_event(value: Any) -> "LegacyTransitEvent":
+def _coerce_legacy_event(value: Any) -> LegacyTransitEvent:
     from astroengine.exporters import LegacyTransitEvent  # local import to avoid cycles
 
     if isinstance(value, LegacyTransitEvent):
@@ -365,14 +374,14 @@ def _coerce_legacy_event(value: Any) -> "LegacyTransitEvent":
     )
     if all(hasattr(value, field) for field in attr_fields):
         return LegacyTransitEvent(
-            kind=getattr(value, "kind"),
-            timestamp=getattr(value, "timestamp"),
-            moving=getattr(value, "moving"),
-            target=getattr(value, "target"),
-            orb_abs=float(getattr(value, "orb_abs")),
-            orb_allow=float(getattr(value, "orb_allow")),
-            applying_or_separating=str(getattr(value, "applying_or_separating")),
-            score=float(getattr(value, "score")),
+            kind=value.kind,
+            timestamp=value.timestamp,
+            moving=value.moving,
+            target=value.target,
+            orb_abs=float(value.orb_abs),
+            orb_allow=float(value.orb_allow),
+            applying_or_separating=str(value.applying_or_separating),
+            score=float(value.score),
             lon_moving=getattr(value, "lon_moving", None),
             lon_target=getattr(value, "lon_target", None),
             metadata=dict(getattr(value, "metadata", {}) or {}),
@@ -391,7 +400,8 @@ def _coerce_legacy_event(value: Any) -> "LegacyTransitEvent":
         missing = [key for key in required if key not in value]
         if missing:
             raise TypeError(
-                "mapping returned by detector is missing required keys: " + ", ".join(missing)
+                "mapping returned by detector is missing required keys: "
+                + ", ".join(missing)
             )
         metadata = dict(value.get("metadata", {}))
         return LegacyTransitEvent(
@@ -427,7 +437,7 @@ def set_plugin_manager(runtime: PluginRuntime | None) -> None:
     _RUNTIME = runtime
 
 
-def apply_score_extensions(inputs: "ScoreInputs", result: "ScoreResult") -> "ScoreResult":
+def apply_score_extensions(inputs: ScoreInputs, result: ScoreResult) -> ScoreResult:
     runtime = get_plugin_manager()
     runtime.apply_score_extensions(inputs, result)
     return result

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from itertools import combinations
-from typing import Dict, Mapping, Sequence
 
 from astroengine.detectors.common import norm360
 from astroengine.ephemeris import SwissEphemerisAdapter
@@ -45,7 +45,9 @@ class OuterCycleEvent:
 
     def as_dict(self) -> dict[str, object]:
         return {
-            "timestamp": self.timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+            "timestamp": self.timestamp.astimezone(UTC)
+            .isoformat()
+            .replace("+00:00", "Z"),
             "bodies": list(self.bodies),
             "aspect_deg": self.aspect_deg,
             "aspect_label": self.aspect_label,
@@ -156,11 +158,11 @@ def outer_cycle_events(
     current = start_utc
     step = timedelta(days=step_days)
 
-    prev: Dict[tuple[tuple[str, str], float], tuple[datetime, float]] = {}
+    prev: dict[tuple[tuple[str, str], float], tuple[datetime, float]] = {}
     while current <= end_utc:
         jd = adapter.julian_day(current)
-        longitudes: Dict[str, float] = {}
-        speeds: Dict[str, float] = {}
+        longitudes: dict[str, float] = {}
+        speeds: dict[str, float] = {}
         for body in bodies:
             lon, speed = _lon_and_speed(adapter, jd, codes[body], body)
             longitudes[body] = lon
@@ -231,7 +233,9 @@ def outer_cycle_windows(
         speed_delta = abs(event.speed_a - event.speed_b)
         speed_delta = max(speed_delta, 1e-3)
         hours_per_degree = 24.0 / speed_delta
-        width_deg = min(5.0, max(orb_allow, orb_allow * (1.5 if speed_delta < 0.5 else 1.0)))
+        width_deg = min(
+            5.0, max(orb_allow, orb_allow * (1.5 if speed_delta < 0.5 else 1.0))
+        )
         window = window_envelope(
             event.timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z"),
             width_deg,
@@ -246,4 +250,3 @@ def outer_cycle_windows(
         )
         windows.append(window)
     return windows
-

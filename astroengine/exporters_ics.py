@@ -1,14 +1,13 @@
 """ICS export helpers for canonical, templated, and narrative event exports."""
 
-
 from __future__ import annotations
 
 import hashlib
 import json
-
-from datetime import datetime, timedelta, timezone
+from collections.abc import Iterable, Mapping, Sequence
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 from .canonical import TransitEvent, event_from_legacy, events_from_any
 from .events import ReturnEvent
@@ -26,7 +25,6 @@ __all__ = [
     "DEFAULT_SUMMARY_TEMPLATE",
     "canonical_events_to_ics",
     "ics_bytes_from_events",
-
     "write_ics_canonical",
     "write_ics",
     "format_ics_calendar",
@@ -35,7 +33,6 @@ __all__ = [
 
 _PRODID = "-//AstroEngine//Transit Scanner//EN"
 _NARRATIVE_PRODID = "-//AstroEngine//Narrative Calendar 1.0//EN"
-
 
 
 def _escape_text(value: str) -> str:
@@ -52,12 +49,12 @@ def _escape_text(value: str) -> str:
 def _format_dt(ts: str) -> str:
     """Convert an ISO-8601 timestamp to ``YYYYMMDDTHHMMSSZ``."""
 
-    moment = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(timezone.utc)
+    moment = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(UTC)
     return moment.strftime("%Y%m%dT%H%M%SZ")
 
 
 def _render_calendar(events: Sequence[TransitEvent], calendar_name: str) -> str:
-    now_stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    now_stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     lines: list[str] = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -82,8 +79,8 @@ def _render_calendar(events: Sequence[TransitEvent], calendar_name: str) -> str:
             )
         description = "\n".join(description_bits)
 
-        uid_source = f"{dt_start}|{summary}|{event.orb}|{event.score}|{event.meta!r}".encode(
-            "utf-8"
+        uid_source = (
+            f"{dt_start}|{summary}|{event.orb}|{event.score}|{event.meta!r}".encode()
         )
         uid = hashlib.sha1(uid_source).hexdigest()
 
@@ -139,11 +136,9 @@ def write_ics_canonical(
     return len(canonical_events)
 
 
-
 class _TemplateContext(dict):
     def __missing__(self, key: str) -> Any:  # pragma: no cover - formatting fallback
         return ""
-
 
 
 def _base_context(ts: str, meta: Mapping[str, Any]) -> dict[str, Any]:
@@ -160,7 +155,6 @@ def _base_context(ts: str, meta: Mapping[str, Any]) -> dict[str, Any]:
         "start": ts,
         "meta": dict(meta),
         "meta_json": json.dumps(meta, sort_keys=True),
-
         "natal_id": natal_id or "unknown",
         "profile_id": profile_id or "unknown",
     }
@@ -195,23 +189,23 @@ def _context_from_transit(event: TransitEvent) -> dict[str, Any]:
     )
     kind = str(kind_raw).lower()
     if kind == "ingress":
-        label = meta.get("label") or f"{event.moving} ingress {ingress_sign or ctx['target']}"
+        label = (
+            meta.get("label")
+            or f"{event.moving} ingress {ingress_sign or ctx['target']}"
+        )
     else:
         label = meta.get("label") or f"{event.moving} {event.aspect} {event.target}"
     ctx.update(
         type=kind,
         label=label,
         ingress_sign=ingress_sign,
-
     )
     ctx.setdefault(
         "uid",
         meta.get("uid")
         or f"{event.ts}-{event.moving}-{ctx['target']}-{kind}-{abs(hash(json.dumps(meta, sort_keys=True)))%10_000}",
-
     )
     return ctx
-
 
 
 def _context_from_return(event: ReturnEvent) -> dict[str, Any]:
@@ -236,11 +230,9 @@ def _context_from_return(event: ReturnEvent) -> dict[str, Any]:
     )
     ctx.setdefault(
         "uid",
-        meta.get("uid")
-        or f"{event.ts}-{event.body}-{method}-return",
+        meta.get("uid") or f"{event.ts}-{event.body}-{method}-return",
     )
     return ctx
-
 
 
 def _context_from_mapping(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -265,9 +257,7 @@ def _context_from_mapping(payload: Mapping[str, Any]) -> dict[str, Any]:
     return _context_from_transit(event_from_legacy(payload))
 
 
-
 def _coerce_context(event: Any) -> dict[str, Any]:
-
 
     if isinstance(event, TransitEvent):
         return _context_from_transit(event)
@@ -278,10 +268,10 @@ def _coerce_context(event: Any) -> dict[str, Any]:
     if hasattr(event, "ts") and hasattr(event, "body") and hasattr(event, "method"):
         return _context_from_return(
             ReturnEvent(
-                ts=str(getattr(event, "ts")),
+                ts=str(event.ts),
                 jd=float(getattr(event, "jd", 0.0)),
-                body=str(getattr(event, "body")),
-                method=str(getattr(event, "method")),
+                body=str(event.body),
+                method=str(event.method),
                 longitude=float(getattr(event, "longitude", 0.0)),
             )
         )
@@ -298,9 +288,8 @@ def write_ics(
 ) -> int:
     """Write events to an ICS file using summary/description templates."""
 
-
     contexts = [_coerce_context(event) for event in events]
-    now_stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    now_stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     lines: list[str] = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -316,9 +305,7 @@ def write_ics(
         description = description_template.format_map(_TemplateContext(context)).strip()
         uid_value = context.get("uid")
         if not uid_value:
-            raw = f"{dtstart}|{summary}|{description}|{context.get('type','')}".encode(
-                "utf-8"
-            )
+            raw = f"{dtstart}|{summary}|{description}|{context.get('type','')}".encode()
             uid_value = hashlib.sha1(raw).hexdigest()
 
         lines.extend(
@@ -415,7 +402,7 @@ def _prepare_narrative_block(narrative: object | None) -> str | None:
     if narrative is None:
         return None
     if hasattr(narrative, "markdown"):
-        markdown = getattr(narrative, "markdown")
+        markdown = narrative.markdown
     else:
         markdown = str(narrative)
     if not markdown:
@@ -440,21 +427,23 @@ def _event_timestamp(event: object) -> str:
 def _event_datetime(event: object) -> datetime:
     timestamp = _event_timestamp(event)
     if not timestamp:
-        return datetime(1970, 1, 1, tzinfo=timezone.utc)
+        return datetime(1970, 1, 1, tzinfo=UTC)
     try:
-        return datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone(timezone.utc)
+        return datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone(UTC)
     except ValueError:  # pragma: no cover - defensive
-        return datetime(1970, 1, 1, tzinfo=timezone.utc)
+        return datetime(1970, 1, 1, tzinfo=UTC)
 
 
 def _iso_to_ics(timestamp: str, *, delta_minutes: int = 0) -> str:
     if timestamp:
         try:
-            base = datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone(timezone.utc)
+            base = datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone(
+                UTC
+            )
         except ValueError:  # pragma: no cover - defensive
-            base = datetime(1970, 1, 1, tzinfo=timezone.utc)
+            base = datetime(1970, 1, 1, tzinfo=UTC)
     else:
-        base = datetime(1970, 1, 1, tzinfo=timezone.utc)
+        base = datetime(1970, 1, 1, tzinfo=UTC)
     if delta_minutes:
         base = base + timedelta(minutes=delta_minutes)
     return base.strftime("%Y%m%dT%H%M%SZ")
@@ -523,4 +512,3 @@ def _fold_ics_line(line: str) -> list[str]:
         remaining = " " + remaining[75:]
     segments.append(remaining)
     return segments
-

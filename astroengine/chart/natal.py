@@ -8,9 +8,9 @@ from datetime import datetime
 
 import swisseph as swe
 
-from .config import ChartConfig
 from ..ephemeris import BodyPosition, HousePositions, SwissEphemerisAdapter
 from ..scoring import DEFAULT_ASPECTS, OrbCalculator
+from .config import ChartConfig
 
 __all__ = [
     "AspectHit",
@@ -85,7 +85,9 @@ def _compute_aspects(
             separation = _circular_delta(pos_a, pos_b)
             for angle in aspect_angles:
                 orb = abs(separation - angle)
-                threshold = orb_calculator.orb_for(name_a, name_b, angle, profile=profile)
+                threshold = orb_calculator.orb_for(
+                    name_a, name_b, angle, profile=profile
+                )
                 if orb <= threshold:
                     hits.append(
                         AspectHit(
@@ -107,14 +109,11 @@ def compute_natal_chart(
     bodies: Mapping[str, int] | None = None,
     aspect_angles: Sequence[int] | None = None,
     orb_profile: str = "standard",
-
     config: ChartConfig | None = None,
-
     adapter: SwissEphemerisAdapter | None = None,
     orb_calculator: OrbCalculator | None = None,
 ) -> NatalChart:
     """Compute a natal chart snapshot using Swiss Ephemeris data."""
-
 
     chart_config = config or ChartConfig()
     adapter = adapter or SwissEphemerisAdapter.from_chart_config(chart_config)

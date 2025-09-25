@@ -32,8 +32,12 @@ def test_adapter_classify_motion_applying() -> None:
 def test_topocentric_longitude_delta_within_bounds() -> None:
     moment = datetime(2025, 3, 20, 12, tzinfo=UTC)
     geocentric = EphemerisAdapter().sample(1, moment)
-    observer = ObserverLocation(latitude_deg=40.7128, longitude_deg=-74.0060, elevation_m=15.0)
-    topo_adapter = EphemerisAdapter(EphemerisConfig(topocentric=True, observer=observer))
+    observer = ObserverLocation(
+        latitude_deg=40.7128, longitude_deg=-74.0060, elevation_m=15.0
+    )
+    topo_adapter = EphemerisAdapter(
+        EphemerisConfig(topocentric=True, observer=observer)
+    )
     topocentric = topo_adapter.sample(1, moment)
     lon_delta = abs(topocentric.longitude - geocentric.longitude)
     lat_delta = abs(topocentric.latitude - geocentric.latitude)

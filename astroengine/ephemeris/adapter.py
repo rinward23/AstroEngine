@@ -63,9 +63,9 @@ class EphemerisConfig:
     ephemeris_path: str | None = None
     prefer_moshier: bool = False
     cache_size: int | None = None
-    time_scale: "TimeScaleContext" = field(default_factory=lambda: TimeScaleContext())
+    time_scale: TimeScaleContext = field(default_factory=lambda: TimeScaleContext())
     topocentric: bool = False
-    observer: "ObserverLocation | None" = None
+    observer: ObserverLocation | None = None
     sidereal: bool = False
     sidereal_mode: str | None = None
 
@@ -83,7 +83,9 @@ class TimeScaleContext:
         if input_norm != "UTC":
             raise ValueError(f"unsupported input time scale: {self.input_scale}")
         if ephem_norm not in {"TT", "UT"}:
-            raise ValueError(f"unsupported ephemeris time scale: {self.ephemeris_scale}")
+            raise ValueError(
+                f"unsupported ephemeris time scale: {self.ephemeris_scale}"
+            )
         object.__setattr__(self, "input_scale", input_norm)
         object.__setattr__(self, "ephemeris_scale", ephem_norm)
 
@@ -134,8 +136,12 @@ class EphemerisAdapter:
     def __init__(self, config: EphemerisConfig | None = None) -> None:
         initial_config = config or EphemerisConfig()
         if initial_config.topocentric and initial_config.observer is None:
-            raise ValueError("EphemerisConfig.topocentric requires an observer location")
-        self._cache: "OrderedDict[tuple[float, int, int], EphemerisSample]" = OrderedDict()
+            raise ValueError(
+                "EphemerisConfig.topocentric requires an observer location"
+            )
+        self._cache: OrderedDict[tuple[float, int, int], EphemerisSample] = (
+            OrderedDict()
+        )
         self._cache_capacity: int = 0
         self._config = initial_config
         self._use_tt = False
@@ -270,8 +276,9 @@ class EphemerisAdapter:
     def reconfigure(self, config: EphemerisConfig) -> None:
         """Apply ``config`` to the adapter, resetting caches if needed."""
 
-        if config == self._config and self._cache_capacity == self._resolve_cache_capacity(
-            config.cache_size
+        if (
+            config == self._config
+            and self._cache_capacity == self._resolve_cache_capacity(config.cache_size)
         ):
             return
         self._cache.clear()
@@ -318,16 +325,22 @@ class EphemerisAdapter:
         if not self._config.sidereal:
             return
         if not _HAS_SWE:
-            raise RuntimeError("Sidereal calculations require pyswisseph to be installed")
+            raise RuntimeError(
+                "Sidereal calculations require pyswisseph to be installed"
+            )
         assert swe is not None
         desired = self._config.sidereal_mode or DEFAULT_SIDEREAL_AYANAMSHA
         key = normalize_ayanamsha_name(desired)
         if key not in SUPPORTED_AYANAMSHAS:
             options = ", ".join(sorted(SUPPORTED_AYANAMSHAS))
-            raise ValueError(f"Unsupported sidereal mode '{desired}'. Supported options: {options}")
+            raise ValueError(
+                f"Unsupported sidereal mode '{desired}'. Supported options: {options}"
+            )
         try:
             mode_code = _SIDEREAL_MODE_MAP[key]
-        except KeyError as exc:  # pragma: no cover - defensive guard for incomplete SWE builds
+        except (
+            KeyError
+        ) as exc:  # pragma: no cover - defensive guard for incomplete SWE builds
             raise ValueError(
                 f"Swiss Ephemeris does not expose a sidereal constant for '{key}'"
             ) from exc

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Mapping, Sequence
 
 from ..ephemeris import BodyPosition
 
@@ -161,7 +161,9 @@ def _normalize_longitude(longitude: float) -> float:
     return normalized
 
 
-def decan_for_longitude(longitude: float, *, table: Sequence[DecanDefinition] | None = None) -> DecanDefinition:
+def decan_for_longitude(
+    longitude: float, *, table: Sequence[DecanDefinition] | None = None
+) -> DecanDefinition:
     """Return the decan definition covering the supplied longitude."""
 
     decan_table = table or DECANS

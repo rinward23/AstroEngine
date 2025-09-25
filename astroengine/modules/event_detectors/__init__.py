@@ -56,7 +56,9 @@ def register_event_detectors_module(registry: AstroRegistry) -> None:
     station_channel.register_subchannel(
         "direct",
         metadata={"description": "Direct stations (retrograde → direct)."},
-        payload=_subchannel_payload("validate severity falloff against Solar Fire exports"),
+        payload=_subchannel_payload(
+            "validate severity falloff against Solar Fire exports"
+        ),
     )
     station_channel.register_subchannel(
         "shadow",
@@ -84,7 +86,9 @@ def register_event_detectors_module(registry: AstroRegistry) -> None:
     ingress_house.register_subchannel(
         "transits",
         metadata={"description": "Transiting bodies crossing natal house cusps."},
-        payload=_subchannel_payload("confirm house calculations honour provider contract"),
+        payload=_subchannel_payload(
+            "confirm house calculations honour provider contract"
+        ),
     )
 
     lunations = module.register_submodule(
@@ -96,15 +100,21 @@ def register_event_detectors_module(registry: AstroRegistry) -> None:
         metadata={"profile_toggle": "feature_flags.lunations"},
     ).register_subchannel(
         "new_and_full",
-        metadata={"description": "Solar-phase events (new/full) awaiting severity tables."},
-        payload=_subchannel_payload("attach eclipse metadata sourced from real datasets"),
+        metadata={
+            "description": "Solar-phase events (new/full) awaiting severity tables."
+        },
+        payload=_subchannel_payload(
+            "attach eclipse metadata sourced from real datasets"
+        ),
     )
     lunations.register_channel(
         "lunar",
         metadata={"profile_toggle": "feature_flags.eclipses"},
     ).register_subchannel(
         "eclipses",
-        metadata={"description": "Placeholder for solar/lunar eclipses and saros links."},
+        metadata={
+            "description": "Placeholder for solar/lunar eclipses and saros links."
+        },
         payload=_subchannel_payload("index saros data in rulesets/transit"),
     )
 
@@ -119,24 +129,32 @@ def register_event_detectors_module(registry: AstroRegistry) -> None:
     declination_channel.register_subchannel(
         "oob",
         metadata={"description": "Out-of-bounds windows and antiscia parallels."},
-        payload=_subchannel_payload("define declination orb schema under schemas/events"),
+        payload=_subchannel_payload(
+            "define declination orb schema under schemas/events"
+        ),
     )
     declination_channel.register_subchannel(
         "parallel",
         metadata={"description": "Parallel and contraparallel detections."},
-        payload=_subchannel_payload("cross-check declination thresholds against Solar Fire"),
+        payload=_subchannel_payload(
+            "cross-check declination thresholds against Solar Fire"
+        ),
     )
 
     overlays = module.register_submodule(
         "overlays",
-        metadata={"description": "Midpoints, returns, profections, and fixed-star contacts."},
+        metadata={
+            "description": "Midpoints, returns, profections, and fixed-star contacts."
+        },
     )
     overlays.register_channel(
         "midpoints",
         metadata={"profile_toggle": "feature_flags.midpoints"},
     ).register_subchannel(
         "transits",
-        metadata={"description": "Transit-to-midpoint triggers derived from real Solar Fire exports."},
+        metadata={
+            "description": "Transit-to-midpoint triggers derived from real Solar Fire exports."
+        },
         payload=_subchannel_payload("finalise midpoint orb matrices"),
     )
     overlays.register_channel(
@@ -144,8 +162,12 @@ def register_event_detectors_module(registry: AstroRegistry) -> None:
         metadata={"profile_toggle": "feature_flags.fixed_stars"},
     ).register_subchannel(
         "contacts",
-        metadata={"description": "Fixed-star contacts referencing profiles/fixed_stars.csv."},
-        payload=_subchannel_payload("confirm star catalog indices and source checksums"),
+        metadata={
+            "description": "Fixed-star contacts referencing profiles/fixed_stars.csv."
+        },
+        payload=_subchannel_payload(
+            "confirm star catalog indices and source checksums"
+        ),
     )
     overlays.register_channel(
         "returns",
@@ -161,5 +183,7 @@ def register_event_detectors_module(registry: AstroRegistry) -> None:
     ).register_subchannel(
         "transits",
         metadata={"description": "Transit overlays referencing profection rulers."},
-        payload=_subchannel_payload("document profection profiles under docs/module/event-detectors"),
+        payload=_subchannel_payload(
+            "document profection profiles under docs/module/event-detectors"
+        ),
     )

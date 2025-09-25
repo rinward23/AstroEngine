@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Iterable, Mapping
 
 __all__ = ["TimelordPeriod", "TimelordStack"]
 

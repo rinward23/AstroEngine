@@ -38,7 +38,9 @@ def solar_lunar_returns(
     body_name, body_code = _body_accessor(kind)
 
     def lon_at(jd: float) -> float:
-        return adapter.body_position(jd, body_code, body_name=body_name).longitude % 360.0
+        return (
+            adapter.body_position(jd, body_code, body_name=body_name).longitude % 360.0
+        )
 
     target_lon = lon_at(natal_jd) % 360.0
     step = step_days if step_days is not None else (1.0 if body_name == "Sun" else 0.5)

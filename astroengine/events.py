@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 __all__ = [
     "BaseEvent",
@@ -63,7 +63,6 @@ class StationEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
-
 class IngressEvent(BaseEvent):
     """Represents a zodiacal ingress for a moving body."""
 
@@ -106,7 +105,6 @@ class IngressEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
-
 class ReturnEvent(BaseEvent):
     """Represents a solar or lunar return event."""
 
@@ -155,7 +153,6 @@ class ProfectionEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
-
 class IngressEvent(BaseEvent):
     """Represents a zodiac sign ingress for a moving body.
 
@@ -213,7 +210,6 @@ class IngressEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
-
 class OutOfBoundsEvent(BaseEvent):
     """Represents a declination out-of-bounds crossing for a body."""
 
@@ -248,4 +244,3 @@ class ZodiacalReleasingPeriod(TimelordPeriod):
 
     lot: str
     sign: str
-

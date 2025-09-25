@@ -22,9 +22,7 @@ def test_user_override_merges(tmp_path) -> None:
                 "users": {
                     "tester": {
                         "policies": {
-                            "severity": {
-                                "base_weights": {"aspect_conjunction": 0.5}
-                            }
+                            "severity": {"base_weights": {"aspect_conjunction": 0.5}}
                         }
                     }
                 }
@@ -33,16 +31,11 @@ def test_user_override_merges(tmp_path) -> None:
         encoding="utf-8",
     )
     profile = load_profile(user="tester", overrides_path=overrides_path)
-    assert (
-        profile["policies"]["severity"]["base_weights"]["aspect_conjunction"]
-        == 0.5
-    )
+    assert profile["policies"]["severity"]["base_weights"]["aspect_conjunction"] == 0.5
 
 
 def test_runtime_override_has_highest_precedence() -> None:
     profile = load_profile(
-        overrides={
-            "policies": {"severity": {"base_weights": {"aspect_square": 1.5}}}
-        }
+        overrides={"policies": {"severity": {"base_weights": {"aspect_square": 1.5}}}}
     )
     assert profile["policies"]["severity"]["base_weights"]["aspect_square"] == 1.5

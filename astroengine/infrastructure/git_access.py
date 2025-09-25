@@ -95,7 +95,9 @@ class GitRepository:
     def _command_env(self) -> MutableMapping[str, str] | None:
         return self.auth.apply() if self.auth else None
 
-    def run_git(self, *args: str, capture_output: bool = False) -> subprocess.CompletedProcess[str]:
+    def run_git(
+        self, *args: str, capture_output: bool = False
+    ) -> subprocess.CompletedProcess[str]:
         """Execute ``git`` with ``args`` inside the repository."""
 
         cmd = ["git", *args]
@@ -176,7 +178,9 @@ class GitRepository:
     # ------------------------------------------------------------------
     # File convenience methods
     # ------------------------------------------------------------------
-    def read_text(self, relative_path: str | os.PathLike[str], *, encoding: str = "utf-8") -> str:
+    def read_text(
+        self, relative_path: str | os.PathLike[str], *, encoding: str = "utf-8"
+    ) -> str:
         return (self.path / Path(relative_path)).read_text(encoding=encoding)
 
     def write_text(

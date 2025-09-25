@@ -5,28 +5,25 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, is_dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-
-from typing import Any, Iterable, List, Mapping, Optional, Sequence
+from typing import Any
 
 from . import engine as engine_module
 from .app_api import canonicalize_events, run_scan_or_raise
 from .astro.declination import available_antiscia_axes
 from .chart import ChartLocation, NatalChart, compute_natal_chart
 from .chart.composite import compute_composite_chart
-
 from .chart.config import (
-    ChartConfig,
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,
     VALID_HOUSE_SYSTEMS,
     VALID_ZODIAC_SYSTEMS,
+    ChartConfig,
 )
 from .detectors.ingress import find_ingresses
-
 from .engine import TargetFrameResolver, events_to_dicts, scan_contacts
 from .ephemeris import (
     EphemerisConfig,
@@ -34,16 +31,16 @@ from .ephemeris import (
     SwissEphemerisAdapter,
     TimeScaleContext,
 )
-
 from .exporters_ics import (
     DEFAULT_DESCRIPTION_TEMPLATE as ICS_DEFAULT_DESCRIPTION_TEMPLATE,
-    DEFAULT_SUMMARY_TEMPLATE as ICS_DEFAULT_SUMMARY_TEMPLATE,
+)
+from .exporters_ics import DEFAULT_SUMMARY_TEMPLATE as ICS_DEFAULT_SUMMARY_TEMPLATE
+from .exporters_ics import (
     write_ics,
-
     write_ics_calendar,
     write_ics_canonical,
 )
-from .infrastructure.storage.sqlite import SQLiteMigrator, ensure_sqlite_schema
+from .infrastructure.storage.sqlite import SQLiteMigrator
 from .infrastructure.storage.sqlite.query import top_events_by_score
 from .narrative import compose_narrative, summarize_top_events
 from .pipeline.provision import is_provisioned, provision_ephemeris  # ENSURE-LINE
@@ -53,13 +50,13 @@ from .timelords import TimelordCalculator, active_timelords
 from .timelords.context import build_context
 from .timelords.dashas import compute_vimshottari_dasha
 from .timelords.zr import compute_zodiacal_releasing
-from .userdata.vault import (
+from .userdata.vault import (  # ENSURE-LINE
     Natal,
     delete_natal,
     list_natals,
     load_natal,
     save_natal,
-)  # ENSURE-LINE
+)
 from .utils import (
     DEFAULT_TARGET_FRAMES,
     DEFAULT_TARGET_SELECTION,
@@ -71,40 +68,11 @@ from .utils import (
 from .ux.maps import astrocartography_lines, local_space_vectors
 from .ux.plugins import setup_cli as setup_plugins
 from .ux.timelines import outer_cycle_windows
-
 from .validation import (
     SchemaValidationError,
     available_schema_keys,
     validate_payload,
 )
-
-
-
-
-
-from .userdata.vault import Natal, save_natal, load_natal, list_natals, delete_natal  # ENSURE-LINE
-
-
-from .chart import ChartLocation, NatalChart, compute_natal_chart
-from .chart.composite import compute_composite_chart
-
-from .utils import (
-    DEFAULT_TARGET_FRAMES,
-    DEFAULT_TARGET_SELECTION,
-    DETECTOR_NAMES,
-    ENGINE_FLAG_MAP,
-    available_frames,
-    expand_targets,
-)
-
-from .infrastructure.storage.sqlite import SQLiteMigrator, ensure_sqlite_schema
-from .infrastructure.storage.sqlite.query import top_events_by_score
-
-
-from .ux.plugins import setup_cli as setup_plugins
-from .ux.maps import astrocartography_lines, local_space_vectors
-from .ux.timelines import outer_cycle_windows
-
 
 
 def _ensure_subparsers(parser: argparse.ArgumentParser) -> argparse._SubParsersAction:
@@ -151,7 +119,6 @@ def cmd_natal_save(args: argparse.Namespace) -> int:
     return 0
 
 
-
 def cmd_natal_delete(args: argparse.Namespace) -> int:
     if delete_natal(args.natal_id):
         print(f"Deleted natal '{args.natal_id}'.")
@@ -168,9 +135,6 @@ def _ensure_subparsers(parser: argparse.ArgumentParser) -> argparse._SubParsersA
     return subparsers
 
 
-
-
-
 def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
     if getattr(parser, "_ae_natals_added", False):
         return
@@ -179,7 +143,9 @@ def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
     natal_sub = natal.add_subparsers(dest="natal_command")
     natal_sub.required = True
 
-    natal_list = natal_sub.add_parser("list", help="List stored natal chart identifiers")
+    natal_list = natal_sub.add_parser(
+        "list", help="List stored natal chart identifiers"
+    )
     natal_list.set_defaults(func=cmd_natal_list)
 
     natal_show = natal_sub.add_parser("show", help="Display a stored natal chart")
@@ -189,8 +155,12 @@ def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
     natal_save = natal_sub.add_parser("save", help="Persist a natal chart entry")
     natal_save.add_argument("natal_id")
     natal_save.add_argument("--utc", required=True, help="Birth time (UTC ISO-8601)")
-    natal_save.add_argument("--lat", type=float, required=True, help="Latitude in decimal degrees")
-    natal_save.add_argument("--lon", type=float, required=True, help="Longitude in decimal degrees")
+    natal_save.add_argument(
+        "--lat", type=float, required=True, help="Latitude in decimal degrees"
+    )
+    natal_save.add_argument(
+        "--lon", type=float, required=True, help="Longitude in decimal degrees"
+    )
     natal_save.add_argument("--name", help="Human-friendly label")
     natal_save.add_argument("--tz", help="IANA timezone identifier for provenance")
     natal_save.add_argument("--place", help="Birth location description")
@@ -203,12 +173,16 @@ def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
     parser._ae_natals_added = True
 
 
-
-
 def cmd_plugins(args: argparse.Namespace) -> int:
     runtime = get_plugin_manager()
     show_all = not any(
-        [args.entrypoints, args.detectors, args.score_extensions, args.ui_panels, args.json]
+        [
+            args.entrypoints,
+            args.detectors,
+            args.score_extensions,
+            args.ui_panels,
+            args.json,
+        ]
     )
     payload: dict[str, Any] = {}
     if args.entrypoints or show_all or args.json:
@@ -261,9 +235,13 @@ def cmd_plugins(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(payload, indent=2))
     return 0
+
+
 def cmd_cache_info(_: argparse.Namespace) -> int:
-    from .cache.positions_cache import CACHE_DIR, DB as POSITIONS_DB
     import sqlite3
+
+    from .cache.positions_cache import CACHE_DIR
+    from .cache.positions_cache import DB as POSITIONS_DB
 
     print(f"cache directory: {CACHE_DIR}")
     if POSITIONS_DB.exists():
@@ -286,7 +264,6 @@ def cmd_cache_info(_: argparse.Namespace) -> int:
 
 
 def cmd_cache_warm(args: argparse.Namespace) -> int:
-    from .cache.positions_cache import warm_daily
 
     bodies = (
         [b.strip().lower() for b in args.bodies.split(",") if b.strip()]
@@ -316,11 +293,16 @@ def cmd_cache_warm(args: argparse.Namespace) -> int:
         return 1
 
 
-
 def cmd_plugins(args: argparse.Namespace) -> int:
     runtime = get_plugin_manager()
     show_all = not any(
-        [args.entrypoints, args.detectors, args.score_extensions, args.ui_panels, args.json]
+        [
+            args.entrypoints,
+            args.detectors,
+            args.score_extensions,
+            args.ui_panels,
+            args.json,
+        ]
     )
     payload: dict[str, Any] = {}
     if args.entrypoints or show_all or args.json:
@@ -373,7 +355,6 @@ def cmd_plugins(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(payload, indent=2))
     return 0
-
 
 
 def cmd_natal_list(_: argparse.Namespace) -> int:
@@ -420,8 +401,10 @@ def cmd_natal_delete(args: argparse.Namespace) -> int:
 
 
 def cmd_cache_info(_: argparse.Namespace) -> int:
-    from .cache.positions_cache import CACHE_DIR, DB as POSITIONS_DB
     import sqlite3
+
+    from .cache.positions_cache import CACHE_DIR
+    from .cache.positions_cache import DB as POSITIONS_DB
 
     print(f"cache directory: {CACHE_DIR}")
     if POSITIONS_DB.exists():
@@ -444,7 +427,6 @@ def cmd_cache_info(_: argparse.Namespace) -> int:
 
 
 def cmd_cache_warm(args: argparse.Namespace) -> int:
-    from .cache.positions_cache import warm_daily
 
     bodies = (
         [b.strip().lower() for b in args.bodies.split(",") if b.strip()]
@@ -473,7 +455,6 @@ def cmd_cache_warm(args: argparse.Namespace) -> int:
         print("end must be after start", file=sys.stderr)
         return 1
 
-
     entries = warm_daily(bodies, start_jd, end_jd)
     print(
         f"warmed {entries} cache entries for bodies {', '.join(bodies)} "
@@ -499,7 +480,9 @@ def _augment_parser_with_cache(parser: argparse.ArgumentParser) -> None:
     if getattr(parser, "_ae_cache_added", False):
         return
     subparsers = _ensure_subparsers(parser)
-    cache = subparsers.add_parser("cache", help="Inspect or warm Swiss ephemeris caches")
+    cache = subparsers.add_parser(
+        "cache", help="Inspect or warm Swiss ephemeris caches"
+    )
     cache_sub = cache.add_subparsers(dest="cache_command")
     cache_sub.required = True
 
@@ -518,17 +501,17 @@ def _augment_parser_with_cache(parser: argparse.ArgumentParser) -> None:
     parser._ae_cache_added = True
 
 
-
 def cmd_dataset_parquet(args: argparse.Namespace) -> int:
     if args.input == "-":
         payload_text = sys.stdin.read()
     else:
         payload_text = Path(args.input).read_text(encoding="utf-8")
 
-
     try:
         if args.format == "jsonl":
-            events = [json.loads(line) for line in payload_text.splitlines() if line.strip()]
+            events = [
+                json.loads(line) for line in payload_text.splitlines() if line.strip()
+            ]
         else:
             document = json.loads(payload_text)
             if isinstance(document, dict):
@@ -559,7 +542,9 @@ def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> Non
     dataset_sub = dataset.add_subparsers(dest="dataset_command")
     dataset_sub.required = True
 
-    parquet_cmd = dataset_sub.add_parser("parquet", help="Write canonical events to Parquet")
+    parquet_cmd = dataset_sub.add_parser(
+        "parquet", help="Write canonical events to Parquet"
+    )
     parquet_cmd.add_argument("input", help="Input JSON/JSONL file (use '-' for stdin)")
     parquet_cmd.add_argument("output", help="Destination Parquet file or directory")
     parquet_cmd.add_argument(
@@ -577,7 +562,6 @@ def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> Non
     parser._ae_dataset_added = True
 
 
-
 def cmd_provision_status(args: argparse.Namespace) -> int:
     meta = get_ephemeris_meta()
     meta["provisioned"] = is_provisioned()
@@ -591,7 +575,6 @@ def cmd_provision_status(args: argparse.Namespace) -> int:
         if meta.get("ephe_path"):
             print(f"ephemeris path: {meta['ephe_path']}")
     return 0
-
 
 
 def cmd_provision_ephemeris(args: argparse.Namespace) -> int:
@@ -612,14 +595,17 @@ def _augment_parser_with_provisioning(parser: argparse.ArgumentParser) -> None:
     if getattr(parser, "_ae_provision_added", False):
         return
     subparsers = _ensure_subparsers(parser)
-    provision = subparsers.add_parser("provision", help="Manage Swiss ephemeris provisioning")
+    provision = subparsers.add_parser(
+        "provision", help="Manage Swiss ephemeris provisioning"
+    )
     provision_sub = provision.add_subparsers(dest="provision_command")
     provision_sub.required = True
 
     status = provision_sub.add_parser("status", help="Show provisioning state")
-    status.add_argument("--json", action="store_true", help="Emit JSON status information")
+    status.add_argument(
+        "--json", action="store_true", help="Emit JSON status information"
+    )
     status.set_defaults(func=cmd_provision_status)
-
 
 
 def _chart_config_from_args(args: argparse.Namespace) -> ChartConfig:
@@ -629,24 +615,25 @@ def _chart_config_from_args(args: argparse.Namespace) -> ChartConfig:
     ayanamsha = getattr(args, "ayanamsha", None)
     house_system = getattr(args, "house_system", "placidus")
     try:
-        return ChartConfig(zodiac=zodiac, ayanamsha=ayanamsha, house_system=house_system)
+        return ChartConfig(
+            zodiac=zodiac, ayanamsha=ayanamsha, house_system=house_system
+        )
     except ValueError as exc:
         raise SystemExit(f"Invalid chart configuration: {exc}") from exc
 
 
-
-
 def _parse_iso_arg(value: str) -> datetime:
-    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
 
 
-def _primary_chart(args: argparse.Namespace) -> Optional[NatalChart]:
+def _primary_chart(args: argparse.Namespace) -> NatalChart | None:
     natal_ts = getattr(args, "natal_utc", None)
     lat = getattr(args, "lat", None)
     lon = getattr(args, "lon", None)
     if not natal_ts or lat is None or lon is None:
         return None
     moment = _parse_iso_arg(str(natal_ts))
+
 
 DEFAULT_INGRESS_BODIES = (
     "sun",
@@ -671,8 +658,8 @@ def _parse_ingress_bodies(spec: str | None) -> tuple[str, ...]:
 def _parse_iso_datetime(value: str) -> datetime:
     dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 def _build_natal_chart_from_args(args: argparse.Namespace):
@@ -689,8 +676,7 @@ def _build_natal_chart_from_args(args: argparse.Namespace):
     return compute_natal_chart(moment, location)
 
 
-
-def _partner_chart(args: argparse.Namespace) -> Optional[NatalChart]:
+def _partner_chart(args: argparse.Namespace) -> NatalChart | None:
     partner_ts = getattr(args, "partner_utc", None)
     lat = getattr(args, "partner_lat", None)
     lon = getattr(args, "partner_lon", None)
@@ -701,7 +687,7 @@ def _partner_chart(args: argparse.Namespace) -> Optional[NatalChart]:
     return compute_natal_chart(moment, location)
 
 
-def _resolver_for_target_frame(args: argparse.Namespace) -> Optional[TargetFrameResolver]:
+def _resolver_for_target_frame(args: argparse.Namespace) -> TargetFrameResolver | None:
     frame = getattr(args, "target_frame", "natal")
     frame_lower = frame.lower()
     target_name = getattr(args, "target", None)
@@ -717,30 +703,43 @@ def _resolver_for_target_frame(args: argparse.Namespace) -> Optional[TargetFrame
     if frame_lower == "natal":
         if primary is None and not static_positions:
             return None
-        return TargetFrameResolver("natal", natal_chart=primary, static_positions=static_positions)
+        return TargetFrameResolver(
+            "natal", natal_chart=primary, static_positions=static_positions
+        )
 
     if frame_lower == "progressed":
         if primary is None:
-            raise ValueError("--target-frame progressed requires --natal-utc, --lat, and --lon")
-        return TargetFrameResolver("progressed", natal_chart=primary, static_positions=static_positions)
+            raise ValueError(
+                "--target-frame progressed requires --natal-utc, --lat, and --lon"
+            )
+        return TargetFrameResolver(
+            "progressed", natal_chart=primary, static_positions=static_positions
+        )
 
     if frame_lower == "directed":
         if primary is None:
-            raise ValueError("--target-frame directed requires --natal-utc, --lat, and --lon")
+            raise ValueError(
+                "--target-frame directed requires --natal-utc, --lat, and --lon"
+            )
         return TargetFrameResolver("directed", natal_chart=primary)
 
     if frame_lower == "composite":
         if primary is None:
-            raise ValueError("--target-frame composite requires --natal-utc, --lat, and --lon")
+            raise ValueError(
+                "--target-frame composite requires --natal-utc, --lat, and --lon"
+            )
         partner = _partner_chart(args)
         if partner is None:
             raise ValueError(
                 "--target-frame composite requires --partner-utc, --partner-lat, and --partner-lon"
             )
         composite = compute_composite_chart(primary, partner)
-        return TargetFrameResolver("composite", natal_chart=primary, composite_chart=composite)
+        return TargetFrameResolver(
+            "composite", natal_chart=primary, composite_chart=composite
+        )
 
     raise ValueError(f"Unsupported target frame '{frame}'")
+
 
 def _serialize_mundane_chart(chart) -> dict[str, Any]:
     payload = {
@@ -787,10 +786,12 @@ def _handle_mundane(args: argparse.Namespace):
     natal_chart = _build_natal_chart_from_args(args)
 
     if has_aries:
-        year = int(getattr(args, "aries_ingress"))
+        year = int(args.aries_ingress)
         location = None
         if args.lat is not None and args.lon is not None:
-            location = ChartLocation(latitude=float(args.lat), longitude=float(args.lon))
+            location = ChartLocation(
+                latitude=float(args.lat), longitude=float(args.lon)
+            )
         quartet = bool(getattr(args, "aries_quartet", False))
         if quartet:
             charts = compute_solar_quartet(
@@ -818,7 +819,7 @@ def _handle_mundane(args: argparse.Namespace):
 
 
 # >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
-from .exporters import write_sqlite_canonical, write_parquet_canonical
+from .exporters import write_parquet_canonical, write_sqlite_canonical
 
 
 def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, int]:
@@ -867,7 +868,9 @@ def _ingress_to_canonical(event: Any) -> dict[str, Any]:
 
 def add_canonical_export_args(p: argparse.ArgumentParser) -> None:
     group = p.add_argument_group("canonical export")
-    group.add_argument("--sqlite", help="Path to SQLite DB; writes into table transits_events")
+    group.add_argument(
+        "--sqlite", help="Path to SQLite DB; writes into table transits_events"
+    )
     group.add_argument(
         "--parquet",
         help="Path to Parquet file or dataset directory",
@@ -882,25 +885,24 @@ def add_canonical_export_args(p: argparse.ArgumentParser) -> None:
 # >>> AUTO-GEN END: CLI Canonical Export Commands v1.0
 
 # >>> AUTO-GEN BEGIN: cli-run-experimental v1.1
+from .cache.positions_cache import warm_daily  # ENSURE-LINE
+from .chart.natal import ChartLocation, compute_natal_chart
 from .detectors import (
     find_eclipses,
     find_lunations,
-
-    find_sign_ingresses,
-
     find_out_of_bounds,
-
+    find_sign_ingresses,
     find_stations,
     secondary_progressions,
     solar_arc_directions,
     solar_lunar_returns,
 )
-from .detectors.common import iso_to_jd
-from .detectors.common import enable_cache  # ENSURE-LINE
-from .cache.positions_cache import warm_daily  # ENSURE-LINE
+from .detectors.common import (
+    enable_cache,  # ENSURE-LINE
+    iso_to_jd,
+)
 from .exporters_batch import export_parquet_dataset  # ENSURE-LINE
 from .mundane import compute_solar_ingress_chart, compute_solar_quartet
-from .chart.natal import ChartLocation, compute_natal_chart
 
 
 def run_experimental(args) -> None:
@@ -957,6 +959,8 @@ def run_experimental(args) -> None:
                 args.natal_utc, args.start_utc, args.end_utc, config=chart_config
             )
             print(f"solar-arc directions: {len(ev)} events")
+
+
 # >>> AUTO-GEN END: cli-run-experimental v1.1
 
 __all__ = ["build_parser", "main", "serialize_events_to_json", "json"]
@@ -969,25 +973,50 @@ def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:
         if getattr(target, "_ae_features_added", False):
             continue
         g = target.add_argument_group("Detectors (experimental)")
-        g.add_argument("--lunations", action="store_true", help="Enable lunations detector")
-        g.add_argument("--eclipses", action="store_true", help="Enable eclipses detector")
-        g.add_argument("--oob", action="store_true", help="Enable out-of-bounds detector")
-        g.add_argument("--stations", action="store_true", help="Enable stations detector")
-        g.add_argument("--progressions", action="store_true", help="Enable secondary progressions")
-        g.add_argument("--directions", action="store_true", help="Enable solar arc directions")
-        g.add_argument("--returns", action="store_true", help="Enable solar/lunar returns")
-        g.add_argument("--profections", action="store_true", help="Enable annual profections")
-        g.add_argument("--prog-aspects", action="store_true", help="Enable progressed natal aspects detector")
-        g.add_argument("--dir-aspects", action="store_true", help="Enable directed natal aspects detector")
+        g.add_argument(
+            "--lunations", action="store_true", help="Enable lunations detector"
+        )
+        g.add_argument(
+            "--eclipses", action="store_true", help="Enable eclipses detector"
+        )
+        g.add_argument(
+            "--oob", action="store_true", help="Enable out-of-bounds detector"
+        )
+        g.add_argument(
+            "--stations", action="store_true", help="Enable stations detector"
+        )
+        g.add_argument(
+            "--progressions", action="store_true", help="Enable secondary progressions"
+        )
+        g.add_argument(
+            "--directions", action="store_true", help="Enable solar arc directions"
+        )
+        g.add_argument(
+            "--returns", action="store_true", help="Enable solar/lunar returns"
+        )
+        g.add_argument(
+            "--profections", action="store_true", help="Enable annual profections"
+        )
+        g.add_argument(
+            "--prog-aspects",
+            action="store_true",
+            help="Enable progressed natal aspects detector",
+        )
+        g.add_argument(
+            "--dir-aspects",
+            action="store_true",
+            help="Enable directed natal aspects detector",
+        )
         target._ae_features_added = True
-# >>> AUTO-GEN END: cli-new-detector-flags v1.0
 
+
+# >>> AUTO-GEN END: cli-new-detector-flags v1.0
 
 
 DEFAULT_MOVING_BODIES = ["Sun", "Mars", "Jupiter"]
 
 
-def _normalize_detectors(values: Iterable[str] | None) -> List[str]:
+def _normalize_detectors(values: Iterable[str] | None) -> list[str]:
     if not values:
         return []
     selected: set[str] = set()
@@ -1056,7 +1085,7 @@ def _format_event_table(events: Iterable[Any]) -> str:
     if not rows:
         return ""
     headers = ["Timestamp", "Moving", "Aspect", "Target", "Orb", "Score"]
-    table_rows: List[List[str]] = []
+    table_rows: list[list[str]] = []
     for row in rows:
         orb = row.get("orb")
         score = row.get("score")
@@ -1076,12 +1105,15 @@ def _format_event_table(events: Iterable[Any]) -> str:
             widths[idx] = max(widths[idx], len(value))
     header_line = " | ".join(h.ljust(widths[idx]) for idx, h in enumerate(headers))
     divider = "-+-".join("-" * widths[idx] for idx in range(len(headers)))
-    body_lines = [" | ".join(value.ljust(widths[idx]) for idx, value in enumerate(row)) for row in table_rows]
+    body_lines = [
+        " | ".join(value.ljust(widths[idx]) for idx, value in enumerate(row))
+        for row in table_rows
+    ]
     return "\n".join([header_line, divider, *body_lines])
 
 
-def _canonical_events_to_dicts(events: Iterable[Any]) -> List[dict[str, Any]]:
-    payload: List[dict[str, Any]] = []
+def _canonical_events_to_dicts(events: Iterable[Any]) -> list[dict[str, Any]]:
+    payload: list[dict[str, Any]] = []
     for event in events:
         if isinstance(event, dict):
             payload.append(dict(event))
@@ -1107,7 +1139,7 @@ def _canonical_events_to_dicts(events: Iterable[Any]) -> List[dict[str, Any]]:
 def _resolve_targets_cli(
     raw_targets: Iterable[str] | None,
     frames: Iterable[str] | None,
-) -> List[str]:
+) -> list[str]:
     cleaned = [token.strip() for token in (raw_targets or []) if token]
     if not cleaned:
         return expand_targets(frames or DEFAULT_TARGET_FRAMES, DEFAULT_TARGET_SELECTION)
@@ -1179,7 +1211,6 @@ def cmd_transits(args: argparse.Namespace) -> int:
     engine_module.FEATURE_RETURNS = args.returns
     engine_module.FEATURE_PROFECTIONS = args.profections
 
-
     try:
         resolver = _resolver_for_target_frame(args)
     except ValueError as exc:
@@ -1195,11 +1226,11 @@ def cmd_transits(args: argparse.Namespace) -> int:
             engine_module.FEATURE_TIMELORDS = False
         else:
             natal_dt = datetime.fromisoformat(args.natal_utc.replace("Z", "+00:00"))
-            horizon = datetime.fromisoformat(args.end.replace("Z", "+00:00")) + timedelta(days=1)
+            horizon = datetime.fromisoformat(
+                args.end.replace("Z", "+00:00")
+            ) + timedelta(days=1)
             context = build_context(natal_dt, args.lat, args.lon)
             timelord_calculator = TimelordCalculator(context=context, until=horizon)
-
-
 
     include_mirrors = not args.decl_only
     include_aspects = not args.decl_only
@@ -1222,7 +1253,6 @@ def cmd_transits(args: argparse.Namespace) -> int:
         time_scale=time_scale,
     )
 
-
     events = scan_contacts(
         start_iso=args.start,
         end_iso=args.end,
@@ -1236,23 +1266,15 @@ def cmd_transits(args: argparse.Namespace) -> int:
         contra_antiscia_orb=args.mirror_orb,
         step_minutes=args.step,
         aspects_policy_path=args.aspects_policy,
-
-
         target_frame=args.target_frame,
         target_resolver=resolver,
         timelord_calculator=timelord_calculator,
-
-
         chart_config=getattr(args, "chart_config", None),
-
-
         profile_id=args.profile,
         include_declination=True,
         include_mirrors=include_mirrors,
         include_aspects=include_aspects,
         antiscia_axis=args.mirror_axis,
-
-
     )
 
     narrative_bundle = None
@@ -1265,7 +1287,7 @@ def cmd_transits(args: argparse.Namespace) -> int:
 
     if args.json:
         payload = {
-            "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "parameters": {
                 "start_timestamp": args.start,
                 "end_timestamp": args.end,
@@ -1327,10 +1349,12 @@ def cmd_scan(args: argparse.Namespace) -> int:
     _set_engine_detector_flags(detectors)
 
     moving = list(dict.fromkeys(args.moving or DEFAULT_MOVING_BODIES))
-    frame_selection = list(dict.fromkeys(args.target_frames or [])) or list(DEFAULT_TARGET_FRAMES)
+    frame_selection = list(dict.fromkeys(args.target_frames or [])) or list(
+        DEFAULT_TARGET_FRAMES
+    )
     targets = _resolve_targets_cli(args.targets, frame_selection)
 
-    entrypoints: List[str] = []
+    entrypoints: list[str] = []
     for raw in getattr(args, "entrypoint", []) or []:
         token = str(raw).strip()
         if token:
@@ -1370,7 +1394,9 @@ def cmd_scan(args: argparse.Namespace) -> int:
     if args.export_json:
         try:
             path = Path(args.export_json)
-            path.write_text(json.dumps(records, indent=2, ensure_ascii=False), encoding="utf-8")
+            path.write_text(
+                json.dumps(records, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
             print(f"JSON export complete: {path} ({len(records)} events)")
         except Exception as exc:
             print(f"JSON export failed ({exc})", file=sys.stderr)
@@ -1429,10 +1455,12 @@ def cmd_scan(args: argparse.Namespace) -> int:
     _set_engine_detector_flags(detectors)
 
     moving = list(dict.fromkeys(args.moving or DEFAULT_MOVING_BODIES))
-    frame_selection = list(dict.fromkeys(args.target_frames or [])) or list(DEFAULT_TARGET_FRAMES)
+    frame_selection = list(dict.fromkeys(args.target_frames or [])) or list(
+        DEFAULT_TARGET_FRAMES
+    )
     targets = _resolve_targets_cli(args.targets, frame_selection)
 
-    entrypoints: List[str] = []
+    entrypoints: list[str] = []
     for raw in getattr(args, "entrypoint", []) or []:
         token = str(raw).strip()
         if token:
@@ -1472,7 +1500,9 @@ def cmd_scan(args: argparse.Namespace) -> int:
     if args.export_json:
         try:
             path = Path(args.export_json)
-            path.write_text(json.dumps(records, indent=2, ensure_ascii=False), encoding="utf-8")
+            path.write_text(
+                json.dumps(records, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
             print(f"JSON export complete: {path} ({len(records)} events)")
         except Exception as exc:
             print(f"JSON export failed ({exc})", file=sys.stderr)
@@ -1541,7 +1571,6 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
-
 def cmd_query(args: argparse.Namespace) -> int:
     results = top_events_by_score(
         args.sqlite,
@@ -1581,7 +1610,11 @@ def cmd_query(args: argparse.Namespace) -> int:
 def cmd_locational_astrocartography(args: argparse.Namespace) -> int:
     try:
         moment = _parse_iso_datetime(args.moment)
-        bodies = [b.strip() for b in args.bodies.split(",") if b.strip()] if args.bodies else None
+        bodies = (
+            [b.strip() for b in args.bodies.split(",") if b.strip()]
+            if args.bodies
+            else None
+        )
         lines = astrocartography_lines(moment, bodies=bodies, lat_step=args.lat_step)
     except Exception as exc:
         print(f"Astrocartography computation failed: {exc}", file=sys.stderr)
@@ -1597,7 +1630,11 @@ def cmd_locational_astrocartography(args: argparse.Namespace) -> int:
 def cmd_locational_local_space(args: argparse.Namespace) -> int:
     try:
         moment = _parse_iso_datetime(args.moment)
-        bodies = [b.strip() for b in args.bodies.split(",") if b.strip()] if args.bodies else None
+        bodies = (
+            [b.strip() for b in args.bodies.split(",") if b.strip()]
+            if args.bodies
+            else None
+        )
         vectors = local_space_vectors(moment, args.lat, args.lon, bodies=bodies)
     except Exception as exc:
         print(f"Local-space computation failed: {exc}", file=sys.stderr)
@@ -1616,7 +1653,13 @@ def _parse_aspect_spec(spec: str | None) -> Mapping[float, str]:
     if not spec:
         return {}
     mapping: dict[float, str] = {}
-    defaults = {0.0: "conjunction", 60.0: "sextile", 90.0: "square", 120.0: "trine", 180.0: "opposition"}
+    defaults = {
+        0.0: "conjunction",
+        60.0: "sextile",
+        90.0: "square",
+        120.0: "trine",
+        180.0: "opposition",
+    }
     for token in spec.split(","):
         token = token.strip()
         if not token:
@@ -1637,7 +1680,11 @@ def cmd_timeline_outer_cycles(args: argparse.Namespace) -> int:
     try:
         start = _parse_iso_datetime(args.start)
         end = _parse_iso_datetime(args.end)
-        bodies = [b.strip() for b in args.bodies.split(",") if b.strip()] if args.bodies else None
+        bodies = (
+            [b.strip() for b in args.bodies.split(",") if b.strip()]
+            if args.bodies
+            else None
+        )
         aspect_mapping = _parse_aspect_spec(args.aspects) or None
         windows = outer_cycle_windows(
             start,
@@ -1660,11 +1707,12 @@ def cmd_timeline_outer_cycles(args: argparse.Namespace) -> int:
             )
     return 0
 
+
 def cmd_ingresses(args: argparse.Namespace) -> int:
     chart_config = _chart_config_from_args(args)
     adapter = SwissEphemerisAdapter(chart_config=chart_config)
-    start_dt = datetime.fromisoformat(args.start.replace("Z", "+00:00")).astimezone(timezone.utc)
-    end_dt = datetime.fromisoformat(args.end.replace("Z", "+00:00")).astimezone(timezone.utc)
+    start_dt = datetime.fromisoformat(args.start.replace("Z", "+00:00")).astimezone(UTC)
+    end_dt = datetime.fromisoformat(args.end.replace("Z", "+00:00")).astimezone(UTC)
     if end_dt <= start_dt:
         print("ingresses: end must be after start", file=sys.stderr)
         return 1
@@ -1678,7 +1726,7 @@ def cmd_ingresses(args: argparse.Namespace) -> int:
 
     if args.json:
         payload = {
-            "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "parameters": {
                 "start_timestamp": args.start,
                 "end_timestamp": args.end,
@@ -1706,14 +1754,19 @@ def cmd_ingresses(args: argparse.Namespace) -> int:
 
 
 def cmd_timelords(args: argparse.Namespace) -> int:
-    start_dt = datetime.fromisoformat(args.start.replace("Z", "+00:00")).astimezone(timezone.utc)
+    start_dt = datetime.fromisoformat(args.start.replace("Z", "+00:00")).astimezone(UTC)
     results: list[dict[str, Any]] = []
 
     if args.vimshottari:
         if args.moon_longitude is None:
-            print("timelords: --moon-longitude is required for Vimshottari dashas", file=sys.stderr)
+            print(
+                "timelords: --moon-longitude is required for Vimshottari dashas",
+                file=sys.stderr,
+            )
             return 1
-        levels = [level.strip() for level in args.timelord_levels.split(",") if level.strip()]
+        levels = [
+            level.strip() for level in args.timelord_levels.split(",") if level.strip()
+        ]
         periods = compute_vimshottari_dasha(
             args.moon_longitude,
             start_dt,
@@ -1724,9 +1777,14 @@ def cmd_timelords(args: argparse.Namespace) -> int:
 
     if args.zr:
         if args.fortune_longitude is None:
-            print("timelords: --fortune-longitude is required for zodiacal releasing", file=sys.stderr)
+            print(
+                "timelords: --fortune-longitude is required for zodiacal releasing",
+                file=sys.stderr,
+            )
             return 1
-        zr_levels = [level.strip() for level in args.zr_levels.split(",") if level.strip()]
+        zr_levels = [
+            level.strip() for level in args.zr_levels.split(",") if level.strip()
+        ]
         zr_periods = compute_zodiacal_releasing(
             args.fortune_longitude,
             start_dt,
@@ -1741,7 +1799,7 @@ def cmd_timelords(args: argparse.Namespace) -> int:
         return 1
 
     payload = {
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "start": args.start,
         "events": results,
     }
@@ -1752,29 +1810,52 @@ def cmd_timelords(args: argparse.Namespace) -> int:
     else:
         print(json.dumps(payload, indent=2))
 
-
     return 0
 
 
-def _add_timelord_compute_args(parser: argparse.ArgumentParser, *, required: bool) -> None:
+def _add_timelord_compute_args(
+    parser: argparse.ArgumentParser, *, required: bool
+) -> None:
     parser.add_argument("--start", required=required, help="Start timestamp (ISO-8601)")
-    parser.add_argument("--vimshottari", action="store_true", help="Emit Vimśottarī dasha periods")
-    parser.add_argument("--moon-longitude", type=float, help="Moon longitude in degrees for Vimśottarī dashas")
-    parser.add_argument("--dasha-cycles", type=int, default=1, help="Number of Vimśottarī cycles to compute")
+    parser.add_argument(
+        "--vimshottari", action="store_true", help="Emit Vimśottarī dasha periods"
+    )
+    parser.add_argument(
+        "--moon-longitude",
+        type=float,
+        help="Moon longitude in degrees for Vimśottarī dashas",
+    )
+    parser.add_argument(
+        "--dasha-cycles",
+        type=int,
+        default=1,
+        help="Number of Vimśottarī cycles to compute",
+    )
     parser.add_argument(
         "--timelord-levels",
         default="maha,antar",
         help="Comma-separated Vimśottarī levels to include",
     )
-    parser.add_argument("--zr", action="store_true", help="Emit zodiacal releasing periods")
-    parser.add_argument("--fortune-longitude", type=float, help="Lot longitude in degrees for releasing")
-    parser.add_argument("--zr-periods", type=int, default=12, help="Number of releasing periods to compute")
+    parser.add_argument(
+        "--zr", action="store_true", help="Emit zodiacal releasing periods"
+    )
+    parser.add_argument(
+        "--fortune-longitude", type=float, help="Lot longitude in degrees for releasing"
+    )
+    parser.add_argument(
+        "--zr-periods",
+        type=int,
+        default=12,
+        help="Number of releasing periods to compute",
+    )
     parser.add_argument(
         "--zr-levels",
         default="l1,l2",
         help="Comma-separated releasing levels to include",
     )
-    parser.add_argument("--lot", default="fortune", help="Lot to use for zodiacal releasing")
+    parser.add_argument(
+        "--lot", default="fortune", help="Lot to use for zodiacal releasing"
+    )
     parser.add_argument("--json", help="Write results to this JSON file")
 
 
@@ -1792,7 +1873,7 @@ def _dispatch_timelords(args: argparse.Namespace) -> int:
 
 
 def _iso_to_jd(iso_ts: str) -> float:
-    dt = datetime.fromisoformat(iso_ts.replace('Z', '+00:00')).astimezone(timezone.utc)
+    dt = datetime.fromisoformat(iso_ts.replace("Z", "+00:00")).astimezone(UTC)
     return (dt.timestamp() / 86400.0) + UNIX_EPOCH_JD
 
 
@@ -1815,11 +1896,11 @@ def run_experimental(args) -> None:
         print(f"stations: {len(ev)} events")
     if args.returns:
         # need args.natal_utc and args.return_kind
-        if not getattr(args, 'natal_utc', None):
+        if not getattr(args, "natal_utc", None):
             print("returns: missing --natal-utc; skipping")
         else:
             natal_jd = _iso_to_jd(args.natal_utc)
-            which = getattr(args, 'return_kind', 'solar')
+            which = getattr(args, "return_kind", "solar")
             ev = solar_lunar_returns(natal_jd, start_jd, end_jd, which, adapter=adapter)
             print(f"{which}-returns: {len(ev)} events")
 
@@ -1843,43 +1924,91 @@ def build_parser() -> argparse.ArgumentParser:
         default="placidus",
         help="Preferred house system for derived charts",
     )
-    parser.add_argument("--start-utc", help="Start timestamp (ISO-8601) for experimental detectors")  # ENSURE-LINE
-    parser.add_argument("--end-utc", help="End timestamp (ISO-8601) for experimental detectors")  # ENSURE-LINE
-    parser.add_argument("--natal-utc", help="Natal timestamp (ISO-8601) for return calculations")  # ENSURE-LINE
-    parser.add_argument("--natal-id", help="Natal identifier for provenance and vault operations")  # ENSURE-LINE
-    parser.add_argument("--return-kind", default="solar", help="Return kind: solar or lunar")  # ENSURE-LINE
+    parser.add_argument(
+        "--start-utc", help="Start timestamp (ISO-8601) for experimental detectors"
+    )  # ENSURE-LINE
+    parser.add_argument(
+        "--end-utc", help="End timestamp (ISO-8601) for experimental detectors"
+    )  # ENSURE-LINE
+    parser.add_argument(
+        "--natal-utc", help="Natal timestamp (ISO-8601) for return calculations"
+    )  # ENSURE-LINE
+    parser.add_argument(
+        "--natal-id", help="Natal identifier for provenance and vault operations"
+    )  # ENSURE-LINE
+    parser.add_argument(
+        "--return-kind", default="solar", help="Return kind: solar or lunar"
+    )  # ENSURE-LINE
 
-    parser.add_argument("--natal-lat", type=float, help="Latitude for natal chart when computing mundane aspects")
-    parser.add_argument("--natal-lon", type=float, help="Longitude for natal chart when computing mundane aspects")
-    parser.add_argument("--export-sqlite", help="Write precomputed events to this SQLite file")
-    parser.add_argument("--export-parquet", help="Write precomputed events to this Parquet file")
-    parser.add_argument("--export-ics", help="Write precomputed events to this ICS calendar file")
-    parser.add_argument("--ics-title", default="AstroEngine Events", help="Title to use for ICS export events")
-    parser.add_argument("--ics-summary-template", help="Custom summary template for ICS events")
+    parser.add_argument(
+        "--natal-lat",
+        type=float,
+        help="Latitude for natal chart when computing mundane aspects",
+    )
+    parser.add_argument(
+        "--natal-lon",
+        type=float,
+        help="Longitude for natal chart when computing mundane aspects",
+    )
+    parser.add_argument(
+        "--export-sqlite", help="Write precomputed events to this SQLite file"
+    )
+    parser.add_argument(
+        "--export-parquet", help="Write precomputed events to this Parquet file"
+    )
+    parser.add_argument(
+        "--export-ics", help="Write precomputed events to this ICS calendar file"
+    )
+    parser.add_argument(
+        "--ics-title",
+        default="AstroEngine Events",
+        help="Title to use for ICS export events",
+    )
+    parser.add_argument(
+        "--ics-summary-template", help="Custom summary template for ICS events"
+    )
     parser.add_argument(
         "--ics-description-template",
         help="Custom description template for ICS events",
     )
 
-    parser.add_argument("--profile", help="Profile identifier to annotate export metadata")
-    parser.add_argument("--lat", type=float, help="Latitude for location-sensitive detectors")
-    parser.add_argument("--lon", type=float, help="Longitude for location-sensitive detectors")
+    parser.add_argument(
+        "--profile", help="Profile identifier to annotate export metadata"
+    )
+    parser.add_argument(
+        "--lat", type=float, help="Latitude for location-sensitive detectors"
+    )
+    parser.add_argument(
+        "--lon", type=float, help="Longitude for location-sensitive detectors"
+    )
 
-    parser.add_argument("--ingresses", action="store_true", help="Emit sign ingress events between --start-utc and --end-utc")
-    parser.add_argument("--ingress-bodies", help="Comma-separated list of bodies for ingress detection")
+    parser.add_argument(
+        "--ingresses",
+        action="store_true",
+        help="Emit sign ingress events between --start-utc and --end-utc",
+    )
+    parser.add_argument(
+        "--ingress-bodies", help="Comma-separated list of bodies for ingress detection"
+    )
     parser.add_argument(
         "--ingress-step-hours",
         type=float,
         default=6.0,
         help="Sampling cadence in hours for ingress detection",
     )
-    parser.add_argument("--aries-ingress", type=int, help="Generate Aries ingress chart for the given year")
+    parser.add_argument(
+        "--aries-ingress",
+        type=int,
+        help="Generate Aries ingress chart for the given year",
+    )
     parser.add_argument(
         "--aries-quartet",
         action="store_true",
         help="Include solstice/equinox quartet when computing Aries ingress charts",
     )
-    parser.add_argument("--mundane-json", help="Write ingress/chart payloads to this JSON path")
+    parser.add_argument(
+        "--mundane-json", help="Write ingress/chart payloads to this JSON path"
+    )
 
     parser.add_argument(
         "--elevation-m",
@@ -1904,21 +2033,49 @@ def build_parser() -> argparse.ArgumentParser:
         help="Enable sidereal zodiac output (ayanamsha configuration handled separately)",
     )
 
-    parser.add_argument("--aspects", help="Comma-separated aspect angles for natal aspect detectors")
-    parser.add_argument("--orb", type=float, help="Orb allowance in degrees for natal aspect detectors")
+    parser.add_argument(
+        "--aspects", help="Comma-separated aspect angles for natal aspect detectors"
+    )
+    parser.add_argument(
+        "--orb", type=float, help="Orb allowance in degrees for natal aspect detectors"
+    )
     # --zodiac, --ayanamsha, and --house-system are declared above; detectors
     # reuse the values from the shared namespace to avoid duplicate options.
 
-    parser.add_argument("--lunations", action="store_true", help="Run lunation detector")
+    parser.add_argument(
+        "--lunations", action="store_true", help="Run lunation detector"
+    )
     parser.add_argument("--eclipses", action="store_true", help="Run eclipse detector")
-    parser.add_argument("--stations", action="store_true", help="Run planetary station detector")
-    parser.add_argument("--progressions", action="store_true", help="Run secondary progression detector")
-    parser.add_argument("--directions", action="store_true", help="Run solar arc direction detector")
-    parser.add_argument("--returns", action="store_true", help="Run solar/lunar return detector")
-    parser.add_argument("--profections", action="store_true", help="Run annual profection timelord detector")
-    parser.add_argument("--timelords", action="store_true", help="Annotate transit outputs with timelord overlays")
-    parser.add_argument("--prog-aspects", action="store_true", help="Run progressed natal aspect detector")
-    parser.add_argument("--dir-aspects", action="store_true", help="Run directed natal aspect detector")
+    parser.add_argument(
+        "--stations", action="store_true", help="Run planetary station detector"
+    )
+    parser.add_argument(
+        "--progressions", action="store_true", help="Run secondary progression detector"
+    )
+    parser.add_argument(
+        "--directions", action="store_true", help="Run solar arc direction detector"
+    )
+    parser.add_argument(
+        "--returns", action="store_true", help="Run solar/lunar return detector"
+    )
+    parser.add_argument(
+        "--profections",
+        action="store_true",
+        help="Run annual profection timelord detector",
+    )
+    parser.add_argument(
+        "--timelords",
+        action="store_true",
+        help="Annotate transit outputs with timelord overlays",
+    )
+    parser.add_argument(
+        "--prog-aspects",
+        action="store_true",
+        help="Run progressed natal aspect detector",
+    )
+    parser.add_argument(
+        "--dir-aspects", action="store_true", help="Run directed natal aspect detector"
+    )
     sub = parser.add_subparsers(dest="command")
     parser._ae_subparsers = sub
 
@@ -1926,20 +2083,32 @@ def build_parser() -> argparse.ArgumentParser:
     env_parser.set_defaults(func=cmd_env)
 
     plugins = sub.add_parser("plugins", help="Inspect plugin runtime and registry")
-    plugins.add_argument("--entrypoints", action="store_true", help="List loaded plugin entrypoints")
-    plugins.add_argument("--detectors", action="store_true", help="Show detector registrations")
+    plugins.add_argument(
+        "--entrypoints", action="store_true", help="List loaded plugin entrypoints"
+    )
+    plugins.add_argument(
+        "--detectors", action="store_true", help="Show detector registrations"
+    )
     plugins.add_argument(
         "--score-extensions",
         action="store_true",
         help="Show registered score extension hooks",
     )
-    plugins.add_argument("--ui-panels", action="store_true", help="Show UI panel contributions")
-    plugins.add_argument("--json", action="store_true", help="Emit JSON payload instead of text")
+    plugins.add_argument(
+        "--ui-panels", action="store_true", help="Show UI panel contributions"
+    )
+    plugins.add_argument(
+        "--json", action="store_true", help="Emit JSON payload instead of text"
+    )
     plugins.set_defaults(func=cmd_plugins)
 
     scan = sub.add_parser("scan", help="Run a canonical transit scan with presets")
-    scan.add_argument("--start-utc", required=True, help="Window start timestamp (ISO-8601)")
-    scan.add_argument("--end-utc", required=True, help="Window end timestamp (ISO-8601)")
+    scan.add_argument(
+        "--start-utc", required=True, help="Window start timestamp (ISO-8601)"
+    )
+    scan.add_argument(
+        "--end-utc", required=True, help="Window end timestamp (ISO-8601)"
+    )
     scan.add_argument(
         "--provider",
         default="auto",
@@ -1985,8 +2154,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     scan.add_argument("--export-json", help="Write canonical events to a JSON file")
     scan.add_argument("--export-sqlite", help="Write canonical events to a SQLite file")
-    scan.add_argument("--export-parquet", help="Write canonical events to a Parquet dataset")
-    scan.add_argument("--export-ics", help="Write canonical events to an ICS calendar file")
+    scan.add_argument(
+        "--export-parquet", help="Write canonical events to a Parquet dataset"
+    )
+    scan.add_argument(
+        "--export-ics", help="Write canonical events to an ICS calendar file"
+    )
     scan.add_argument(
         "--ics-title",
         default="AstroEngine Events",
@@ -2010,7 +2183,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Force tropical zodiac for this scan",
     )
     scan.set_defaults(sidereal=None)
-    scan.add_argument("--ayanamsha", help="Sidereal ayanāṁśa to apply when sidereal is enabled")
+    scan.add_argument(
+        "--ayanamsha", help="Sidereal ayanāṁśa to apply when sidereal is enabled"
+    )
     scan.set_defaults(func=cmd_scan)
 
     transits = sub.add_parser("transits", help="Scan for transit contacts")
@@ -2072,7 +2247,9 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--partner-lon", type=float)
     transits.add_argument("--json")
 
-    transits.add_argument("--timelords", action="store_true", help="Annotate events with active timelords")
+    transits.add_argument(
+        "--timelords", action="store_true", help="Annotate events with active timelords"
+    )
 
     add_canonical_export_args(transits)
     transits.set_defaults(func=cmd_transits)
@@ -2098,11 +2275,16 @@ def build_parser() -> argparse.ArgumentParser:
     active.add_argument("--natal-utc", required=True)
     active.add_argument("--lat", type=float, required=True)
     active.add_argument("--lon", type=float, required=True)
-    active.add_argument("--datetime", required=True, help="Target timestamp in ISO-8601")
-    active.add_argument("--fortune", action="store_true", help="Include Lot of Fortune releasing")
-    active.add_argument("--horizon", help="Optional end timestamp for timeline precomputation")
+    active.add_argument(
+        "--datetime", required=True, help="Target timestamp in ISO-8601"
+    )
+    active.add_argument(
+        "--fortune", action="store_true", help="Include Lot of Fortune releasing"
+    )
+    active.add_argument(
+        "--horizon", help="Optional end timestamp for timeline precomputation"
+    )
     active.set_defaults(func=cmd_timelords_active)
-
 
     generate = tl_sub.add_parser("generate", help="Compute timelord periods")
     generate.add_argument("--start", required=True)
@@ -2130,22 +2312,28 @@ def build_parser() -> argparse.ArgumentParser:
     _add_timelord_compute_args(periods, required=True)
     periods.set_defaults(func=_dispatch_timelords)
 
-
-    validate = sub.add_parser("validate", help="Validate a JSON payload against a schema")
+    validate = sub.add_parser(
+        "validate", help="Validate a JSON payload against a schema"
+    )
     validate.add_argument("schema", choices=list(available_schema_keys("jsonschema")))
     validate.add_argument("path")
     validate.set_defaults(func=cmd_validate)
 
-
     query = sub.add_parser("query", help="Query exported SQLite transit events")
     query.add_argument("--sqlite", required=True, help="Path to the SQLite database")
-    query.add_argument("--limit", type=int, default=10, help="Maximum number of rows to return")
+    query.add_argument(
+        "--limit", type=int, default=10, help="Maximum number of rows to return"
+    )
     query.add_argument("--profile-id", help="Filter by profile identifier")
     query.add_argument("--natal-id", help="Filter by natal identifier")
     query.add_argument("--moving", help="Filter by moving body")
     query.add_argument("--target", help="Filter by target point")
     query.add_argument("--year", type=int, help="Restrict to calendar year")
-    query.add_argument("--narrative", action="store_true", help="Render narrative summary for the result set")
+    query.add_argument(
+        "--narrative",
+        action="store_true",
+        help="Render narrative summary for the result set",
+    )
     query.add_argument(
         "--narrative-profile",
         default="transits",
@@ -2158,11 +2346,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     query.set_defaults(func=cmd_query)
 
-
     ops = sub.add_parser("ops", help="Operational helpers")
     ops_sub = ops.add_subparsers(dest="ops_command")
     ops_sub.required = True
-    migrate = ops_sub.add_parser("migrate", help="Apply Alembic migrations to SQLite stores")
+    migrate = ops_sub.add_parser(
+        "migrate", help="Apply Alembic migrations to SQLite stores"
+    )
     migrate.add_argument("--sqlite", required=True, help="SQLite file to migrate")
     migrate.add_argument("--revision", help="Target Alembic revision (default: head)")
     migrate.set_defaults(func=cmd_ops_migrate)
@@ -2170,17 +2359,31 @@ def build_parser() -> argparse.ArgumentParser:
     locational = sub.add_parser("locational", help="Locational visualization datasets")
     loc_sub = locational.add_subparsers(dest="locational_command")
     loc_sub.required = True
-    acg = loc_sub.add_parser("astrocartography", help="Compute astrocartography linework")
+    acg = loc_sub.add_parser(
+        "astrocartography", help="Compute astrocartography linework"
+    )
     acg.add_argument("--moment", required=True, help="UTC timestamp (ISO-8601)")
-    acg.add_argument("--bodies", default="", help="Comma-separated body names (optional)")
-    acg.add_argument("--lat-step", type=float, default=1.5, help="Latitude sampling step in degrees")
+    acg.add_argument(
+        "--bodies", default="", help="Comma-separated body names (optional)"
+    )
+    acg.add_argument(
+        "--lat-step", type=float, default=1.5, help="Latitude sampling step in degrees"
+    )
     acg.add_argument("--json", action="store_true", help="Emit JSON output")
     acg.set_defaults(func=cmd_locational_astrocartography)
-    local_space = loc_sub.add_parser("local-space", help="Compute local space azimuth vectors")
+    local_space = loc_sub.add_parser(
+        "local-space", help="Compute local space azimuth vectors"
+    )
     local_space.add_argument("--moment", required=True, help="UTC timestamp (ISO-8601)")
-    local_space.add_argument("--lat", type=float, required=True, help="Observer latitude in degrees")
-    local_space.add_argument("--lon", type=float, required=True, help="Observer longitude in degrees")
-    local_space.add_argument("--bodies", default="", help="Comma-separated body names (optional)")
+    local_space.add_argument(
+        "--lat", type=float, required=True, help="Observer latitude in degrees"
+    )
+    local_space.add_argument(
+        "--lon", type=float, required=True, help="Observer longitude in degrees"
+    )
+    local_space.add_argument(
+        "--bodies", default="", help="Comma-separated body names (optional)"
+    )
     local_space.add_argument("--json", action="store_true", help="Emit JSON output")
     local_space.set_defaults(func=cmd_locational_local_space)
 
@@ -2190,19 +2393,26 @@ def build_parser() -> argparse.ArgumentParser:
     outer_cycles = timeline_sub.add_parser(
         "outer-cycles", help="Generate outer planet cycle windows for visualization"
     )
-    outer_cycles.add_argument("--start", required=True, help="Start timestamp (ISO-8601)")
+    outer_cycles.add_argument(
+        "--start", required=True, help="Start timestamp (ISO-8601)"
+    )
     outer_cycles.add_argument("--end", required=True, help="End timestamp (ISO-8601)")
-    outer_cycles.add_argument("--bodies", default="", help="Optional comma-separated body list")
+    outer_cycles.add_argument(
+        "--bodies", default="", help="Optional comma-separated body list"
+    )
     outer_cycles.add_argument(
         "--aspects",
         default="",
         help="Aspect specification (deg[:label], comma separated; default majors)",
     )
-    outer_cycles.add_argument("--step-days", type=float, default=1.0, help="Sampling cadence in days")
-    outer_cycles.add_argument("--orb", type=float, default=1.0, help="Orb allowance for windows")
+    outer_cycles.add_argument(
+        "--step-days", type=float, default=1.0, help="Sampling cadence in days"
+    )
+    outer_cycles.add_argument(
+        "--orb", type=float, default=1.0, help="Orb allowance for windows"
+    )
     outer_cycles.add_argument("--json", action="store_true", help="Emit JSON output")
     outer_cycles.set_defaults(func=cmd_timeline_outer_cycles)
-
 
     ingresses = sub.add_parser("ingresses", help="Detect sign ingress events")
     ingresses.add_argument("--start", required=True)
@@ -2212,7 +2422,6 @@ def build_parser() -> argparse.ArgumentParser:
     ingresses.add_argument("--json")
     add_canonical_export_args(ingresses)
     ingresses.set_defaults(func=cmd_ingresses)
-
 
     _augment_parser_with_features(parser)
     setup_plugins(parser)
@@ -2227,7 +2436,6 @@ def main(argv: Iterable[str] | None = None) -> int:
     _augment_parser_with_provisioning(parser)
     _augment_parser_with_features(parser)
     namespace = parser.parse_args(list(argv) if argv is not None else None)
-
 
     mundane_payload = _handle_mundane(namespace)
     if mundane_payload is not None:
@@ -2251,7 +2459,6 @@ def main(argv: Iterable[str] | None = None) -> int:
     SwissEphemerisAdapter.configure_defaults(chart_config=chart_config)
     namespace.chart_config = chart_config
     namespace.ayanamsha = chart_config.ayanamsha
-
 
     run_experimental(namespace)
     func = getattr(namespace, "func", None)

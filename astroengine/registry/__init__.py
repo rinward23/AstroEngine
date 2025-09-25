@@ -6,6 +6,7 @@
 This avoids a hard move of files while consolidating runtime onto `astroengine`.
 """
 from __future__ import annotations
+
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,7 @@ def load_yaml(name: str) -> Any:
         if fp.exists():
             try:
                 import yaml  # lazy import to avoid hard dep during installs
+
                 with fp.open("r", encoding="utf-8") as f:
                     data = yaml.safe_load(f)
                 return data
@@ -65,7 +67,9 @@ def load_yaml(name: str) -> Any:
                 break
     if last_err:
         raise last_err
-    raise FileNotFoundError(f"Registry file not found: {name}; looked in: {', '.join(map(str, _candidate_dirs()))}")
+    raise FileNotFoundError(
+        f"Registry file not found: {name}; looked in: {', '.join(map(str, _candidate_dirs()))}"
+    )
 
 
 __all__ = ["load_yaml"]

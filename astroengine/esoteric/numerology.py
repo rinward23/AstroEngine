@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 __all__ = [
     "NumerologyNumber",
@@ -19,7 +18,7 @@ class NumerologyNumber:
     value: int
     name: str
     planetary_ruler: str
-    keywords: Tuple[str, ...]
+    keywords: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -30,7 +29,7 @@ class NumerologyNumber:
         }
 
 
-NUMEROLOGY_NUMBERS: Tuple[NumerologyNumber, ...] = (
+NUMEROLOGY_NUMBERS: tuple[NumerologyNumber, ...] = (
     NumerologyNumber(
         value=0,
         name="Void / Source",
@@ -94,7 +93,7 @@ NUMEROLOGY_NUMBERS: Tuple[NumerologyNumber, ...] = (
 )
 
 
-MASTER_NUMBERS: Tuple[NumerologyNumber, ...] = (
+MASTER_NUMBERS: tuple[NumerologyNumber, ...] = (
     NumerologyNumber(
         value=11,
         name="Master Visionary",

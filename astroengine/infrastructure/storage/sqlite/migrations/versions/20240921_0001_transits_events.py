@@ -5,7 +5,6 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-
 revision = "20240921_0001"
 down_revision = None
 branch_labels = None
@@ -26,7 +25,9 @@ def upgrade() -> None:
         sa.Column("profile_id", sa.String(), nullable=True),
         sa.Column("natal_id", sa.String(), nullable=True),
         sa.Column("event_year", sa.Integer(), nullable=False),
-        sa.Column("meta_json", sa.Text(), nullable=False, server_default=sa.text("'{}'")),
+        sa.Column(
+            "meta_json", sa.Text(), nullable=False, server_default=sa.text("'{}'")
+        ),
     )
     op.create_index(
         "ix_transits_events_profile_ts",

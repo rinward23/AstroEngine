@@ -1,4 +1,3 @@
-
 from astroengine.exporters_ics import canonical_events_to_ics, write_ics_canonical
 
 
@@ -26,6 +25,7 @@ def test_canonical_events_to_ics_roundtrip(tmp_path):
     saved = path.read_text()
     assert "Test Calendar" in saved
     assert "BEGIN:VEVENT" in saved
+
 
 from pathlib import Path
 
@@ -68,4 +68,3 @@ def test_write_ics_supports_ingress_and_returns(tmp_path):
     assert "SUMMARY:Mars ingress Virgo [n100]" in payload
     assert "SUMMARY:Sun Solar return [unknown]" in payload
     assert "DESCRIPTION:Score=1.50|Lon=" in payload
-

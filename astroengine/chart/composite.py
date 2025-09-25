@@ -7,10 +7,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from ..ephemeris import BodyPosition, HousePositions, SwissEphemerisAdapter
-from .config import ChartConfig
 from ..utils.angles import delta_angle, norm360
 from .config import ChartConfig
-from .natal import ChartLocation, NatalChart, DEFAULT_BODIES, compute_natal_chart
+from .natal import DEFAULT_BODIES, ChartLocation, NatalChart, compute_natal_chart
 
 __all__ = [
     "CompositeBodyPosition",
@@ -48,7 +47,7 @@ class CompositeBodyPosition:
     midpoint_longitude: float
 
     @classmethod
-    def from_body_position(cls, pos: BodyPosition) -> "CompositeBodyPosition":
+    def from_body_position(cls, pos: BodyPosition) -> CompositeBodyPosition:
         return cls(
             body=pos.body,
             julian_day=pos.julian_day,
@@ -114,7 +113,11 @@ def _average_body_position(
     label: str,
     julian_day: float | None = None,
 ) -> CompositeBodyPosition:
-    jd = julian_day if julian_day is not None else _average(pos_a.julian_day, pos_b.julian_day)
+    jd = (
+        julian_day
+        if julian_day is not None
+        else _average(pos_a.julian_day, pos_b.julian_day)
+    )
     base = BodyPosition(
         body=label,
         julian_day=jd,
@@ -146,16 +149,25 @@ def _mean_location(loc_a: ChartLocation, loc_b: ChartLocation) -> ChartLocation:
     return ChartLocation(latitude=lat, longitude=lon)
 
 
-def _average_houses(houses_a: HousePositions, houses_b: HousePositions) -> HousePositions:
+def _average_houses(
+    houses_a: HousePositions, houses_b: HousePositions
+) -> HousePositions:
     if houses_a.system != houses_b.system:
-        raise ValueError("House systems must match to compute a midpoint composite chart")
+        raise ValueError(
+            "House systems must match to compute a midpoint composite chart"
+        )
     if len(houses_a.cusps) != len(houses_b.cusps):
         raise ValueError("House cusps must have matching lengths")
 
-    cusps = tuple(_midpoint_angle(first, second) for first, second in zip(houses_a.cusps, houses_b.cusps))
+    cusps = tuple(
+        _midpoint_angle(first, second)
+        for first, second in zip(houses_a.cusps, houses_b.cusps, strict=False)
+    )
     asc = _midpoint_angle(houses_a.ascendant, houses_b.ascendant)
     mc = _midpoint_angle(houses_a.midheaven, houses_b.midheaven)
-    return HousePositions(system=houses_a.system, cusps=cusps, ascendant=asc, midheaven=mc)
+    return HousePositions(
+        system=houses_a.system, cusps=cusps, ascendant=asc, midheaven=mc
+    )
 
 
 def _midpoint_entries_from_positions(
@@ -192,8 +204,13 @@ def compute_midpoint_tree(
         body_names: Iterable[str] = chart.positions.keys()
     else:
         include_lower = {name.lower() for name in include}
-        body_names = [name for name in chart.positions.keys() if name.lower() in include_lower]
-    positions = {name: CompositeBodyPosition.from_body_position(chart.positions[name]) for name in body_names}
+        body_names = [
+            name for name in chart.positions.keys() if name.lower() in include_lower
+        ]
+    positions = {
+        name: CompositeBodyPosition.from_body_position(chart.positions[name])
+        for name in body_names
+    }
     return _midpoint_entries_from_positions(positions)
 
 
@@ -206,7 +223,9 @@ def _shared_body_names(
     if include is None:
         ordered = [name for name in chart_a.positions.keys() if name in names_b]
     else:
-        ordered = [name for name in include if name in chart_a.positions and name in names_b]
+        ordered = [
+            name for name in include if name in chart_a.positions and name in names_b
+        ]
     return tuple(ordered)
 
 
@@ -217,9 +236,7 @@ def compute_composite_chart(
     method: str = "midpoint",
     include: Sequence[str] | None = None,
     body_codes: Mapping[str, int] | None = None,
-
     config: ChartConfig | None = None,
-
     adapter: SwissEphemerisAdapter | None = None,
 ) -> CompositeChart:
     """Compute a relationship composite chart from two natal charts."""
@@ -254,19 +271,21 @@ def compute_composite_chart(
         if len(body_map) != len(shared_names):
             missing = sorted(set(shared_names) - set(body_map))
             raise ValueError(
-                "Body codes required for Davison composite: missing " + ", ".join(missing)
+                "Body codes required for Davison composite: missing "
+                + ", ".join(missing)
             )
         natal = compute_natal_chart(
             moment,
             location,
             bodies=body_map,
-
             config=chart_config,
-
             adapter=adapter,
         )
         julian_day = natal.julian_day
-        positions = {name: CompositeBodyPosition.from_body_position(natal.positions[name]) for name in shared_names}
+        positions = {
+            name: CompositeBodyPosition.from_body_position(natal.positions[name])
+            for name in shared_names
+        }
         houses = natal.houses
     else:
         raise ValueError("Composite method must be 'midpoint' or 'davison'")

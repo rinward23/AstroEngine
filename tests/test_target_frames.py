@@ -1,17 +1,18 @@
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 try:
-    import swisseph as swe  # type: ignore
 
     HAVE_SWISS = True
 except Exception:  # pragma: no cover
     HAVE_SWISS = False
 
 SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
-pytestmark = pytest.mark.skipif(not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available")
+pytestmark = pytest.mark.skipif(
+    not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
+)
 
 from astroengine.chart import ChartLocation, compute_natal_chart
 from astroengine.chart.composite import compute_composite_chart
@@ -21,21 +22,21 @@ from astroengine.engine import TargetFrameResolver, scan_contacts
 
 
 def _primary_chart() -> tuple[datetime, ChartLocation, object]:
-    moment = datetime(1990, 1, 1, 12, tzinfo=timezone.utc)
+    moment = datetime(1990, 1, 1, 12, tzinfo=UTC)
     location = ChartLocation(latitude=40.7128, longitude=-74.0060)
     chart = compute_natal_chart(moment, location)
     return moment, location, chart
 
 
 def _partner_chart() -> object:
-    partner_moment = datetime(1985, 7, 13, 16, 45, tzinfo=timezone.utc)
+    partner_moment = datetime(1985, 7, 13, 16, 45, tzinfo=UTC)
     partner_location = ChartLocation(latitude=34.0522, longitude=-118.2437)
     return compute_natal_chart(partner_moment, partner_location)
 
 
 def test_solar_and_lunar_returns_match_reference() -> None:
     moment, _, natal_chart = _primary_chart()
-    natal_jd = iso_to_jd(moment.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"))
+    natal_jd = iso_to_jd(moment.replace(tzinfo=UTC).isoformat().replace("+00:00", "Z"))
     start = iso_to_jd("2020-01-01T00:00:00Z")
     end = iso_to_jd("2021-01-01T00:00:00Z")
 
@@ -72,7 +73,9 @@ def test_composite_resolver_matches_expected_longitude() -> None:
     _, _, natal_chart = _primary_chart()
     partner_chart = _partner_chart()
     composite = compute_composite_chart(natal_chart, partner_chart)
-    resolver = TargetFrameResolver("composite", natal_chart=natal_chart, composite_chart=composite)
+    resolver = TargetFrameResolver(
+        "composite", natal_chart=natal_chart, composite_chart=composite
+    )
 
     sun_pos = resolver.position_dict("2020-07-20T00:00:00Z", "Sun")
     assert sun_pos["lon"] == pytest.approx(196.01493088166742, rel=1e-6)
@@ -135,7 +138,9 @@ def test_scan_contacts_composite_frame_detects_hits() -> None:
     _, _, natal_chart = _primary_chart()
     partner_chart = _partner_chart()
     composite = compute_composite_chart(natal_chart, partner_chart)
-    resolver = TargetFrameResolver("composite", natal_chart=natal_chart, composite_chart=composite)
+    resolver = TargetFrameResolver(
+        "composite", natal_chart=natal_chart, composite_chart=composite
+    )
     events = scan_contacts(
         start_iso="2020-07-16T00:00:00Z",
         end_iso="2020-07-20T00:00:00Z",

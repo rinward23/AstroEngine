@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import cache
 
 __all__ = ["body_class"]
 
@@ -27,7 +27,7 @@ _BODY_CLASS_MAP = {
 }
 
 
-@lru_cache(maxsize=None)
+@cache
 def body_class(name: str) -> str:
     """Return the scoring class for the provided body name."""
 

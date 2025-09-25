@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 from ...exporters import LegacyTransitEvent
 from ...utils.angles import classify_applying_separating, delta_angle
@@ -90,7 +90,8 @@ def extend_scoring(registry: ScoreExtensionRegistry) -> None:
 def post_export(context: ExportContext) -> None:
     if context.destinations:
         LOGGER.info(
-            "fixed_star_hits observed export: destinations=%s", list(context.destinations)
+            "fixed_star_hits observed export: destinations=%s",
+            list(context.destinations),
         )
 
 

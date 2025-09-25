@@ -1,7 +1,8 @@
 # >>> AUTO-GEN BEGIN: skyfield-kernel-utils v1.0
 from __future__ import annotations
+
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Optional
 
 _DEFAULT_NAMES = ("de440s.bsp", "de421.bsp")
 _SEARCH_DIRS: Iterable[Path] = (
@@ -11,7 +12,7 @@ _SEARCH_DIRS: Iterable[Path] = (
 )
 
 
-def find_kernel(preferred: Optional[str] = None) -> Optional[Path]:
+def find_kernel(preferred: str | None = None) -> Path | None:
     """Return path to an existing SPK kernel if found, else None."""
     candidates = []
     if preferred:
@@ -25,7 +26,7 @@ def find_kernel(preferred: Optional[str] = None) -> Optional[Path]:
     return None
 
 
-def ensure_kernel(download: bool = False) -> Optional[Path]:
+def ensure_kernel(download: bool = False) -> Path | None:
     """Ensure a kernel is available; optionally download via skyfield Loader.
     No-op if skyfield is not installed or download=False.
     """
@@ -46,4 +47,6 @@ def ensure_kernel(download: bool = False) -> Optional[Path]:
         return Path(eph.filename)
     except Exception:
         return None
+
+
 # >>> AUTO-GEN END: skyfield-kernel-utils v1.0

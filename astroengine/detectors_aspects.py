@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List
 
 from .core.angles import DeltaLambdaTracker, classify_relative_motion, signed_delta
 from .core.bodies import body_class
@@ -63,7 +63,7 @@ _HARMONIC_NAMES = {
     "tredecile",
 }
 
-_OPTIONAL_ANGLE_OVERRIDES: Dict[str, float] = {
+_OPTIONAL_ANGLE_OVERRIDES: dict[str, float] = {
     "semisextile": 30.0,
     "semisquare": 45.0,
     "sesquisquare": 135.0,
@@ -80,7 +80,7 @@ _OPTIONAL_ANGLE_OVERRIDES: Dict[str, float] = {
     "undecile": 32.7273,
 }
 
-_HARMONIC_FAMILY_TO_NAMES: Dict[int, tuple[str, ...]] = {
+_HARMONIC_FAMILY_TO_NAMES: dict[int, tuple[str, ...]] = {
     5: ("quintile", "biquintile"),
     6: ("sextile", "trine", "opposition"),
     7: ("septile", "biseptile", "triseptile"),
@@ -112,7 +112,9 @@ def _family_for(name: str) -> str:
     return "harmonic"
 
 
-def _orb_for(aspect_name: str, family: str, a_class: str, b_class: str, policy: dict) -> float:
+def _orb_for(
+    aspect_name: str, family: str, a_class: str, b_class: str, policy: dict
+) -> float:
     orbs = policy.get("orbs_deg", {}).get(aspect_name, {})
 
     if isinstance(orbs, (int, float)):
@@ -134,7 +136,9 @@ def _orb_for(aspect_name: str, family: str, a_class: str, b_class: str, policy: 
 
     family_defaults = policy.get("orb_defaults", {}).get(family, {})
     if family_defaults:
-        default = float(family_defaults.get("default", policy.get("default_orb_deg", 2.0)))
+        default = float(
+            family_defaults.get("default", policy.get("default_orb_deg", 2.0))
+        )
         allow_a = float(family_defaults.get(a_class, default))
         allow_b = float(family_defaults.get(b_class, default))
         return min(allow_a, allow_b)
@@ -146,7 +150,7 @@ def _orb_for(aspect_name: str, family: str, a_class: str, b_class: str, policy: 
     return 2.0
 
 
-def _resolve_enabled(policy: dict) -> Dict[str, tuple[float, str]]:
+def _resolve_enabled(policy: dict) -> dict[str, tuple[float, str]]:
     base_angles = {
         _normalize_name(name): float(angle)
         for name, angle in policy.get("angles_deg", {}).items()
@@ -160,17 +164,21 @@ def _resolve_enabled(policy: dict) -> Dict[str, tuple[float, str]]:
         enabled.add(_normalize_name(name))
 
     for entry in policy.get("enabled_harmonics", []):
-        if isinstance(entry, (int, float)) or (isinstance(entry, str) and entry.strip().isdigit()):
+        if isinstance(entry, (int, float)) or (
+            isinstance(entry, str) and entry.strip().isdigit()
+        ):
             try:
                 harmonic = int(entry)
             except (TypeError, ValueError):
                 continue
-            for name in _HARMONIC_FAMILY_TO_NAMES.get(harmonic, ()):  # ensure optional families
+            for name in _HARMONIC_FAMILY_TO_NAMES.get(
+                harmonic, ()
+            ):  # ensure optional families
                 enabled.add(_normalize_name(name))
         else:
             enabled.add(_normalize_name(entry))
 
-    angle_defs: Dict[str, tuple[float, str]] = {}
+    angle_defs: dict[str, tuple[float, str]] = {}
     for name in enabled:
         if name in base_angles:
             angle = base_angles[name]
@@ -190,19 +198,21 @@ def detect_aspects(
     target: str,
     *,
     policy_path: str | None = None,
-) -> List[AspectHit]:
+) -> list[AspectHit]:
     policy = _load_policy(policy_path)
     angles_map = _resolve_enabled(policy)
     if not angles_map:
         return []
 
-    partile_threshold = float(policy.get("partile_threshold_deg", _DEFAULT_PARTILE_THRESHOLD_DEG))
+    partile_threshold = float(
+        policy.get("partile_threshold_deg", _DEFAULT_PARTILE_THRESHOLD_DEG)
+    )
     corridor_cfg = policy.get("corridor", {})
     corridor_profile = str(corridor_cfg.get("profile", "gaussian"))
     corridor_minimum = float(corridor_cfg.get("minimum_deg", 0.1))
     default_orb = float(policy.get("default_orb_deg", 2.0))
     delta_tracker = DeltaLambdaTracker()
-    out: List[AspectHit] = []
+    out: list[AspectHit] = []
     cls_m = body_class(moving)
     cls_t = body_class(target)
 

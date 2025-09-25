@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from astroengine.exporters import LegacyTransitEvent
@@ -81,11 +81,15 @@ def test_template_narrative_snapshot():
     bundle = compose_narrative(
         events,
         top_n=4,
-        generated_at=datetime(2025, 3, 5, 12, 0, tzinfo=timezone.utc),
+        generated_at=datetime(2025, 3, 5, 12, 0, tzinfo=UTC),
     )
 
-    expected_markdown = _fixtures_path("template_summary.md").read_text(encoding="utf-8").strip()
-    expected_html = _fixtures_path("template_summary.html").read_text(encoding="utf-8").strip()
+    expected_markdown = (
+        _fixtures_path("template_summary.md").read_text(encoding="utf-8").strip()
+    )
+    expected_html = (
+        _fixtures_path("template_summary.html").read_text(encoding="utf-8").strip()
+    )
 
     assert bundle.markdown.strip() == expected_markdown
     assert bundle.html.strip() == expected_html
@@ -102,13 +106,17 @@ def test_ics_includes_narrative_block(tmp_path):
     bundle = compose_narrative(
         events,
         top_n=4,
-        generated_at=datetime(2025, 3, 5, 12, 0, tzinfo=timezone.utc),
+        generated_at=datetime(2025, 3, 5, 12, 0, tzinfo=UTC),
     )
     path = tmp_path / "events.ics"
-    count = write_ics_calendar(path, events, title="Sample Calendar", narrative_text=bundle)
+    count = write_ics_calendar(
+        path, events, title="Sample Calendar", narrative_text=bundle
+    )
     assert count == len(events)
 
     actual = path.read_text(encoding="utf-8")
     expected = _fixtures_path("events_with_narrative.ics").read_text(encoding="utf-8")
-    assert actual.replace("\r\n", "\n").strip() == expected.replace("\r\n", "\n").strip()
+    assert (
+        actual.replace("\r\n", "\n").strip() == expected.replace("\r\n", "\n").strip()
+    )
     assert "Narrative Summary" in actual

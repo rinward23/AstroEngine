@@ -5,7 +5,9 @@ import importlib
 import pytest
 
 
-@pytest.mark.skipif(importlib.util.find_spec("swisseph") is None, reason="pyswisseph missing")
+@pytest.mark.skipif(
+    importlib.util.find_spec("swisseph") is None, reason="pyswisseph missing"
+)
 def test_swiss_provider_roundtrip():
     from astroengine.providers.swiss_provider import SwissProvider
 
@@ -17,7 +19,8 @@ def test_swiss_provider_roundtrip():
 
 
 @pytest.mark.skipif(
-    importlib.util.find_spec("skyfield") is None or importlib.util.find_spec("jplephem") is None,
+    importlib.util.find_spec("skyfield") is None
+    or importlib.util.find_spec("jplephem") is None,
     reason="skyfield/jplephem missing",
 )
 def test_skyfield_available_or_skipped():

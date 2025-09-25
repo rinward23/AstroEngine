@@ -11,8 +11,9 @@ else:
 
 # >>> AUTO-GEN BEGIN: api-natals v1.0
 if app:
-    from .userdata.vault import list_natals, load_natal, save_natal, Natal
     from fastapi import HTTPException
+
+    from .userdata.vault import Natal, list_natals, load_natal, save_natal
 
     @app.get("/natals")
     def api_natals_list():
@@ -28,9 +29,21 @@ if app:
     @app.post("/natals/{natal_id}")
     def api_natals_put(natal_id: str, payload: dict):
         try:
-            n = Natal(natal_id=natal_id, name=payload.get('name'), utc=payload['utc'], lat=float(payload['lat']), lon=float(payload['lon']), tz=payload.get('tz'), place=payload.get('place'))
+            n = Natal(
+                natal_id=natal_id,
+                name=payload.get("name"),
+                utc=payload["utc"],
+                lat=float(payload["lat"]),
+                lon=float(payload["lon"]),
+                tz=payload.get("tz"),
+                place=payload.get("place"),
+            )
         except (KeyError, TypeError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail="invalid natal payload") from exc
+            raise HTTPException(
+                status_code=400, detail="invalid natal payload"
+            ) from exc
         save_natal(n)
         return {"ok": True}
+
+
 # >>> AUTO-GEN END: api-natals v1.0

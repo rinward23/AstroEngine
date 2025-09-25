@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .alchemy import ALCHEMY_STAGES, AlchemyStage
 from .decans import (
     DECANS,
     DecanAssignment,
@@ -9,15 +10,11 @@ from .decans import (
     assign_decans,
     decan_for_longitude,
 )
-from .tree_of_life import (
-    TREE_OF_LIFE_PATHS,
-    TREE_OF_LIFE_SEPHIROTH,
-    PathDefinition,
-    SephiraDefinition,
-)
-from .alchemy import ALCHEMY_STAGES, AlchemyStage
-from .seven_rays import SEVEN_RAYS, RayDefinition
 from .golden_dawn_grades import GOLDEN_DAWN_GRADES, GoldenDawnGrade
+from .iching import I_CHING_HEXAGRAMS, Hexagram
+from .numerology import MASTER_NUMBERS, NUMEROLOGY_NUMBERS, NumerologyNumber
+from .runes import ELDER_FUTHARK_RUNES, Rune
+from .seven_rays import SEVEN_RAYS, RayDefinition
 from .tarot import (
     TAROT_COURTS,
     TAROT_MAJORS,
@@ -26,9 +23,12 @@ from .tarot import (
     TarotMajorArcana,
     TarotSpread,
 )
-from .numerology import MASTER_NUMBERS, NUMEROLOGY_NUMBERS, NumerologyNumber
-from .iching import I_CHING_HEXAGRAMS, Hexagram
-from .runes import ELDER_FUTHARK_RUNES, Rune
+from .tree_of_life import (
+    TREE_OF_LIFE_PATHS,
+    TREE_OF_LIFE_SEPHIROTH,
+    PathDefinition,
+    SephiraDefinition,
+)
 
 __all__ = [
     "DECANS",

@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Mapping, Sequence
 
+from ..ephemeris import SwissEphemerisAdapter
+from ..scoring import DEFAULT_ASPECTS, OrbCalculator
 from .config import ChartConfig
 from .natal import (
+    DEFAULT_BODIES,
     ChartLocation,
     NatalChart,
     compute_natal_chart,
-    DEFAULT_BODIES,
 )
-from ..ephemeris import SwissEphemerisAdapter
-from ..scoring import DEFAULT_ASPECTS, OrbCalculator
 
 __all__ = ["ProgressedChart", "compute_secondary_progressed_chart"]
 
@@ -44,14 +44,11 @@ def compute_secondary_progressed_chart(
     bodies: Mapping[str, int] | None = None,
     aspect_angles: Sequence[int] | None = None,
     orb_profile: str = "standard",
-
     config: ChartConfig | None = None,
-
     adapter: SwissEphemerisAdapter | None = None,
     orb_calculator: OrbCalculator | None = None,
 ) -> ProgressedChart:
     """Compute a secondary progressed chart for ``target_moment``."""
-
 
     chart_config = config or ChartConfig()
     adapter = adapter or SwissEphemerisAdapter.from_chart_config(chart_config)
@@ -73,9 +70,7 @@ def compute_secondary_progressed_chart(
         bodies=body_map,
         aspect_angles=angles,
         orb_profile=orb_profile,
-
         config=chart_config,
-
         adapter=adapter,
         orb_calculator=orb_calculator,
     )

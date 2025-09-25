@@ -5,7 +5,6 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-
 DATASET = Path(__file__).resolve().parent.parent / "datasets" / "star_names_iau.csv"
 
 

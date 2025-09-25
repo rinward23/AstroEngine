@@ -2,15 +2,18 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Literal, Mapping, Optional, Protocol, Union
+from datetime import datetime
+from typing import Any, Literal, Protocol
 
 try:  # pragma: no cover - optional storage dependency
     from .infrastructure.storage.sqlite import ensure_sqlite_schema
-except ModuleNotFoundError as exc:  # pragma: no cover - allows lightweight imports
+except ModuleNotFoundError:  # pragma: no cover - allows lightweight imports
+
     def ensure_sqlite_schema(*_args, **_kwargs):  # type: ignore
         raise RuntimeError("SQLite storage support unavailable") from exc
+
 
 AspectName = Literal[
     "conjunction",
@@ -77,8 +80,8 @@ class TransitEvent:
     aspect: AspectName
     orb: float
     applying: bool
-    score: Optional[float] = None
-    meta: Dict[str, Any] = field(default_factory=dict)
+    score: float | None = None
+    meta: dict[str, Any] = field(default_factory=dict)
 
 
 class _HasAttrs(Protocol):
@@ -121,7 +124,7 @@ def _coerce_aspect(val: Any) -> AspectName:
     raise ValueError(f"Unknown aspect name for canonicalization: {val!r}")
 
 
-def _extract_profile_id(meta: Mapping[str, Any]) -> Optional[str]:
+def _extract_profile_id(meta: Mapping[str, Any]) -> str | None:
     candidates = (
         meta.get("profile_id"),
         meta.get("profileId"),
@@ -138,8 +141,8 @@ def _extract_profile_id(meta: Mapping[str, Any]) -> Optional[str]:
     return None
 
 
-def _extract_natal_id(meta: Mapping[str, Any]) -> Optional[str]:
-    for key in ("natal_id", "natalId", "natal" ):
+def _extract_natal_id(meta: Mapping[str, Any]) -> str | None:
+    for key in ("natal_id", "natalId", "natal"):
         value = meta.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
@@ -166,11 +169,11 @@ def _event_year(ts: str) -> int:
     return dt.year
 
 
-def _event_row(event: TransitEvent) -> Dict[str, Any]:
+def _event_row(event: TransitEvent) -> dict[str, Any]:
     meta_source = event.meta or {}
     if not isinstance(meta_source, Mapping):
         raise TypeError("TransitEvent.meta must be a mapping for canonical exports")
-    meta: Dict[str, Any] = dict(meta_source)
+    meta: dict[str, Any] = dict(meta_source)
     profile_id = _extract_profile_id(meta)
     natal_id = _extract_natal_id(meta)
     if profile_id and "profile_id" not in meta:
@@ -195,7 +198,9 @@ def _event_row(event: TransitEvent) -> Dict[str, Any]:
     }
 
 
-def event_from_legacy(obj: Union[Mapping[str, Any], _HasAttrs, TransitEvent]) -> TransitEvent:
+def event_from_legacy(
+    obj: Mapping[str, Any] | _HasAttrs | TransitEvent,
+) -> TransitEvent:
     """Convert dicts/legacy classes into the canonical :class:`TransitEvent`."""
 
     if isinstance(obj, TransitEvent):
@@ -224,7 +229,14 @@ def event_from_legacy(obj: Union[Mapping[str, Any], _HasAttrs, TransitEvent]) ->
     score = _get(d, "score", "severity", default=None)
     meta = _get(d, "meta", default={}) or {}
 
-    if ts is None or moving is None or target is None or aspect_raw is None or orb is None or applying is None:
+    if (
+        ts is None
+        or moving is None
+        or target is None
+        or aspect_raw is None
+        or orb is None
+        or applying is None
+    ):
         raise ValueError(f"Cannot canonicalize event; missing required keys: {d}")
 
     return TransitEvent(
@@ -239,13 +251,17 @@ def event_from_legacy(obj: Union[Mapping[str, Any], _HasAttrs, TransitEvent]) ->
     )
 
 
-def events_from_any(seq: Iterable[Union[Mapping[str, Any], _HasAttrs, TransitEvent]]) -> List[TransitEvent]:
+def events_from_any(
+    seq: Iterable[Mapping[str, Any] | _HasAttrs | TransitEvent],
+) -> list[TransitEvent]:
     """Vector form of :func:`event_from_legacy` with strict conversion."""
 
     return [event_from_legacy(x) for x in seq]
 
 
-def sqlite_write_canonical(db_path: str, events: Iterable[Union[Mapping[str, Any], _HasAttrs, TransitEvent]]) -> int:
+def sqlite_write_canonical(
+    db_path: str, events: Iterable[Mapping[str, Any] | _HasAttrs | TransitEvent]
+) -> int:
     """Append canonical events to SQLite (table: ``transits_events``)."""
 
     import sqlite3
@@ -297,9 +313,9 @@ def sqlite_write_canonical(db_path: str, events: Iterable[Union[Mapping[str, Any
 def sqlite_read_canonical(
     db_path: str,
     *,
-    where: Optional[str] = None,
+    where: str | None = None,
     parameters: Iterable[Any] | None = None,
-) -> List[TransitEvent]:
+) -> list[TransitEvent]:
     """Load canonical events from SQLite without losing metadata."""
 
     import sqlite3
@@ -317,9 +333,9 @@ def sqlite_read_canonical(
         query += " ORDER BY ts"
         params = tuple(parameters or ())
         rows = con.execute(query, params).fetchall()
-        events: List[TransitEvent] = []
+        events: list[TransitEvent] = []
         for row in rows:
-            meta_payload: Dict[str, Any]
+            meta_payload: dict[str, Any]
             raw_meta = row["meta_json"]
             if raw_meta:
                 meta_payload = json.loads(raw_meta)
@@ -350,7 +366,7 @@ def sqlite_read_canonical(
 
 def parquet_write_canonical(
     path: str,
-    events: Iterable[Union[Mapping[str, Any], _HasAttrs, TransitEvent]],
+    events: Iterable[Mapping[str, Any] | _HasAttrs | TransitEvent],
     *,
     compression: str = "snappy",
 ) -> int:
@@ -361,13 +377,16 @@ def parquet_write_canonical(
         import pyarrow.dataset as ds
         import pyarrow.parquet as pq
     except Exception as exc:  # pragma: no cover
-        raise RuntimeError("pyarrow is required for Parquet export. Install 'pyarrow' to enable.") from exc
+        raise RuntimeError(
+            "pyarrow is required for Parquet export. Install 'pyarrow' to enable."
+        ) from exc
 
     evs = events_from_any(events)
     if not evs:
         return 0
 
     rows = [_event_row(e) for e in evs]
+
     def _string_or_none(value: Any) -> Any:
         if value is None:
             return None
@@ -394,10 +413,12 @@ def parquet_write_canonical(
     else:
         parquet_format = ds.ParquetFileFormat()
         file_options = parquet_format.make_write_options(compression=compression)
-        partition_schema = pa.schema([
-            ("natal_id", pa.string()),
-            ("event_year", pa.int64()),
-        ])
+        partition_schema = pa.schema(
+            [
+                ("natal_id", pa.string()),
+                ("event_year", pa.int64()),
+            ]
+        )
         partitioning = ds.HivePartitioning(partition_schema)
         ds.write_dataset(
             table,

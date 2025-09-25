@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import datetime as dt
-
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from itertools import tee
-from typing import Any, List, Mapping
+from typing import Any
 
 from ..chart.config import ChartConfig
 from ..core.engine import get_active_aspect_angles
@@ -21,7 +20,6 @@ from ..exporters import LegacyTransitEvent
 from ..plugins import DetectorContext, get_plugin_manager
 from ..providers import get_provider
 from ..scoring import ScoreInputs, compute_score
-
 from .context import (
     ScanFeaturePlan,
     ScanFeatureToggles,
@@ -95,7 +93,9 @@ class _TickCachingProvider:
 
     def __init__(self, provider: object) -> None:
         self._provider = provider
-        self._cache: dict[tuple[str, tuple[str, ...]], Mapping[str, Mapping[str, float]]] = {}
+        self._cache: dict[
+            tuple[str, tuple[str, ...]], Mapping[str, Mapping[str, float]]
+        ] = {}
 
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str] | None
@@ -158,7 +158,7 @@ class _ScoringContext:
     uncertainty_bias: Mapping[str, str] | None
 
 
-def events_to_dicts(events: Iterable[LegacyTransitEvent]) -> List[dict]:
+def events_to_dicts(events: Iterable[LegacyTransitEvent]) -> list[dict]:
     """Convert :class:`LegacyTransitEvent` objects into JSON-friendly dictionaries."""
 
     return [event.to_dict() for event in events]
@@ -187,7 +187,7 @@ def _iso_ticks(start_iso: str, end_iso: str, *, step_minutes: int) -> Iterable[s
     step = dt.timedelta(minutes=step_minutes)
     current = start_dt
     while current <= end_dt:
-        yield current.replace(tzinfo=dt.timezone.utc).isoformat().replace("+00:00", "Z")
+        yield current.replace(tzinfo=dt.UTC).isoformat().replace("+00:00", "Z")
         current += step
 
 
@@ -233,7 +233,9 @@ def _event_from_decl(
     orb_allow: float,
     scoring: _ScoringContext,
 ) -> LegacyTransitEvent:
-    effective_orb = float(hit.orb_allow) if hit.orb_allow is not None else float(orb_allow)
+    effective_orb = (
+        float(hit.orb_allow) if hit.orb_allow is not None else float(orb_allow)
+    )
     score = _score_from_hit(
         hit.kind,
         abs(hit.delta),
@@ -454,7 +456,7 @@ def scan_contacts(
     antiscia_axis: str | None = None,
     tradition_profile: str | None = None,
     chart_sect: str | None = None,
-) -> List[LegacyTransitEvent]:
+) -> list[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
 
     base_provider = provider or get_provider(provider_name)
@@ -526,7 +528,7 @@ def scan_contacts(
 
     cached_provider = _TickCachingProvider(scan_provider)
 
-    events: List[LegacyTransitEvent] = []
+    events: list[LegacyTransitEvent] = []
 
     def _append_event(event: LegacyTransitEvent) -> None:
         _attach_timelords(event, timelord_calculator)
@@ -607,14 +609,14 @@ def resolve_provider(name: str | None) -> object:
 
 def _datetime_to_jd(moment: datetime) -> float:
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
+        moment = moment.replace(tzinfo=dt.UTC)
     else:
-        moment = moment.astimezone(timezone.utc)
+        moment = moment.astimezone(dt.UTC)
     iso = moment.replace(microsecond=0).isoformat().replace("+00:00", "Z")
     return iso_to_jd(iso)
 
 
-def fast_scan(start: datetime, end: datetime, config: ScanConfig) -> List[dict]:
+def fast_scan(start: datetime, end: datetime, config: ScanConfig) -> list[dict]:
     """Lightweight aspect scanner using Swiss Ephemeris positions."""
 
     body_name = _BODY_CODE_TO_NAME.get(config.body)
@@ -637,7 +639,7 @@ def fast_scan(start: datetime, end: datetime, config: ScanConfig) -> List[dict]:
         detectors_common.enable_cache(True)
         toggled_cache = True
 
-    hits: List[dict] = []
+    hits: list[dict] = []
     try:
         current = start_jd
         while current <= end_jd:
@@ -657,4 +659,3 @@ def fast_scan(start: datetime, end: datetime, config: ScanConfig) -> List[dict]:
         if toggled_cache:
             detectors_common.enable_cache(restore_cache_flag)
     return hits
-

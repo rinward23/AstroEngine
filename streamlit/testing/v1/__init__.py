@@ -43,7 +43,7 @@ class _WidgetHandle:
 
 
 class _SidebarAccessor:
-    def __init__(self, app: "AppTest") -> None:
+    def __init__(self, app: AppTest) -> None:
         self.app = app
 
     def multiselect(self, label: str) -> _WidgetHandle:
@@ -54,12 +54,12 @@ class _SidebarAccessor:
 
 
 class _ButtonHandle:
-    def __init__(self, app: "AppTest", label: str, key: str | None = None) -> None:
+    def __init__(self, app: AppTest, label: str, key: str | None = None) -> None:
         self.app = app
         self.label = label
         self.key = key
 
-    def click(self) -> "AppTest":
+    def click(self) -> AppTest:
         trigger_key = st._trigger_key(self.label, self.key)  # type: ignore[attr-defined]
         st.session_state[trigger_key] = True
         return self.app
@@ -73,12 +73,14 @@ class AppTest:
         self.sidebar = _SidebarAccessor(self)
 
     @classmethod
-    def from_file(cls, path: str | Path) -> "AppTest":
+    def from_file(cls, path: str | Path) -> AppTest:
         app = cls(Path(path))
         app.run()
         return app
 
-    def run(self, timeout: float | None = None) -> "AppTest":  # pragma: no cover - timeout ignored
+    def run(
+        self, timeout: float | None = None
+    ) -> AppTest:  # pragma: no cover - timeout ignored
         _run_app(self.path)
         return self
 
@@ -86,7 +88,7 @@ class AppTest:
         return _ButtonHandle(self, label, key=key)
 
     @property
-    def session_state(self) -> Dict[str, Any]:
+    def session_state(self) -> dict[str, Any]:
         return st.session_state
 
 

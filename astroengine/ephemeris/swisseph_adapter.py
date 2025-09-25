@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import ClassVar, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import swisseph as swe
 
@@ -17,7 +17,6 @@ from .sidereal import (
     normalize_ayanamsha_name,
 )
 from .utils import get_se_ephe_path
-
 
 if TYPE_CHECKING:  # pragma: no cover - runtime import avoided for typing only
 
@@ -89,7 +88,7 @@ class SwissEphemerisAdapter:
     )
     _DEFAULT_ZODIAC: ClassVar[str] = "tropical"
     _DEFAULT_AYANAMSHA: ClassVar[str | None] = DEFAULT_SIDEREAL_AYANAMSHA
-    _DEFAULT_ADAPTER: ClassVar[Optional["SwissEphemerisAdapter"]] = None
+    _DEFAULT_ADAPTER: ClassVar[SwissEphemerisAdapter | None] = None
     _AYANAMSHA_MODES: ClassVar[dict[str, int]] = {
         "lahiri": swe.SIDM_LAHIRI,
         "fagan_bradley": swe.SIDM_FAGAN_BRADLEY,
@@ -99,7 +98,6 @@ class SwissEphemerisAdapter:
     }
 
     _HOUSE_SYSTEM_CODES: ClassVar[Mapping[str, bytes]] = {
-
         "placidus": b"P",
         "koch": b"K",
         "whole_sign": b"W",
@@ -133,7 +131,9 @@ class SwissEphemerisAdapter:
                 )
             if ayanamsha is not None:
                 if chart_config.zodiac.lower() != "sidereal":
-                    raise ValueError("ayanamsha can only be specified for sidereal charts")
+                    raise ValueError(
+                        "ayanamsha can only be specified for sidereal charts"
+                    )
                 desired = normalize_ayanamsha_name(ayanamsha)
                 configured = normalize_ayanamsha_name(chart_config.ayanamsha or desired)
                 if desired != configured:
@@ -148,7 +148,6 @@ class SwissEphemerisAdapter:
         self._sidereal_mode: int | None = (
             self._resolve_sidereal_mode(self.ayanamsha) if self._is_sidereal else None
         )
-
 
         self._calc_flags = swe.FLG_SWIEPH | swe.FLG_SPEED
         self._fallback_flags = swe.FLG_MOSEPH | swe.FLG_SPEED
@@ -176,7 +175,6 @@ class SwissEphemerisAdapter:
         if chart_config is None:
             from ..chart.config import ChartConfig as _ChartConfig
 
-
             config_kwargs: dict[str, object] = {}
             if zodiac is not None:
                 config_kwargs["zodiac"] = zodiac
@@ -193,7 +191,9 @@ class SwissEphemerisAdapter:
 
             if ayanamsha is not None:
                 if chart_config.zodiac.lower() != "sidereal":
-                    raise ValueError("ayanamsha can only be specified for sidereal charts")
+                    raise ValueError(
+                        "ayanamsha can only be specified for sidereal charts"
+                    )
                 desired = normalize_ayanamsha_name(ayanamsha)
                 configured = normalize_ayanamsha_name(chart_config.ayanamsha or desired)
                 if desired != configured:
@@ -201,12 +201,13 @@ class SwissEphemerisAdapter:
                         "ayanamsha override must match chart_config.ayanamsha when both are provided"
                     )
 
-
         zodiac_value = zodiac or chart.zodiac
         zodiac_normalized = (zodiac_value or cls._DEFAULT_ZODIAC).lower()
         if zodiac_normalized not in {"tropical", "sidereal"}:
             options = ", ".join(sorted({"tropical", "sidereal"}))
-            raise ValueError(f"Unknown zodiac mode '{zodiac_value}'. Valid options: {options}")
+            raise ValueError(
+                f"Unknown zodiac mode '{zodiac_value}'. Valid options: {options}"
+            )
         cls._DEFAULT_ZODIAC = zodiac_normalized
 
         if zodiac_normalized == "sidereal":
@@ -219,7 +220,9 @@ class SwissEphemerisAdapter:
             normalized = normalize_ayanamsha_name(ayanamsha_value)
             if normalized not in SUPPORTED_AYANAMSHAS:
                 options = ", ".join(sorted(SUPPORTED_AYANAMSHAS))
-                raise ValueError(f"Unknown ayanamsha '{ayanamsha_value}'. Valid options: {options}")
+                raise ValueError(
+                    f"Unknown ayanamsha '{ayanamsha_value}'. Valid options: {options}"
+                )
         else:
             normalized = chart.ayanamsha
 
@@ -229,13 +232,13 @@ class SwissEphemerisAdapter:
         cls._DEFAULT_ADAPTER = None
 
     @classmethod
-    def get_default_adapter(cls) -> "SwissEphemerisAdapter":
+    def get_default_adapter(cls) -> SwissEphemerisAdapter:
         if cls._DEFAULT_ADAPTER is None:
             cls._DEFAULT_ADAPTER = cls()
         return cls._DEFAULT_ADAPTER
 
     @classmethod
-    def from_chart_config(cls, config: ChartConfig) -> "SwissEphemerisAdapter":
+    def from_chart_config(cls, config: ChartConfig) -> SwissEphemerisAdapter:
         return cls(chart_config=config)
 
     # ------------------------------------------------------------------
@@ -254,7 +257,6 @@ class SwissEphemerisAdapter:
         if self._sidereal_mode is None:
             return
         swe.set_sid_mode(self._sidereal_mode, 0.0, 0.0)
-
 
     def _configure_ephemeris_path(
         self, ephemeris_path: str | os.PathLike[str] | None
@@ -282,11 +284,15 @@ class SwissEphemerisAdapter:
         key = normalize_ayanamsha_name(ayanamsha)
         if key not in SUPPORTED_AYANAMSHAS:
             options = ", ".join(sorted(SUPPORTED_AYANAMSHAS))
-            raise ValueError(f"Unsupported ayanamsha '{ayanamsha}'. Supported options: {options}")
+            raise ValueError(
+                f"Unsupported ayanamsha '{ayanamsha}'. Supported options: {options}"
+            )
         try:
             return self._AYANAMSHA_MODES[key]
         except KeyError as exc:  # pragma: no cover - guarded by SUPPORTED_AYANAMSHAS
-            raise ValueError(f"Swiss Ephemeris does not expose SIDM constant for '{key}'") from exc
+            raise ValueError(
+                f"Swiss Ephemeris does not expose SIDM constant for '{key}'"
+            ) from exc
 
     def _apply_sidereal_mode(self) -> None:
         if self._sidereal_mode is not None:
@@ -310,7 +316,9 @@ class SwissEphemerisAdapter:
         """Return the Julian day for a timezone-aware :class:`datetime`."""
 
         if moment.tzinfo is None or moment.tzinfo.utcoffset(moment) is None:
-            raise ValueError("datetime must be timezone-aware in UTC or convertible to UTC")
+            raise ValueError(
+                "datetime must be timezone-aware in UTC or convertible to UTC"
+            )
         moment_utc = moment.astimezone(UTC)
         hour = (
             moment_utc.hour
@@ -357,13 +365,11 @@ class SwissEphemerisAdapter:
 
         equatorial = self.body_equatorial(jd_ut, body_code)
 
-
         try:
             eq_values, _ = swe.calc_ut(jd_ut, body_code, flags | swe.FLG_EQUATORIAL)
             decl, speed_decl = eq_values[1], eq_values[4]
         except Exception:
             decl, speed_decl = float("nan"), float("nan")
-
 
         return BodyPosition(
             body=body_name or str(body_code),
@@ -378,11 +384,14 @@ class SwissEphemerisAdapter:
             speed_declination=equatorial.speed_declination,
         )
 
-    def body_positions(self, jd_ut: float, bodies: Mapping[str, int]) -> dict[str, BodyPosition]:
+    def body_positions(
+        self, jd_ut: float, bodies: Mapping[str, int]
+    ) -> dict[str, BodyPosition]:
         """Return positions for each body keyed by canonical name."""
 
         return {
-            name: self.body_position(jd_ut, code, body_name=name) for name, code in bodies.items()
+            name: self.body_position(jd_ut, code, body_name=name)
+            for name, code in bodies.items()
         }
 
     def houses(
@@ -394,7 +403,6 @@ class SwissEphemerisAdapter:
         system: str | None = None,
     ) -> HousePositions:
         """Compute house cusps for a given location."""
-
 
         system_key, sys_code = self._resolve_house_system(system)
 
@@ -430,8 +438,6 @@ class SwissEphemerisAdapter:
     def is_sidereal(self) -> bool:
         return self._is_sidereal
 
-
-
     def _resolve_house_system(self, system: str | None) -> tuple[str, bytes]:
         """Return the canonical house system key and Swiss code."""
         if system is None:
@@ -446,7 +452,11 @@ class SwissEphemerisAdapter:
         if len(key) == 1:
             code = key.upper().encode("ascii")
             canonical = next(
-                (name for name, candidate in self._HOUSE_SYSTEM_CODES.items() if candidate == code),
+                (
+                    name
+                    for name, candidate in self._HOUSE_SYSTEM_CODES.items()
+                    if candidate == code
+                ),
                 key,
             )
             return canonical, code
@@ -455,5 +465,3 @@ class SwissEphemerisAdapter:
         raise ValueError(
             f"Unsupported house system '{system or self.chart_config.house_system}'. Valid options: {options}"
         )
-
-

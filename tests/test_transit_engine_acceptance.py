@@ -1,9 +1,7 @@
 import random
 from datetime import UTC, datetime, timedelta
 
-
 from astroengine.core.transit_engine import TransitEngine, TransitEngineConfig
-
 
 
 def test_mars_conjunct_natal_venus_acceptance():
@@ -12,7 +10,9 @@ def test_mars_conjunct_natal_venus_acceptance():
     start = datetime(2025, 10, 20, tzinfo=UTC)
     end = datetime(2025, 11, 20, tzinfo=UTC)
 
-    events = list(engine.scan_longitude_crossing(4, natal_venus_longitude, 0.0, start, end))
+    events = list(
+        engine.scan_longitude_crossing(4, natal_venus_longitude, 0.0, start, end)
+    )
     assert events, "Expected at least one transit event"
 
     event = min(events, key=lambda evt: abs(evt.orb or 999.0))
@@ -22,7 +22,6 @@ def test_mars_conjunct_natal_venus_acceptance():
     assert event.timestamp is not None
     window_center = datetime(2025, 11, 6, tzinfo=UTC)
     assert abs(event.timestamp - window_center) <= timedelta(hours=12)
-
 
 
 def test_transit_engine_refinement_modes():
@@ -47,7 +46,9 @@ def test_transit_engine_refinement_modes():
         engine_fast.scan_longitude_crossing(4, natal_venus_longitude, 0.0, start, end)
     )
     accurate_events = list(
-        engine_accurate.scan_longitude_crossing(4, natal_venus_longitude, 0.0, start, end)
+        engine_accurate.scan_longitude_crossing(
+            4, natal_venus_longitude, 0.0, start, end
+        )
     )
 
     assert fast_events and accurate_events
@@ -104,4 +105,3 @@ def test_scan_longitude_crossing_fuzz_no_crash():
         for event in events:
             assert event.timestamp is not None
             assert event.orb is not None
-

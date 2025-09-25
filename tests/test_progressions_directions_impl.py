@@ -1,19 +1,22 @@
 # >>> AUTO-GEN BEGIN: tests-prog-dir v1.0
 from __future__ import annotations
+
 import os
+
 import pytest
 
 try:
-    import swisseph as swe  # type: ignore
     HAVE_SWISS = True
 except Exception:
     HAVE_SWISS = False
 
 SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
-pytestmark = pytest.mark.skipif(not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available")
+pytestmark = pytest.mark.skipif(
+    not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
+)
 
-from astroengine.detectors.progressions import secondary_progressions
 from astroengine.detectors.directions import solar_arc_directions
+from astroengine.detectors.progressions import secondary_progressions
 
 
 def test_secondary_progressions_annual_samples():
@@ -32,4 +35,6 @@ def test_solar_arc_directions_annual_samples():
     ev = solar_arc_directions(natal, start, end)
     assert ev
     assert all(e.method == "solar_arc" for e in ev)
+
+
 # >>> AUTO-GEN END: tests-prog-dir v1.0

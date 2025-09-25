@@ -138,11 +138,15 @@ def classify_relative_motion(
             state = "stationary"
         else:
             state = "separating" if relative_speed > 0 else "applying"
-        return AspectMotion(state=state, offset_deg=0.0, relative_speed_deg_per_day=relative_speed)
+        return AspectMotion(
+            state=state, offset_deg=0.0, relative_speed_deg_per_day=relative_speed
+        )
 
     if abs(relative_speed) <= tolerance:
         state = "stationary"
     else:
         state = "applying" if offset * relative_speed < 0.0 else "separating"
 
-    return AspectMotion(state=state, offset_deg=offset, relative_speed_deg_per_day=relative_speed)
+    return AspectMotion(
+        state=state, offset_deg=offset, relative_speed_deg_per_day=relative_speed
+    )

@@ -1,6 +1,10 @@
 # >>> AUTO-GEN BEGIN: validate fences v1.0
 from __future__ import annotations
-import re, sys, pathlib
+
+import pathlib
+import re
+import sys
+
 COMMENT_PREFIX = r"(?:#|//|<!--)?"
 BEGIN = re.compile(rf"^{COMMENT_PREFIX}\s*>>> AUTO-GEN BEGIN: (.+) v(\d+\.\d+).*$")
 END = re.compile(rf"^{COMMENT_PREFIX}\s*>>> AUTO-GEN END: (.+) v(\d+\.\d+).*$")
@@ -15,8 +19,12 @@ for p in pathlib.Path(".").rglob("*.*"):
                 name, ver = mb.group(1), mb.group(2)
                 if name in names and names[name] != ver:
                     prev = names[name]
-                    if tuple(map(float, ver.split('.'))) < tuple(map(float, prev.split('.'))):
-                        errors.append(f"{p}:{i} version decrease for block '{name}' {ver} < {prev}")
+                    if tuple(map(float, ver.split("."))) < tuple(
+                        map(float, prev.split("."))
+                    ):
+                        errors.append(
+                            f"{p}:{i} version decrease for block '{name}' {ver} < {prev}"
+                        )
                 names[name] = ver
                 stack.append((name, ver, i))
             elif me:
@@ -29,5 +37,6 @@ for p in pathlib.Path(".").rglob("*.*"):
         if stack:
             errors.append(f"{p}: unclosed AUTO-GEN block starting line {stack[-1][2]}")
 if errors:
-    sys.stderr.write("\n".join(errors)+"\n"); sys.exit(2)
+    sys.stderr.write("\n".join(errors) + "\n")
+    sys.exit(2)
 # >>> AUTO-GEN END: validate fences v1.0

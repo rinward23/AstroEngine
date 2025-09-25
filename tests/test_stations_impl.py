@@ -1,17 +1,22 @@
 # >>> AUTO-GEN BEGIN: tests-stations v1.0
 from __future__ import annotations
+
 import os
+
 import pytest
 
 try:
     import swisseph as swe  # type: ignore
+
     HAVE_SWISS = True
 except Exception:
     HAVE_SWISS = False
 
 SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
 
-pytestmark = pytest.mark.skipif(not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available")
+pytestmark = pytest.mark.skipif(
+    not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
+)
 
 from astroengine.detectors.common import iso_to_jd
 from astroengine.detectors.stations import find_stations
@@ -38,4 +43,6 @@ def test_station_refines_speed():
 
     jds = [event.jd for event in events]
     assert jds == sorted(jds)
+
+
 # >>> AUTO-GEN END: tests-stations v1.0

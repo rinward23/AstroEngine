@@ -36,9 +36,13 @@ def profile_into_ctx(ctx: dict[str, Any], profile: dict[str, Any]) -> dict[str, 
     ctx["aspects"] = aspects
     ctx["orbs"] = orbs
     ctx["flags"] = flags
-    ctx["domain_profile"] = domain.get("profile_key", ctx.get("domain_profile", "vca_neutral"))
+    ctx["domain_profile"] = domain.get(
+        "profile_key", ctx.get("domain_profile", "vca_neutral")
+    )
     ctx["domain_scorer"] = domain.get("scorer", ctx.get("domain_scorer", "weighted"))
-    ctx["domain_temperature"] = domain.get("temperature", ctx.get("domain_temperature", 8.0))
+    ctx["domain_temperature"] = domain.get(
+        "temperature", ctx.get("domain_temperature", 8.0)
+    )
     if isinstance(policies, dict):
         if "orb" in policies:
             ctx["orb_policy"] = policies["orb"]
@@ -46,7 +50,9 @@ def profile_into_ctx(ctx: dict[str, Any], profile: dict[str, Any]) -> dict[str, 
             ctx["severity_policy"] = policies["severity"]
         if "visibility" in policies:
             ctx["visibility_policy"] = policies["visibility"]
-    severity_mods = profile.get("severity_modifiers") if isinstance(profile, dict) else None
+    severity_mods = (
+        profile.get("severity_modifiers") if isinstance(profile, dict) else None
+    )
     if severity_mods is not None:
         ctx["severity_modifiers"] = severity_mods
     return ctx

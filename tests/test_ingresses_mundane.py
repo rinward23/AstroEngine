@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from astroengine import cli
 from astroengine.chart.natal import ChartLocation, compute_natal_chart
@@ -44,10 +44,12 @@ def test_sign_ingresses_outer_planets_precision():
 def test_aries_ingress_chart_with_location_and_natal():
     location = ChartLocation(latitude=40.7128, longitude=-74.0060)
     natal = compute_natal_chart(
-        datetime(1990, 1, 1, 12, 0, tzinfo=timezone.utc),
+        datetime(1990, 1, 1, 12, 0, tzinfo=UTC),
         location,
     )
-    chart = compute_solar_ingress_chart(2024, "Aries", location=location, natal_chart=natal)
+    chart = compute_solar_ingress_chart(
+        2024, "Aries", location=location, natal_chart=natal
+    )
 
     assert chart.sign == "Aries"
     assert chart.event.to_sign == "Aries"

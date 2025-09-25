@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 LOG = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class GPTNarrativeClient:
         *,
         model: str = "gpt-3.5-turbo",
         transport: Callable[..., str] | None = None,
-    ) -> "GPTNarrativeClient":
+    ) -> GPTNarrativeClient:
         api_key = os.getenv("ASTROENGINE_OPENAI_KEY") or os.getenv("OPENAI_API_KEY")
         return cls(api_key, model=model, transport=transport)
 

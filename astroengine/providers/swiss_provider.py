@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import replace
-from datetime import datetime, timezone
-from typing import Dict, Iterable
+from datetime import UTC, datetime
 
 from astroengine.canonical import BodyPosition
 from astroengine.core.time import TimeConversion, to_tt
-from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation, TimeScaleContext
+from astroengine.ephemeris import (
+    EphemerisAdapter,
+    EphemerisConfig,
+    ObserverLocation,
+    TimeScaleContext,
+)
 from astroengine.ephemeris.utils import get_se_ephe_path
 
 try:
@@ -41,7 +46,9 @@ except Exception:  # pragma: no cover
         _Pluto,
         _Sun,
         _Moon,
-    ) = (None,) * 10  # type: ignore[assignment]
+    ) = (
+        None,
+    ) * 10  # type: ignore[assignment]
     _PYMEEUS_AVAILABLE = False
 
 from . import register_provider
@@ -106,7 +113,7 @@ class SwissProvider:
     @staticmethod
     def _normalize_iso(iso_utc: str) -> datetime:
         dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
-        return dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
 
     def _time_conversion(self, iso_utc: str) -> TimeConversion:
         return to_tt(self._normalize_iso(iso_utc))
@@ -119,10 +126,10 @@ class SwissProvider:
 
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str]
-    ) -> Dict[str, Dict[str, float]]:
+    ) -> dict[str, dict[str, float]]:
 
         conversion = self._time_conversion(iso_utc)
-        out: Dict[str, Dict[str, float]] = {}
+        out: dict[str, dict[str, float]] = {}
         for name in bodies:
             try:
                 body_id = self._body_id(name)
@@ -138,7 +145,9 @@ class SwissProvider:
         return out
 
     def position(self, body: str, ts_utc: str) -> BodyPosition:
-        sample = self._adapter.sample(self._body_id(body), self._time_conversion(ts_utc))
+        sample = self._adapter.sample(
+            self._body_id(body), self._time_conversion(ts_utc)
+        )
         return BodyPosition(
             lon=sample.longitude % 360.0,
             lat=sample.latitude,
@@ -164,14 +173,19 @@ class SwissFallbackProvider:
 
     def __init__(self) -> None:
         if not _PYMEEUS_AVAILABLE:
-            raise ImportError("PyMeeus fallback unavailable; install pyswisseph instead")
+            raise ImportError(
+                "PyMeeus fallback unavailable; install pyswisseph instead"
+            )
 
     @staticmethod
-    def _to_epoch(iso_utc: str) -> "Epoch":
+    def _to_epoch(iso_utc: str) -> Epoch:
         dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
-        dt_utc = dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        dt_utc = dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
         hour = (
-            dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0 + dt_utc.microsecond / 3.6e9
+            dt_utc.hour
+            + dt_utc.minute / 60.0
+            + dt_utc.second / 3600.0
+            + dt_utc.microsecond / 3.6e9
         )
         return Epoch(dt_utc.year, dt_utc.month, dt_utc.day, hour, utc=True)
 
@@ -186,7 +200,7 @@ class SwissFallbackProvider:
         return float(angle)
 
     @classmethod
-    def _coords_for(cls, body: str, epoch: "Epoch") -> tuple[float, float]:
+    def _coords_for(cls, body: str, epoch: Epoch) -> tuple[float, float]:
         body = body.lower()
         if body == "moon":
             lon, lat, *_ = _Moon.geocentric_ecliptical_pos(epoch)
@@ -210,7 +224,7 @@ class SwissFallbackProvider:
         return diff
 
     @classmethod
-    def _lon_speed(cls, body: str, epoch: "Epoch") -> float:
+    def _lon_speed(cls, body: str, epoch: Epoch) -> float:
         delta = 1.0 / 24.0  # 1 hour in days
         epoch_minus = Epoch(epoch.jde() - delta)
         epoch_plus = Epoch(epoch.jde() + delta)
@@ -221,9 +235,9 @@ class SwissFallbackProvider:
 
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str]
-    ) -> Dict[str, Dict[str, float]]:
+    ) -> dict[str, dict[str, float]]:
         epoch = self._to_epoch(iso_utc)
-        out: Dict[str, Dict[str, float]] = {}
+        out: dict[str, dict[str, float]] = {}
         for name in bodies:
             try:
                 lon_deg, lat_deg = self._coords_for(name, epoch)

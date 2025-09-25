@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Sequence
+from collections.abc import Iterable, Sequence
 
-TARGET_FRAME_BODIES: Dict[str, Sequence[str]] = {
+TARGET_FRAME_BODIES: dict[str, Sequence[str]] = {
     "natal": (
         "Sun",
         "Moon",
@@ -25,16 +25,16 @@ DEFAULT_TARGET_FRAMES: Sequence[str] = ("natal",)
 DEFAULT_TARGET_SELECTION: Sequence[str] = ("Sun", "Moon", "ASC")
 
 
-def available_frames() -> List[str]:
+def available_frames() -> list[str]:
     """Return the sorted list of known target frames."""
 
     return sorted(TARGET_FRAME_BODIES.keys())
 
 
-def expand_targets(frames: Iterable[str], bodies: Iterable[str]) -> List[str]:
+def expand_targets(frames: Iterable[str], bodies: Iterable[str]) -> list[str]:
     """Return fully-qualified target tokens for ``bodies`` within ``frames``."""
 
-    resolved: List[str] = []
+    resolved: list[str] = []
     frame_list = list(frames) or list(DEFAULT_TARGET_FRAMES)
     for body in bodies:
         symbol = str(body).strip()
@@ -52,12 +52,12 @@ def expand_targets(frames: Iterable[str], bodies: Iterable[str]) -> List[str]:
     return resolved
 
 
-def frame_body_options(frames: Iterable[str] | None = None) -> Dict[str, Sequence[str]]:
+def frame_body_options(frames: Iterable[str] | None = None) -> dict[str, Sequence[str]]:
     """Return available body options for the selected ``frames``."""
 
     if not frames:
         frames = DEFAULT_TARGET_FRAMES
-    out: Dict[str, Sequence[str]] = {}
+    out: dict[str, Sequence[str]] = {}
     for frame in frames:
         key = str(frame)
         bodies = TARGET_FRAME_BODIES.get(key)

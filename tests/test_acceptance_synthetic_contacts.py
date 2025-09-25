@@ -11,10 +11,10 @@ class StubProvider:
     """Linear motion stub with a moving point near 160°."""
 
     def __init__(self):
-        self.base = dt.datetime(2024, 6, 1, 0, 0, 0, tzinfo=dt.timezone.utc)
+        self.base = dt.datetime(2024, 6, 1, 0, 0, 0, tzinfo=dt.UTC)
 
     def positions_ecliptic(self, iso: str, bodies):
-        t = dt.datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(dt.timezone.utc)
+        t = dt.datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(dt.UTC)
         hours = (t - self.base).total_seconds() / 3600.0
         lon_move = (160.0 + hours) % 360.0
         out: dict[str, dict[str, float]] = {}
@@ -64,7 +64,9 @@ def _ticks(start, end, step_minutes=60):
 def test_antiscia_coarse_detects_when_within_orb():
     prov = StubProvider()
     ticks = list(_ticks("2024-06-01T00:00:00Z", "2024-06-02T00:00:00Z", 60))
-    hits = detect_antiscia_contacts(prov, ticks, "moving", "target", orb_deg_antiscia=1.5)
+    hits = detect_antiscia_contacts(
+        prov, ticks, "moving", "target", orb_deg_antiscia=1.5
+    )
     assert any(h.kind == "antiscia" for h in hits)
 
 

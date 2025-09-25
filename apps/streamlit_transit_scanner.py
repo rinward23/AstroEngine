@@ -7,14 +7,18 @@ import os
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, is_dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 try:  # pragma: no cover - Streamlit import guarded for test environments
     import streamlit as st
-except Exception as exc:  # pragma: no cover - surfacing missing dependency
-    print("This app requires Streamlit. Install with: pip install streamlit", file=sys.stderr)
+except Exception:  # pragma: no cover - surfacing missing dependency
+    print(
+        "This app requires Streamlit. Install with: pip install streamlit",
+        file=sys.stderr,
+    )
     raise
 
 from astroengine.app_api import (
@@ -39,7 +43,7 @@ from astroengine.utils import (
 )
 
 
-def _event_to_record(event: Any) -> Dict[str, Any]:
+def _event_to_record(event: Any) -> dict[str, Any]:
     if isinstance(event, Mapping):
         return dict(event)
     if hasattr(event, "model_dump"):
@@ -72,11 +76,11 @@ def _event_to_record(event: Any) -> Dict[str, Any]:
         return {"value": repr(event)}
 
 
-def _events_to_records(events: Iterable[Any]) -> List[Dict[str, Any]]:
+def _events_to_records(events: Iterable[Any]) -> list[dict[str, Any]]:
     return [_event_to_record(evt) for evt in events]
 
 
-def _records_to_df(records: List[Dict[str, Any]]):
+def _records_to_df(records: list[dict[str, Any]]):
     if not records:
         return None
     try:  # pragma: no cover - pandas optional dependency
@@ -89,14 +93,16 @@ def _records_to_df(records: List[Dict[str, Any]]):
         return None
 
 
-def _default_window() -> Tuple[str, str]:
-    now = datetime.now(timezone.utc)
+def _default_window() -> tuple[str, str]:
+    now = datetime.now(UTC)
     start = (now - timedelta(days=1)).replace(microsecond=0)
     end = (now + timedelta(days=1)).replace(microsecond=0)
-    return start.isoformat().replace("+00:00", "Z"), end.isoformat().replace("+00:00", "Z")
+    return start.isoformat().replace("+00:00", "Z"), end.isoformat().replace(
+        "+00:00", "Z"
+    )
 
 
-def _sorted_records(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _sorted_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     def _ts_key(record: Mapping[str, Any]) -> str:
         return str(record.get("ts") or record.get("timestamp") or "")
 
@@ -116,7 +122,7 @@ def _set_session_default(key: str, value: Any) -> None:
 def _tempfile_bytes(
     suffix: str,
     writer: Callable[[str], int],
-) -> Tuple[bytes, int]:
+) -> tuple[bytes, int]:
     """Return the bytes written by ``writer`` using a temporary ``suffix`` path."""
 
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
@@ -134,10 +140,10 @@ def _tempfile_bytes(
     return payload, rows_written
 
 
-def _prepare_quick_exports(events: Sequence[Any]) -> Dict[str, Any]:
+def _prepare_quick_exports(events: Sequence[Any]) -> dict[str, Any]:
     """Build in-memory quick export payloads for the latest scan results."""
 
-    summary: Dict[str, Any] = {"event_count": len(events)}
+    summary: dict[str, Any] = {"event_count": len(events)}
     if not events:
         return summary
 
@@ -160,7 +166,7 @@ def _prepare_quick_exports(events: Sequence[Any]) -> Dict[str, Any]:
     return summary
 
 
-PRESETS: Dict[str, Dict[str, Any]] = {
+PRESETS: dict[str, dict[str, Any]] = {
     "Custom": {},
     "Transit scan — Daily": {
         "window": lambda now: (
@@ -208,7 +214,7 @@ PRESETS: Dict[str, Dict[str, Any]] = {
 def _apply_preset(name: str) -> None:
     if name == "Custom":
         return
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     preset = PRESETS[name]
     start, end = preset.get("window", _default_window)(now)
     st.session_state["scan_start"] = start
@@ -216,10 +222,8 @@ def _apply_preset(name: str) -> None:
     st.session_state["scan_moving"] = preset.get("moving", ["Sun", "Mars", "Jupiter"])
     st.session_state["scan_frames"] = preset.get("frames", list(DEFAULT_TARGET_FRAMES))
     st.session_state["scan_targets"] = preset.get(
-
         "targets",
         [f"natal:{body}" for body in DEFAULT_TARGET_SELECTION],
-
     )
     st.session_state["scan_detectors"] = preset.get("detectors", [])
     st.session_state["scan_provider"] = preset.get("provider", "auto")
@@ -234,18 +238,18 @@ def _apply_preset(name: str) -> None:
 def cached_scan(
     start_utc: str,
     end_utc: str,
-    moving: Tuple[str, ...],
-    targets: Tuple[str, ...],
-    provider: Optional[str],
-    profile_id: Optional[str],
+    moving: tuple[str, ...],
+    targets: tuple[str, ...],
+    provider: str | None,
+    profile_id: str | None,
     step_minutes: int,
-    detectors: Tuple[str, ...],
-    sidereal: Optional[bool],
-    ayanamsha: Optional[str],
-    frames: Tuple[str, ...],
-    entrypoints: Tuple[str, ...],
+    detectors: tuple[str, ...],
+    sidereal: bool | None,
+    ayanamsha: str | None,
+    frames: tuple[str, ...],
+    entrypoints: tuple[str, ...],
     zodiac: str,
-) -> Tuple[List[Dict[str, Any]], Sequence[Any], Tuple[str, str]]:
+) -> tuple[list[dict[str, Any]], Sequence[Any], tuple[str, str]]:
     entrypoint_arg = list(entrypoints) if entrypoints else None
     raw_events, used_entrypoint = run_scan_or_raise(
         start_utc=start_utc,
@@ -304,8 +308,10 @@ st.set_page_config(page_title="AstroEngine — Transit Scanner", layout="wide")
 st.title("AstroEngine — Transit Scanner")
 
 entrypoints = available_scan_entrypoints()
-entrypoint_labels = ["Auto (first compatible)"] + [f"{mod}.{fn}" for mod, fn in entrypoints]
-entrypoint_lookup = dict(zip(entrypoint_labels[1:], entrypoints))
+entrypoint_labels = ["Auto (first compatible)"] + [
+    f"{mod}.{fn}" for mod, fn in entrypoints
+]
+entrypoint_lookup = dict(zip(entrypoint_labels[1:], entrypoints, strict=False))
 
 with st.sidebar:
     st.header("Presets & Environment")
@@ -362,7 +368,6 @@ with st.sidebar:
         )
         st.session_state["scan_ayanamsha"] = ayanamsha_choice
     step_minutes = st.slider(
-
         "Step minutes",
         min_value=10,
         max_value=240,
@@ -407,7 +412,6 @@ with st.sidebar:
         default=st.session_state.get("scan_moving", ["Sun", "Mars", "Jupiter"]),
         key="scan_moving",
         on_change=_mark_custom,
-
     )
 
     st.header("Frames & Targets")
@@ -421,7 +425,7 @@ with st.sidebar:
     )
 
     selected_frames = frame_selection or list(DEFAULT_TARGET_FRAMES)
-    merged_options: List[str] = []
+    merged_options: list[str] = []
     for frame in selected_frames:
         bodies = TARGET_FRAME_BODIES.get(frame) or DEFAULT_TARGET_SELECTION
         for body in bodies:
@@ -433,7 +437,6 @@ with st.sidebar:
             merged_options.append(existing)
 
     targets = st.multiselect(
-
         "Targets",
         options=merged_options,
         default=st.session_state.get(
@@ -449,7 +452,6 @@ with st.sidebar:
         value=st.session_state.get("scan_sidereal", False),
         key="scan_sidereal",
         on_change=_mark_custom,
-
     )
 
     ayanamsha_value = st.session_state.get("scan_ayanamsha", "lahiri")
@@ -468,13 +470,11 @@ with st.sidebar:
         st.session_state["scan_ayanamsha"] = ayanamsha_value
 
     st.text_input(
-
         "Profile (optional)",
         value=st.session_state.get("scan_profile", "base"),
         key="scan_profile",
         on_change=_mark_custom,
     )
-
 
     if st.session_state.get("scan_provider") in {"swiss", "auto"} and not se_path:
         st.warning(
@@ -503,7 +503,9 @@ tab_run, tab_smoke = st.tabs(["Run scan", "Swiss smoketest"])
 
 with tab_run:
     st.subheader("Run scan")
-    st.caption("Adjust settings in the sidebar, then run the scan to view results below.")
+    st.caption(
+        "Adjust settings in the sidebar, then run the scan to view results below."
+    )
     run_clicked = st.button("Run scan", key="Run scan")
 
     last_key = st.session_state.get("scan_last_cache_key")
@@ -524,7 +526,7 @@ with tab_run:
     )
 
     if run_clicked:
-        entrypoint_arg: Tuple[str, ...]
+        entrypoint_arg: tuple[str, ...]
         if st.session_state.get("scan_entrypoint") == entrypoint_labels[0]:
             entrypoint_arg = tuple(entrypoint_lookup.values())
         else:
@@ -548,9 +550,11 @@ with tab_run:
                     end_utc=st.session_state.get("scan_end"),
                     moving=tuple(st.session_state.get("scan_moving", [])),
                     targets=tuple(st.session_state.get("scan_targets", [])),
-                    provider=None
-                    if st.session_state.get("scan_provider") == "auto"
-                    else st.session_state.get("scan_provider"),
+                    provider=(
+                        None
+                        if st.session_state.get("scan_provider") == "auto"
+                        else st.session_state.get("scan_provider")
+                    ),
                     profile_id=st.session_state.get("scan_profile"),
                     step_minutes=int(st.session_state.get("scan_step", 60)),
                     detectors=tuple(st.session_state.get("scan_detectors", [])),
@@ -560,10 +564,16 @@ with tab_run:
                     entrypoints=entrypoint_arg,
                     zodiac=st.session_state.get("scan_zodiac", "tropical"),
                 )
-                session_cache[cache_key] = (raw_events, canonical_events, used_entrypoint)
+                session_cache[cache_key] = (
+                    raw_events,
+                    canonical_events,
+                    used_entrypoint,
+                )
                 progress.progress(100, text="Scan complete")
                 status.update(label="Scan complete", state="complete")
-            except Exception as exc:  # pragma: no cover - runtime failure surfaced to user
+            except (
+                Exception
+            ) as exc:  # pragma: no cover - runtime failure surfaced to user
                 status.update(label=f"Scan failed: {exc}", state="error")
                 st.error(f"Scan failed: {exc}")
                 raw_events = canonical_events = []
@@ -576,7 +586,11 @@ with tab_run:
             st.success(f"Scan complete — {len(canonical_events)} events")
         else:
             quick_exports_state.pop(cache_key, None)
-        st.session_state["scan_results"] = (raw_events, canonical_events, used_entrypoint)
+        st.session_state["scan_results"] = (
+            raw_events,
+            canonical_events,
+            used_entrypoint,
+        )
 
 col_scan, col_results = st.columns((1, 2))
 
@@ -584,8 +598,12 @@ with col_scan:
     st.subheader("Run Scan")
     run = st.button("Run scan")
     if run:
-        entrypoint_override = entrypoint_lookup.get(st.session_state.get("scan_entrypoint"))
-        entrypoint_arg = tuple([entrypoint_override]) if entrypoint_override else tuple()
+        entrypoint_override = entrypoint_lookup.get(
+            st.session_state.get("scan_entrypoint")
+        )
+        entrypoint_arg = (
+            tuple([entrypoint_override]) if entrypoint_override else tuple()
+        )
         moving = tuple(st.session_state.get("scan_moving", []))
         frames = tuple(st.session_state.get("scan_frames", list(DEFAULT_TARGET_FRAMES)))
         target_tokens = expand_targets(frames, st.session_state.get("scan_targets", []))
@@ -603,9 +621,7 @@ with col_scan:
             st.session_state.get("scan_ayanamsha"),
             frames,
             entrypoint_arg,
-
             st.session_state.get("scan_zodiac"),
-
         )
         session_cache = st.session_state.setdefault("scan_cache", {})
         from_cache = cache_key in session_cache
@@ -626,12 +642,14 @@ with col_scan:
                 st.session_state.get("scan_ayanamsha"),
                 frames,
                 entrypoint_arg,
-
                 st.session_state.get("scan_zodiac", "tropical"),
-
             )
             session_cache[cache_key] = (raw_events, canonical_events, used_entrypoint)
-        st.session_state["scan_results"] = (raw_events, canonical_events, used_entrypoint)
+        st.session_state["scan_results"] = (
+            raw_events,
+            canonical_events,
+            used_entrypoint,
+        )
         st.session_state["scan_last_cache_key"] = cache_key
         quick_exports_state = st.session_state.setdefault("scan_quick_exports", {})
         if canonical_events:
@@ -666,7 +684,9 @@ with col_results:
         quick_exports = None
         if quick_cache_key is not None:
             quick_exports = quick_exports_state.get(quick_cache_key)
-        if quick_exports is None or quick_exports.get("event_count") != len(canonical_events):
+        if quick_exports is None or quick_exports.get("event_count") != len(
+            canonical_events
+        ):
             quick_exports = _prepare_quick_exports(canonical_events)
             if quick_cache_key is not None:
                 quick_exports_state[quick_cache_key] = quick_exports
@@ -706,7 +726,9 @@ with col_results:
                 st.write("Parquet export available once events are detected.")
 
         with export_col3:
-            ics_title_quick = st.session_state.get("scan_ics_title", "AstroEngine Events")
+            ics_title_quick = st.session_state.get(
+                "scan_ics_title", "AstroEngine Events"
+            )
             try:
                 ics_payload = ics_bytes_from_events(
                     canonical_events,
@@ -724,11 +746,12 @@ with col_results:
                 )
                 st.caption(f"{len(canonical_events)} events included")
 
-
         st.markdown("### Export")
         col_sqlite, col_parquet, col_download = st.columns(3)
         with col_sqlite:
-            sqlite_path = st.text_input("SQLite path", value="runs.db", key="scan_sqlite_path")
+            sqlite_path = st.text_input(
+                "SQLite path", value="runs.db", key="scan_sqlite_path"
+            )
             if st.button("Save SQLite", key="scan_sqlite_btn") and canonical_events:
                 try:
                     rows_written = write_sqlite_canonical(sqlite_path, canonical_events)
@@ -743,7 +766,9 @@ with col_results:
             )
             if st.button("Save Parquet", key="scan_parquet_btn") and canonical_events:
                 try:
-                    rows_written = write_parquet_canonical(parquet_path, canonical_events)
+                    rows_written = write_parquet_canonical(
+                        parquet_path, canonical_events
+                    )
                     st.success(f"Wrote {rows_written} rows to {parquet_path}")
                 except Exception as export_exc:
                     st.error(f"Parquet export failed: {export_exc}")
@@ -774,7 +799,9 @@ with col_results:
                 key="scan_full_ics_download",
             )
     else:
-        st.info("Configure the scan in the sidebar and click **Run scan** to generate events.")
+        st.info(
+            "Configure the scan in the sidebar and click **Run scan** to generate events."
+        )
 
 with tab_smoke:
     st.subheader("Swiss Smoketest (script)")
@@ -800,5 +827,3 @@ with tab_smoke:
                 st.code((out + "\n\n" + err).strip(), language="bash")
         except Exception as exc:  # pragma: no cover - defensive
             st.error(f"Failed to run smoketest: {exc}")
-
-

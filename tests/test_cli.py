@@ -85,7 +85,9 @@ def test_cli_validate_round_trip(tmp_path):
 
 
 def test_cli_scan_with_stub(tmp_path, monkeypatch):
-    monkeypatch.setenv("ASTROENGINE_SCAN_ENTRYPOINTS", "tests.fixtures.stub_scan:fake_scan")
+    monkeypatch.setenv(
+        "ASTROENGINE_SCAN_ENTRYPOINTS", "tests.fixtures.stub_scan:fake_scan"
+    )
     json_path = tmp_path / "scan.json"
     ics_path = tmp_path / "scan.ics"
     sqlite_path = tmp_path / "scan.db"

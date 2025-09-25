@@ -45,7 +45,9 @@ def _package_versions(package_names: Iterable[str]) -> MutableMapping[str, str]:
     return versions
 
 
-def collect_environment_report(packages: Sequence[str] | None = None) -> EnvironmentReport:
+def collect_environment_report(
+    packages: Sequence[str] | None = None,
+) -> EnvironmentReport:
     """Build an :class:`EnvironmentReport` for the current interpreter."""
 
     python_version = sys.version_info[:3]
@@ -79,7 +81,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         nargs="*",
         help="Optional package names to verify (pyswisseph, numpy, python-dateutil, ...).",
     )
-    parser.add_argument("--as-json", action="store_true", help="Emit JSON instead of text")
+    parser.add_argument(
+        "--as-json", action="store_true", help="Emit JSON instead of text"
+    )
     args = parser.parse_args(argv)
 
     report = collect_environment_report(args.packages)

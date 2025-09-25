@@ -63,7 +63,9 @@ def register_predictive_module(registry: AstroRegistry) -> None:
     )
     direction_contacts.register_subchannel(
         "transits_to_directed",
-        metadata={"description": "Transiting bodies contacting solar arc directed positions."},
+        metadata={
+            "description": "Transiting bodies contacting solar arc directed positions."
+        },
     )
 
     returns = module.register_submodule(
@@ -72,16 +74,22 @@ def register_predictive_module(registry: AstroRegistry) -> None:
     )
     returns.register_channel(
         "solar",
-        metadata={"description": "Solar return computed when the Sun matches its natal longitude."},
+        metadata={
+            "description": "Solar return computed when the Sun matches its natal longitude."
+        },
     )
     returns.register_channel(
         "lunar",
-        metadata={"description": "Lunar return computed when the Moon matches its natal longitude."},
+        metadata={
+            "description": "Lunar return computed when the Moon matches its natal longitude."
+        },
     )
 
     derived = module.register_submodule(
         "derived_charts",
-        metadata={"description": "Midpoints, harmonics, and other synthetic charts built from natal data."},
+        metadata={
+            "description": "Midpoints, harmonics, and other synthetic charts built from natal data."
+        },
     )
     harmonics = derived.register_channel(
         "harmonics",
@@ -93,16 +101,22 @@ def register_predictive_module(registry: AstroRegistry) -> None:
     )
     midpoints.register_subchannel(
         "natal_transit",
-        metadata={"description": "Midpoint overlays comparing natal and transiting bodies."},
+        metadata={
+            "description": "Midpoint overlays comparing natal and transiting bodies."
+        },
     )
     midpoints.register_subchannel(
         "natal_progressed",
-        metadata={"description": "Midpoint overlays linking natal and progressed positions."},
+        metadata={
+            "description": "Midpoint overlays linking natal and progressed positions."
+        },
     )
 
     relationships = module.register_submodule(
         "relationships",
-        metadata={"description": "Composite and synastry transit scans for biwheel targeting."},
+        metadata={
+            "description": "Composite and synastry transit scans for biwheel targeting."
+        },
     )
     composite = relationships.register_channel(
         "composite",
@@ -110,7 +124,9 @@ def register_predictive_module(registry: AstroRegistry) -> None:
     )
     composite.register_subchannel(
         "transits",
-        metadata={"description": "Transit scans referencing composite chart positions."},
+        metadata={
+            "description": "Transit scans referencing composite chart positions."
+        },
     )
     synastry = relationships.register_channel(
         "synastry",

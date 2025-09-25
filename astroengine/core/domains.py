@@ -101,10 +101,16 @@ class DomainResolver:
         p = dict(self._planet.get(planet_key, {}))
         h = dict(self._house.get(house_index, {})) if house_index else {}
         if overrides:
-            planet_over = overrides.get("planet_weights") if "planet_weights" in overrides else None
+            planet_over = (
+                overrides.get("planet_weights")
+                if "planet_weights" in overrides
+                else None
+            )
             if planet_over and planet_key in planet_over:
                 p = dict(planet_over[planet_key])
-            house_over = overrides.get("house_weights") if "house_weights" in overrides else None
+            house_over = (
+                overrides.get("house_weights") if "house_weights" in overrides else None
+            )
             if house_over and house_index in house_over:
                 h = dict(house_over[house_index])
 

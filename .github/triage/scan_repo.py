@@ -8,9 +8,15 @@ Triage scanner:
 Idempotent: titles are stable; updates in-place.
 """
 from __future__ import annotations
-import os, re, json, subprocess, sys, shutil, textwrap
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import textwrap
 from pathlib import Path
-from typing import List, Tuple
 
 REPO = os.environ.get("GITHUB_REPOSITORY", "")
 TOKEN = os.environ.get("GITHUB_TOKEN")
@@ -26,12 +32,12 @@ except Exception:
     Github = None  # fallback to curl
 
 
-def run(cmd: List[str]) -> Tuple[int, str]:
+def run(cmd: list[str]) -> tuple[int, str]:
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     return p.returncode, p.stdout
 
 
-def check_import_swisseph() -> Tuple[bool, str]:
+def check_import_swisseph() -> tuple[bool, str]:
     code = "import swisseph as swe; print(getattr(swe,'__version__', 'ok'))"
     rc, out = run([sys.executable, "-c", code])
     if rc != 0:
@@ -39,7 +45,7 @@ def check_import_swisseph() -> Tuple[bool, str]:
     return True, out.strip()
 
 
-def check_ephe_path() -> Tuple[bool, str]:
+def check_ephe_path() -> tuple[bool, str]:
     # Accept env, common folders, or bundled ./ephe
     candidates = [
         os.environ.get("SE_EPHE_PATH"),
@@ -52,12 +58,12 @@ def check_ephe_path() -> Tuple[bool, str]:
     return found, msg
 
 
-def check_ruff() -> Tuple[bool, str]:
+def check_ruff() -> tuple[bool, str]:
     rc, out = run([sys.executable, "-m", "ruff", "check", str(ROOT)])
     return rc == 0, out
 
 
-def check_mypy() -> Tuple[bool, str]:
+def check_mypy() -> tuple[bool, str]:
     # best-effort only if config exists
     ini = ROOT / "mypy.ini"
     if not shutil.which("mypy") or not ini.exists():
@@ -66,15 +72,17 @@ def check_mypy() -> Tuple[bool, str]:
     return rc == 0, out
 
 
-def check_pytest_smoke() -> Tuple[bool, str]:
+def check_pytest_smoke() -> tuple[bool, str]:
     # Run a quick smoke (won't fail build here)
     if not shutil.which("pytest"):
         return True, "skipped"
-    rc, out = run(["pytest", "-q", "-k", "smoke or smoketest or sanity", "--maxfail=1"])  # best-effort
+    rc, out = run(
+        ["pytest", "-q", "-k", "smoke or smoketest or sanity", "--maxfail=1"]
+    )  # best-effort
     return rc == 0, out
 
 
-def harvest_todos() -> List[str]:
+def harvest_todos() -> list[str]:
     patterns = re.compile(r"\b(TODO|FIXME|BUG|HACK)\b[:\s](.*)")
     items = []
     for p in ROOT.rglob("*.py"):
@@ -89,7 +97,9 @@ def harvest_todos() -> List[str]:
 
 
 def gh_request(method: str, path: str, json_body=None):
-    import urllib.request, json as _json
+    import json as _json
+    import urllib.request
+
     req = urllib.request.Request(BASE_URL + path, method=method)
     req.add_header("Authorization", f"Bearer {TOKEN}")
     req.add_header("Accept", "application/vnd.github+json")
@@ -102,35 +112,45 @@ def gh_request(method: str, path: str, json_body=None):
         return json.loads(r.read().decode())
 
 
-def upsert_issue(title: str, body: str, labels: List[str]):
+def upsert_issue(title: str, body: str, labels: list[str]):
     # search existing open issues by title
-    q = f"/issues?state=open&per_page=100"
+    q = "/issues?state=open&per_page=100"
     issues = gh_request("GET", q)
     for it in issues:
         if it.get("title") == title:
-            gh_request("PATCH", f"/issues/{it['number']}", {"body": body, "labels": labels})
+            gh_request(
+                "PATCH", f"/issues/{it['number']}", {"body": body, "labels": labels}
+            )
             return it["number"]
     # create new
     it = gh_request("POST", "/issues", {"title": title, "body": body, "labels": labels})
     return it["number"]
 
 
-def make_health_report() -> Tuple[str, dict]:
+def make_health_report() -> tuple[str, dict]:
     checks = {}
-    ok, out = check_import_swisseph(); checks["pyswisseph_import"] = (ok, out)
-    ephe_ok, ephe_msg = check_ephe_path(); checks["ephemeris_path"] = (ephe_ok, ephe_msg)
-    ok_r, out_r = check_ruff(); checks["ruff"] = (ok_r, out_r)
-    ok_m, out_m = check_mypy(); checks["mypy"] = (ok_m, out_m)
-    ok_t, out_t = check_pytest_smoke(); checks["pytest_smoke"] = (ok_t, out_t)
+    ok, out = check_import_swisseph()
+    checks["pyswisseph_import"] = (ok, out)
+    ephe_ok, ephe_msg = check_ephe_path()
+    checks["ephemeris_path"] = (ephe_ok, ephe_msg)
+    ok_r, out_r = check_ruff()
+    checks["ruff"] = (ok_r, out_r)
+    ok_m, out_m = check_mypy()
+    checks["mypy"] = (ok_m, out_m)
+    ok_t, out_t = check_pytest_smoke()
+    checks["pytest_smoke"] = (ok_t, out_t)
     todos = harvest_todos()
 
-    lines = ["# Automated Health Report",
-             "\n**Legend:** ✅ pass · ⚠️ warn · ❌ fail\n",
-             ]
+    lines = [
+        "# Automated Health Report",
+        "\n**Legend:** ✅ pass · ⚠️ warn · ❌ fail\n",
+    ]
+
     def row(name, ok, details):
         icon = "✅" if ok else "❌"
         if details == "skipped":
-            icon = "⚠️"; details = "skipped (not configured)"
+            icon = "⚠️"
+            details = "skipped (not configured)"
         return f"- {icon} **{name}** — {details[:600]}"
 
     lines.append(row("pyswisseph import", *checks["pyswisseph_import"]))
@@ -157,14 +177,18 @@ def write_index_md(path: Path):
         for lab in it.get("labels", []):
             name = lab["name"] if isinstance(lab, dict) else lab
             by_label.setdefault(name, []).append(it)
-    md = ["# AstroEngine — Issue Index (auto‑generated)",
-          "Open issues grouped by label. Source of truth is GitHub Issues.",
-          ""]
+    md = [
+        "# AstroEngine — Issue Index (auto‑generated)",
+        "Open issues grouped by label. Source of truth is GitHub Issues.",
+        "",
+    ]
+
     def link(i):
         return f"- #{i['number']} {i['title']} (by @{i['user']['login']})"
+
     for label in sorted(by_label.keys()):
         md.append(f"\n## {label}")
-        for it in sorted(by_label[label], key=lambda x: x['number']):
+        for it in sorted(by_label[label], key=lambda x: x["number"]):
             md.append(link(it))
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text("\n".join(md))
@@ -172,9 +196,10 @@ def write_index_md(path: Path):
 
 def main():
     import argparse
+
     ap = argparse.ArgumentParser()
-    ap.add_argument('--update-issues', action='store_true')
-    ap.add_argument('--write-index', type=str, default='')
+    ap.add_argument("--update-issues", action="store_true")
+    ap.add_argument("--write-index", type=str, default="")
     args = ap.parse_args()
 
     body, flags = make_health_report()
@@ -187,7 +212,7 @@ def main():
     # targeted issues for hard failures
     if not flags.get("pyswisseph_import", True):
         fix = textwrap.dedent(
-            f"""
+            """
             **Detected**: `pyswisseph` import failed.
 
             **Likely fixes:**
@@ -196,15 +221,24 @@ def main():
             - Run `python scripts/swe_smoketest.py --utc 2025-01-01T00:00:00Z`
             """
         )
-        upsert_issue("Dependency: pyswisseph missing or failing", fix, ["bug", "ephemeris", "automated"])
+        upsert_issue(
+            "Dependency: pyswisseph missing or failing",
+            fix,
+            ["bug", "ephemeris", "automated"],
+        )
 
     if not flags.get("ephemeris_path", True):
         fix = "Set SE_EPHE_PATH or place ephemeris files under ./ephe or ~/.sweph."
-        upsert_issue("Config: Swiss Ephemeris data path not found", fix, ["bug", "ephemeris", "automated"])
+        upsert_issue(
+            "Config: Swiss Ephemeris data path not found",
+            fix,
+            ["bug", "ephemeris", "automated"],
+        )
 
     if args.write_index:
         write_index_md(Path(args.write_index))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
 # >>> AUTO-GEN END: triage scanner v1.0

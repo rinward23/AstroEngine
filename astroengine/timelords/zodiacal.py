@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import itertools
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Iterable, Sequence
 
 from .context import TimelordContext
 from .models import TimelordPeriod

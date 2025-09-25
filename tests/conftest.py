@@ -43,8 +43,8 @@ def _refresh_paths_from_package() -> None:
         from astroengine.infrastructure.paths import (
             datasets_dir,
             generated_dir,
-            project_root as pkg_project_root,
         )
+        from astroengine.infrastructure.paths import project_root as pkg_project_root
     except Exception:
         return
 
@@ -110,6 +110,7 @@ import pytest
 def _have_pyswisseph() -> bool:
     try:
         import swisseph as _swe  # noqa: F401
+
         return True
     except Exception:
         return False
@@ -125,10 +126,14 @@ def pytest_collection_modifyitems(config, items):
     swiss_missing = not _have_pyswisseph() or not _have_ephe_path()
     if not swiss_missing:
         return
-    skip_swiss = pytest.mark.skip(reason="Swiss Ephemeris unavailable (no pyswisseph or SE_EPHE_PATH).")
+    skip_swiss = pytest.mark.skip(
+        reason="Swiss Ephemeris unavailable (no pyswisseph or SE_EPHE_PATH)."
+    )
     for item in items:
         if "swiss" in item.keywords:
             item.add_marker(skip_swiss)
+
+
 # >>> AUTO-GEN END: swiss availability gating v1.0
 
 

@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import datetime as _dt
+
+# >>> AUTO-GEN BEGIN: Canonical Scan Adapter v1.0
 from collections.abc import Iterable, Sequence
+from collections.abc import Iterable as _TypingIterable
 from dataclasses import dataclass, field
+from typing import Any as _TypingAny
 from typing import Literal
 
 from ..ephemeris import EphemerisAdapter, EphemerisConfig, EphemerisSample
 from ..ephemeris.refinement import RefinementBracket, refine_event
 from .angles import classify_relative_motion, signed_delta
 from .api import TransitEvent as LegacyTransitEvent
-
-# >>> AUTO-GEN BEGIN: Canonical Scan Adapter v1.0
-from typing import Iterable as _TypingIterable, Any as _TypingAny
 
 try:
     from ..canonical import TransitEvent, events_from_any
@@ -24,7 +25,9 @@ except Exception:  # pragma: no cover
         return list(x)  # type: ignore
 
 
-def to_canonical_events(events: _TypingIterable[_TypingAny]) -> _TypingIterable[TransitEvent]:
+def to_canonical_events(
+    events: _TypingIterable[_TypingAny],
+) -> _TypingIterable[TransitEvent]:
     """Normalize engine or legacy events to :class:`~astroengine.canonical.TransitEvent`."""
 
     return events_from_any(events)
@@ -127,7 +130,9 @@ class TransitEngine:
         if start > end:
             raise ValueError("scan_longitude_crossing requires start <= end")
 
-        step_hours = step_hours if step_hours is not None else self.config.coarse_step_hours
+        step_hours = (
+            step_hours if step_hours is not None else self.config.coarse_step_hours
+        )
         if step_hours <= 0:
             raise ValueError("step_hours must be positive")
 
@@ -148,7 +153,10 @@ class TransitEngine:
             return sampled
 
         def compute_offset(candidate: EphemerisSample) -> float:
-            return signed_delta(candidate.longitude - reference_longitude) - aspect_angle_deg
+            return (
+                signed_delta(candidate.longitude - reference_longitude)
+                - aspect_angle_deg
+            )
 
         coarse_step = _dt.timedelta(hours=float(step_hours))
         if coarse_step.total_seconds() <= 0.0:
@@ -177,15 +185,15 @@ class TransitEngine:
             start_offset = offsets[idx - 1]
             end_offset = offsets[idx]
 
-            bracketed = start_offset == 0.0 or end_offset == 0.0 or (
-                start_offset * end_offset < 0.0
+            bracketed = (
+                start_offset == 0.0
+                or end_offset == 0.0
+                or (start_offset * end_offset < 0.0)
             )
             if not bracketed:
                 continue
 
-            retro_loop = (
-                start_sample.speed_longitude * end_sample.speed_longitude < 0.0
-            )
+            retro_loop = start_sample.speed_longitude * end_sample.speed_longitude < 0.0
 
             coarse_candidates = (
                 (start_time, start_sample, start_offset),

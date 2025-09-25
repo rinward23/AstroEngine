@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable, List, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 
 def fake_scan(
@@ -18,7 +18,7 @@ def fake_scan(
     ayanamsha: str | None = None,
     detectors: Iterable[str] | None = None,
     target_frames: Iterable[str] | None = None,
-) -> List[Mapping[str, object]]:
+) -> list[Mapping[str, object]]:
     """Return a deterministic payload representing a completed scan."""
 
     detectors_list = sorted(detectors or [])

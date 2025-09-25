@@ -12,11 +12,14 @@ from astroengine.chart import (
     compute_natal_chart,
 )
 
-
-NYC_MOMENT = dt.datetime(1990, 2, 16, 13, 30, tzinfo=dt.timezone(dt.timedelta(hours=-5)))
+NYC_MOMENT = dt.datetime(
+    1990, 2, 16, 13, 30, tzinfo=dt.timezone(dt.timedelta(hours=-5))
+)
 NYC_LOCATION = ChartLocation(latitude=40.7128, longitude=-74.0060)
 
-LONDON_MOMENT = dt.datetime(1985, 7, 13, 17, 45, tzinfo=dt.timezone(dt.timedelta(hours=1)))
+LONDON_MOMENT = dt.datetime(
+    1985, 7, 13, 17, 45, tzinfo=dt.timezone(dt.timedelta(hours=1))
+)
 LONDON_LOCATION = ChartLocation(latitude=51.5074, longitude=-0.1278)
 
 
@@ -59,8 +62,12 @@ def test_midpoint_tree_for_natal_chart() -> None:
     sun_moon = next(entry for entry in tree if entry.name == "Sun/Moon")
     assert sun_moon.position.longitude == pytest.approx(277.3186165, abs=1e-6)
     assert sun_moon.separation == pytest.approx(101.012701, abs=1e-6)
-    assert sun_moon.position.latitude == pytest.approx((sun.latitude + moon.latitude) / 2.0, abs=1e-6)
-    assert sun_moon.position.declination == pytest.approx((sun.declination + moon.declination) / 2.0, abs=1e-6)
+    assert sun_moon.position.latitude == pytest.approx(
+        (sun.latitude + moon.latitude) / 2.0, abs=1e-6
+    )
+    assert sun_moon.position.declination == pytest.approx(
+        (sun.declination + moon.declination) / 2.0, abs=1e-6
+    )
 
 
 @pytest.mark.swiss

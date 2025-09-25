@@ -46,14 +46,18 @@ def ecl_to_dec(lon_deg: float) -> float:
     return math.degrees(math.asin(max(-1.0, min(1.0, sin_dec))))
 
 
-def is_parallel(dec1: float, dec2: float, orb: float | None = None, *, tol_deg: float | None = None) -> bool:
+def is_parallel(
+    dec1: float, dec2: float, orb: float | None = None, *, tol_deg: float | None = None
+) -> bool:
     threshold = tol_deg if tol_deg is not None else orb
     if threshold is None:
         raise TypeError("is_parallel requires an orb or tol_deg value")
     return abs(dec1 - dec2) <= abs(threshold)
 
 
-def is_contraparallel(dec1: float, dec2: float, orb: float | None = None, *, tol_deg: float | None = None) -> bool:
+def is_contraparallel(
+    dec1: float, dec2: float, orb: float | None = None, *, tol_deg: float | None = None
+) -> bool:
     threshold = tol_deg if tol_deg is not None else orb
     if threshold is None:
         raise TypeError("is_contraparallel requires an orb or tol_deg value")

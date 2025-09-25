@@ -10,8 +10,8 @@ from sqlalchemy import (
     Integer,
     MetaData,
     String,
-    Text,
     Table,
+    Text,
 )
 
 metadata = MetaData()
@@ -34,8 +34,14 @@ transits_events = Table(
     Column("meta_json", Text, nullable=False, server_default="{}"),
 )
 
-Index("ix_transits_events_profile_ts", transits_events.c.profile_id, transits_events.c.ts)
-Index("ix_transits_events_natal_year", transits_events.c.natal_id, transits_events.c.event_year)
+Index(
+    "ix_transits_events_profile_ts", transits_events.c.profile_id, transits_events.c.ts
+)
+Index(
+    "ix_transits_events_natal_year",
+    transits_events.c.natal_id,
+    transits_events.c.event_year,
+)
 Index("ix_transits_events_score", transits_events.c.score)
 
 __all__ = ["metadata", "transits_events"]

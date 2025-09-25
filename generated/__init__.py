@@ -5,9 +5,10 @@ This module re-exports from `astroengine` and maps `generated.astroengine`
 imports to the real `astroengine` package. Safe to keep for one minor release.
 """
 from __future__ import annotations
-import warnings as _warnings
+
 import sys as _sys
 import types as _types
+import warnings as _warnings
 
 # Single deprecation nudge on import
 _warnings.warn(
@@ -19,6 +20,7 @@ _warnings.warn(
 # Map submodule path so `import generated.astroengine` resolves to `astroengine`.
 try:
     import astroengine as _ae  # noqa: F401
+
     _sys.modules.setdefault("generated.astroengine", _ae)
 except Exception:  # pragma: no cover — leave import errors to normal flow
     pass
@@ -29,13 +31,16 @@ try:  # noqa: SIM105
 except Exception:  # pragma: no cover
     pass
 try:
-    from astroengine import TransitScanConfig as TransitScanConfig  # type: ignore[attr-defined]
+    from astroengine import (
+        TransitScanConfig as TransitScanConfig,  # type: ignore[attr-defined]
+    )
 except Exception:  # pragma: no cover
     pass
 try:
     from astroengine import TransitEvent as TransitEvent  # type: ignore[attr-defined]
 except Exception:  # pragma: no cover
     pass
+
 
 # Dynamic attribute forwarding for anything else under astroengine
 def __getattr__(name: str):  # pragma: no cover — simple passthrough

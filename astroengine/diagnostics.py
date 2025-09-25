@@ -23,7 +23,8 @@ import pathlib
 import platform
 import sys
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List, Tuple
+from datetime import UTC
+from typing import Any
 
 from astroengine.ephemeris import EphemerisAdapter
 
@@ -33,21 +34,23 @@ class Check:
     name: str
     status: str  # "PASS" | "WARN" | "FAIL"
     detail: str
-    data: Dict[str, Any] | None = None
+    data: dict[str, Any] | None = None
 
 
 def _status_order(s: str) -> int:
     return {"PASS": 0, "WARN": 1, "FAIL": 2}.get(s, 2)
 
 
-def check_python(min_version: Tuple[int, int] = (3, 10)) -> Check:
+def check_python(min_version: tuple[int, int] = (3, 10)) -> Check:
     v = sys.version_info
     ok = (v.major, v.minor) >= min_version
     required_version = f"{min_version[0]}.{min_version[1]}"
     return Check(
         name="Python",
         status="PASS" if ok else "FAIL",
-        detail=(f"Detected {v.major}.{v.minor}.{v.micro}; requires >= {required_version}"),
+        detail=(
+            f"Detected {v.major}.{v.minor}.{v.micro}; requires >= {required_version}"
+        ),
         data={
             "version": f"{v.major}.{v.minor}.{v.micro}",
             "impl": platform.python_implementation(),
@@ -55,7 +58,7 @@ def check_python(min_version: Tuple[int, int] = (3, 10)) -> Check:
     )
 
 
-def _try_import(mod: str) -> Tuple[bool, Any, str]:
+def _try_import(mod: str) -> tuple[bool, Any, str]:
     try:
         m = importlib.import_module(mod)
         return True, m, getattr(m, "__version__", "")
@@ -63,14 +66,14 @@ def _try_import(mod: str) -> Tuple[bool, Any, str]:
         return False, None, f"{type(e).__name__}: {e}"
 
 
-def check_core_imports() -> List[Check]:
+def check_core_imports() -> list[Check]:
     required = [
         "astroengine.api",
         "astroengine.engine",
         "astroengine.detectors",
         "astroengine.profiles",
     ]
-    out: List[Check] = []
+    out: list[Check] = []
     for mod in required:
         ok, m, err = _try_import(mod)
         out.append(
@@ -78,7 +81,10 @@ def check_core_imports() -> List[Check]:
                 name=f"Import {mod}",
                 status="PASS" if ok else "FAIL",
                 detail=f"{'ok' if ok else 'not importable'}",
-                data={"version": getattr(m, "__version__", None), "error": None if ok else err},
+                data={
+                    "version": getattr(m, "__version__", None),
+                    "error": None if ok else err,
+                },
             )
         )
     # Public API types
@@ -100,7 +106,9 @@ def check_core_imports() -> List[Check]:
                 )
             )
         except Exception as e:  # pragma: no cover - defensive surface only
-            out.append(Check(name="Public API", status="FAIL", detail=f"missing symbols: {e}"))
+            out.append(
+                Check(name="Public API", status="FAIL", detail=f"missing symbols: {e}")
+            )
     else:
         out.append(
             Check(
@@ -113,9 +121,9 @@ def check_core_imports() -> List[Check]:
     return out
 
 
-def check_optional_deps() -> List[Check]:
+def check_optional_deps() -> list[Check]:
     names = ["numpy", "pandas", "pyarrow"]
-    out: List[Check] = []
+    out: list[Check] = []
     for n in names:
         ok, m, err = _try_import(n)
         out.append(
@@ -123,7 +131,10 @@ def check_optional_deps() -> List[Check]:
                 name=f"Optional {n}",
                 status="PASS" if ok else "WARN",
                 detail=f"{'found' if ok else 'not installed'}",
-                data={"version": getattr(m, "__version__", None), "error": None if ok else err},
+                data={
+                    "version": getattr(m, "__version__", None),
+                    "error": None if ok else err,
+                },
             )
         )
     # sqlite3 is stdlib, but verify load
@@ -132,12 +143,14 @@ def check_optional_deps() -> List[Check]:
 
         out.append(Check(name="sqlite3", status="PASS", detail="available (stdlib)"))
     except Exception as e:  # pragma: no cover - defensive surface only
-        out.append(Check(name="sqlite3", status="FAIL", detail=f"sqlite3 unavailable: {e}"))
+        out.append(
+            Check(name="sqlite3", status="FAIL", detail=f"sqlite3 unavailable: {e}")
+        )
     return out
 
 
-def check_timezone_libs() -> List[Check]:
-    out: List[Check] = []
+def check_timezone_libs() -> list[Check]:
+    out: list[Check] = []
     # zoneinfo (stdlib 3.9+)
     try:
         import zoneinfo  # noqa: F401
@@ -152,14 +165,17 @@ def check_timezone_libs() -> List[Check]:
             name="Optional pytz",
             status="PASS" if ok else "WARN",
             detail="found" if ok else "not installed",
-            data={"version": getattr(m, "__version__", None), "error": None if ok else err},
+            data={
+                "version": getattr(m, "__version__", None),
+                "error": None if ok else err,
+            },
         )
     )
     return out
 
 
-def check_swisseph() -> List[Check]:
-    out: List[Check] = []
+def check_swisseph() -> list[Check]:
+    out: list[Check] = []
     ok_swe, swe, err = _try_import("swisseph")
     if not ok_swe:
         out.append(
@@ -269,12 +285,14 @@ def check_profiles_presence() -> Check:
         return Check(name="Profiles registry", status="PASS", detail=str(count))
     except Exception as e:  # pragma: no cover - defensive surface only
         return Check(
-            name="Profiles registry", status="WARN", detail=f"could not inspect profiles: {e}"
+            name="Profiles registry",
+            status="WARN",
+            detail=f"could not inspect profiles: {e}",
         )
 
 
-def collect_diagnostics(strict: bool = False) -> Dict[str, Any]:
-    checks: List[Check] = []
+def collect_diagnostics(strict: bool = False) -> dict[str, Any]:
+    checks: list[Check] = []
     checks.append(check_python())
     checks.extend(check_core_imports())
     checks.extend(check_optional_deps())
@@ -301,8 +319,8 @@ def collect_diagnostics(strict: bool = False) -> Dict[str, Any]:
     }
 
 
-def _format_text_report(payload: Dict[str, Any]) -> str:
-    lines: List[str] = []
+def _format_text_report(payload: dict[str, Any]) -> str:
+    lines: list[str] = []
     s = payload["summary"]
     lines.append("AstroEngine Doctor — Diagnostics Report")
     summary_line = (
@@ -319,7 +337,7 @@ def _format_text_report(payload: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _parse_iso_utc(ts: str) -> Tuple[int, int, int, float]:
+def _parse_iso_utc(ts: str) -> tuple[int, int, int, float]:
     # Accepts YYYY-MM-DDTHH:MM:SSZ or without Z; returns y,m,d,ut_hours
     ts = ts.strip().replace("Z", "")
     date, time = (ts.split("T") + ["00:00:00"])[:2]
@@ -328,7 +346,7 @@ def _parse_iso_utc(ts: str) -> Tuple[int, int, int, float]:
     return y, m, d, hh + mm / 60.0 + ss / 3600.0
 
 
-def smoketest_positions(iso_utc: str = "2025-01-01T00:00:00Z") -> List[Dict[str, Any]]:
+def smoketest_positions(iso_utc: str = "2025-01-01T00:00:00Z") -> list[dict[str, Any]]:
     ok, swe, err = _try_import("swisseph")
     if not ok:
         return [{"body": "INFO", "detail": f"pyswisseph not installed: {err}"}]
@@ -347,7 +365,7 @@ def smoketest_positions(iso_utc: str = "2025-01-01T00:00:00Z") -> List[Dict[str,
             ("Jupiter", swe.JUPITER),
             ("Saturn", swe.SATURN),
         ]
-        out: List[Dict[str, Any]] = []
+        out: list[dict[str, Any]] = []
         for name, pid in ids:
             positions, *_ = swe.calc_ut(jd, pid)
             lon = float(positions[0])
@@ -359,7 +377,7 @@ def smoketest_positions(iso_utc: str = "2025-01-01T00:00:00Z") -> List[Dict[str,
         return [{"body": "ERROR", "detail": f"smoketest failed: {e}"}]
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="astroengine.diagnostics", description="AstroEngine diagnostics (doctor)"
     )
@@ -386,9 +404,9 @@ def main(argv: List[str] | None = None) -> int:
     if args.smoketest is not None:
         iso = args.smoketest
         if iso == "now":
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         print("\nSmoketest (Sun..Saturn) —", iso)
         for row in smoketest_positions(iso):
             if "lon_deg" in row:

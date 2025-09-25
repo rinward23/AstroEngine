@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 __all__ = ["load_json_document"]
 
@@ -67,4 +68,3 @@ def load_json_document(
         return default
 
     return json.loads(payload)
-

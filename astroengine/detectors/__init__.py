@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Iterable, List, Mapping
+from typing import List
 
 from ..astro.declination import (
     DEFAULT_ANTISCIA_AXIS,
@@ -23,10 +24,8 @@ __all__ = [
     "find_lunations",
     "find_eclipses",
     "find_stations",
-
     "find_sign_ingresses",
     "find_out_of_bounds",
-
     "secondary_progressions",
     "solar_arc_directions",
     "solar_lunar_returns",
@@ -71,10 +70,10 @@ def detect_decl_contacts(
     target: str,
     orb_deg_parallel: float = 0.5,
     orb_deg_contra: float = 0.5,
-) -> List[CoarseHit]:
+) -> list[CoarseHit]:
     """Detect declination parallels/contraparallels across ``iso_ticks``."""
 
-    out: List[CoarseHit] = []
+    out: list[CoarseHit] = []
     allow_parallel = float(orb_deg_parallel if orb_deg_parallel is not None else 0.5)
     allow_contra = float(orb_deg_contra if orb_deg_contra is not None else 0.5)
     corridor_profile = "gaussian"
@@ -161,10 +160,10 @@ def detect_antiscia_contacts(
     orb_deg_contra: float = 2.0,
     *,
     axis: str = DEFAULT_ANTISCIA_AXIS,
-) -> List[CoarseHit]:
+) -> list[CoarseHit]:
     """Detect antiscia and contra-antiscia contacts across ``iso_ticks``."""
 
-    out: List[CoarseHit] = []
+    out: list[CoarseHit] = []
     allow_antiscia = float(orb_deg_antiscia if orb_deg_antiscia is not None else 2.0)
     allow_contra = float(orb_deg_contra if orb_deg_contra is not None else 2.0)
     corridor_profile = "gaussian"
@@ -255,9 +254,11 @@ from .eclipses import find_eclipses  # noqa: E402
 
 try:  # pragma: no cover - optional when ingress module is syntactically unavailable
     from .ingresses import find_sign_ingresses  # noqa: E402
-except SyntaxError as exc:  # pragma: no cover - defensive for partial builds
+except SyntaxError:  # pragma: no cover - defensive for partial builds
+
     def find_sign_ingresses(*_args, **_kwargs):  # type: ignore
         raise RuntimeError("sign ingress detector unavailable") from exc
+
 
 from .lunations import find_lunations  # noqa: E402
 from .out_of_bounds import find_out_of_bounds  # noqa: E402

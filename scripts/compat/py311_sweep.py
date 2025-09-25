@@ -26,7 +26,9 @@ changes = []
 pep695_hits = []
 
 # candidate files
-files = [p for p in ROOT.rglob("*.py") if "/.venv/" not in str(p) and "/.git/" not in str(p)]
+files = [
+    p for p in ROOT.rglob("*.py") if "/.venv/" not in str(p) and "/.git/" not in str(p)
+]
 for p in files:
     if p == SCRIPT:
         continue

@@ -2,8 +2,9 @@
 """Generated-first AstroEngine package.
 All modules are generated; do not hand-edit outside AUTO-GEN fences.
 """
+from .engine import ScanConfig, fast_scan  # ENSURE-LINE
 from .registry import REGISTRY  # ENSURE-LINE
-from .engine import fast_scan, ScanConfig  # ENSURE-LINE
+
 # Public symbols are ensured here; other modules may be added over time.
 __all__ = [
     "REGISTRY",  # ENSURE-LINE

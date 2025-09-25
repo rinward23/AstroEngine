@@ -6,4 +6,6 @@ def test_maint_import_and_help():
 
     module = importlib.import_module("astroengine.maint")
     assert hasattr(module, "main")
+
+
 # >>> AUTO-GEN END: test_maint v1.0

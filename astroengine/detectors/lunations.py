@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 from ..events import LunationEvent
 from .common import delta_deg, jd_to_iso, moon_lon, solve_zero_crossing, sun_lon
 
 __all__ = ["find_lunations"]
 
-_PHASE_TARGETS: Dict[str, float] = {"new_moon": 0.0, "full_moon": 180.0}
+_PHASE_TARGETS: dict[str, float] = {"new_moon": 0.0, "full_moon": 180.0}
 
 
 def _synodic_phase(jd_ut: float) -> float:

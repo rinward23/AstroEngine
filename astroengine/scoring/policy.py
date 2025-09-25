@@ -104,7 +104,9 @@ def load_orb_policy(*, overrides: Mapping[str, Any] | None = None) -> OrbPolicy:
     return OrbPolicy(data)
 
 
-def load_severity_policy(*, overrides: Mapping[str, Any] | None = None) -> SeverityPolicy:
+def load_severity_policy(
+    *, overrides: Mapping[str, Any] | None = None
+) -> SeverityPolicy:
     base = _base_severity_policy()
     if overrides:
         data = deep_merge(base, overrides)
@@ -113,7 +115,9 @@ def load_severity_policy(*, overrides: Mapping[str, Any] | None = None) -> Sever
     return SeverityPolicy(data)
 
 
-def load_visibility_policy(*, overrides: Mapping[str, Any] | None = None) -> VisibilityPolicy:
+def load_visibility_policy(
+    *, overrides: Mapping[str, Any] | None = None
+) -> VisibilityPolicy:
     base = _base_visibility_policy()
     if overrides:
         data = deep_merge(base, overrides)
