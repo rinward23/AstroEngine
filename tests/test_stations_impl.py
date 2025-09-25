@@ -5,11 +5,14 @@ import os
 
 import pytest
 
-try:
+from astroengine.detectors.common import iso_to_jd
+from astroengine.detectors.stations import find_stations
+
+try:  # pragma: no cover - optional dependency guard
     import swisseph as swe  # type: ignore
 
     HAVE_SWISS = True
-except Exception:
+except Exception:  # pragma: no cover - defensive fallback
     HAVE_SWISS = False
 
 SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
@@ -18,8 +21,6 @@ pytestmark = pytest.mark.skipif(
     not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
 )
 
-from astroengine.detectors.common import iso_to_jd
-from astroengine.detectors.stations import find_shadow_periods, find_stations
 
 
 def _find_station(events, iso_ts: str, body: str, *, tolerance_minutes: float = 15.0):

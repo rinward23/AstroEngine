@@ -1,5 +1,7 @@
 """Command line interface for AstroEngine."""
 
+# isort: skip_file
+
 from __future__ import annotations
 
 import argparse
@@ -7,13 +9,14 @@ import json
 import sys
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, is_dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from . import engine as engine_module
 from .app_api import canonicalize_events, run_scan_or_raise
 from .astro.declination import available_antiscia_axes
+from .cache.positions_cache import warm_daily
 from .chart import ChartLocation, NatalChart, compute_natal_chart
 from .chart.composite import compute_composite_chart
 from .chart.config import (
@@ -23,6 +26,17 @@ from .chart.config import (
     VALID_ZODIAC_SYSTEMS,
     ChartConfig,
 )
+from .detectors import (
+    find_eclipses,
+    find_lunations,
+    find_out_of_bounds,
+    find_sign_ingresses,
+    find_stations,
+    secondary_progressions,
+    solar_arc_directions,
+    solar_lunar_returns,
+)
+from .detectors.common import enable_cache, iso_to_jd
 from .detectors.ingress import find_ingresses
 from .engine import TargetFrameResolver, events_to_dicts, scan_contacts
 from .ephemeris import (
@@ -31,6 +45,8 @@ from .ephemeris import (
     SwissEphemerisAdapter,
     TimeScaleContext,
 )
+from .exporters import write_parquet_canonical, write_sqlite_canonical
+from .exporters_batch import export_parquet_dataset
 from .exporters_ics import (
     DEFAULT_DESCRIPTION_TEMPLATE as ICS_DEFAULT_DESCRIPTION_TEMPLATE,
 )
@@ -42,18 +58,24 @@ from .exporters_ics import (
 )
 from .infrastructure.storage.sqlite import SQLiteMigrator
 from .infrastructure.storage.sqlite.query import top_events_by_score
+from .mundane import compute_solar_ingress_chart, compute_solar_quartet
 from .narrative import compose_narrative, summarize_top_events
-from .pipeline.provision import is_provisioned, provision_ephemeris  # ENSURE-LINE
+from .pipeline.provision import PROVISION_META  # ENSURE-LINE
+from .pipeline.provision import (
+    get_ephemeris_meta,
+    is_provisioned,
+    provision_ephemeris,
+)
 from .plugins import ExportContext, get_plugin_manager
 from .providers import list_providers
 from .timelords import TimelordCalculator, active_timelords
 from .timelords.context import build_context
 from .timelords.dashas import compute_vimshottari_dasha
 from .timelords.zr import compute_zodiacal_releasing
-from .userdata.vault import (  # ENSURE-LINE
+from .userdata.vault import list_natals  # ENSURE-LINE
+from .userdata.vault import (
     Natal,
     delete_natal,
-    list_natals,
     load_natal,
     save_natal,
 )
@@ -68,11 +90,7 @@ from .utils import (
 from .ux.maps import astrocartography_lines, local_space_vectors
 from .ux.plugins import setup_cli as setup_plugins
 from .ux.timelines import outer_cycle_windows
-from .validation import (
-    SchemaValidationError,
-    available_schema_keys,
-    validate_payload,
-)
+from .validation import SchemaValidationError, available_schema_keys, validate_payload
 
 
 def _ensure_subparsers(parser: argparse.ArgumentParser) -> argparse._SubParsersAction:
@@ -81,6 +99,10 @@ def _ensure_subparsers(parser: argparse.ArgumentParser) -> argparse._SubParsersA
         subparsers = parser.add_subparsers(dest="command")
         parser._ae_subparsers = subparsers
     return subparsers
+
+
+def _print_json(payload: Any) -> None:
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
 
 
 def cmd_natal_list(_: argparse.Namespace) -> int:
@@ -125,14 +147,6 @@ def cmd_natal_delete(args: argparse.Namespace) -> int:
         return 0
     print(f"natal '{args.natal_id}' not found", file=sys.stderr)
     return 1
-
-
-def _ensure_subparsers(parser: argparse.ArgumentParser) -> argparse._SubParsersAction:
-    subparsers = getattr(parser, "_ae_subparsers", None)
-    if subparsers is None:
-        subparsers = parser.add_subparsers(dest="command")
-        parser._ae_subparsers = subparsers
-    return subparsers
 
 
 def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
@@ -286,171 +300,8 @@ def cmd_cache_warm(args: argparse.Namespace) -> int:
         return 1
 
     enable_cache(True)
-    start_jd = _iso_to_jd(args.start)
-    end_jd = _iso_to_jd(args.end)
-    if end_jd < start_jd:
-        print("end must be after start", file=sys.stderr)
-        return 1
-
-
-def cmd_plugins(args: argparse.Namespace) -> int:
-    runtime = get_plugin_manager()
-    show_all = not any(
-        [
-            args.entrypoints,
-            args.detectors,
-            args.score_extensions,
-            args.ui_panels,
-            args.json,
-        ]
-    )
-    payload: dict[str, Any] = {}
-    if args.entrypoints or show_all or args.json:
-        payload["entrypoints"] = list(runtime.loaded_entrypoints())
-        if not args.json:
-            if payload["entrypoints"]:
-                print("Loaded entrypoints:")
-                for name in payload["entrypoints"]:
-                    print(" -", name)
-            else:
-                print("No plugin entrypoints discovered.")
-
-    if args.detectors or show_all or args.json:
-        detector_specs = []
-        for spec in runtime.detectors():
-            detector_specs.append({"name": spec.name, "metadata": dict(spec.metadata)})
-        payload["detectors"] = detector_specs
-        if not args.json:
-            print("Detectors:")
-            if detector_specs:
-                for spec in detector_specs:
-                    print(f" - {spec['name']}")
-            else:
-                print(" - none registered")
-
-    if args.score_extensions or show_all or args.json:
-        extensions = []
-        for spec in runtime.score_extensions().iter_extensions():
-            extensions.append({"name": spec.name, "namespace": spec.namespace})
-        payload["score_extensions"] = extensions
-        if not args.json:
-            print("Score extensions:")
-            if extensions:
-                for spec in extensions:
-                    print(f" - {spec['name']} ({spec['namespace']})")
-            else:
-                print(" - none registered")
-
-    if args.ui_panels or show_all or args.json:
-        panels = [panel.as_dict() for panel in runtime.collect_ui_panels()]
-        payload["ui_panels"] = panels
-        if not args.json:
-            print("UI panels:")
-            if panels:
-                for panel in panels:
-                    print(f" - {panel['identifier']}: {panel['component']}")
-            else:
-                print(" - none registered")
-
-    if args.json:
-        print(json.dumps(payload, indent=2))
-    return 0
-
-
-def cmd_natal_list(_: argparse.Namespace) -> int:
-    natals = list_natals()
-    if not natals:
-        print("No natals stored.")
-        return 0
-    for natal_id in natals:
-        print(natal_id)
-    return 0
-
-
-def cmd_natal_show(args: argparse.Namespace) -> int:
-    try:
-        natal = load_natal(args.natal_id)
-    except FileNotFoundError:
-        print(f"natal '{args.natal_id}' not found", file=sys.stderr)
-        return 1
-    print(json.dumps(asdict(natal), indent=2))
-    return 0
-
-
-def cmd_natal_save(args: argparse.Namespace) -> int:
-    natal = Natal(
-        natal_id=args.natal_id,
-        name=args.name,
-        utc=args.utc,
-        lat=args.lat,
-        lon=args.lon,
-        tz=args.tz,
-        place=args.place,
-    )
-    path = save_natal(natal)
-    print(f"Saved natal '{args.natal_id}' to {path}")
-    return 0
-
-
-def cmd_natal_delete(args: argparse.Namespace) -> int:
-    if delete_natal(args.natal_id):
-        print(f"Deleted natal '{args.natal_id}'")
-        return 0
-    print(f"natal '{args.natal_id}' not found", file=sys.stderr)
-    return 1
-
-
-def cmd_cache_info(_: argparse.Namespace) -> int:
-    import sqlite3
-
-    from .cache.positions_cache import CACHE_DIR
-    from .cache.positions_cache import DB as POSITIONS_DB
-
-    print(f"cache directory: {CACHE_DIR}")
-    if POSITIONS_DB.exists():
-        size = POSITIONS_DB.stat().st_size
-        row_count = 0
-        con = sqlite3.connect(str(POSITIONS_DB))
-        try:
-            cur = con.execute("SELECT COUNT(*) FROM positions_daily")
-            row = cur.fetchone()
-            if row:
-                row_count = int(row[0])
-        except sqlite3.OperationalError:
-            row_count = 0
-        finally:
-            con.close()
-        print(f"cache database: {POSITIONS_DB} ({size} bytes, {row_count} rows)")
-    else:
-        print(f"cache database: {POSITIONS_DB} (missing)")
-    return 0
-
-
-def cmd_cache_warm(args: argparse.Namespace) -> int:
-
-    bodies = (
-        [b.strip().lower() for b in args.bodies.split(",") if b.strip()]
-        if args.bodies
-        else [
-            "sun",
-            "moon",
-            "mercury",
-            "venus",
-            "mars",
-            "jupiter",
-            "saturn",
-            "uranus",
-            "neptune",
-            "pluto",
-        ]
-    )
-    if not bodies:
-        print("no bodies specified for cache warm", file=sys.stderr)
-        return 1
-
-    enable_cache(True)
-    start_jd = _iso_to_jd(args.start)
-    end_jd = _iso_to_jd(args.end)
+    start_jd = iso_to_jd(args.start)
+    end_jd = iso_to_jd(args.end)
     if end_jd < start_jd:
         print("end must be after start", file=sys.stderr)
         return 1
@@ -633,6 +484,8 @@ def _primary_chart(args: argparse.Namespace) -> NatalChart | None:
     if not natal_ts or lat is None or lon is None:
         return None
     moment = _parse_iso_arg(str(natal_ts))
+    location = ChartLocation(latitude=float(lat), longitude=float(lon))
+    return compute_natal_chart(moment, location)
 
 
 DEFAULT_INGRESS_BODIES = (
@@ -819,7 +672,6 @@ def _handle_mundane(args: argparse.Namespace):
 
 
 # >>> AUTO-GEN BEGIN: CLI Canonical Export Commands v1.0
-from .exporters import write_parquet_canonical, write_sqlite_canonical
 
 
 def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, int]:
@@ -884,27 +736,8 @@ def add_canonical_export_args(p: argparse.ArgumentParser) -> None:
 
 # >>> AUTO-GEN END: CLI Canonical Export Commands v1.0
 
+
 # >>> AUTO-GEN BEGIN: cli-run-experimental v1.1
-from .cache.positions_cache import warm_daily  # ENSURE-LINE
-from .chart.natal import ChartLocation, compute_natal_chart
-from .detectors import (
-    find_eclipses,
-    find_lunations,
-    find_out_of_bounds,
-    find_sign_ingresses,
-    find_stations,
-    secondary_progressions,
-    solar_arc_directions,
-    solar_lunar_returns,
-)
-from .detectors.common import (
-    enable_cache,  # ENSURE-LINE
-    iso_to_jd,
-)
-from .exporters_batch import export_parquet_dataset  # ENSURE-LINE
-from .mundane import compute_solar_ingress_chart, compute_solar_quartet
-
-
 def run_experimental(args) -> None:
     if not any(
         [
@@ -1450,112 +1283,6 @@ def cmd_scan(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_scan(args: argparse.Namespace) -> int:
-    detectors = _normalize_detectors(getattr(args, "detectors", None))
-    _set_engine_detector_flags(detectors)
-
-    moving = list(dict.fromkeys(args.moving or DEFAULT_MOVING_BODIES))
-    frame_selection = list(dict.fromkeys(args.target_frames or [])) or list(
-        DEFAULT_TARGET_FRAMES
-    )
-    targets = _resolve_targets_cli(args.targets, frame_selection)
-
-    entrypoints: list[str] = []
-    for raw in getattr(args, "entrypoint", []) or []:
-        token = str(raw).strip()
-        if token:
-            entrypoints.append(token)
-
-    if getattr(args, "cache", False):
-        enable_cache(True)
-
-    provider = args.provider
-    if provider == "auto":
-        provider = None
-
-    try:
-        result = run_scan_or_raise(
-            start_utc=args.start_utc,
-            end_utc=args.end_utc,
-            moving=moving,
-            targets=targets,
-            provider=provider,
-            profile_id=args.profile,
-            step_minutes=args.step_minutes,
-            detectors=detectors,
-            target_frames=frame_selection,
-            sidereal=args.sidereal if args.sidereal is not None else None,
-            ayanamsha=args.ayanamsha or None,
-            entrypoints=entrypoints or None,
-            return_used_entrypoint=True,
-        )
-    except RuntimeError as exc:  # pragma: no cover - exercised in integration tests
-        print(f"Scan failed: {exc}", file=sys.stderr)
-        return 1
-
-    raw_events, used_entrypoint = result
-    canonical_events = canonicalize_events(raw_events)
-    records = _canonical_events_to_dicts(canonical_events)
-
-    if args.export_json:
-        try:
-            path = Path(args.export_json)
-            path.write_text(
-                json.dumps(records, indent=2, ensure_ascii=False), encoding="utf-8"
-            )
-            print(f"JSON export complete: {path} ({len(records)} events)")
-        except Exception as exc:
-            print(f"JSON export failed ({exc})", file=sys.stderr)
-
-    if args.export_sqlite:
-        try:
-            rows = write_sqlite_canonical(args.export_sqlite, canonical_events)
-            print(f"SQLite export complete: {args.export_sqlite} ({rows} rows)")
-        except Exception as exc:
-            print(f"SQLite export failed ({exc})", file=sys.stderr)
-
-    if args.export_parquet:
-        try:
-            rows = write_parquet_canonical(args.export_parquet, canonical_events)
-            print(f"Parquet export complete: {args.export_parquet} ({rows} rows)")
-        except Exception as exc:
-            print(f"Parquet export failed ({exc})", file=sys.stderr)
-
-    if args.export_ics:
-        try:
-            rows = write_ics_canonical(
-                args.export_ics,
-                canonical_events,
-                calendar_name=args.ics_title or "AstroEngine Events",
-            )
-            print(f"ICS export complete: {args.export_ics} ({rows} events)")
-        except Exception as exc:
-            print(f"ICS export failed ({exc})", file=sys.stderr)
-
-    table = _format_event_table(canonical_events)
-    module_name, func_name = used_entrypoint
-    print(f"Scan entrypoint: {module_name}.{func_name}")
-    print(f"Detected {len(canonical_events)} events")
-    if detectors:
-        print("Detectors:", ", ".join(detectors))
-    if table:
-        print(table)
-    elif not canonical_events:
-        print("No events detected for the provided window.")
-
-    if not any(
-        [
-            args.export_json,
-            args.export_sqlite,
-            args.export_parquet,
-            args.export_ics,
-        ]
-    ):
-        print(json.dumps(records, indent=2, ensure_ascii=False))
-
-    return 0
-
-
 def cmd_validate(args: argparse.Namespace) -> int:
     payload_path = Path(args.path)
     payload = json.loads(payload_path.read_text(encoding="utf-8"))
@@ -1644,7 +1371,8 @@ def cmd_locational_local_space(args: argparse.Namespace) -> int:
     else:
         for vector in vectors:
             print(
-                f"{vector.body}: azimuth {vector.azimuth_deg:.2f}°, altitude {vector.altitude_deg:.2f}°"
+                f"{vector.body}: azimuth {vector.azimuth_deg:.2f}°, "
+                f"altitude {vector.altitude_deg:.2f}°"
             )
     return 0
 
@@ -1872,39 +1600,6 @@ def _dispatch_timelords(args: argparse.Namespace) -> int:
     return cmd_timelords(args)
 
 
-def _iso_to_jd(iso_ts: str) -> float:
-    dt = datetime.fromisoformat(iso_ts.replace("Z", "+00:00")).astimezone(UTC)
-    return (dt.timestamp() / 86400.0) + UNIX_EPOCH_JD
-
-
-def run_experimental(args) -> None:
-    # Expect args.start_utc, args.end_utc in ISO-8601, and feature flags
-    if not any([args.lunations, args.stations, args.returns]):
-        return
-    if not args.start_utc or not args.end_utc:
-        print("experimental detectors require --start-utc and --end-utc; skipping")
-        return
-    chart_config = getattr(args, "chart_config", ChartConfig())
-    adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
-    start_jd = _iso_to_jd(args.start_utc)
-    end_jd = _iso_to_jd(args.end_utc)
-    if args.lunations:
-        ev = find_lunations(start_jd, end_jd)
-        print(f"lunations: {len(ev)} events")
-    if args.stations:
-        ev = find_stations(start_jd, end_jd, None)
-        print(f"stations: {len(ev)} events")
-    if args.returns:
-        # need args.natal_utc and args.return_kind
-        if not getattr(args, "natal_utc", None):
-            print("returns: missing --natal-utc; skipping")
-        else:
-            natal_jd = _iso_to_jd(args.natal_utc)
-            which = getattr(args, "return_kind", "solar")
-            ev = solar_lunar_returns(natal_jd, start_jd, end_jd, which, adapter=adapter)
-            print(f"{which}-returns: {len(ev)} events")
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="astroengine", description="AstroEngine CLI")
     parser.add_argument(
@@ -1916,7 +1611,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--ayanamsha",
         choices=sorted(SUPPORTED_AYANAMSHAS),
-        help=f"Sidereal ayanamsha (required when --zodiac sidereal; default is '{DEFAULT_SIDEREAL_AYANAMSHA}')",
+        help=(
+            "Sidereal ayanamsha (required when --zodiac sidereal; default is "
+            f"'{DEFAULT_SIDEREAL_AYANAMSHA}')"
+        ),
     )
     parser.add_argument(
         "--house-system",
@@ -2233,7 +1931,10 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         choices=["template", "llm"],
         const="template",
-        help="Generate a narrative summary (default template; pass 'llm' to use a configured model)",
+        help=(
+            "Generate a narrative summary (default template; pass 'llm' to use a "
+            "configured model)"
+        ),
     )
     transits.add_argument(
         "--narrative-top",

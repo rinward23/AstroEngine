@@ -64,66 +64,7 @@ class StationEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
-class ShadowPeriod(BaseEvent):
-    """Represents a pre- or post-retrograde shadow window."""
 
-    body: str
-    kind: str  # "pre" or "post"
-    end_ts: str
-    end_jd: float
-    retrograde_station_ts: str
-    retrograde_station_jd: float
-    retrograde_longitude: float
-    direct_station_ts: str
-    direct_station_jd: float
-    direct_longitude: float
-    start_longitude: float
-    end_longitude: float
-
-
-@dataclass(frozen=True)
-class IngressEvent(BaseEvent):
-    """Represents a zodiacal ingress for a moving body."""
-
-    body: str
-    sign_from: str
-    sign_to: str
-    longitude: float
-    speed_longitude: float
-    retrograde: bool
-
-    @property
-    def sign(self) -> str:
-        """Return the destination sign for backward compatibility."""
-
-        return self.sign_to
-
-    @property
-    def from_sign(self) -> str:
-        """Alias for the departing sign used by older APIs."""
-
-        return self.sign_from
-
-    @property
-    def to_sign(self) -> str:
-        """Alias for the destination sign used by older APIs."""
-
-        return self.sign_to
-
-    @property
-    def motion(self) -> str:
-        """Return the textual motion descriptor expected by older callers."""
-
-        return "retrograde" if self.retrograde else "direct"
-
-    @property
-    def speed_deg_per_day(self) -> float:
-        """Expose the longitudinal speed in degrees/day for legacy consumers."""
-
-        return self.speed_longitude
-
-
-@dataclass(frozen=True)
 class ReturnEvent(BaseEvent):
     """Represents a solar or lunar return event."""
 

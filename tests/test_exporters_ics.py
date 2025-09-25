@@ -1,4 +1,12 @@
-from astroengine.exporters_ics import canonical_events_to_ics, write_ics_canonical
+from pathlib import Path
+
+from astroengine.canonical import TransitEvent
+from astroengine.events import ReturnEvent
+from astroengine.exporters_ics import (
+    canonical_events_to_ics,
+    write_ics,
+    write_ics_canonical,
+)
 
 
 def test_canonical_events_to_ics_roundtrip(tmp_path):
@@ -25,13 +33,6 @@ def test_canonical_events_to_ics_roundtrip(tmp_path):
     saved = path.read_text()
     assert "Test Calendar" in saved
     assert "BEGIN:VEVENT" in saved
-
-
-from pathlib import Path
-
-from astroengine.canonical import TransitEvent
-from astroengine.events import ReturnEvent
-from astroengine.exporters_ics import write_ics
 
 
 def test_write_ics_supports_ingress_and_returns(tmp_path):

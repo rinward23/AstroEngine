@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import pytest
 
-hypothesis = pytest.importorskip("hypothesis")
-given = hypothesis.given
-settings = hypothesis.settings
-st = hypothesis.strategies
-assume = hypothesis.assume
-
 from astroengine.core.angles import (
     AngleTracker,
     classify_relative_motion,
     normalize_degrees,
     signed_delta,
 )
+
+hypothesis = pytest.importorskip("hypothesis")
+given = hypothesis.given
+settings = hypothesis.settings
+st = hypothesis.strategies
+assume = hypothesis.assume
 
 
 def test_normalize_degrees_wraps_into_range():

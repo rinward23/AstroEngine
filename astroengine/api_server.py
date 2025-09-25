@@ -24,7 +24,7 @@ if app:
         try:
             return load_natal(natal_id).__dict__
         except FileNotFoundError:
-            raise HTTPException(status_code=404, detail="natal not found")
+            raise HTTPException(status_code=404, detail="natal not found") from None
 
     @app.post("/natals/{natal_id}")
     def api_natals_put(natal_id: str, payload: dict):

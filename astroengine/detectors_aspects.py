@@ -117,7 +117,7 @@ def _orb_for(
 ) -> float:
     orbs = policy.get("orbs_deg", {}).get(aspect_name, {})
 
-    if isinstance(orbs, (int, float)):
+    if isinstance(orbs, int | float):
         return float(orbs)
 
     pair_key = f"{a_class}-{b_class}"
@@ -164,7 +164,7 @@ def _resolve_enabled(policy: dict) -> dict[str, tuple[float, str]]:
         enabled.add(_normalize_name(name))
 
     for entry in policy.get("enabled_harmonics", []):
-        if isinstance(entry, (int, float)) or (
+        if isinstance(entry, int | float) or (
             isinstance(entry, str) and entry.strip().isdigit()
         ):
             try:
