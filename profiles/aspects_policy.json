@@ -8,7 +8,6 @@
     "opposition": 180,
     "semisextile": 30,
     "semisquare": 45,
-
     "sesquisquare": 135,
     "quincunx": 150,
     "quintile": 72,
@@ -21,11 +20,26 @@
     "triseptile": 154.2857,
     "tredecile": 108,
     "undecile": 32.7273
-
   },
   "enabled": ["conjunction", "sextile", "square", "trine", "opposition"],
-  "enabled_minors": [],
-  "enabled_harmonics": [],
+  "enabled_minors": [
+    "semisextile",
+    "semisquare",
+    "sesquisquare",
+    "quincunx",
+    "quintile",
+    "biquintile",
+    "semiquintile"
+  ],
+  "enabled_harmonics": [
+    "novile",
+    "binovile",
+    "septile",
+    "biseptile",
+    "triseptile",
+    "tredecile",
+    "undecile"
+  ],
   "partile_threshold_deg": 0.1667,
   "default_orb_deg": 2.0,
   "orb_defaults": {
@@ -52,9 +66,7 @@
     "biseptile":  {"luminary": 1.0, "personal": 1.0, "social": 1.0, "outer": 1.0},
     "triseptile": {"luminary": 1.0, "personal": 1.0, "social": 1.0, "outer": 1.0},
     "tredecile":  {"luminary": 1.5, "personal": 1.5, "social": 1.5, "outer": 1.5},
-    "undecile":   {"luminary": 1.0, "personal": 1.0, "social": 1.0, "outer": 1.0},
-    "sesquiquadrate": {"luminary": 2.0, "personal": 2.0, "social": 2.0, "outer": 2.0}
-
+    "undecile":   {"luminary": 1.0, "personal": 1.0, "social": 1.0, "outer": 1.0}
   }
 }
 # >>> AUTO-GEN END: AE Aspects Policy v1.0
