@@ -233,9 +233,11 @@ production deployments to regain full Swiss Ephemeris precision.
 # >>> AUTO-GEN END: AE README Providers Addendum v1.2
 
 # >>> AUTO-GEN BEGIN: AE README Aspects + Domain Report v1.0
-### Enable minor & harmonic aspects (optional)
-Edit `profiles/aspects_policy.json`, adding desired entries to `enabled_minors` and
-`enabled_harmonics` (accepts canonical names or harmonic numbers 5–12), then:
+### Minor & harmonic aspects (default policy)
+Minor and harmonic families ship **enabled by default** through
+`profiles/aspects_policy.json`. Adjust `enabled_minors` or
+`enabled_harmonics` (accepts canonical names or harmonic numbers 5–12) to
+disable or extend the active set, then:
 ```bash
 python -m astroengine scan --start 2024-06-01T00:00:00Z --end 2024-06-07T00:00:00Z \
   --moving mars --target venus --provider swiss

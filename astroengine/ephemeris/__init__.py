@@ -11,6 +11,7 @@ from .adapter import (
     TimeScaleContext,
 )
 from .refinement import RefinementBracket, refine_event
+from .support import SupportIssue, filter_supported
 from .swisseph_adapter import BodyPosition, HousePositions, SwissEphemerisAdapter
 
 __all__ = [
@@ -25,4 +26,6 @@ __all__ = [
     "BodyPosition",
     "HousePositions",
     "TimeScaleContext",
+    "SupportIssue",
+    "filter_supported",
 ]

@@ -1,4 +1,6 @@
+
 """Aspect angle defaults and orb calculations sourced from policy JSON."""
+
 
 from __future__ import annotations
 
@@ -7,6 +9,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources as importlib_resources
 from math import isclose
+
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -24,6 +27,7 @@ except Exception:  # pragma: no cover
         if n in personals:
             return "personal"
         if n in socials:
+
             return "social"
         return "outer"
 
@@ -37,10 +41,12 @@ def _load_aspects_policy() -> dict:
     """Load the packaged aspect policy with an editable-install fallback."""
 
     text: str | None = None
+
     try:
         resource = importlib_resources.files("astroengine.profiles").joinpath(
             "aspects_policy.json"
         )
+
         # ``read_text`` works for regular and zip-based installations alike.
         text = resource.read_text(encoding="utf-8")
     except (FileNotFoundError, ModuleNotFoundError):  # pragma: no cover - packaging issues
@@ -53,6 +59,7 @@ def _load_aspects_policy() -> dict:
         line for line in text.splitlines() if not line.strip().startswith("#")
     )
     return json.loads(filtered)
+
 
 
 @lru_cache(maxsize=1)
@@ -90,9 +97,11 @@ def _enabled_angle_values() -> Sequence[float]:
     name_to_angle, _ = _angles_index()
     enabled: set[str] = set()
     for key in ("enabled", "enabled_minors", "enabled_harmonics"):
+
         values = policy.get(key) or []
         for name in values:
             normalized = _normalize_name(str(name))
+
             if normalized:
                 enabled.add(normalized)
     return tuple(
@@ -105,7 +114,9 @@ DEFAULT_ASPECTS: tuple[float, ...] = tuple(_enabled_angle_values())
 
 @dataclass(frozen=True)
 class OrbCalculator:
+
     """Compute orb allowances using the repository's aspect policy."""
+
 
     _policy: Mapping[str, object] | None = None
 
@@ -121,6 +132,7 @@ class OrbCalculator:
         profile: str = "standard",
     ) -> float:
         policy = self._policy or {}
+
         aspect_name = _aspect_name_for_angle(float(angle_deg))
         per_aspect: Mapping[str, Mapping[str, float]] = policy.get("orbs_deg", {})  # type: ignore[assignment]
         if aspect_name and aspect_name in per_aspect:
@@ -142,6 +154,7 @@ class OrbCalculator:
             default_value = float(family_defaults.get("default", 2.0))
             allow_a = float(family_defaults.get(classification_a, default_value))
             allow_b = float(family_defaults.get(classification_b, default_value))
+
             return min(allow_a, allow_b)
 
         return float(policy.get("default_orb_deg", 2.0))

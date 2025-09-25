@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,17 +13,19 @@ from itertools import tee
 from typing import Any
 
 from ..chart.config import ChartConfig
+from ..core.bodies import canonical_name
 from ..core.engine import get_active_aspect_angles
 from ..detectors import CoarseHit
 from ..detectors import common as detectors_common
 from ..detectors import detect_antiscia_contacts, detect_decl_contacts
 from ..detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
 from ..detectors_aspects import AspectHit, detect_aspects
-from ..ephemeris import EphemerisConfig, SwissEphemerisAdapter
+from ..ephemeris import EphemerisConfig, SwissEphemerisAdapter, filter_supported
 from ..exporters import LegacyTransitEvent
 from ..plugins import DetectorContext, get_plugin_manager
 from ..providers import get_provider
 from ..scoring import ScoreInputs, compute_score
+from ..scheduling.gating import choose_step
 from .context import (
     ScanFeaturePlan,
     ScanFeatureToggles,
@@ -47,6 +50,8 @@ try:  # pragma: no cover - optional for environments without pyswisseph
     import swisseph as swe  # type: ignore
 except Exception:  # pragma: no cover
     swe = None  # type: ignore
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "events_to_dicts",
@@ -182,16 +187,22 @@ def _attach_timelords(
     event.metadata.setdefault("timelords", stack.to_dict())
 
 
-def _iso_ticks(start_iso: str, end_iso: str, *, step_minutes: int) -> Iterable[str]:
-    """Yield ISO-8601 timestamps separated by ``step_minutes`` minutes."""
+def _iso_ticks(
+    start_iso: str,
+    end_iso: str,
+    *,
+    step: dt.timedelta,
+) -> Iterable[str]:
+    """Yield ISO-8601 timestamps separated by ``step``."""
 
     start_dt = dt.datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
     end_dt = dt.datetime.fromisoformat(end_iso.replace("Z", "+00:00"))
-    step = dt.timedelta(minutes=step_minutes)
+    seconds = max(step.total_seconds(), 60.0)
     current = start_dt
+    delta = dt.timedelta(seconds=seconds)
     while current <= end_dt:
         yield current.replace(tzinfo=dt.UTC).isoformat().replace("+00:00", "Z")
-        current += step
+        current += delta
 
 
 def _score_from_hit(
@@ -444,7 +455,8 @@ def scan_contacts(
     decl_contra_orb: float | None = None,
     antiscia_orb: float | None = None,
     contra_antiscia_orb: float | None = None,
-    step_minutes: int = 60,
+    step_minutes: int | None = None,
+    resolution: str = "day",
     aspects_policy_path: str | None = None,
     provider: object | None = None,
     target_frame: str = "transit",
@@ -461,6 +473,9 @@ def scan_contacts(
     chart_sect: str | None = None,
 ) -> list[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
+
+    moving = canonical_name(moving)
+    target = canonical_name(target)
 
     base_provider = provider or get_provider(provider_name)
     if ephemeris_config is not None:
@@ -489,6 +504,27 @@ def scan_contacts(
 
     if chart_config is not None:
         SwissEphemerisAdapter.configure_defaults(chart_config=chart_config)
+
+    if hasattr(scan_provider, "position") or hasattr(scan_provider, "positions_ecliptic"):
+        supported_bodies, support_issues = filter_supported([moving, target], scan_provider)
+        supported_set = set(supported_bodies)
+    else:
+        supported_bodies = [moving, target]
+        supported_set = {moving, target}
+        support_issues = []
+    skipped_bodies = sorted(
+        {canonical_name(issue.body) for issue in support_issues if canonical_name(issue.body)}
+    )
+    for issue in support_issues:
+        logger.warning(
+            {
+                "event": "body_unsupported",
+                "body": canonical_name(issue.body) or issue.body,
+                "reason": issue.reason,
+            }
+        )
+    if moving not in supported_set or target not in supported_set:
+        return []
 
     profile_data = resolve_profile(profile, profile_id)
     profile_ctx = build_scan_profile_context(
@@ -524,17 +560,33 @@ def scan_contacts(
         uncertainty_bias=profile_ctx.uncertainty_bias,
     )
 
-    feature_metadata = feature_plan.plugin_metadata()
+    feature_metadata = dict(feature_plan.plugin_metadata())
+    if skipped_bodies:
+        feature_metadata.setdefault("skipped_bodies", list(skipped_bodies))
 
-    tick_source = _iso_ticks(start_iso, end_iso, step_minutes=step_minutes)
+    gating_step_moving = choose_step(resolution, moving)
+    gating_step_target = choose_step(resolution, target)
+    gating_step = min(gating_step_moving, gating_step_target, key=lambda td: td.total_seconds())
+    if step_minutes is not None and step_minutes > 0:
+        effective_step = dt.timedelta(minutes=float(step_minutes))
+    else:
+        effective_step = gating_step
+
+    tick_source = _iso_ticks(start_iso, end_iso, step=effective_step)
     decl_ticks, mirror_ticks, aspect_ticks, plugin_ticks = tee(tick_source, 4)
 
     cached_provider = _TickCachingProvider(scan_provider)
 
     events: list[LegacyTransitEvent] = []
 
+    skip_metadata = {"skipped_bodies": list(skipped_bodies)} if skipped_bodies else {}
+
     def _append_event(event: LegacyTransitEvent) -> None:
         _attach_timelords(event, timelord_calculator)
+        if skip_metadata:
+            provenance = event.metadata.setdefault("provenance", {})
+            if isinstance(provenance, dict):
+                provenance.setdefault("skipped_bodies", skip_metadata["skipped_bodies"])
         events.append(event)
 
     for event in _declination_events(
@@ -586,12 +638,18 @@ def scan_contacts(
             "decl_contra_orb": decl_contra_allow,
             "antiscia_orb": antiscia_allow,
             "contra_antiscia_orb": contra_antiscia_allow,
-            "step_minutes": step_minutes,
+            "step_minutes": (
+                step_minutes
+                if step_minutes is not None
+                else int(max(effective_step.total_seconds() // 60, 1))
+            ),
+            "resolution": resolution,
             "aspects_policy_path": aspects_policy_path,
             "antiscia_axis": axis,
             **feature_metadata,
             "declination_flags": dict(profile_ctx.declination_flags),
             "antiscia_flags": dict(profile_ctx.antiscia_flags),
+            "skipped_bodies": list(skipped_bodies),
         },
         existing_events=tuple(events),
     )
