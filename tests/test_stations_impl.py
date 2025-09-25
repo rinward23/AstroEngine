@@ -6,7 +6,7 @@ import os
 import pytest
 
 from astroengine.detectors.common import iso_to_jd
-from astroengine.detectors.stations import find_stations
+from astroengine.detectors.stations import find_shadow_periods, find_stations
 
 try:  # pragma: no cover - optional dependency guard
     import swisseph as swe  # type: ignore

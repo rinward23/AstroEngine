@@ -508,7 +508,9 @@ def _fold_ics_line(line: str) -> list[str]:
     segments: list[str] = []
     remaining = line
     while len(remaining) > 75:
-        segments.append(remaining[:75])
+        chunk = remaining[:75]
+        stripped = chunk.rstrip(" ")
+        segments.append(stripped or chunk)
         remaining = " " + remaining[75:]
     segments.append(remaining)
     return segments

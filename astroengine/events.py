@@ -64,6 +64,24 @@ class StationEvent(BaseEvent):
 
 
 @dataclass(frozen=True)
+class ShadowPeriod(BaseEvent):
+    """Represents the shadow period surrounding a retrograde cycle."""
+
+    body: str
+    kind: str  # "pre" or "post"
+    end_ts: str
+    end_jd: float
+    retrograde_station_ts: str
+    retrograde_station_jd: float
+    retrograde_longitude: float
+    direct_station_ts: str
+    direct_station_jd: float
+    direct_longitude: float
+    start_longitude: float
+    end_longitude: float
+
+
+@dataclass(frozen=True)
 
 class ReturnEvent(BaseEvent):
     """Represents a solar or lunar return event."""
