@@ -12,7 +12,11 @@ def solar_arc_natal_aspects(
     aspects: Sequence[int],
     orb_deg: float,
 ) -> list[object]:
-    return []
+    raise NotImplementedError(
+        "'solar_arc_natal_aspects' is not yet implemented. "
+        "Enable the experimental directed-aspects modality once an "
+        "implementation is available."
+    )
 
 
 # >>> AUTO-GEN END: detector-directed-aspects v1.0

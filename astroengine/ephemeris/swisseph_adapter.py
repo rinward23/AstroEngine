@@ -640,7 +640,7 @@ class SwissEphemerisAdapter:
             midheaven=midheaven,
 
             system_name=used_name,
-
+            fallback_from=fallback_from,
         )
 
     # ------------------------------------------------------------------
