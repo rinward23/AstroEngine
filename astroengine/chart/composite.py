@@ -166,7 +166,15 @@ def _average_houses(
     asc = _midpoint_angle(houses_a.ascendant, houses_b.ascendant)
     mc = _midpoint_angle(houses_a.midheaven, houses_b.midheaven)
     return HousePositions(
-        system=houses_a.system, cusps=cusps, ascendant=asc, midheaven=mc
+        system=houses_a.system,
+        cusps=cusps,
+        ascendant=asc,
+        midheaven=mc,
+        system_name=houses_a.system_name,
+        requested_system=houses_a.requested_system,
+        fallback_from=houses_a.fallback_from,
+        fallback_reason=houses_a.fallback_reason,
+        provenance=houses_a.provenance,
     )
 
 

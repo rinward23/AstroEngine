@@ -23,61 +23,22 @@ __all__ = [
 
 VALID_ZODIAC_SYSTEMS = {"tropical", "sidereal"}
 
-# Canonical Swiss house systems supported by the runtime.  A union of name
-# aliases and Swiss single-letter codes are accepted; everything is normalised
-# to the canonical key listed here.
-_HOUSE_SYSTEM_CANONICAL_CODES = {
-    "placidus": "P",
-    "koch": "K",
-    "regiomontanus": "R",
-    "campanus": "C",
-    "equal": "A",
-    "whole_sign": "W",
-    "porphyry": "O",
-    "alcabitius": "B",
-    "topocentric": "T",
-    "morinus": "M",
-    "meridian": "X",
-    "vehlow_equal": "V",
-    "sripati": "S",
-    # Rare but exposed for completeness
-    "equal_mc": "D",
-}
+VALID_HOUSE_SYSTEMS = {
+    "alcabitius",
+    "campanus",
+    "equal",
+    "equal_mc",
+    "koch",
+    "meridian",
+    "morinus",
+    "placidus",
+    "porphyry",
+    "regiomontanus",
+    "sripati",
+    "topocentric",
+    "vehlow_equal",
+    "whole_sign",
 
-_HOUSE_SYSTEM_ALIASES = {
-    "p": "placidus",
-    "plac": "placidus",
-    "koch": "koch",
-    "k": "koch",
-    "regio": "regiomontanus",
-    "r": "regiomontanus",
-    "campanus": "campanus",
-    "c": "campanus",
-    "equal": "equal",
-    "e": "equal",
-    "whole_sign": "whole_sign",
-    "wholesign": "whole_sign",
-    "ws": "whole_sign",
-    "w": "whole_sign",
-    "porphyry": "porphyry",
-    "o": "porphyry",
-    "alcabitius": "alcabitius",
-    "b": "alcabitius",
-    "topocentric": "topocentric",
-    "t": "topocentric",
-    "morinus": "morinus",
-    "m": "morinus",
-    "meridian": "meridian",
-    "axial": "meridian",
-    "x": "meridian",
-    "vehlow": "vehlow_equal",
-    "vehlow_equal": "vehlow_equal",
-    "v": "vehlow_equal",
-    "sripati": "sripati",
-    "sripathi": "sripati",
-    "s": "sripati",
-    "equal_mc": "equal_mc",
-    "d": "equal_mc",
 }
 
 VALID_HOUSE_SYSTEMS = set(_HOUSE_SYSTEM_CANONICAL_CODES)
