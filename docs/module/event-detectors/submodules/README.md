@@ -1,13 +1,13 @@
 # Event Detector Submodules Index
 
-The table below maps the planned detector submodules to their channels and primary documentation. Maintaining the list avoids accidental loss of registry nodes while the implementation work proceeds.
+Each submodule groups a coherent detector family. The table highlights the channels and the canonical documentation that backs each resolver.
 
-| Submodule | Channels | Primary references |
-| --- | --- | --- |
-| `stations` | `stations.direct`, `stations.shadow` | `docs/module/event-detectors/overview.md`, `rulesets/transit/stations.ruleset.md` |
-| `ingresses` | `ingresses.sign`, `ingresses.house` | `docs/module/event-detectors/overview.md`, `rulesets/transit/ingresses.ruleset.md` |
-| `lunations` | `lunations.solar`, `lunations.lunar` | `docs/module/event-detectors/overview.md`, `rulesets/transit/lunations.ruleset.md` |
-| `declination` | `declination.oob`, `declination.parallel` | `docs/module/event-detectors/overview.md`, Solar Fire declination exports noted in `docs/module/core-transit-math.md` |
-| `overlays` | `overlays.midpoints`, `overlays.fixed_stars`, `overlays.returns`, `overlays.profections` | `docs/module/event-detectors/overview.md`, `rulesets/transit/scan.ruleset.md`, Solar Fire return/profection reference tables |
+| Submodule | Channels | Primary references | Tests |
+| --- | --- | --- | --- |
+| `stations` | `stations.direct`, `stations.shadow` | `rulesets/transit/stations.ruleset.md`, `docs/module/event-detectors/overview.md` | `tests/test_stations_impl.py` |
+| `ingresses` | `ingresses.sign.transits`, `ingresses.house.transits` | `rulesets/transit/ingresses.ruleset.md`, `docs/module/providers_and_frames.md` | `tests/test_ingress_features.py`, `tests/test_ingresses_mundane.py` |
+| `lunations` | `lunations.solar.new_and_full`, `lunations.lunar.eclipses` | `rulesets/transit/lunations.ruleset.md` | `tests/test_lunations_impl.py`, `tests/test_eclipses_impl.py` |
+| `declination` | `declination.oob`, `declination.parallel` | `rulesets/transit/scan.ruleset.md` (declination sections) | `tests/test_out_of_bounds_impl.py`, `tests/test_detectors_aspects.py` |
+| `overlays` | `overlays.midpoints.transits`, `overlays.fixed_stars.contacts`, `overlays.returns.transits`, `overlays.profections.transits` | `rulesets/transit/scan.ruleset.md`, `profiles/fixed_stars.csv`, `docs/module/event-detectors/overview.md` | `tests/test_progressions_directions_impl.py`, `tests/test_star_names_dataset.py`, `tests/test_timelords.py`, `tests/test_timelords_systems.py` |
 
-When adding new detector families extend this table and update the overview so the governance tooling can confirm the module → submodule → channel → subchannel hierarchy remains intact.
+Extend this table when new detector families are added and keep the references in sync with the registry metadata so governance tooling can audit the hierarchy.
