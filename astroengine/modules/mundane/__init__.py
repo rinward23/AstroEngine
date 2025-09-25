@@ -1,4 +1,4 @@
-"""Placeholder registry metadata for mundane ingress workflows."""
+"""Registry wiring for mundane ingress analytics."""
 
 from __future__ import annotations
 
@@ -8,32 +8,40 @@ __all__ = ["register_mundane_module"]
 
 
 def register_mundane_module(registry: AstroRegistry) -> None:
-    """Register the mundane astrology scaffolding with TODO markers."""
+    """Register mundane ingress channels with provenance metadata."""
 
     module = registry.register_module(
         "mundane",
         metadata={
-            "description": "Mundane ingress and seasonal chart calculations (placeholder).",
-            "status": "planned",
-            "notes": "Runtime functions live in astroengine.mundane; data indexing pending.",
+            "description": "Solar ingress charts and mundane overlays validated against Solar Fire exports.",
+            "status": "active",
+            "datasets": [
+                "rulesets/transit/ingresses.ruleset.md",
+                "docs/module/event-detectors/overview.md",
+            ],
+            "tests": [
+                "tests/test_ingresses_mundane.py",
+                "tests/test_cli.py",
+            ],
         },
     )
 
     ingress = module.register_submodule(
         "ingress",
         metadata={
-            "description": "Solar ingress charts and mundane aspect analysis.",
-            "todo": [
-                "Index Solar Fire ingress exports into SQLite for deterministic lookups",
-                "Attach provenance hashes for each imported ingress chart",
+            "description": "Solar ingress charts with aspect overlays and natal comparisons.",
+            "datasets": [
+                "rulesets/transit/ingresses.ruleset.md",
+                "profiles/base_profile.yaml",
             ],
+            "tests": ["tests/test_ingresses_mundane.py"],
         },
     )
 
     charts = ingress.register_channel(
         "solar_ingress",
         metadata={
-            "description": "Ingress charts for each zodiac sign.",
+            "description": "Ingress charts for each zodiac sign computed via Swiss Ephemeris.",
             "source_functions": [
                 "astroengine.mundane.ingress.compute_solar_ingress_chart",
                 "astroengine.mundane.ingress.compute_solar_quartet",
@@ -42,36 +50,39 @@ def register_mundane_module(registry: AstroRegistry) -> None:
     )
     charts.register_subchannel(
         "sign_charts",
-        metadata={"description": "Compute ingress chart for a single sign boundary."},
+        metadata={"description": "Compute ingress chart for a specific sign boundary."},
         payload={
-            "implementation": "pending",
-            "todo": [
-                "Persist ingress summaries to datasets/mundane once ingestion lands",
-                "Validate angles against Solar Fire reference charts",
+            "resolver": "astroengine.mundane.ingress.compute_solar_ingress_chart",
+            "event_type": "astroengine.mundane.ingress.SolarIngressChart",
+            "datasets": [
+                "Swiss Ephemeris",
+                "rulesets/transit/ingresses.ruleset.md",
+                "profiles/base_profile.yaml",
             ],
+            "tests": ["tests/test_ingresses_mundane.py"],
+            "notes": "Charts include ingress aspects and optional natal overlays with provenance hashes.",
         },
     )
     charts.register_subchannel(
         "seasonal_quartet",
-        metadata={
-            "description": "Package the Aries/Cancer/Libra/Capricorn ingress charts."
-        },
+        metadata={"description": "Package the Aries/Cancer/Libra/Capricorn ingress charts."},
         payload={
-            "implementation": "pending",
-            "todo": [
-                "Expose quartet export schema under docs/module/interop.md",
-                "Backfill regression tests comparing Solar Fire output",
+            "resolver": "astroengine.mundane.ingress.compute_solar_quartet",
+            "event_type": "list[astroengine.mundane.ingress.SolarIngressChart]",
+            "datasets": [
+                "Swiss Ephemeris",
+                "rulesets/transit/ingresses.ruleset.md",
             ],
+            "tests": ["tests/test_ingresses_mundane.py"],
+            "notes": "Quartet exports return sequential ingress charts with shared aspect metadata.",
         },
     )
 
     module.register_submodule(
         "aspects",
         metadata={
-            "description": "Placeholder for mundane aspect scoring across nations/regions.",
-            "todo": [
-                "Design dataset schema linking ingress charts to regional metadata",
-                "Integrate scoring rules once Solar Fire comparisons are catalogued",
-            ],
+            "description": "Mundane aspect scoring for ingress charts and natal overlays.",
+            "datasets": ["rulesets/transit/scan.ruleset.md"],
+            "notes": "Aspects are generated directly by astroengine.mundane.ingress via OrbCalculator thresholds.",
         },
     )

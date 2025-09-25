@@ -10,6 +10,7 @@ __all__ = [
     "LunationEvent",
     "EclipseEvent",
     "StationEvent",
+    "ShadowPeriod",
     "IngressEvent",
     "ReturnEvent",
     "DashaPeriod",
@@ -60,6 +61,24 @@ class StationEvent(BaseEvent):
     motion: str
     longitude: float
     speed_longitude: float
+
+
+@dataclass(frozen=True)
+class ShadowPeriod(BaseEvent):
+    """Represents a pre- or post-retrograde shadow window."""
+
+    body: str
+    kind: str  # "pre" or "post"
+    end_ts: str
+    end_jd: float
+    retrograde_station_ts: str
+    retrograde_station_jd: float
+    retrograde_longitude: float
+    direct_station_ts: str
+    direct_station_jd: float
+    direct_longitude: float
+    start_longitude: float
+    end_longitude: float
 
 
 @dataclass(frozen=True)
