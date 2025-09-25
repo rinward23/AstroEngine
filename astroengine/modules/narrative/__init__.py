@@ -13,18 +13,14 @@ def register_narrative_module(registry: AstroRegistry) -> None:
     module = registry.register_module(
         "narrative",
         metadata={
-            "description": "Narrative bundle and profile composition backed by scored transit data.",
-            "status": "active",
-            "datasets": [
-                "docs/recipes/narrative_profiles.md",
-                "profiles/base_profile.yaml",
-            ],
-            "tests": [
-                "tests/test_narrative_overlay.py",
-                "tests/test_narrative_summaries.py",
-                "tests/test_narrative_templates.py",
-            ],
-            "notes": "Runtime implementation lives in astroengine.narrative and sources highlights from scored Solar Fire comparisons.",
+
+            "description": "Narrative bundle and profile composition (placeholder).",
+            "status": "planned",
+            "notes": (
+                "Runtime implementation lives in astroengine.narrative and "
+                "relies on Solar Fire backed scores."
+            ),
+
         },
     )
 

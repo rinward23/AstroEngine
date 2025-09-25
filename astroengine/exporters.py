@@ -148,6 +148,7 @@ class ParquetExporter:
 
 
 # >>> AUTO-GEN BEGIN: Canonical Export Adapters v1.0
+
 def write_sqlite_canonical(db_path: str, events: _TypingIterable[_TypingAny]) -> int:
     """Canonical SQLite writer accepting legacy or canonical events."""
 

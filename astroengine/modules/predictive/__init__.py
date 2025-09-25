@@ -13,7 +13,10 @@ def register_predictive_module(registry: AstroRegistry) -> None:
     module = registry.register_module(
         "predictive",
         metadata={
-            "description": "Progressions, returns, and derived chart utilities backed by Swiss ephemeris data.",
+            "description": (
+                "Progressions, returns, and derived chart utilities backed by "
+                "Swiss ephemeris data."
+            ),
         },
     )
 
@@ -24,7 +27,7 @@ def register_predictive_module(registry: AstroRegistry) -> None:
             "cadence": "annual",
         },
     )
-    secondary = progressions.register_channel(
+    progressions.register_channel(
         "secondary",
         metadata={
             "description": "Secondary progressions computed via day-for-a-year mapping.",
@@ -50,10 +53,13 @@ def register_predictive_module(registry: AstroRegistry) -> None:
         "directions",
         metadata={"techniques": ["solar_arc"]},
     )
-    solar_arc = directions.register_channel(
+    directions.register_channel(
         "solar_arc",
         metadata={
-            "description": "Solar arc directions using progressed Sun motion applied to natal bodies.",
+            "description": (
+                "Solar arc directions using progressed Sun motion applied to "
+                "natal bodies."
+            ),
             "sources": ["Swiss Ephemeris"],
         },
     )
@@ -91,7 +97,7 @@ def register_predictive_module(registry: AstroRegistry) -> None:
             "description": "Midpoints, harmonics, and other synthetic charts built from natal data."
         },
     )
-    harmonics = derived.register_channel(
+    derived.register_channel(
         "harmonics",
         metadata={"description": "Multiplicative harmonic overlays (e.g., 5th, 7th)."},
     )

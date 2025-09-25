@@ -251,12 +251,19 @@ def detect_antiscia_contacts(
 from .directions import solar_arc_directions  # noqa: E402
 from .eclipses import find_eclipses  # noqa: E402
 
+_INGRESS_IMPORT_ERROR: SyntaxError | None = None
+
 try:  # pragma: no cover - optional when ingress module is syntactically unavailable
     from .ingresses import find_sign_ingresses  # noqa: E402
-except SyntaxError:  # pragma: no cover - defensive for partial builds
+except SyntaxError as exc:  # pragma: no cover - defensive for partial builds
+    _INGRESS_IMPORT_ERROR = exc
 
     def find_sign_ingresses(*_args, **_kwargs):  # type: ignore
-        raise RuntimeError("sign ingress detector unavailable") from None
+
+        raise RuntimeError(
+            "sign ingress detector unavailable"
+        ) from _INGRESS_IMPORT_ERROR
+
 
 
 from .lunations import find_lunations  # noqa: E402
