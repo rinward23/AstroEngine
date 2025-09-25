@@ -1,8 +1,10 @@
+
 """Body catalogue helpers for gating, scoring, and default profiles."""
 
 from __future__ import annotations
 
 from functools import lru_cache
+
 from typing import Dict, Set
 
 __all__ = [
@@ -14,9 +16,11 @@ __all__ = [
 ]
 
 
+
 # Canonical body classification including nodes, points, asteroids, and TNOs.
 _BODY_CLASS: Dict[str, str] = {
     # Luminaries / classical planets
+
     "sun": "luminary",
     "moon": "luminary",
     "mercury": "personal",
@@ -27,7 +31,9 @@ _BODY_CLASS: Dict[str, str] = {
     "uranus": "outer",
     "neptune": "outer",
     "pluto": "outer",
+
     # Asteroids / centaurs
+
     "ceres": "asteroid",
     "pallas": "asteroid",
     "juno": "asteroid",
@@ -35,7 +41,9 @@ _BODY_CLASS: Dict[str, str] = {
     "chiron": "centaur",
     "pholus": "centaur",
     "nessus": "centaur",
+
     # Trans-Neptunian / dwarf planets
+
     "eris": "tno",
     "haumea": "tno",
     "makemake": "tno",
@@ -43,6 +51,7 @@ _BODY_CLASS: Dict[str, str] = {
     "quaoar": "tno",
     "orcus": "tno",
     "ixion": "tno",
+
     # Lunar nodes
     "mean_node": "point",
     "true_node": "point",
@@ -52,11 +61,13 @@ _BODY_CLASS: Dict[str, str] = {
     "mean_lilith": "point",
     "true_lilith": "point",
     # Vertex / lots
+
     "vertex": "point",
     "antivertex": "point",
     "fortune": "point",
     "spirit": "point",
 }
+
 
 
 _BODY_ALIASES: Dict[str, str] = {
@@ -69,6 +80,7 @@ _BODY_ALIASES: Dict[str, str] = {
     "black_moon_lilith": "mean_lilith",
     "lilith": "mean_lilith",
     "trueblackmoon": "true_lilith",
+
     "avx": "antivertex",
     "part_of_fortune": "fortune",
     "pof": "fortune",
@@ -88,9 +100,11 @@ def canonical_name(name: str) -> str:
 def body_class(name: str) -> str:
     """Return the scoring/gating class for the supplied body name."""
 
+
     canonical = canonical_name(name)
     if not canonical:
         return "outer"
+
     return _BODY_CLASS.get(canonical, "outer")
 
 
@@ -127,3 +141,4 @@ def step_multiplier(name: str) -> float:
     """Return the cadence multiplier for ``name`` based on its tier."""
 
     return _TIER_STEP_MULT.get(body_priority(name), 2.5)
+

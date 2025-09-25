@@ -1,13 +1,17 @@
+
 """Resolution-aware body gating utilities used by the scan orchestrator."""
+
 
 from __future__ import annotations
 
 from datetime import timedelta
 from typing import Iterable, List
 
+
 from ..core.bodies import body_priority, canonical_name, step_multiplier
 
 # Base cadence per resolution before body-specific multipliers are applied.
+
 _BASE_STEP = {
     "minute": timedelta(seconds=15),
     "hour": timedelta(minutes=2),
@@ -18,8 +22,10 @@ _BASE_STEP = {
 }
 
 
+
 def base_step(resolution: str) -> timedelta:
     """Return the base cadence for ``resolution`` (defaults to daily sweep)."""
+
 
     return _BASE_STEP.get(resolution, timedelta(hours=2))
 
@@ -54,3 +60,4 @@ __all__ = [
     "choose_step",
     "sort_bodies_for_scan",
 ]
+

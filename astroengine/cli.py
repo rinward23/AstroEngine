@@ -1924,7 +1924,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Emit only declination contacts (skip aspects and antiscia)",
     )
-    transits.add_argument("--step", type=int, default=60)
+    transits.add_argument("--step", type=int, default=None)
     transits.add_argument("--aspects-policy")
     transits.add_argument("--target-longitude", type=float, default=None)
     transits.add_argument(

@@ -1,8 +1,11 @@
+
 """Ephemeris capability probing helpers."""
+
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 from typing import Iterable, List
 
 
@@ -10,8 +13,10 @@ from typing import Iterable, List
 class SupportIssue:
     """Represents an unsupported body probe against a provider."""
 
+
     body: str
     reason: str
+
 
 
 def _probe_timestamp(provider) -> str:
@@ -54,3 +59,4 @@ def filter_supported(bodies: Iterable[str], provider) -> tuple[List[str], List[S
 
 
 __all__ = ["SupportIssue", "filter_supported"]
+
