@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import replace
 from datetime import UTC, datetime
+import logging
+from typing import Dict, List
 
 from astroengine.canonical import BodyPosition
 from astroengine.core.time import TimeConversion, to_tt
@@ -13,6 +15,9 @@ from astroengine.ephemeris import (
     TimeScaleContext,
 )
 from astroengine.ephemeris.utils import get_se_ephe_path
+from astroengine.ephemeris.support import SupportIssue
+from astroengine.core.bodies import canonical_name
+from .swisseph_adapter import VariantConfig, se_body_id_for
 
 try:
     import swisseph as swe  # pyswisseph imports the module name 'swisseph'
@@ -53,7 +58,10 @@ except Exception:  # pragma: no cover
 
 from . import register_provider
 
-_BODY_IDS = {
+LOG = logging.getLogger(__name__)
+
+
+_BODY_IDS: Dict[str, int] = {
     "sun": 0,
     "moon": 1,
     "mercury": 2,
@@ -66,6 +74,27 @@ _BODY_IDS = {
     "pluto": 9,
 }
 
+if swe is not None:  # pragma: no cover - depends on installed ephemeris
+    for attr, name in (
+        ("CERES", "ceres"),
+        ("PALLAS", "pallas"),
+        ("JUNO", "juno"),
+        ("VESTA", "vesta"),
+        ("CHIRON", "chiron"),
+        ("PHOLUS", "pholus"),
+        ("NESSUS", "nessus"),
+        ("ERIS", "eris"),
+        ("HAUMEA", "haumea"),
+        ("MAKEMAKE", "makemake"),
+        ("SEDNA", "sedna"),
+        ("QUAOAR", "quaoar"),
+        ("ORCUS", "orcus"),
+        ("IXION", "ixion"),
+    ):
+        code = getattr(swe, attr, None)
+        if code is not None:
+            _BODY_IDS[name] = int(code)
+
 
 class SwissProvider:
     def __init__(self) -> None:
@@ -76,6 +105,9 @@ class SwissProvider:
             swe.set_ephe_path(eph)
         self._config = EphemerisConfig(ephemeris_path=str(eph) if eph else None)
         self._adapter = EphemerisAdapter(self._config)
+        self._body_ids = dict(_BODY_IDS)
+        self._variant_config = VariantConfig()
+        self._last_support_issues: List[SupportIssue] = []
 
     def configure(
         self,
@@ -84,8 +116,24 @@ class SwissProvider:
         observer: ObserverLocation | None = None,
         sidereal: bool | None = None,
         time_scale: TimeScaleContext | None = None,
+        nodes_variant: str | None = None,
+        lilith_variant: str | None = None,
     ) -> None:
         """Update ephemeris configuration used by the provider."""
+
+        variant_updates: dict[str, str] = {}
+        if nodes_variant:
+            normalized = nodes_variant.lower()
+            if normalized not in {"mean", "true"}:
+                raise ValueError("nodes_variant must be 'mean' or 'true'")
+            variant_updates["nodes_variant"] = normalized
+        if lilith_variant:
+            normalized = lilith_variant.lower()
+            if normalized not in {"mean", "true"}:
+                raise ValueError("lilith_variant must be 'mean' or 'true'")
+            variant_updates["lilith_variant"] = normalized
+        if variant_updates:
+            self._variant_config = replace(self._variant_config, **variant_updates)
 
         cfg = self._config
         updates: dict[str, object] = {}
@@ -119,10 +167,37 @@ class SwissProvider:
         return to_tt(self._normalize_iso(iso_utc))
 
     def _body_id(self, name: str) -> int:
-        key = name.lower()
-        if key not in _BODY_IDS:
-            raise KeyError(key)
-        return _BODY_IDS[key]
+        key = canonical_name(name)
+        if key in self._body_ids:
+            return self._body_ids[key]
+        raise KeyError(key)
+
+    def _position_from_sample(self, sample, *, derived: bool = False) -> BodyPosition:
+        lon = sample.longitude % 360.0
+        lat = sample.latitude
+        dec = sample.declination
+        if derived:
+            lon = (lon + 180.0) % 360.0
+            lat = -lat
+            dec = -dec
+        return BodyPosition(lon=lon, lat=lat, dec=dec, speed_lon=sample.speed_longitude)
+
+    def _resolve_position(
+        self, name: str, conversion: TimeConversion
+    ) -> BodyPosition:
+        canonical = canonical_name(name)
+        if not canonical:
+            raise KeyError(name)
+        try:
+            code = self._body_id(canonical)
+        except KeyError:
+            code, derived = se_body_id_for(canonical, self._variant_config)
+            if code < 0:
+                raise KeyError(canonical)
+            sample = self._adapter.sample(code, conversion)
+            return self._position_from_sample(sample, derived=derived)
+        sample = self._adapter.sample(code, conversion)
+        return self._position_from_sample(sample)
 
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str]
@@ -130,30 +205,32 @@ class SwissProvider:
 
         conversion = self._time_conversion(iso_utc)
         out: dict[str, dict[str, float]] = {}
+        issues: List[SupportIssue] = []
         for name in bodies:
             try:
-                body_id = self._body_id(name)
-            except KeyError:
+                pos = self._resolve_position(name, conversion)
+            except KeyError as exc:
+                issue = SupportIssue(body=str(name), reason=str(exc))
+                issues.append(issue)
+                LOG.warning(
+                    "body_unsupported: %s (%s)",
+                    issue.body,
+                    issue.reason,
+                    extra={"event": "body_unsupported", "body": issue.body, "reason": issue.reason},
+                )
                 continue
 
-            sample = self._adapter.sample(body_id, conversion)
             out[name] = {
-                "lon": sample.longitude % 360.0,
-                "decl": sample.declination,
-                "speed_lon": sample.speed_longitude,
+                "lon": pos.lon,
+                "decl": pos.dec,
+                "speed_lon": pos.speed_lon,
             }
+        self._last_support_issues = issues
         return out
 
     def position(self, body: str, ts_utc: str) -> BodyPosition:
-        sample = self._adapter.sample(
-            self._body_id(body), self._time_conversion(ts_utc)
-        )
-        return BodyPosition(
-            lon=sample.longitude % 360.0,
-            lat=sample.latitude,
-            dec=sample.declination,
-            speed_lon=sample.speed_longitude,
-        )
+        conversion = self._time_conversion(ts_utc)
+        return self._resolve_position(body, conversion)
 
 
 class SwissFallbackProvider:
