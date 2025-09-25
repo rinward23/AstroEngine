@@ -41,6 +41,7 @@ def choose_step(resolution: str, body: str) -> timedelta:
 def sort_bodies_for_scan(bodies: Iterable[str]) -> List[str]:
     """Return bodies ordered by scanning priority (fast movers first).
 
+
     The incoming iterable may contain duplicates or aliases. We preserve the first
     occurrence order within each priority tier to keep behavior intuitive for
     callers that expect luminaries to lead the sweep (matching historical
@@ -59,6 +60,7 @@ def sort_bodies_for_scan(bodies: Iterable[str]) -> List[str]:
     return sorted(
         canonical_list,
         key=lambda name: (body_priority(name), order[name]),
+
     )
 
 

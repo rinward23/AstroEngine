@@ -230,6 +230,7 @@ def _resolution_from_minutes(step_minutes: int) -> str:
 
 
 def _gated_step_minutes(step_minutes: int | None, moving: str) -> tuple[int, str]:
+
     """Apply body gating to the requested cadence.
 
     ``step_minutes`` may be ``None`` (callers rely on legacy defaults). We clamp
@@ -244,6 +245,7 @@ def _gated_step_minutes(step_minutes: int | None, moving: str) -> tuple[int, str
     effective = max(base_minutes, gated_minutes)
     effective_resolution = _resolution_from_minutes(effective)
     return effective, effective_resolution
+
 
 
 def _score_from_hit(
@@ -617,14 +619,24 @@ def scan_contacts(
         "variants", {"nodes": nodes_variant, "lilith": lilith_variant}
     )
 
+    skip_metadata = {"skipped_bodies": list(skipped_bodies)} if skipped_bodies else None
+
     events: list[LegacyTransitEvent] = []
     skip_metadata_payload: dict[str, object] | None = None
     if skipped_bodies:
         skip_metadata_payload = {"skipped_bodies": list(skipped_bodies)}
 
+    skip_metadata: dict[str, object] | None = None
     supported_bodies, support_issues = filter_supported((moving, target), scan_provider)
     if support_issues:
         feature_metadata["support_issues"] = [issue.__dict__ for issue in support_issues]
+        skipped = [
+            canonical_name(issue.body) or issue.body
+            for issue in support_issues
+            if canonical_name(issue.body) or issue.body
+        ]
+        if skipped:
+            skip_metadata = {"skipped_bodies": sorted(set(skipped))}
         for issue in support_issues:
             LOG.warning(
                 "body_unsupported: %s (%s)",
@@ -635,12 +647,19 @@ def scan_contacts(
     if moving not in supported_bodies or target not in supported_bodies:
         return events
 
-    gated_step_minutes, gated_resolution = _gated_step_minutes(step_minutes, moving)
+    requested_step = int(step_minutes) if step_minutes is not None else 60
+    gated_step_minutes, gated_resolution = _gated_step_minutes(requested_step, moving)
+
+    tick_source = _iso_ticks(
+        start_iso,
+        end_iso,
+
 
     tick_source = _iso_ticks(
         start_iso,
         end_iso,
         step=dt.timedelta(minutes=gated_step_minutes),
+
     )
 
     decl_ticks, mirror_ticks, aspect_ticks, plugin_ticks = tee(tick_source, 4)
