@@ -18,7 +18,7 @@ def test_swiss_provider_available_and_returns_positions(when):
     prov = get_provider("swiss")
     data = prov.positions_ecliptic(when, ["sun", "moon", "mars", "invalid"])
     assert set(data) >= {"sun", "moon", "mars"}
-    for body, coords in data.items():
+    for _body, coords in data.items():
         assert 0.0 <= coords["lon"] < 360.0
         assert -90.0 <= coords["decl"] <= 90.0
         assert math.isfinite(coords.get("speed_lon", 0.0))

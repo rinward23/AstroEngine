@@ -37,7 +37,8 @@ def main():
         return 2
     dt_sec = time.time() - t0
     print(
-        f"fast_scan: days={(end-start).days}, ticks={(end-start).days*24}, hits={len(hits)}, wall={dt_sec:.2f}s"
+        f"fast_scan: days={(end-start).days}, ticks={(end-start).days*24}, "
+        f"hits={len(hits)}, wall={dt_sec:.2f}s"
     )
     for h in hits[:3]:
         print("hit:", h[0].isoformat(), "Δ≈", h[1])

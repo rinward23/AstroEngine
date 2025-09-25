@@ -203,7 +203,10 @@ def _context_from_transit(event: TransitEvent) -> dict[str, Any]:
     ctx.setdefault(
         "uid",
         meta.get("uid")
-        or f"{event.ts}-{event.moving}-{ctx['target']}-{kind}-{abs(hash(json.dumps(meta, sort_keys=True)))%10_000}",
+        or (
+            f"{event.ts}-{event.moving}-{ctx['target']}-{kind}-"
+            f"{abs(hash(json.dumps(meta, sort_keys=True)))%10_000}"
+        ),
     )
     return ctx
 

@@ -109,7 +109,7 @@ def _condition_factor(
     table: dict[str, float] = {}
     if isinstance(base, Mapping):
         for key, value in base.items():
-            if isinstance(value, (int, float)):
+            if isinstance(value, int | float):
                 table[key] = float(value)
     if inputs.severity_modifiers:
         for key, value in inputs.severity_modifiers.items():

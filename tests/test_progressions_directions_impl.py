@@ -5,18 +5,18 @@ import os
 
 import pytest
 
-try:
+from astroengine.detectors.directions import solar_arc_directions
+from astroengine.detectors.progressions import secondary_progressions
+
+try:  # pragma: no cover - optional dependency guard
     HAVE_SWISS = True
-except Exception:
+except Exception:  # pragma: no cover - defensive fallback
     HAVE_SWISS = False
 
 SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
 pytestmark = pytest.mark.skipif(
     not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
 )
-
-from astroengine.detectors.directions import solar_arc_directions
-from astroengine.detectors.progressions import secondary_progressions
 
 
 def test_secondary_progressions_annual_samples():

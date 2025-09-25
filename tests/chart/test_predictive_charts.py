@@ -5,17 +5,6 @@ from datetime import UTC, datetime
 
 import pytest
 
-try:
-    HAVE_SWISS = True
-except Exception:
-    HAVE_SWISS = False
-
-SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
-
-pytestmark = pytest.mark.skipif(
-    not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
-)
-
 from astroengine.chart import (
     ChartLocation,
     compute_composite_chart,
@@ -24,6 +13,17 @@ from astroengine.chart import (
     compute_return_chart,
     compute_secondary_progressed_chart,
     compute_solar_arc_chart,
+)
+
+try:  # pragma: no cover - optional dependency guard
+    HAVE_SWISS = True
+except Exception:  # pragma: no cover - defensive fallback
+    HAVE_SWISS = False
+
+SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
+
+pytestmark = pytest.mark.skipif(
+    not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
 )
 
 

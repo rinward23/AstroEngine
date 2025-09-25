@@ -4,14 +4,14 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-pytestmark = pytest.mark.swiss
-
 from astroengine.core.transit_engine import TransitEngine
 from astroengine.detectors.common import iso_to_jd
 from astroengine.detectors.eclipses import find_eclipses
 from astroengine.detectors.ingresses import find_sign_ingresses
 from astroengine.detectors.returns import solar_lunar_returns
 from astroengine.timelords.dashas import vimsottari_dashas
+
+pytestmark = pytest.mark.swiss
 
 
 def _iso(ts: str) -> datetime:

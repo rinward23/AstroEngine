@@ -79,7 +79,7 @@ def find_out_of_bounds(
             continue
 
         prev_jd = start_jd
-        prev_dec, prev_speed, prev_limit, prev_val = _sample(prev_jd, code)
+        _, _, _, prev_val = _sample(prev_jd, code)
 
         jd = start_jd + step_days
         while jd <= end_jd + step_days:
@@ -128,13 +128,7 @@ def find_out_of_bounds(
                     )
                     seen.add(key)
 
-            prev_jd, prev_dec, prev_speed, prev_limit, prev_val = (
-                jd,
-                curr_dec,
-                curr_speed,
-                curr_limit,
-                curr_val,
-            )
+            prev_jd, prev_val = jd, curr_val
             jd += step_days
 
     events.sort(key=lambda event: event.jd)

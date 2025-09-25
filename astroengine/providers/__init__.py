@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Dict, Protocol
+from typing import Protocol
 
 from ..canonical import BodyPosition
-from .se_fixedstars import get_star_lonlat
+from .se_fixedstars import get_star_lonlat as get_star_lonlat
 
 
 class EphemerisProvider(Protocol):

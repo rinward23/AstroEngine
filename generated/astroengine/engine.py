@@ -66,16 +66,19 @@ def _bisection(jda: float, jdb: float, cfg: ScanConfig) -> float:
     """Bisection to solve signed_delta=0."""
     set_ephe_from_env()
     target = _angnorm(cfg.natal_lon_deg + cfg.aspect_angle_deg)
-    da = lambda jd: _signed_delta(calc_ut_lon(jd, cfg.body, cfg.flags), target)
+
+    def delta(jd: float) -> float:
+        return _signed_delta(calc_ut_lon(jd, cfg.body, cfg.flags), target)
+
     a, b = jda, jdb
-    fa, fb = da(a), da(b)
+    fa = delta(a)
     for _ in range(cfg.refine_max_iter):
         m = 0.5 * (a + b)
-        fm = da(m)
+        fm = delta(m)
         if abs(fm) <= cfg.refine_tol_deg:
             return m
         if (fa > 0 and fm < 0) or (fa < 0 and fm > 0):
-            b, fb = m, fm
+            b = m
         else:
             a, fa = m, fm
     return 0.5 * (a + b)

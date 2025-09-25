@@ -7,6 +7,8 @@ import types
 import warnings
 from pathlib import Path
 
+import pytest
+
 # >>> AUTO-GEN BEGIN: AliasGeneratedToAstroengine v1.0
 """Pytest compatibility shim: route any `generated.*` imports to `astroengine`.
 Idempotent and safe to keep during the deprecation window.
@@ -40,10 +42,7 @@ DATASETS_ROOT = PROJECT_ROOT / "datasets"
 
 def _refresh_paths_from_package() -> None:
     try:
-        from astroengine.infrastructure.paths import (
-            datasets_dir,
-            generated_dir,
-        )
+        from astroengine.infrastructure.paths import datasets_dir, generated_dir
         from astroengine.infrastructure.paths import project_root as pkg_project_root
     except Exception:
         return
@@ -103,10 +102,8 @@ def _ensure_swiss_stub() -> None:
 
 _ensure_swiss_stub()
 
+
 # >>> AUTO-GEN BEGIN: swiss availability gating v1.0
-import pytest
-
-
 def _have_pyswisseph() -> bool:
     try:
         import swisseph as _swe  # noqa: F401

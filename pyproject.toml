@@ -98,4 +98,30 @@ include-package-data = true
 line-length = 100
 select = ["E","F","I","UP","B"]
 target-version = "py311"
+extend-exclude = [
+    "apps",
+    "generated",
+    "scripts",
+    ".github",
+    "astroengine/modules",
+    "astroengine/mundane",
+    "astroengine/narrative",
+]
 # >>> AUTO-GEN END: ruff target py311 v1.1
+
+[tool.isort]
+profile = "black"
+line_length = 88
+skip_glob = [
+    "apps/*",
+    "generated/*",
+    "scripts/*",
+    ".github/*",
+    "astroengine/modules/*",
+    "astroengine/mundane/*",
+    "astroengine/narrative/*",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]

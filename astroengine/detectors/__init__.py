@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import List
 
 from ..astro.declination import (
     DEFAULT_ANTISCIA_AXIS,
@@ -257,7 +256,7 @@ try:  # pragma: no cover - optional when ingress module is syntactically unavail
 except SyntaxError:  # pragma: no cover - defensive for partial builds
 
     def find_sign_ingresses(*_args, **_kwargs):  # type: ignore
-        raise RuntimeError("sign ingress detector unavailable") from exc
+        raise RuntimeError("sign ingress detector unavailable") from None
 
 
 from .lunations import find_lunations  # noqa: E402
