@@ -10,6 +10,7 @@ from astroengine.chart.natal import ChartLocation, compute_natal_chart
 from astroengine.detectors.common import body_lon, iso_to_jd, norm360
 from astroengine.detectors.ingresses import (
     ZODIAC_SIGNS,
+    find_house_ingresses,
     find_sign_ingresses,
     sign_index,
     sign_name,
@@ -37,9 +38,33 @@ def test_sign_ingresses_outer_planets_precision():
 
         before = sign_name(sign_index(body_lon(event.jd - 0.1, event.body)))
         after = sign_name(sign_index(body_lon(event.jd + 0.1, event.body)))
-        assert before == event.from_sign
-        assert after == event.to_sign
+    assert before == event.from_sign
+    assert after == event.to_sign
 
+
+def test_house_ingresses_track_cusps():
+    location = ChartLocation(latitude=34.0522, longitude=-118.2437)
+    natal = compute_natal_chart(
+        datetime(1990, 7, 1, 15, 30, tzinfo=UTC),
+        location,
+    )
+    cusps = natal.houses.cusps
+
+    start = iso_to_jd("2024-01-01T00:00:00Z")
+    end = iso_to_jd("2024-02-01T00:00:00Z")
+
+    events = find_house_ingresses(start, end, cusps, bodies=("sun",))
+    assert events
+
+    for event in events:
+        assert event.from_sign.startswith("House")
+        assert event.to_sign.startswith("House")
+
+        target_idx = int(event.to_sign.split()[-1])
+        cusp_lon = cusps[target_idx - 1] % 360.0
+        lon = norm360(body_lon(event.jd, event.body))
+        diff = abs(((lon - cusp_lon + 180.0) % 360.0) - 180.0)
+        assert diff < 1e-3
 
 def test_aries_ingress_chart_with_location_and_natal():
     location = ChartLocation(latitude=40.7128, longitude=-74.0060)

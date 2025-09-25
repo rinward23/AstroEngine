@@ -1,5 +1,7 @@
 """Transit scanning orchestrators."""
 
+# isort: skip_file
+
 from __future__ import annotations
 
 import datetime as dt
@@ -11,8 +13,9 @@ from typing import Any
 
 from ..chart.config import ChartConfig
 from ..core.engine import get_active_aspect_angles
-from ..detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
+from ..detectors import CoarseHit
 from ..detectors import common as detectors_common
+from ..detectors import detect_antiscia_contacts, detect_decl_contacts
 from ..detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
 from ..detectors_aspects import AspectHit, detect_aspects
 from ..ephemeris import EphemerisConfig, SwissEphemerisAdapter

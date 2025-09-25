@@ -1,12 +1,15 @@
 """Transit scanning utilities built on top of the ephemeris adapter."""
 
+# isort: skip_file
+
 from __future__ import annotations
 
 import datetime as _dt
 
 # >>> AUTO-GEN BEGIN: Canonical Scan Adapter v1.0
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from collections.abc import Iterable as _TypingIterable
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any as _TypingAny
 from typing import Literal

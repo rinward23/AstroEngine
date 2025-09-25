@@ -259,9 +259,11 @@ except SyntaxError as exc:  # pragma: no cover - defensive for partial builds
     _INGRESS_IMPORT_ERROR = exc
 
     def find_sign_ingresses(*_args, **_kwargs):  # type: ignore
+
         raise RuntimeError(
             "sign ingress detector unavailable"
         ) from _INGRESS_IMPORT_ERROR
+
 
 
 from .lunations import find_lunations  # noqa: E402

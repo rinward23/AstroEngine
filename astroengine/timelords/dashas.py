@@ -143,7 +143,7 @@ def vimsottari_dashas(
         if seg_end < start_jd and not include_partial:
             continue
 
-        for sub_idx, sub_lord, sub_start, sub_end in _sub_periods(
+        for _sub_idx, sub_lord, sub_start, sub_end in _sub_periods(
             idx, seg_start, seg_end, start_frac
         ):
             if sub_end < start_jd and not include_partial:

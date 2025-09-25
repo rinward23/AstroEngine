@@ -205,9 +205,8 @@ def main():
     body, flags = make_health_report()
 
     labels = ["meta", "automated"]
-    num = None
     if os.environ.get("CI") or args.update_issues:
-        num = upsert_issue("Meta: Automated Health Report", body, labels)
+        upsert_issue("Meta: Automated Health Report", body, labels)
 
     # targeted issues for hard failures
     if not flags.get("pyswisseph_import", True):
@@ -217,7 +216,8 @@ def main():
 
             **Likely fixes:**
             - Ensure dev dep installed: `pip install pyswisseph` (add to requirements-dev.txt)
-            - Download Swiss Ephemeris data files and set `SE_EPHE_PATH` (e.g. `./ephe` or `~/.sweph`)
+            - Download Swiss Ephemeris data files and set `SE_EPHE_PATH`
+              (e.g. `./ephe` or `~/.sweph`)
             - Run `python scripts/swe_smoketest.py --utc 2025-01-01T00:00:00Z`
             """
         )

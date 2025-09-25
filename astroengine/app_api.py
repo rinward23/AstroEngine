@@ -7,10 +7,7 @@ import os
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, is_dataclass
-from typing import (
-    Any,
-    Union,
-)
+from typing import Any
 
 # Canonical adapters; tolerate absence if CP not yet applied
 try:
@@ -22,7 +19,7 @@ except Exception:  # pragma: no cover
 
 
 ScanCandidate = tuple[str, str]  # (module, function)
-ScanSpec = Union[ScanCandidate, str]
+ScanSpec = ScanCandidate | str
 SCAN_ENTRYPOINT_ENV = "ASTROENGINE_SCAN_ENTRYPOINTS"
 DEFAULT_SCAN_ENTRYPOINTS: tuple[ScanCandidate, ...] = (
     ("astroengine.core.transit_engine", "scan_window"),
@@ -201,10 +198,10 @@ def _normalize_result_payload(result: Any) -> list[dict[str, Any]] | None:
             payload = events_attr() if callable(events_attr) else events_attr
         if isinstance(payload, Mapping):
             items = [payload]
-        elif isinstance(payload, (list, tuple)):
+        elif isinstance(payload, list | tuple):
             items = list(payload)
         else:
-            if isinstance(payload, (str, bytes)):
+            if isinstance(payload, str | bytes):
                 return None
             try:
                 items = list(payload)

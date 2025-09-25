@@ -489,7 +489,8 @@ with st.sidebar:
             st.code(f"{mod}.{fn}", language="python")
     else:
         st.warning(
-            "No scan entrypoints discovered. Set ASTROENGINE_SCAN_ENTRYPOINTS to register custom modules.",
+            "No scan entrypoints discovered. "
+            "Set ASTROENGINE_SCAN_ENTRYPOINTS to register custom modules.",
             icon="⚠️",
         )
 
@@ -673,7 +674,8 @@ with col_results:
         else:
             st.json(records)
         st.caption(
-            "Tip: use the export buttons below to save results as SQLite, Parquet, or ICS calendars."
+            "Tip: use the export buttons below to save results as SQLite, Parquet, "
+            "or ICS calendars."
         )
 
     export_col1, export_col2, export_col3 = st.columns(3)

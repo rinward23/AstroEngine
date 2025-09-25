@@ -3,22 +3,21 @@ from datetime import UTC, datetime
 
 import pytest
 
-try:
+from astroengine.chart import ChartLocation, compute_natal_chart
+from astroengine.chart.composite import compute_composite_chart
+from astroengine.detectors.common import iso_to_jd
+from astroengine.detectors.returns import solar_lunar_returns
+from astroengine.engine import TargetFrameResolver, scan_contacts
 
+try:  # pragma: no cover - optional dependency guard
     HAVE_SWISS = True
-except Exception:  # pragma: no cover
+except Exception:  # pragma: no cover - defensive fallback
     HAVE_SWISS = False
 
 SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
 pytestmark = pytest.mark.skipif(
     not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
 )
-
-from astroengine.chart import ChartLocation, compute_natal_chart
-from astroengine.chart.composite import compute_composite_chart
-from astroengine.detectors.common import iso_to_jd
-from astroengine.detectors.returns import solar_lunar_returns
-from astroengine.engine import TargetFrameResolver, scan_contacts
 
 
 def _primary_chart() -> tuple[datetime, ChartLocation, object]:

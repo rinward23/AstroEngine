@@ -23,7 +23,10 @@ CREATE TABLE IF NOT EXISTS positions_daily (
 );
 """,
     "get": "SELECT lon FROM positions_daily WHERE day_jd=? AND body=?",
-    "upsert": "INSERT OR REPLACE INTO positions_daily(day_jd, body, lon, lat, speed) VALUES (?,?,?,?,?)",
+    "upsert": (
+        "INSERT OR REPLACE INTO positions_daily(day_jd, body, lon, lat, speed)"
+        " VALUES (?,?,?,?,?)"
+    ),
 }
 
 

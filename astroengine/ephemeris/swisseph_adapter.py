@@ -367,11 +367,13 @@ class SwissEphemerisAdapter:
 
         equatorial = self.body_equatorial(jd_ut, body_code)
 
+
         try:
             eq_values, _ = swe.calc_ut(jd_ut, body_code, flags | swe.FLG_EQUATORIAL)
             _decl, _speed_decl = eq_values[1], eq_values[4]
         except Exception:
             _decl, _speed_decl = float("nan"), float("nan")
+
 
         return BodyPosition(
             body=body_name or str(body_code),
@@ -465,6 +467,8 @@ class SwissEphemerisAdapter:
 
         options = ", ".join(sorted(self._HOUSE_SYSTEM_CODES))
         raise ValueError(
+
             "Unsupported house system "
             f"'{system or self.chart_config.house_system}'. Valid options: {options}"
+
         )

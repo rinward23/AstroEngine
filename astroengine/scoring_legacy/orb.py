@@ -7,6 +7,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cache, lru_cache
 
+from ..infrastructure.paths import schemas_dir
+
 __all__ = ["DEFAULT_ASPECTS", "OrbCalculator", "AspectPolicy"]
 
 DEFAULT_ASPECTS = (0, 60, 90, 120, 180)
@@ -39,9 +41,6 @@ _BODY_CLASSIFICATION = {
     "north_node": "asteroids",
     "south_node": "asteroids",
 }
-
-
-from ..infrastructure.paths import schemas_dir
 
 
 @dataclass(frozen=True)

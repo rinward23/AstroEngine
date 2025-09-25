@@ -1,21 +1,20 @@
 """AstroEngine package bootstrap and public surface exports."""
 
+# isort: skip_file
+
 from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
 from .astro import declination  # ENSURE-LINE
-from .canonical import (
-    BodyPosition,  # ENSURE-LINE
-    TransitEvent,  # ENSURE-LINE
-)
+from .canonical import BodyPosition  # ENSURE-LINE
+from .catalogs import sbdb  # ENSURE-LINE
 from .catalogs import (
     VCA_CENTAURS,
     VCA_CORE_BODIES,
     VCA_EXT_ASTEROIDS,
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
-    sbdb,  # ENSURE-LINE
 )
 from .chart import (
     ChartLocation,
@@ -35,17 +34,17 @@ from .chart import (
     compute_solar_arc_chart,
 )
 from .chart.config import ChartConfig
-from .core import (  # noqa: F401
+from .core import ZODIAC_ELEMENT_MAP  # noqa: F401
+from .core import TransitEngine  # ENSURE-LINE
+from .core import TransitEvent  # ENSURE-LINE
+from .core import TransitScanConfig  # ENSURE-LINE
+from .core import (
     DOMAINS,
     ELEMENTS,
-    ZODIAC_ELEMENT_MAP,
     AngleTracker,
     DomainResolution,
     DomainResolver,
-    TransitEngine,  # ENSURE-LINE
     TransitEngineConfig,
-    TransitEvent,  # ENSURE-LINE
-    TransitScanConfig,  # ENSURE-LINE
     apply_profile_if_any,
     classify_relative_motion,
     compute_domain_factor,
@@ -59,9 +58,9 @@ from .core import (  # noqa: F401
     to_tt,
 )
 from .diagnostics import collect_diagnostics  # ENSURE-LINE
-from .ephemeris import (  # noqa: F401
+from .ephemeris import EphemerisConfig  # noqa: F401
+from .ephemeris import (
     EphemerisAdapter,
-    EphemerisConfig,
     EphemerisSample,
     ObserverLocation,
     RefinementBracket,
@@ -135,17 +134,17 @@ from .narrative_overlay import (
     format_confidence_band,
     select_resonance_focus,
 )
-from .profiles import (  # noqa: F401
+from .profiles import DomainScoringProfile  # noqa: F401
+from .profiles import (
     VCA_DOMAIN_PROFILES,
-    DomainScoringProfile,
     ResonanceWeights,
     load_base_profile,
     load_profile,
     load_resonance_weights,
     load_vca_outline,
 )
+from .providers import EphemerisProvider  # noqa: F401  # ENSURE-LINE
 from .providers import (  # noqa: F401  # ENSURE-LINE
-    EphemerisProvider,  # noqa: F401  # ENSURE-LINE
     get_provider,
     list_providers,
 )
@@ -220,10 +219,13 @@ __all__ = [
     "compute_domain_factor",
     "rollup_domain_scores",
     "load_profile_json",
+    "load_base_profile",
     "load_profile",
     "profile_into_ctx",
     "apply_profile_if_any",
     "load_resonance_weights",
+    "load_vca_outline",
+    "to_tt",
     "NarrativeOverlay",
     "apply_resonance_overlay",
     "format_confidence_band",
@@ -260,6 +262,9 @@ __all__ = [
     "load_visibility_policy",
     "SwissEphemerisAdapter",
     "TimeScaleContext",
+    "refine_event",
+    "RefinementBracket",
+    "RefinementError",
     "collect_environment_report",
     "environment_report_main",
     "get_vca_aspect",

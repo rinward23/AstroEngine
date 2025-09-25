@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 import os
+from datetime import UTC
 
 import pytest
 
-try:
+from astroengine.detectors.common import UNIX_EPOCH_JD
+from astroengine.detectors.lunations import find_lunations
+
+try:  # pragma: no cover - optional dependency guard
     HAVE_SWISS = True
-except Exception:
+except Exception:  # pragma: no cover - defensive fallback
     HAVE_SWISS = False
 
 SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
@@ -15,11 +19,6 @@ SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
 pytestmark = pytest.mark.skipif(
     not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
 )
-
-from datetime import UTC
-
-from astroengine.detectors.common import UNIX_EPOCH_JD
-from astroengine.detectors.lunations import find_lunations
 
 
 def iso_to_jd(iso_ts: str) -> float:

@@ -1,4 +1,4 @@
-"""Sign ingress detection utilities built on Swiss Ephemeris longitudes."""
+"""Ingress detection utilities built on Swiss Ephemeris longitudes."""
 
 from __future__ import annotations
 
@@ -12,9 +12,15 @@ except Exception:  # pragma: no cover - optional dependency at runtime
     swe = None  # type: ignore
 
 from ..events import IngressEvent
-from .common import body_lon, jd_to_iso, norm360, solve_zero_crossing
+from .common import body_lon, delta_deg, jd_to_iso, norm360, solve_zero_crossing
 
-__all__ = ["ZODIAC_SIGNS", "sign_index", "sign_name", "find_sign_ingresses"]
+__all__ = [
+    "ZODIAC_SIGNS",
+    "sign_index",
+    "sign_name",
+    "find_sign_ingresses",
+    "find_house_ingresses",
+]
 
 
 ZODIAC_SIGNS: Sequence[str] = (
@@ -129,6 +135,45 @@ def _refine_ingress(body: str, left: _Sample, right: _Sample, boundary: float) -
             return left.jd
         fraction = (boundary - left.longitude) / span
         return left.jd + fraction * (right.jd - left.jd)
+
+
+def _normalise_cusps(house_cusps: Sequence[float]) -> list[float]:
+    values = [float(value) for value in house_cusps]
+    if len(values) < 12:
+        raise ValueError("house_cusps must contain at least 12 entries")
+    return [norm360(value) for value in values[:12]]
+
+
+def _house_index(longitude: float, cusps: Sequence[float]) -> int:
+    lon = norm360(longitude)
+    for idx in range(12):
+        start = cusps[idx]
+        end = cusps[(idx + 1) % 12]
+        if start <= end:
+            if start <= lon < end:
+                return idx + 1
+        else:
+            if lon >= start or lon < end:
+                return idx + 1
+    return 12
+
+
+def _house_label(index: int) -> str:
+    return f"House {((index - 1) % 12) + 1}"
+
+
+def _refine_house_crossing(
+    body: str, left_jd: float, right_jd: float, cusp: float
+) -> float | None:
+    left, right = (left_jd, right_jd) if left_jd <= right_jd else (right_jd, left_jd)
+
+    def fn(jd: float) -> float:
+        return delta_deg(body_lon(jd, body), cusp)
+
+    try:
+        return solve_zero_crossing(fn, left, right, tol=1e-6, tol_deg=1e-5)
+    except ValueError:
+        return None
 
 
 def find_sign_ingresses(
@@ -296,4 +341,88 @@ def find_sign_ingresses(
             prev_index = current_index
 
     events.sort(key=lambda event: (event.jd, event.body.lower()))
+    return events
+
+
+def find_house_ingresses(
+    start_jd: float,
+    end_jd: float,
+    house_cusps: Sequence[float],
+    *,
+    bodies: Sequence[str] | None = None,
+    step_minutes: float = 60.0,
+) -> list[IngressEvent]:
+    """Return house ingress events for the supplied ``house_cusps``."""
+
+    if end_jd <= start_jd:
+        return []
+    if swe is None:
+        raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
+
+    cusps = _normalise_cusps(house_cusps)
+    body_list = tuple(bodies or _DEFAULT_BODIES)
+    step_days = max(step_minutes, 1.0) / (24.0 * 60.0)
+
+    events: list[IngressEvent] = []
+    seen: set[tuple[str, int, int]] = set()
+
+    for body in body_list:
+        prev_jd = start_jd
+        prev_lon = norm360(body_lon(prev_jd, body))
+        prev_house = _house_index(prev_lon, cusps)
+
+        jd = start_jd + step_days
+        while jd <= end_jd + step_days:
+            curr_lon = norm360(body_lon(jd, body))
+            curr_house = _house_index(curr_lon, cusps)
+
+            if curr_house != prev_house:
+                delta = delta_deg(curr_lon, prev_lon)
+                direction = 1 if delta >= 0 else -1
+                house = prev_house
+                left_jd = prev_jd
+
+                while house != curr_house:
+                    if direction > 0:
+                        next_house = (house % 12) + 1
+                        cusp_index = next_house
+                    else:
+                        next_house = 12 if house == 1 else house - 1
+                        cusp_index = house
+
+                    cusp = cusps[cusp_index - 1]
+                    root = _refine_house_crossing(body, left_jd, jd, cusp)
+                    if root is None:
+                        house = curr_house
+                        break
+
+                    lon_exact = norm360(body_lon(root, body))
+                    speed = _estimate_speed(body, root, hours=max(step_minutes / 60.0, 1.0))
+                    retrograde = direction < 0
+                    key = (body, int(round(root * 86400)), next_house)
+                    if key not in seen and start_jd <= root <= end_jd:
+                        events.append(
+                            IngressEvent(
+                                ts=jd_to_iso(root),
+                                jd=root,
+                                body=str(body),
+                                from_sign=_house_label(house),
+                                to_sign=_house_label(next_house),
+                                longitude=lon_exact,
+                                speed_longitude=float(speed),
+                                retrograde=retrograde,
+                            )
+                        )
+                        seen.add(key)
+
+                    house = next_house
+                    left_jd = root
+
+                prev_house = curr_house
+
+            prev_jd = jd
+            prev_lon = curr_lon
+            jd += step_days
+
+    events.sort(key=lambda event: (event.jd, event.body))
     return events

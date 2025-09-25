@@ -7,7 +7,6 @@ imports to the real `astroengine` package. Safe to keep for one minor release.
 from __future__ import annotations
 
 import sys as _sys
-import types as _types
 import warnings as _warnings
 
 # Single deprecation nudge on import
@@ -32,8 +31,8 @@ except Exception:  # pragma: no cover
     pass
 try:
     from astroengine import (
-        TransitScanConfig as TransitScanConfig,  # type: ignore[attr-defined]
-    )
+        TransitScanConfig as TransitScanConfig,
+    )  # type: ignore[attr-defined]
 except Exception:  # pragma: no cover
     pass
 try:

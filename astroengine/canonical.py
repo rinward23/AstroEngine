@@ -15,9 +15,11 @@ except ModuleNotFoundError as exc:  # pragma: no cover - allows lightweight impo
     _SQLITE_IMPORT_ERROR = exc
 
     def ensure_sqlite_schema(*_args, **_kwargs):  # type: ignore
+
         raise RuntimeError(
             "SQLite storage support unavailable"
         ) from _SQLITE_IMPORT_ERROR
+
 
 
 AspectName = Literal[
@@ -330,9 +332,11 @@ def sqlite_read_canonical(
     con.row_factory = sqlite3.Row
     try:
         query = (
+
             "SELECT ts, moving, target, aspect, orb, applying, score, "
             "meta_json, profile_id, natal_id "
             "FROM transits_events"
+
         )
         if where:
             query += f" WHERE {where}"

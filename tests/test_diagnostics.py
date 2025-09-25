@@ -21,7 +21,9 @@ def _load_diagnostics_module() -> ModuleType:
             "astroengine.diagnostics_test", module_path
         )
         if spec is None or spec.loader is None:  # pragma: no cover - defensive
-            raise RuntimeError("unable to load diagnostics module for testing")
+            raise RuntimeError(
+                "unable to load diagnostics module for testing"
+            ) from None
         module = importlib.util.module_from_spec(spec)
         sys.modules[spec.name] = module
         spec.loader.exec_module(module)

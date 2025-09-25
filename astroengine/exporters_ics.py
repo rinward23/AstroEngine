@@ -200,9 +200,11 @@ def _context_from_transit(event: TransitEvent) -> dict[str, Any]:
         label=label,
         ingress_sign=ingress_sign,
     )
+
     hashed_meta = abs(hash(json.dumps(meta, sort_keys=True))) % 10_000
     default_uid = f"{event.ts}-{event.moving}-{ctx['target']}-{kind}-{hashed_meta}"
     ctx.setdefault("uid", meta.get("uid") or default_uid)
+
     return ctx
 
 

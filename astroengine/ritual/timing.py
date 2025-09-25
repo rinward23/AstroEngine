@@ -114,7 +114,10 @@ VOID_OF_COURSE_RULES: tuple[VoidOfCourseRule, ...] = (
     ),
     VoidOfCourseRule(
         name="Modern extended void",
-        description="Void begins after final major aspect regardless of sign change until next applying aspect.",
+        description=(
+            "Void begins after final major aspect regardless of sign change until "
+            "next applying aspect."
+        ),
         sources=(
             "Alphee Lavoie — Void of Course Moon Research (1999)",
             "Bernadette Brady — The Eagle and the Lark (1992)",
