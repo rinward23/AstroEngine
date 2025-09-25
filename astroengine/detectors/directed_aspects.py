@@ -14,8 +14,11 @@ def solar_arc_natal_aspects(
     orb_deg: float,
 ) -> list[object]:
     raise NotImplementedError(
-        "'solar_arc_natal_aspects' is experimental and disabled by default. "
-        "Enable the experimental modality flag before wiring this detector."
+
+        "'solar_arc_natal_aspects' is not yet implemented. "
+        "Enable the experimental directed-aspects modality once an "
+        "implementation is available."
+
     )
 
 

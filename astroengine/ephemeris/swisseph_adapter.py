@@ -695,11 +695,8 @@ class SwissEphemerisAdapter:
             ascendant=ascendant,
             midheaven=midheaven,
 
-            system_name=used_key,
-            requested_system=requested_key,
+            system_name=used_name,
             fallback_from=fallback_from,
-            fallback_reason=fallback_reason,
-            provenance=provenance,
 
         )
 

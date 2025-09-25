@@ -613,6 +613,8 @@ def scan_contacts(
         "variants", {"nodes": nodes_variant, "lilith": lilith_variant}
     )
 
+    skip_metadata = {"skipped_bodies": list(skipped_bodies)} if skipped_bodies else None
+
     events: list[LegacyTransitEvent] = []
 
     skip_metadata: dict[str, object] | None = None
@@ -636,12 +638,15 @@ def scan_contacts(
     if moving not in supported_bodies or target not in supported_bodies:
         return events
 
-    gated_step_minutes, gated_resolution = _gated_step_minutes(step_minutes, moving)
+    requested_step = int(step_minutes) if step_minutes is not None else 60
+    gated_step_minutes, gated_resolution = _gated_step_minutes(requested_step, moving)
 
     tick_source = _iso_ticks(
         start_iso,
         end_iso,
-        step=dt.timedelta(minutes=max(gated_step_minutes, 1)),
+
+        step=dt.timedelta(minutes=gated_step_minutes),
+
     )
 
     decl_ticks, mirror_ticks, aspect_ticks, plugin_ticks = tee(tick_source, 4)

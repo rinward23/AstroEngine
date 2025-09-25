@@ -39,10 +39,24 @@ def choose_step(resolution: str, body: str) -> timedelta:
 
 
 def sort_bodies_for_scan(bodies: Iterable[str]) -> List[str]:
-    """Return bodies ordered by scanning priority (fast movers first)."""
+    """Return bodies ordered by scanning priority (fast movers first).
 
-    canonical = {canonical_name(body) for body in bodies}
-    return sorted((b for b in canonical if b), key=body_priority)
+    The function preserves the first-seen order when priorities match so that
+    callers can request specific sequencing without it being lost during the
+    gating process.
+    """
+
+    seen: dict[str, int] = {}
+    for index, body in enumerate(bodies):
+        canonical = canonical_name(body)
+        if not canonical or canonical in seen:
+            continue
+        seen[canonical] = index
+
+    return sorted(
+        seen,
+        key=lambda name: (body_priority(name), seen[name]),
+    )
 
 
 def adapt_step_near_bracket(step: timedelta) -> timedelta:

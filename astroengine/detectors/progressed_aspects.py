@@ -14,8 +14,11 @@ def progressed_natal_aspects(
     orb_deg: float,
 ) -> list[object]:
     raise NotImplementedError(
-        "'progressed_natal_aspects' is experimental and disabled by default. "
-        "Enable the experimental modality flag before wiring this detector."
+
+        "'progressed_natal_aspects' is not yet implemented. "
+        "Enable the experimental progressed-aspects modality once an "
+        "implementation is available."
+
     )
 
 
