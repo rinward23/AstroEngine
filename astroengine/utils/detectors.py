@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-DETECTOR_NAMES = (
-    "lunations",
-    "eclipses",
-    "stations",
-    "progressions",
-    "directions",
-    "returns",
-    "profections",
-    "timelords",
-    "midpoints",
-    "antiscia",
+from ..config.features import (
+    EXPERIMENTAL_MODALITIES,
+    available_modalities,
 )
+
+DETECTOR_NAMES = available_modalities()
+EXPERIMENTAL_DETECTOR_NAMES = tuple(sorted(EXPERIMENTAL_MODALITIES))
 
 ENGINE_FLAG_MAP = {
     "lunations": "FEATURE_LUNATIONS",
@@ -25,4 +20,4 @@ ENGINE_FLAG_MAP = {
     "profections": "FEATURE_PROFECTIONS",
 }
 
-__all__ = ["DETECTOR_NAMES", "ENGINE_FLAG_MAP"]
+__all__ = ["DETECTOR_NAMES", "EXPERIMENTAL_DETECTOR_NAMES", "ENGINE_FLAG_MAP"]

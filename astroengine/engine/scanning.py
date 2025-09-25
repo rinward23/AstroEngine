@@ -229,13 +229,16 @@ def _resolution_from_minutes(step_minutes: int) -> str:
     return "long"
 
 
-def _gated_step_minutes(step_minutes: int, moving: str) -> tuple[int, str]:
-    resolution = _resolution_from_minutes(step_minutes)
+def _gated_step_minutes(step_minutes: int | None, moving: str) -> tuple[int, str]:
+    """Return a gated step in minutes and the inferred resolution label."""
+
+    base_minutes = 60 if step_minutes is None else int(step_minutes)
+    resolution = _resolution_from_minutes(base_minutes)
     gated = choose_step(resolution, moving)
     gated_minutes = int(round(gated.total_seconds() / 60.0))
     if gated_minutes <= 0:
-        gated_minutes = step_minutes
-    effective = max(step_minutes, gated_minutes)
+        gated_minutes = base_minutes
+    effective = max(base_minutes, gated_minutes)
     return effective, resolution
 
 
@@ -614,9 +617,17 @@ def scan_contacts(
 
     events: list[LegacyTransitEvent] = []
 
+    skip_metadata: dict[str, object] | None = None
     supported_bodies, support_issues = filter_supported((moving, target), scan_provider)
     if support_issues:
         feature_metadata["support_issues"] = [issue.__dict__ for issue in support_issues]
+        skipped = [
+            canonical_name(issue.body) or issue.body
+            for issue in support_issues
+            if canonical_name(issue.body) or issue.body
+        ]
+        if skipped:
+            skip_metadata = {"skipped_bodies": sorted(set(skipped))}
         for issue in support_issues:
             LOG.warning(
                 "body_unsupported: %s (%s)",
@@ -633,7 +644,9 @@ def scan_contacts(
     tick_source = _iso_ticks(
         start_iso,
         end_iso,
+
         step=dt.timedelta(minutes=gated_step_minutes),
+
     )
 
     decl_ticks, mirror_ticks, aspect_ticks, plugin_ticks = tee(tick_source, 4)

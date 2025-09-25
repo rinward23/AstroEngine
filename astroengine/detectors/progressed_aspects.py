@@ -1,4 +1,5 @@
-# >>> AUTO-GEN BEGIN: detector-progressed-aspects v1.0
+"""Progressed chart aspect detectors gated behind experimental flags."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -13,10 +14,12 @@ def progressed_natal_aspects(
     orb_deg: float,
 ) -> list[object]:
     raise NotImplementedError(
+
         "'progressed_natal_aspects' is not yet implemented. "
         "Enable the experimental progressed-aspects modality once an "
         "implementation is available."
+
     )
 
 
-# >>> AUTO-GEN END: detector-progressed-aspects v1.0
+__all__ = ["progressed_natal_aspects"]
