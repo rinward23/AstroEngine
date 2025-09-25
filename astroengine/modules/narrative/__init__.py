@@ -15,7 +15,10 @@ def register_narrative_module(registry: AstroRegistry) -> None:
         metadata={
             "description": "Narrative bundle and profile composition (placeholder).",
             "status": "planned",
-            "notes": "Runtime implementation lives in astroengine.narrative and relies on Solar Fire backed scores.",
+            "notes": (
+                "Runtime implementation lives in astroengine.narrative and "
+                "relies on Solar Fire backed scores."
+            ),
         },
     )
 

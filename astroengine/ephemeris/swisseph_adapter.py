@@ -138,7 +138,8 @@ class SwissEphemerisAdapter:
                 configured = normalize_ayanamsha_name(chart_config.ayanamsha or desired)
                 if desired != configured:
                     raise ValueError(
-                        "ayanamsha override must match chart_config.ayanamsha when both are provided"
+                        "ayanamsha override must match chart_config.ayanamsha "
+                        "when both are provided"
                     )
 
         self.chart_config = chart_config
@@ -198,7 +199,8 @@ class SwissEphemerisAdapter:
                 configured = normalize_ayanamsha_name(chart_config.ayanamsha or desired)
                 if desired != configured:
                     raise ValueError(
-                        "ayanamsha override must match chart_config.ayanamsha when both are provided"
+                        "ayanamsha override must match chart_config.ayanamsha "
+                        "when both are provided"
                     )
 
         zodiac_value = zodiac or chart.zodiac
@@ -367,9 +369,9 @@ class SwissEphemerisAdapter:
 
         try:
             eq_values, _ = swe.calc_ut(jd_ut, body_code, flags | swe.FLG_EQUATORIAL)
-            decl, speed_decl = eq_values[1], eq_values[4]
+            _decl, _speed_decl = eq_values[1], eq_values[4]
         except Exception:
-            decl, speed_decl = float("nan"), float("nan")
+            _decl, _speed_decl = float("nan"), float("nan")
 
         return BodyPosition(
             body=body_name or str(body_code),
@@ -418,7 +420,7 @@ class SwissEphemerisAdapter:
             ascendant = angles[0]
             midheaven = angles[1]
 
-        if isinstance(sys_code, (bytes, bytearray)):
+        if isinstance(sys_code, bytes | bytearray):
             system_label = sys_code.decode("ascii")
         else:
             system_label = str(sys_code)
@@ -463,5 +465,6 @@ class SwissEphemerisAdapter:
 
         options = ", ".join(sorted(self._HOUSE_SYSTEM_CODES))
         raise ValueError(
-            f"Unsupported house system '{system or self.chart_config.house_system}'. Valid options: {options}"
+            "Unsupported house system "
+            f"'{system or self.chart_config.house_system}'. Valid options: {options}"
         )

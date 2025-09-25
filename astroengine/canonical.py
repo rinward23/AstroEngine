@@ -7,12 +7,17 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal, Protocol
 
+_SQLITE_IMPORT_ERROR: ModuleNotFoundError | None = None
+
 try:  # pragma: no cover - optional storage dependency
     from .infrastructure.storage.sqlite import ensure_sqlite_schema
-except ModuleNotFoundError:  # pragma: no cover - allows lightweight imports
+except ModuleNotFoundError as exc:  # pragma: no cover - allows lightweight imports
+    _SQLITE_IMPORT_ERROR = exc
 
     def ensure_sqlite_schema(*_args, **_kwargs):  # type: ignore
-        raise RuntimeError("SQLite storage support unavailable") from exc
+        raise RuntimeError(
+            "SQLite storage support unavailable"
+        ) from _SQLITE_IMPORT_ERROR
 
 
 AspectName = Literal[
@@ -325,7 +330,8 @@ def sqlite_read_canonical(
     con.row_factory = sqlite3.Row
     try:
         query = (
-            "SELECT ts, moving, target, aspect, orb, applying, score, meta_json, profile_id, natal_id "
+            "SELECT ts, moving, target, aspect, orb, applying, score, "
+            "meta_json, profile_id, natal_id "
             "FROM transits_events"
         )
         if where:

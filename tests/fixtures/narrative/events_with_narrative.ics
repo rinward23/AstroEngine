@@ -15,7 +15,7 @@ DESCRIPTION:Moving: venus\nTarget: mars\nKind: aspect_trine\nOrb: 0.85° (al
  \n\nNarrative Summary:\nAstroEngine Narrative Summary\nGenerated at 2025-0
  3-05T12:00:00Z\n\n\nEvent Highlights\n\nAspect Contacts (score 143.4)\n\n*
   **Venus Trine Mars** — within 0.85° (allow 2.00°)\, Applying (2025-03-01T
- 08:00:00Z\, score 88.4)\n\n* **Mars Square Saturn** — within 0.45° (allow 
+ 08:00:00Z\, score 88.4)\n\n* **Mars Square Saturn** — within 0.45° (allow
  3.00°)\, Separating (2025-03-04T18:20:00Z\, score 55.0)\n\n\nDeclination A
  lignments (score 72.0)\n\n* **Sun Decl Parallel Moon** — within 0.12° (all
  ow 0.50°)\, Separating (2025-03-02T15:30:00Z\, score 72.0)\n\n\nMirror Con
@@ -33,7 +33,7 @@ DTSTART:20250302T153000Z
 DTEND:20250302T160000Z
 SUMMARY:Sun Decl_Parallel Moon
 DESCRIPTION:Moving: sun\nTarget: moon\nKind: decl_parallel\nOrb: 0.12° (all
- ow 0.50°)\nPhase: Separating\nScore: 72.0\nDec_Moving: 10.23\nDec_Target: 
+ ow 0.50°)\nPhase: Separating\nScore: 72.0\nDec_Moving: 10.23\nDec_Target:
  11.02\n\nNarrative Summary:\nAstroEngine Narrative Summary\nGenerated at 2
  025-03-05T12:00:00Z\n\n\nEvent Highlights\n\nAspect Contacts (score 143.4)
  \n\n* **Venus Trine Mars** — within 0.85° (allow 2.00°)\, Applying (2025-0
@@ -57,7 +57,7 @@ SUMMARY:Mercury Antiscia Sun
 DESCRIPTION:Moving: mercury\nTarget: sun\nKind: antiscia\nOrb: 1.50° (allow
   2.00°)\nPhase: Applying\nScore: 65.5\n\nNarrative Summary:\nAstroEngine N
  arrative Summary\nGenerated at 2025-03-05T12:00:00Z\n\n\nEvent Highlights\
- n\nAspect Contacts (score 143.4)\n\n* **Venus Trine Mars** — within 0.85° 
+ n\nAspect Contacts (score 143.4)\n\n* **Venus Trine Mars** — within 0.85°
  (allow 2.00°)\, Applying (2025-03-01T08:00:00Z\, score 88.4)\n\n* **Mars S
  quare Saturn** — within 0.45° (allow 3.00°)\, Separating (2025-03-04T18:20
  :00Z\, score 55.0)\n\n\nDeclination Alignments (score 72.0)\n\n* **Sun Dec
@@ -84,7 +84,7 @@ DESCRIPTION:Moving: mars\nTarget: saturn\nKind: aspect_square\nOrb: 0.45° (
  core 88.4)\n\n* **Mars Square Saturn** — within 0.45° (allow 3.00°)\, Sepa
  rating (2025-03-04T18:20:00Z\, score 55.0)\n\n\nDeclination Alignments (sc
  ore 72.0)\n\n* **Sun Decl Parallel Moon** — within 0.12° (allow 0.50°)\, S
- eparating (2025-03-02T15:30:00Z\, score 72.0)\n\n\nMirror Contacts (score 
+ eparating (2025-03-02T15:30:00Z\, score 72.0)\n\n\nMirror Contacts (score
  65.5)\n\n* **Mercury Antiscia Sun** — within 1.50° (allow 2.00°)\, Applyin
  g (2025-03-03T09:45:00Z\, score 65.5)\n\n\n\n\n\nDominant Domains\n\n* Min
  d (score 44.4)\n\n\n* Relationships: 61.9\n\n* Cognition: -17.5\n\n\n\n* S

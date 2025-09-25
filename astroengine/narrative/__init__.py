@@ -7,7 +7,7 @@ import logging
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Any
 
@@ -306,9 +306,7 @@ def _render_template_markdown(context: Mapping[str, Any]) -> str:
         lines.extend([""] * count)
 
     def spacer(count: int = 1) -> None:
-        if count <= 0:
-            return
-        lines.extend(["  "] * count)
+        blank(count)
 
     add("# AstroEngine Narrative Summary")
     add(f"Generated at {context['generated_at']}")

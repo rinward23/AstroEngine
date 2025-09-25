@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
+from collections.abc import Iterable as _TypingIterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any as _TypingAny
+
+from .canonical import parquet_write_canonical, sqlite_write_canonical
 
 try:  # pragma: no cover - optional dependency
     import sqlite3
@@ -144,10 +148,6 @@ class ParquetExporter:
 
 
 # >>> AUTO-GEN BEGIN: Canonical Export Adapters v1.0
-from collections.abc import Iterable as _TypingIterable
-from typing import Any as _TypingAny
-
-from .canonical import parquet_write_canonical, sqlite_write_canonical
 
 
 def write_sqlite_canonical(db_path: str, events: _TypingIterable[_TypingAny]) -> int:

@@ -27,29 +27,29 @@ Generated at 2025-03-05T12:00:00Z
 ## Dominant Domains
 
 - Mind (score 44.4)
-  
-  
+
+
     - Relationships: 61.9
-  
+
     - Cognition: -17.5
-  
-  
+
+
 
 - Spirit (score 26.5)
-  
-  
+
+
     - Growth: 26.5
-  
-  
+
+
 
 - Body (score -4.1)
-  
-  
+
+
     - Vitality: 23.4
-  
+
     - Habits: -27.5
-  
-  
+
+
 
 
 
