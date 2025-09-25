@@ -30,6 +30,7 @@ _BODY_CLASS: Dict[str, str] = {
     # Nodes
     "mean_node": "point",
     "true_node": "point",
+    "south_node": "point",
     # Asteroids & centaurs
     "ceres": "asteroid",
     "pallas": "asteroid",
@@ -59,9 +60,9 @@ _BODY_CLASS: Dict[str, str] = {
 # Friendly aliases -> canonical name
 _BODY_ALIASES: Dict[str, str] = {
     "north_node": "mean_node",
-    "south_node": "mean_node",
     "node": "mean_node",
     "nn": "mean_node",
+    "sn": "south_node",
     "black_moon_lilith": "mean_lilith",
     "lilith": "mean_lilith",
     "anti-vertex": "antivertex",
