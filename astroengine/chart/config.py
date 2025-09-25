@@ -14,11 +14,15 @@ __all__ = [
     "ChartConfig",
     "DEFAULT_SIDEREAL_AYANAMSHA",
     "SUPPORTED_AYANAMSHAS",
+    "HOUSE_SYSTEM_CHOICES",
+    "VALID_HOUSE_SYSTEMS",
+    "VALID_LILITH_VARIANTS",
+    "VALID_NODE_VARIANTS",
     "normalize_ayanamsha_name",
 ]
 
-
 VALID_ZODIAC_SYSTEMS = {"tropical", "sidereal"}
+
 VALID_HOUSE_SYSTEMS = {
     "alcabitius",
     "campanus",
@@ -34,7 +38,14 @@ VALID_HOUSE_SYSTEMS = {
     "topocentric",
     "vehlow_equal",
     "whole_sign",
+
 }
+
+VALID_HOUSE_SYSTEMS = set(_HOUSE_SYSTEM_CANONICAL_CODES)
+HOUSE_SYSTEM_CHOICES = sorted({*VALID_HOUSE_SYSTEMS, *(_HOUSE_SYSTEM_ALIASES.keys())})
+
+VALID_NODE_VARIANTS = {"mean", "true"}
+VALID_LILITH_VARIANTS = {"mean", "true"}
 
 
 @dataclass(frozen=True)
@@ -44,6 +55,8 @@ class ChartConfig:
     zodiac: str = "tropical"
     ayanamsha: str | None = None
     house_system: str = "placidus"
+    nodes_variant: str = "mean"
+    lilith_variant: str = "mean"
 
     def __post_init__(self) -> None:
         zodiac_normalized = self.zodiac.lower()
@@ -55,12 +68,29 @@ class ChartConfig:
             )
 
         house_normalized = self.house_system.lower()
-        object.__setattr__(self, "house_system", house_normalized)
-        if house_normalized not in VALID_HOUSE_SYSTEMS:
-            options = ", ".join(sorted(VALID_HOUSE_SYSTEMS))
+        canonical_house = _HOUSE_SYSTEM_ALIASES.get(house_normalized, house_normalized)
+        if canonical_house not in VALID_HOUSE_SYSTEMS:
+            options = ", ".join(sorted(HOUSE_SYSTEM_CHOICES))
             raise ValueError(
                 f"Unknown house system '{self.house_system}'. Valid options: {options}"
             )
+        object.__setattr__(self, "house_system", canonical_house)
+
+        nodes_variant = (self.nodes_variant or "mean").lower()
+        if nodes_variant not in VALID_NODE_VARIANTS:
+            options = ", ".join(sorted(VALID_NODE_VARIANTS))
+            raise ValueError(
+                f"Unknown nodes variant '{self.nodes_variant}'. Valid options: {options}"
+            )
+        object.__setattr__(self, "nodes_variant", nodes_variant)
+
+        lilith_variant = (self.lilith_variant or "mean").lower()
+        if lilith_variant not in VALID_LILITH_VARIANTS:
+            options = ", ".join(sorted(VALID_LILITH_VARIANTS))
+            raise ValueError(
+                f"Unknown Lilith variant '{self.lilith_variant}'. Valid options: {options}"
+            )
+        object.__setattr__(self, "lilith_variant", lilith_variant)
 
         if zodiac_normalized == "tropical":
             if self.ayanamsha is not None:

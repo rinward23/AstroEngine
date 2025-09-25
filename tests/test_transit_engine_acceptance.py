@@ -18,6 +18,7 @@ def test_mars_conjunct_natal_venus_acceptance():
     event = min(events, key=lambda evt: abs(evt.orb or 999.0))
     assert event.orb is not None and event.orb < 1.0 / 60.0
     assert event.motion in {"applying", "separating"}
+    assert isinstance(event.metadata.get("precision"), dict)
 
     assert event.timestamp is not None
     window_center = datetime(2025, 11, 6, tzinfo=UTC)

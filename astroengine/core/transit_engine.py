@@ -15,7 +15,7 @@ from typing import Any as _TypingAny
 from typing import Literal
 
 from ..ephemeris import EphemerisAdapter, EphemerisConfig, EphemerisSample
-from ..ephemeris.refinement import RefinementBracket, refine_event
+from ..ephemeris.refinement import SECONDS_PER_DAY, RefineResult, refine_event
 from .angles import classify_relative_motion, signed_delta
 from .api import TransitEvent as LegacyTransitEvent
 
@@ -202,37 +202,67 @@ class TransitEngine:
                 (start_time, start_sample, start_offset),
                 (end_time, end_sample, end_offset),
             )
-            final_time, final_sample, final_offset = min(
+            final_time, final_sample, _ = min(
                 coarse_candidates,
                 key=lambda entry: (abs(entry[2]), entry[0]),
             )
 
+            final_sample_offset = compute_offset(final_sample)
+
+            bracket_span_seconds = abs(end_sample.jd_utc - start_sample.jd_utc) * SECONDS_PER_DAY
+            precision_info = {
+                "requested_sec": float(settings.min_step_seconds)
+                if settings.enabled
+                else float(coarse_step.total_seconds()),
+                "achieved_sec": bracket_span_seconds,
+                "method": "coarse",
+                "iterations": 0,
+                "status": (
+                    "skipped"
+                    if (not settings.enabled or retro_loop or start_time == end_time)
+                    else "coarse_only"
+                ),
+            }
+
             if settings.enabled and not retro_loop and start_time != end_time:
-                bracket = RefinementBracket(
-                    body=body,
-                    start=start_time,
-                    end=end_time,
-                    start_sample=start_sample,
-                    end_sample=end_sample,
-                    start_offset=start_offset,
-                    end_offset=end_offset,
-                )
-                try:
-                    timestamp, refined_sample = refine_event(
-                        self.adapter,
-                        bracket,
-                        compute_offset,
-                        max_iterations=settings.max_iterations,
-                        min_step_seconds=settings.min_step_seconds,
-                    )
-                except Exception:
-                    timestamp = final_time
-                    refined_sample = final_sample
+                jd_start = start_sample.jd_utc
+                jd_end = end_sample.jd_utc
+                if jd_start <= jd_end:
+                    base_jd = jd_start
+                    base_time = start_time
                 else:
-                    final_time = timestamp
-                    final_sample = refined_sample
-                finally:
-                    final_offset = compute_offset(final_sample)
+                    base_jd = jd_end
+                    base_time = end_time
+
+                bracket = (min(jd_start, jd_end), max(jd_start, jd_end))
+
+                def _delta_fn(jd_ut: float) -> float:
+                    seconds = (jd_ut - base_jd) * SECONDS_PER_DAY
+                    moment = base_time + _dt.timedelta(seconds=seconds)
+                    sample = self.adapter.sample(body, moment)
+                    return compute_offset(sample)
+
+                result: RefineResult = refine_event(
+                    bracket,
+                    delta_fn=_delta_fn,
+                    tol_seconds=settings.min_step_seconds,
+                    max_iter=settings.max_iterations,
+                )
+                refined_seconds = (result.t_exact_jd - base_jd) * SECONDS_PER_DAY
+                refined_time = base_time + _dt.timedelta(seconds=refined_seconds)
+                refined_sample = self.adapter.sample(body, refined_time)
+                final_time = refined_time
+                final_sample = refined_sample
+                final_sample_offset = compute_offset(refined_sample)
+                precision_info = {
+                    "requested_sec": float(settings.min_step_seconds),
+                    "achieved_sec": float(result.achieved_tol_sec),
+                    "method": result.method,
+                    "iterations": int(result.iterations),
+                    "status": result.status,
+                }
+
+            final_offset = final_sample_offset
 
             final_separation = aspect_angle_deg + final_offset
             motion_state = classify_relative_motion(
@@ -249,4 +279,5 @@ class TransitEngine:
                 aspect=f"{aspect_angle_deg:.0f}",
                 orb=abs(final_offset),
                 motion=motion_state.state,
+                metadata={"precision": precision_info},
             )

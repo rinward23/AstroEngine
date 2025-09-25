@@ -21,8 +21,11 @@ from .chart import ChartLocation, NatalChart, compute_natal_chart
 from .chart.composite import compute_composite_chart
 from .chart.config import (
     DEFAULT_SIDEREAL_AYANAMSHA,
+    HOUSE_SYSTEM_CHOICES,
     SUPPORTED_AYANAMSHAS,
     VALID_HOUSE_SYSTEMS,
+    VALID_LILITH_VARIANTS,
+    VALID_NODE_VARIANTS,
     VALID_ZODIAC_SYSTEMS,
     ChartConfig,
 )
@@ -465,9 +468,15 @@ def _chart_config_from_args(args: argparse.Namespace) -> ChartConfig:
     zodiac = getattr(args, "zodiac", "tropical")
     ayanamsha = getattr(args, "ayanamsha", None)
     house_system = getattr(args, "house_system", "placidus")
+    nodes_variant = getattr(args, "nodes_variant", "mean")
+    lilith_variant = getattr(args, "lilith_variant", "mean")
     try:
         return ChartConfig(
-            zodiac=zodiac, ayanamsha=ayanamsha, house_system=house_system
+            zodiac=zodiac,
+            ayanamsha=ayanamsha,
+            house_system=house_system,
+            nodes_variant=nodes_variant,
+            lilith_variant=lilith_variant,
         )
     except ValueError as exc:
         raise SystemExit(f"Invalid chart configuration: {exc}") from exc
@@ -1108,6 +1117,8 @@ def cmd_transits(args: argparse.Namespace) -> int:
         include_mirrors=include_mirrors,
         include_aspects=include_aspects,
         antiscia_axis=args.mirror_axis,
+        nodes_variant=args.nodes_variant,
+        lilith_variant=args.lilith_variant,
     )
 
     narrative_bundle = None
@@ -1618,9 +1629,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--house-system",
-        choices=sorted(VALID_HOUSE_SYSTEMS),
+        choices=sorted(HOUSE_SYSTEM_CHOICES),
         default="placidus",
         help="Preferred house system for derived charts",
+    )
+    parser.add_argument(
+        "--nodes-variant",
+        choices=sorted(VALID_NODE_VARIANTS),
+        default="mean",
+        help="Lunar node variant: mean (default) or true",
+    )
+    parser.add_argument(
+        "--lilith-variant",
+        choices=sorted(VALID_LILITH_VARIANTS),
+        default="mean",
+        help="Black Moon Lilith variant: mean (default) or true",
     )
     parser.add_argument(
         "--start-utc", help="Start timestamp (ISO-8601) for experimental detectors"
@@ -1925,6 +1948,18 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--step", type=int, default=None)
     transits.add_argument("--aspects-policy")
     transits.add_argument("--target-longitude", type=float, default=None)
+    transits.add_argument(
+        "--nodes-variant",
+        choices=("mean", "true"),
+        default="mean",
+        help="Lunar node variant to use (default: mean)",
+    )
+    transits.add_argument(
+        "--lilith-variant",
+        choices=("mean", "true"),
+        default="mean",
+        help="Black Moon Lilith variant to use (default: mean)",
+    )
 
     transits.add_argument(
         "--narrative",

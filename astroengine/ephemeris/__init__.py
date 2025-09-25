@@ -10,7 +10,13 @@ from .adapter import (
     RefinementError,
     TimeScaleContext,
 )
-from .refinement import RefinementBracket, refine_event
+from .refinement import (
+    SECONDS_PER_DAY,
+    RefineResult,
+    bracket_root,
+    refine_event,
+    refine_root,
+)
 from .support import SupportIssue, filter_supported
 from .swisseph_adapter import BodyPosition, HousePositions, SwissEphemerisAdapter
 
@@ -20,8 +26,11 @@ __all__ = [
     "EphemerisSample",
     "ObserverLocation",
     "RefinementError",
-    "RefinementBracket",
+    "RefineResult",
     "refine_event",
+    "refine_root",
+    "bracket_root",
+    "SECONDS_PER_DAY",
     "SwissEphemerisAdapter",
     "BodyPosition",
     "HousePositions",

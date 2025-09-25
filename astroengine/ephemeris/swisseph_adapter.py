@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Optional
 
 import swisseph as swe
 
@@ -20,6 +20,7 @@ from .sidereal import (
     normalize_ayanamsha_name,
 )
 from .utils import get_se_ephe_path
+from ..core.bodies import canonical_name
 
 if TYPE_CHECKING:  # pragma: no cover - runtime import avoided for typing only
 
@@ -30,7 +31,71 @@ __all__ = [
     "EquatorialPosition",
     "HousePositions",
     "SwissEphemerisAdapter",
+    "VariantConfig",
+    "resolve_house_code",
 ]
+
+
+HOUSE_CODE_BY_NAME: Mapping[str, str] = {
+    "placidus": "P",
+    "koch": "K",
+    "regiomontanus": "R",
+    "campanus": "C",
+    "equal": "A",
+    "whole_sign": "W",
+    "porphyry": "O",
+    "alcabitius": "B",
+    "topocentric": "T",
+    "morinus": "M",
+    "meridian": "X",
+    "vehlow_equal": "V",
+    "sripati": "S",
+    "equal_mc": "D",
+}
+
+HOUSE_ALIASES: Mapping[str, str] = {
+    "ws": "whole_sign",
+    "wholesign": "whole_sign",
+    "w": "whole_sign",
+    "axial": "meridian",
+    "vehlow": "vehlow_equal",
+    "sripathi": "sripati",
+    "equalmc": "equal_mc",
+}
+
+
+def resolve_house_code(name_or_code: str) -> tuple[str, str]:
+    """Return the canonical name and Swiss code for ``name_or_code``."""
+
+    token = (name_or_code or "").strip()
+    if not token:
+        return "placidus", HOUSE_CODE_BY_NAME["placidus"]
+    lowered = token.lower()
+    # Direct Swiss code (single letter)
+    if len(token) == 1 and token.upper() in {code for code in HOUSE_CODE_BY_NAME.values()}:
+        code = token.upper()
+        for name, mapped in HOUSE_CODE_BY_NAME.items():
+            if mapped == code:
+                return name, code
+        return token.lower(), code
+    canonical = HOUSE_ALIASES.get(lowered, lowered)
+    if canonical in HOUSE_CODE_BY_NAME:
+        return canonical, HOUSE_CODE_BY_NAME[canonical]
+    raise ValueError(
+        f"Unsupported house system '{name_or_code}'. Valid options: "
+        f"{sorted(HOUSE_CODE_BY_NAME)}"
+    )
+
+
+_NODE_VARIANT_CODES = {
+    "mean": int(getattr(swe, "MEAN_NODE", 10)),
+    "true": int(getattr(swe, "TRUE_NODE", 11)),
+}
+
+_LILITH_VARIANT_CODES = {
+    "mean": int(getattr(swe, "MEAN_APOG", 12)),
+    "true": int(getattr(swe, "OSCU_APOG", 13)),
+}
 
 
 @dataclass(frozen=True)
@@ -60,6 +125,20 @@ class EquatorialPosition:
 
 
 @dataclass(frozen=True)
+class VariantConfig:
+    """Per-run variant selection for lunar nodes and Black Moon Lilith."""
+
+    nodes_variant: str = "mean"
+    lilith_variant: str = "mean"
+
+    def normalized_nodes(self) -> str:
+        return "true" if self.nodes_variant.lower() == "true" else "mean"
+
+    def normalized_lilith(self) -> str:
+        return "true" if self.lilith_variant.lower() == "true" else "mean"
+
+
+@dataclass(frozen=True)
 class HousePositions:
     """Container for house cusps, angles, and provenance metadata."""
 
@@ -68,10 +147,12 @@ class HousePositions:
     ascendant: float
     midheaven: float
     system_name: str | None = None
+
     requested_system: str | None = None
     fallback_from: str | None = None
     fallback_reason: str | None = None
     provenance: Mapping[str, object] | None = None
+
 
     def to_dict(self) -> Mapping[str, float | str | tuple[float, ...] | None | Mapping[str, object]]:
         payload: dict[str, float | str | tuple[float, ...] | None | Mapping[str, object]] = {
@@ -82,6 +163,7 @@ class HousePositions:
         }
         if self.system_name is not None:
             payload["system_name"] = self.system_name
+
         if self.requested_system is not None:
             payload["requested_system"] = self.requested_system
         if self.fallback_from is not None:
@@ -90,6 +172,7 @@ class HousePositions:
             payload["fallback_reason"] = self.fallback_reason
         if self.provenance is not None:
             payload["provenance"] = dict(self.provenance)
+
         return payload
 
 
@@ -104,6 +187,7 @@ class SwissEphemerisAdapter:
     _DEFAULT_ZODIAC: ClassVar[str] = "tropical"
     _DEFAULT_AYANAMSHA: ClassVar[str | None] = DEFAULT_SIDEREAL_AYANAMSHA
     _DEFAULT_ADAPTER: ClassVar[SwissEphemerisAdapter | None] = None
+    _DEFAULT_VARIANTS: ClassVar[VariantConfig] = VariantConfig()
     _AYANAMSHA_MODES: ClassVar[dict[str, int]] = {
         "lahiri": swe.SIDM_LAHIRI,
         "fagan_bradley": swe.SIDM_FAGAN_BRADLEY,
@@ -111,6 +195,7 @@ class SwissEphemerisAdapter:
         "raman": swe.SIDM_RAMAN,
         "deluce": swe.SIDM_DELUCE,
     }
+
 
     _HOUSE_SYSTEM_CODES: ClassVar[Mapping[str, bytes]] = {
         "placidus": b"P",
@@ -140,6 +225,7 @@ class SwissEphemerisAdapter:
         "topo": "topocentric",
     }
 
+
     def __init__(
         self,
         ephemeris_path: str | os.PathLike[str] | None = None,
@@ -147,6 +233,8 @@ class SwissEphemerisAdapter:
         zodiac: str | None = None,
         ayanamsha: str | None = None,
         house_system: str | None = None,
+        nodes_variant: str | None = None,
+        lilith_variant: str | None = None,
         chart_config: ChartConfig | None = None,
     ) -> None:
 
@@ -158,6 +246,19 @@ class SwissEphemerisAdapter:
                 config_kwargs["zodiac"] = zodiac
             if ayanamsha is not None:
                 config_kwargs["ayanamsha"] = ayanamsha
+            if house_system is not None:
+                config_kwargs["house_system"] = house_system
+            default_variants = type(self)._DEFAULT_VARIANTS
+            if nodes_variant is not None:
+                config_kwargs["nodes_variant"] = nodes_variant
+            else:
+                config_kwargs.setdefault("nodes_variant", default_variants.nodes_variant)
+            if lilith_variant is not None:
+                config_kwargs["lilith_variant"] = lilith_variant
+            else:
+                config_kwargs.setdefault(
+                    "lilith_variant", default_variants.lilith_variant
+                )
             chart_config = _ChartConfig(**config_kwargs)
         else:
             if zodiac is not None and zodiac.lower() != chart_config.zodiac.lower():
@@ -176,6 +277,21 @@ class SwissEphemerisAdapter:
                         "ayanamsha override must match chart_config.ayanamsha "
                         "when both are provided"
                     )
+            if house_system is not None and house_system.lower() != chart_config.house_system:
+                raise ValueError(
+                    "house system override must match chart_config.house_system"
+                )
+            if nodes_variant is not None and nodes_variant.lower() != chart_config.nodes_variant:
+                raise ValueError(
+                    "nodes_variant override must match chart_config.nodes_variant"
+                )
+            if (
+                lilith_variant is not None
+                and lilith_variant.lower() != chart_config.lilith_variant
+            ):
+                raise ValueError(
+                    "lilith_variant override must match chart_config.lilith_variant"
+                )
 
         self.chart_config = chart_config
         self.zodiac = chart_config.zodiac
@@ -184,6 +300,11 @@ class SwissEphemerisAdapter:
         self._sidereal_mode: int | None = (
             self._resolve_sidereal_mode(self.ayanamsha) if self._is_sidereal else None
         )
+        self._variant_config = VariantConfig(
+            nodes_variant=chart_config.nodes_variant,
+            lilith_variant=chart_config.lilith_variant,
+        )
+        self._last_house_metadata: Optional[dict[str, object]] = None
 
         self._calc_flags = swe.FLG_SWIEPH | swe.FLG_SPEED
         self._fallback_flags = swe.FLG_MOSEPH | swe.FLG_SPEED
@@ -204,6 +325,9 @@ class SwissEphemerisAdapter:
         *,
         zodiac: str | None = None,
         ayanamsha: str | None = None,
+        house_system: str | None = None,
+        nodes_variant: str | None = None,
+        lilith_variant: str | None = None,
         chart_config: ChartConfig | None = None,
     ) -> None:
         """Update default zodiac configuration for subsequently created adapters."""
@@ -216,6 +340,12 @@ class SwissEphemerisAdapter:
                 config_kwargs["zodiac"] = zodiac
             if ayanamsha is not None:
                 config_kwargs["ayanamsha"] = ayanamsha
+            if house_system is not None:
+                config_kwargs["house_system"] = house_system
+            if nodes_variant is not None:
+                config_kwargs["nodes_variant"] = nodes_variant
+            if lilith_variant is not None:
+                config_kwargs["lilith_variant"] = lilith_variant
             chart = _ChartConfig(**config_kwargs)
         else:
 
@@ -237,6 +367,21 @@ class SwissEphemerisAdapter:
                         "ayanamsha override must match chart_config.ayanamsha "
                         "when both are provided"
                     )
+            if house_system is not None and house_system.lower() != chart_config.house_system:
+                raise ValueError(
+                    "house system override must match chart_config.house_system"
+                )
+            if nodes_variant is not None and nodes_variant.lower() != chart_config.nodes_variant:
+                raise ValueError(
+                    "nodes_variant override must match chart_config.nodes_variant"
+                )
+            if (
+                lilith_variant is not None
+                and lilith_variant.lower() != chart_config.lilith_variant
+            ):
+                raise ValueError(
+                    "lilith_variant override must match chart_config.lilith_variant"
+                )
 
         zodiac_value = zodiac or chart.zodiac
         zodiac_normalized = (zodiac_value or cls._DEFAULT_ZODIAC).lower()
@@ -265,6 +410,10 @@ class SwissEphemerisAdapter:
 
         cls._DEFAULT_ZODIAC = chart.zodiac
         cls._DEFAULT_AYANAMSHA = normalized
+        cls._DEFAULT_VARIANTS = VariantConfig(
+            nodes_variant=chart.nodes_variant,
+            lilith_variant=chart.lilith_variant,
+        )
 
         cls._DEFAULT_ADAPTER = None
 
@@ -390,28 +539,36 @@ class SwissEphemerisAdapter:
     ) -> BodyPosition:
         """Compute longitude/latitude/speed data for a single body."""
 
+        override_code, derived = self._variant_override(body_name)
+        effective_code = override_code if override_code is not None else body_code
+
         self._apply_sidereal_mode()
         flags = self._calc_flags
         try:
-            values, _ = swe.calc_ut(jd_ut, body_code, flags)
+            values, _ = swe.calc_ut(jd_ut, effective_code, flags)
         except Exception:
             flags = self._fallback_flags
-            values, _ = swe.calc_ut(jd_ut, body_code, flags)
+            values, _ = swe.calc_ut(jd_ut, effective_code, flags)
 
         lon, lat, dist, speed_lon, speed_lat, speed_dist = values
 
-        equatorial = self.body_equatorial(jd_ut, body_code)
+        if derived:
+            lon = (lon + 180.0) % 360.0
+            lat = -lat
+            speed_lat = -speed_lat
+
+        equatorial = self.body_equatorial(jd_ut, effective_code)
 
 
         try:
-            eq_values, _ = swe.calc_ut(jd_ut, body_code, flags | swe.FLG_EQUATORIAL)
+            eq_values, _ = swe.calc_ut(jd_ut, effective_code, flags | swe.FLG_EQUATORIAL)
             _decl, _speed_decl = eq_values[1], eq_values[4]
         except Exception:
             _decl, _speed_decl = float("nan"), float("nan")
 
 
         return BodyPosition(
-            body=body_name or str(body_code),
+            body=body_name or str(effective_code),
             julian_day=jd_ut,
             longitude=lon % 360.0,
             latitude=lat,
@@ -432,6 +589,33 @@ class SwissEphemerisAdapter:
             name: self.body_position(jd_ut, code, body_name=name)
             for name, code in bodies.items()
         }
+
+    def _variant_override(self, body_name: str | None) -> tuple[Optional[int], bool]:
+        if not body_name:
+            return None, False
+        original = (body_name or "").strip()
+        lowered = original.lower()
+        canonical = canonical_name(original)
+
+        node_variant = self._variant_config.normalized_nodes()
+        if lowered == "true_node":
+            node_variant = "true"
+        elif lowered == "mean_node":
+            node_variant = "mean"
+        if canonical in {"mean_node", "true_node"} or lowered in {"node", "north_node", "nn"}:
+            return _NODE_VARIANT_CODES[node_variant], False
+        if canonical == "south_node" or lowered in {"south_node", "sn"}:
+            return _NODE_VARIANT_CODES[node_variant], True
+
+        lilith_variant = self._variant_config.normalized_lilith()
+        if lowered == "true_lilith":
+            lilith_variant = "true"
+        elif lowered == "mean_lilith":
+            lilith_variant = "mean"
+        if canonical in {"mean_lilith", "true_lilith"} or lowered in {"lilith", "black_moon_lilith"}:
+            return _LILITH_VARIANT_CODES[lilith_variant], False
+
+        return None, False
 
     def houses(
         self,
@@ -475,6 +659,7 @@ class SwissEphemerisAdapter:
             else:
                 raise
 
+
         if self._is_sidereal:
             ayan = swe.get_ayanamsa_ut(jd_ut)
             cusps = tuple((c - ayan) % 360.0 for c in cusps)
@@ -483,6 +668,7 @@ class SwissEphemerisAdapter:
         else:
             ascendant = angles[0]
             midheaven = angles[1]
+
 
         if isinstance(used_code, bytes | bytearray):
             system_label = used_code.decode("ascii")
@@ -502,16 +688,19 @@ class SwissEphemerisAdapter:
                 fallback_info["reason"] = fallback_reason
             provenance["house_fallback"] = fallback_info
 
+
         return HousePositions(
             system=system_label,
             cusps=tuple(cusps),
             ascendant=ascendant,
             midheaven=midheaven,
+
             system_name=used_key,
             requested_system=requested_key,
             fallback_from=fallback_from,
             fallback_reason=fallback_reason,
             provenance=provenance,
+
         )
 
     # ------------------------------------------------------------------
@@ -521,8 +710,9 @@ class SwissEphemerisAdapter:
     def is_sidereal(self) -> bool:
         return self._is_sidereal
 
-    def _resolve_house_system(self, system: str | None) -> tuple[str, bytes]:
+    def _resolve_house_system(self, system: str | None) -> tuple[str, str]:
         """Return the canonical house system key and Swiss code."""
+
 
         if system is None:
             key = self.chart_config.house_system.lower()
@@ -552,3 +742,4 @@ class SwissEphemerisAdapter:
             "Unsupported house system "
             f"'{system or self.chart_config.house_system}'. Valid options: {options}"
         )
+

@@ -37,6 +37,8 @@ class TransitEvent:
     severity:
         Composite severity score in ``[0, 1]`` when profiles supply a
         weighting model.
+    metadata:
+        Free-form provenance dictionary recorded by detectors.
     """
 
     timestamp: _dt.datetime | None = None
@@ -49,6 +51,7 @@ class TransitEvent:
     domains: dict[str, float] = field(default_factory=dict)
     domain_profile: str | None = None
     severity: float | None = None
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass
