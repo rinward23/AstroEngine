@@ -51,8 +51,10 @@ bodies:
     inner: [sun, moon, mercury, venus, mars]
     outer: [jupiter, saturn, uranus, neptune, pluto]
     minor: [ceres, pallas, juno, vesta]
+    centaur: [chiron, pholus, nessus]
+    tno: [eris, haumea, makemake, sedna, quaoar, orcus, ixion]
     dwarf: [eris, sedna]
-    points: [asc, mc, ic, dsc, vertex, antivertex, fortune, spirit]
+    points: [asc, mc, ic, dsc, vertex, antivertex, fortune, spirit, mean_node, mean_lilith]
   enablement:
     sun: true
     moon: true
@@ -64,16 +66,26 @@ bodies:
     uranus: true
     neptune: true
     pluto: true
-    ceres: false
-    pallas: false
-    juno: false
-    vesta: false
-    eris: false
-    sedna: false
+    ceres: true
+    pallas: true
+    juno: true
+    vesta: true
+    chiron: true
+    pholus: true
+    nessus: true
+    eris: true
+    haumea: true
+    makemake: true
+    sedna: true
+    quaoar: true
+    orcus: true
+    ixion: true
     vertex: true
     antivertex: true
     fortune: true
     spirit: true
+    mean_node: true
+    mean_lilith: true
   severity_weights:
     sun: 1.00
     moon: 1.10

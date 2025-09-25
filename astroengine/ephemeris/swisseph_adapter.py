@@ -155,7 +155,9 @@ class HousePositions:
         }
         if self.system_name is not None:
             payload["system_name"] = self.system_name
+
         if self.fallback_from is not None:
+
             payload["fallback_from"] = self.fallback_from
         return payload
 
@@ -179,6 +181,7 @@ class SwissEphemerisAdapter:
         "raman": swe.SIDM_RAMAN,
         "deluce": swe.SIDM_DELUCE,
     }
+
 
     def __init__(
         self,
@@ -588,6 +591,7 @@ class SwissEphemerisAdapter:
         used_code = sys_code
 
         self._apply_sidereal_mode()
+
         try:
             cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, code_token)
         except Exception:
@@ -605,6 +609,7 @@ class SwissEphemerisAdapter:
                     ) from exc
             else:
                 raise
+
 
         if self._is_sidereal:
             ayan = swe.get_ayanamsa_ut(jd_ut)
@@ -633,8 +638,9 @@ class SwissEphemerisAdapter:
             cusps=tuple(cusps),
             ascendant=ascendant,
             midheaven=midheaven,
+
             system_name=used_name,
-            fallback_from=fallback_from,
+
         )
 
     # ------------------------------------------------------------------
@@ -647,6 +653,8 @@ class SwissEphemerisAdapter:
     def _resolve_house_system(self, system: str | None) -> tuple[str, str]:
         """Return the canonical house system key and Swiss code."""
 
+
         candidate = system or self.chart_config.house_system
         name, code = resolve_house_code(candidate)
         return name, code
+
