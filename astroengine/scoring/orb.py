@@ -1,4 +1,6 @@
-"""Aspect orb policy helpers backed by :mod:`astroengine` JSON profiles."""
+
+"""Aspect angle defaults and orb calculations sourced from policy JSON."""
+
 
 from __future__ import annotations
 
@@ -7,19 +9,25 @@ from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources as importlib_resources
 from math import isclose
+
+from pathlib import Path
 from typing import Mapping, Sequence
 
-# Prefer the project-level body classification but fall back to a minimal map.
-try:  # pragma: no cover - import guard for editable installs
-    from ..core.bodies import body_class  # type: ignore
+# Optional: integrate with project body classification if available
+try:  # pragma: no cover - fallback for minimal installs
+    from astroengine.core.bodies import body_class  # type: ignore import
 except Exception:  # pragma: no cover
     def body_class(name: str) -> str:
-        lowered = (name or "").lower()
-        if lowered in {"sun", "moon"}:
+        n = (name or "").lower()
+        luminaries = {"sun", "moon"}
+        personals = {"mercury", "venus", "mars"}
+        socials = {"jupiter", "saturn"}
+        if n in luminaries:
             return "luminary"
-        if lowered in {"mercury", "venus", "mars"}:
+        if n in personals:
             return "personal"
-        if lowered in {"jupiter", "saturn"}:
+        if n in socials:
+
             return "social"
         return "outer"
 
@@ -28,35 +36,30 @@ def _normalize_name(name: str) -> str:
     return str(name).strip().lower()
 
 
-def _policy_text() -> str:
-    """Return the raw aspects policy JSON, tolerating comment lines."""
+@lru_cache(maxsize=1)
+def _load_aspects_policy() -> dict:
+    """Load the packaged aspect policy with an editable-install fallback."""
 
-    # First attempt to load from the installed package resources.
+    text: str | None = None
+
     try:
         resource = importlib_resources.files("astroengine.profiles").joinpath(
             "aspects_policy.json"
         )
-        with resource.open("r", encoding="utf-8") as handle:
-            text = handle.read()
-    except (FileNotFoundError, ModuleNotFoundError):  # pragma: no cover - fallback path
-        # Fallback to the repository profiles directory (editable installs).
-        try:
-            from ..infrastructure.paths import profiles_dir
-        except Exception as exc:  # pragma: no cover - defensive guard
-            raise FileNotFoundError("Unable to locate aspects_policy.json") from exc
-        fallback_path = profiles_dir() / "aspects_policy.json"
-        with fallback_path.open("r", encoding="utf-8") as handle:
-            text = handle.read()
-    # Remove comment lines starting with '#'
+
+        # ``read_text`` works for regular and zip-based installations alike.
+        text = resource.read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError):  # pragma: no cover - packaging issues
+        text = None
+    if text is None:
+        repo_path = Path(__file__).resolve().parents[2] / "profiles" / "aspects_policy.json"
+        text = repo_path.read_text(encoding="utf-8")
+
     filtered = "\n".join(
         line for line in text.splitlines() if not line.strip().startswith("#")
     )
-    return filtered
+    return json.loads(filtered)
 
-
-@lru_cache(maxsize=1)
-def _load_aspects_policy() -> dict:
-    return json.loads(_policy_text())
 
 
 @lru_cache(maxsize=1)
@@ -94,8 +97,11 @@ def _enabled_angle_values() -> Sequence[float]:
     name_to_angle, _ = _angles_index()
     enabled: set[str] = set()
     for key in ("enabled", "enabled_minors", "enabled_harmonics"):
-        for entry in policy.get(key, []) or []:
-            normalized = _normalize_name(str(entry))
+
+        values = policy.get(key) or []
+        for name in values:
+            normalized = _normalize_name(str(name))
+
             if normalized:
                 enabled.add(normalized)
     return tuple(
@@ -108,7 +114,9 @@ DEFAULT_ASPECTS: tuple[float, ...] = tuple(_enabled_angle_values())
 
 @dataclass(frozen=True)
 class OrbCalculator:
-    """Compute orb allowances for aspect detections based on JSON policy."""
+
+    """Compute orb allowances using the repository's aspect policy."""
+
 
     _policy: Mapping[str, object] | None = None
 
@@ -124,30 +132,29 @@ class OrbCalculator:
         profile: str = "standard",
     ) -> float:
         policy = self._policy or {}
-        name = _aspect_name_for_angle(float(angle_deg)) or ""
 
-        per_aspect = policy.get("orbs_deg", {})  # type: ignore[assignment]
-        if name and name in per_aspect:
-            spec = per_aspect[name]  # type: ignore[index]
-            if isinstance(spec, Mapping):
-                class_a = body_class(body_a)
-                class_b = body_class(body_b)
-                allow_a = float(spec.get(class_a, spec.get("outer", 2.0)))
-                allow_b = float(spec.get(class_b, spec.get("outer", 2.0)))
-                return min(allow_a, allow_b)
-            if isinstance(spec, (int, float)):
-                return float(spec)
+        aspect_name = _aspect_name_for_angle(float(angle_deg))
+        per_aspect: Mapping[str, Mapping[str, float]] = policy.get("orbs_deg", {})  # type: ignore[assignment]
+        if aspect_name and aspect_name in per_aspect:
+            classification_a = body_class(body_a)
+            classification_b = body_class(body_b)
+            spec = per_aspect[aspect_name]  # type: ignore[index]
+            allow_a = float(spec.get(classification_a, spec.get("outer", 2.0)))
+            allow_b = float(spec.get(classification_b, spec.get("outer", 2.0)))
+            return min(allow_a, allow_b)
 
-        family = _family_for_name(name)
-        family_defaults: Mapping[str, float] | None = policy.get("orb_defaults", {}).get(  # type: ignore[index]
-            family
+        family = _family_for_name(aspect_name or "")
+        orb_defaults = policy.get("orb_defaults", {})  # type: ignore[assignment]
+        family_defaults = (
+            orb_defaults.get(family, {}) if isinstance(orb_defaults, Mapping) else {}
         )
         if isinstance(family_defaults, Mapping):
-            class_a = body_class(body_a)
-            class_b = body_class(body_b)
-            default = float(family_defaults.get("default", policy.get("default_orb_deg", 2.0)))
-            allow_a = float(family_defaults.get(class_a, default))
-            allow_b = float(family_defaults.get(class_b, default))
+            classification_a = body_class(body_a)
+            classification_b = body_class(body_b)
+            default_value = float(family_defaults.get("default", 2.0))
+            allow_a = float(family_defaults.get(classification_a, default_value))
+            allow_b = float(family_defaults.get(classification_b, default_value))
+
             return min(allow_a, allow_b)
 
         return float(policy.get("default_orb_deg", 2.0))
