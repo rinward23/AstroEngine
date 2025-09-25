@@ -1,24 +1,54 @@
 # >>> AUTO-GEN BEGIN: bench scan v1.0
 #!/usr/bin/env python
+"""Quick performance benchmark for the fast transit scanner.
+
+The script prefers the in-repo ``astroengine`` implementation but can fall
+back to the auto-generated engine when the full package cannot be imported
+(for example, in a minimal perf environment).
 """
-Quick performance benchmark:
-- scans Sun→natal Venus conj over N days at tick=60m
-- prints hits and wall time
-Run: python scripts/perf/bench_scan.py
-"""
+from __future__ import annotations
+
 import datetime as dt
+import importlib
+import importlib.util
 import os
+import sys
 import time
+from collections.abc import Callable, Mapping, Sequence
+from pathlib import Path
 
-from generated.astroengine.engine import ScanConfig, fast_scan  # fallback
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-try:
-    from astroengine.engine import ScanConfig as _SC
-    from astroengine.engine import fast_scan as _fs  # type: ignore
 
-    fast_scan, ScanConfig = _fs, _SC
-except Exception:
-    pass
+def _load_generated_fallback() -> tuple[Callable[..., object], type]:
+    """Load the generated fallback engine without triggering the shim."""
+
+    package_root = REPO_ROOT / "generated" / "astroengine"
+    if not package_root.exists():  # pragma: no cover - defensive
+        raise ImportError("generated fallback package missing")
+
+    spec = importlib.util.spec_from_file_location(
+        "generated_fallback",
+        package_root / "__init__.py",
+        submodule_search_locations=[str(package_root)],
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault("generated_fallback", module)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    engine = importlib.import_module("generated_fallback.engine")
+    return engine.fast_scan, engine.ScanConfig
+
+
+if os.getenv("ASTROENGINE_FORCE_GENERATED") == "1":
+    fast_scan, ScanConfig = _load_generated_fallback()
+else:
+    try:
+        from astroengine.engine import ScanConfig, fast_scan  # type: ignore
+    except Exception:
+        fast_scan, ScanConfig = _load_generated_fallback()
 
 
 def main():
@@ -40,7 +70,15 @@ def main():
         f"fast_scan: days={(end-start).days}, ticks={(end-start).days*24}, hits={len(hits)}, wall={dt_sec:.2f}s"
     )
     for h in hits[:3]:
-        print("hit:", h[0].isoformat(), "Δ≈", h[1])
+        if isinstance(h, Mapping):
+            ts = h.get("timestamp")
+            delta = h.get("delta")
+        elif isinstance(h, Sequence) and len(h) >= 2:
+            ts, delta = h[0], h[1]
+        else:
+            ts, delta = h, None
+        ts_text = ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
+        print("hit:", ts_text, "Δ≈", delta)
     if dt_sec > 30.0:
         print("NOTE: >30s; consider lowering tick_minutes or limiting bodies")
     return 0
