@@ -12,4 +12,6 @@ def test_import_astroengine_surface():
     assert hasattr(module, "TransitEngine")
     assert hasattr(module, "TransitScanConfig")
     assert hasattr(module, "TransitEvent")
+
+
 # >>> AUTO-GEN END: astroengine packaging smoke v1.0

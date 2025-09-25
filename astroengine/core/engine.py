@@ -12,7 +12,9 @@ from .domains import DomainResolver
 from .scoring import compute_domain_factor
 
 
-def _attach_domain_fields(event_obj: TransitEvent, ctx: Mapping[str, Any] | None) -> None:
+def _attach_domain_fields(
+    event_obj: TransitEvent, ctx: Mapping[str, Any] | None
+) -> None:
     """Populate domain-related fields on ``event_obj`` using ``ctx`` metadata."""
 
     resolver = DomainResolver()
@@ -80,7 +82,9 @@ def get_active_aspect_angles(ctx: dict[str, Any] | None) -> Iterable[float]:
     return sorted({float(angle) for angle in angles})
 
 
-def get_feature_flag(ctx: dict[str, Any] | None, key: str, default: bool = False) -> bool:
+def get_feature_flag(
+    ctx: dict[str, Any] | None, key: str, default: bool = False
+) -> bool:
     """Return the boolean feature flag stored under ``key`` in ``ctx``."""
 
     flags = (ctx or {}).get("flags", {})

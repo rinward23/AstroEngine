@@ -1,4 +1,3 @@
-
 """Narrative composition and summarisation helpers for AstroEngine."""
 
 from __future__ import annotations
@@ -8,7 +7,7 @@ import logging
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from functools import lru_cache
 from typing import Any
 
@@ -18,7 +17,6 @@ from ..utils import load_json_document
 from .gpt_api import GPTNarrativeClient
 from .profiles import render_profile, timelord_outline
 from .prompts import build_summary_prompt, build_template_summary
-
 
 try:  # pragma: no cover - optional dependency
     from jinja2 import Template
@@ -32,17 +30,14 @@ __all__ = [
     "NarrativeTimelord",
     "NarrativeBundle",
     "compose_narrative",
-
     "render_simple",
     "summarize_top_events",
     "render_profile",
     "timelord_outline",
     "build_summary_prompt",
     "build_template_summary",
-
     "markdown_to_html",
     "markdown_to_plaintext",
-
 ]
 
 _LOG = logging.getLogger(__name__)
@@ -50,6 +45,7 @@ _LOG = logging.getLogger(__name__)
 _DEFAULT_TEMPLATE = """
 {{ title }}\n\n{% for e in events %}- {{ e }}\n{% endfor %}
 """
+
 
 def _render_simple_template(title: str, events: Mapping[str, Any]) -> str:
     lines = [str(title).strip()]
@@ -227,7 +223,6 @@ def render_simple(title: str, events: Mapping[str, Any]) -> str:
     return _render_simple_template(title, events)
 
 
-
 def summarize_top_events(
     events: Sequence[Any] | Iterable[Any],
     *,
@@ -271,10 +266,11 @@ def summarize_top_events(
         try:
             return client.summarize(prompt)
         except Exception as exc:  # pragma: no cover - network or API errors
-            _LOG.warning("GPT narrative generation failed; using template fallback: %s", exc)
+            _LOG.warning(
+                "GPT narrative generation failed; using template fallback: %s", exc
+            )
 
     return offline
-
 
 
 def compose_narrative(
@@ -514,9 +510,9 @@ def _format_markdown_text(text: str) -> str:
 
 def _normalise_generated_at(generated_at: datetime | str | None) -> str:
     if generated_at is None:
-        generated = datetime.now(timezone.utc)
+        generated = datetime.now(UTC)
     elif isinstance(generated_at, datetime):
-        generated = generated_at.astimezone(timezone.utc)
+        generated = generated_at.astimezone(UTC)
     else:
         return str(generated_at)
     return generated.replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -547,14 +543,16 @@ def _event_timestamp(event: object) -> str:
 def _event_datetime(event: object) -> datetime:
     timestamp = _event_timestamp(event)
     if not timestamp:
-        return datetime(1970, 1, 1, tzinfo=timezone.utc)
+        return datetime(1970, 1, 1, tzinfo=UTC)
     try:
-        return datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone(timezone.utc)
+        return datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone(UTC)
     except ValueError:  # pragma: no cover - defensive
-        return datetime(1970, 1, 1, tzinfo=timezone.utc)
+        return datetime(1970, 1, 1, tzinfo=UTC)
 
 
-def _select_highlights(events: Sequence[object], *, top_n: int) -> list[NarrativeHighlight]:
+def _select_highlights(
+    events: Sequence[object], *, top_n: int
+) -> list[NarrativeHighlight]:
     scored: list[tuple[float, str, NarrativeHighlight]] = []
     for event in events:
         score = _event_score(event)
@@ -566,7 +564,9 @@ def _select_highlights(events: Sequence[object], *, top_n: int) -> list[Narrativ
     return [entry[2] for entry in scored[: max(top_n, 0)]]
 
 
-def _make_highlight(event: object, *, score: float, timestamp: str) -> NarrativeHighlight:
+def _make_highlight(
+    event: object, *, score: float, timestamp: str
+) -> NarrativeHighlight:
     category = _categorise_event(event)
     category_label = _CATEGORY_LABELS.get(category, category.replace("_", " ").title())
     moving = _event_attr(event, "moving")
@@ -577,7 +577,9 @@ def _make_highlight(event: object, *, score: float, timestamp: str) -> Narrative
 
     orb_abs = _event_attr(event, "orb_abs")
     orb_allow = _event_attr(event, "orb_allow")
-    phase = (_event_attr(event, "applying_or_separating") or "").replace("_", " ").title()
+    phase = (
+        (_event_attr(event, "applying_or_separating") or "").replace("_", " ").title()
+    )
     if orb_abs is not None and orb_allow is not None:
         try:
             orb_text = f"within {float(orb_abs):.2f}° (allow {float(orb_allow):.2f}°)"
@@ -632,7 +634,9 @@ def _categorise_event(event: object) -> str:
     return "other"
 
 
-def _build_categories(highlights: Sequence[NarrativeHighlight]) -> list[NarrativeCategory]:
+def _build_categories(
+    highlights: Sequence[NarrativeHighlight],
+) -> list[NarrativeCategory]:
     buckets: dict[str, list[NarrativeHighlight]] = defaultdict(list)
     for highlight in highlights:
         buckets[highlight.category].append(highlight)
@@ -642,7 +646,9 @@ def _build_categories(highlights: Sequence[NarrativeHighlight]) -> list[Narrativ
         total = sum(item.score for item in items)
         label = _CATEGORY_LABELS.get(key, key.replace("_", " ").title())
         ordered = sorted(items, key=lambda item: (-item.score, item.title))
-        categories.append(NarrativeCategory(key=key, label=label, score=total, events=ordered))
+        categories.append(
+            NarrativeCategory(key=key, label=label, score=total, events=ordered)
+        )
 
     categories.sort(key=lambda category: (-category.score, category.label))
     return categories
@@ -669,7 +675,9 @@ def _domain_names() -> tuple[dict[str, str], dict[str, dict[str, str]]]:
     return domain_names, channel_names
 
 
-def _summarise_domains(highlights: Sequence[NarrativeHighlight]) -> list[NarrativeDomain]:
+def _summarise_domains(
+    highlights: Sequence[NarrativeHighlight],
+) -> list[NarrativeDomain]:
     if not highlights:
         return []
     domain_names, channel_names = _domain_names()
@@ -689,7 +697,9 @@ def _summarise_domains(highlights: Sequence[NarrativeHighlight]) -> list[Narrati
             channels.append(
                 {
                     "id": channel_id,
-                    "name": channel_names.get(domain_id, {}).get(channel_id, channel_id.title()),
+                    "name": channel_names.get(domain_id, {}).get(
+                        channel_id, channel_id.title()
+                    ),
                     "score": net,
                     "positive": float(positive.score) if positive else 0.0,
                     "negative": float(negative.score) if negative else 0.0,
@@ -708,7 +718,9 @@ def _summarise_domains(highlights: Sequence[NarrativeHighlight]) -> list[Narrati
     return domains
 
 
-def _summarise_timelords(highlights: Sequence[NarrativeHighlight]) -> list[NarrativeTimelord]:
+def _summarise_timelords(
+    highlights: Sequence[NarrativeHighlight],
+) -> list[NarrativeTimelord]:
     buckets: dict[str, dict[str, Any]] = {}
     for highlight in highlights:
         metadata = _event_attr(highlight.source, "metadata")
@@ -716,7 +728,9 @@ def _summarise_timelords(highlights: Sequence[NarrativeHighlight]) -> list[Narra
             continue
         timelord_info = metadata.get("timelord")
         if isinstance(timelord_info, Mapping):
-            name = str(timelord_info.get("name") or timelord_info.get("id") or "Timelord")
+            name = str(
+                timelord_info.get("name") or timelord_info.get("id") or "Timelord"
+            )
             description = str(
                 timelord_info.get("description")
                 or timelord_info.get("period")
@@ -724,7 +738,11 @@ def _summarise_timelords(highlights: Sequence[NarrativeHighlight]) -> list[Narra
             )
             weight_raw = timelord_info.get("weight")
             try:
-                weight = float(weight_raw) if weight_raw is not None else float(highlight.score)
+                weight = (
+                    float(weight_raw)
+                    if weight_raw is not None
+                    else float(highlight.score)
+                )
             except (TypeError, ValueError):  # pragma: no cover - defensive
                 weight = float(highlight.score)
         elif isinstance(timelord_info, str):
@@ -750,4 +768,3 @@ def _summarise_timelords(highlights: Sequence[NarrativeHighlight]) -> list[Narra
     ]
     timelords.sort(key=lambda entry: (-entry.weight, entry.name))
     return timelords
-

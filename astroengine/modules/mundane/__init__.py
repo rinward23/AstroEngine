@@ -53,7 +53,9 @@ def register_mundane_module(registry: AstroRegistry) -> None:
     )
     charts.register_subchannel(
         "seasonal_quartet",
-        metadata={"description": "Package the Aries/Cancer/Libra/Capricorn ingress charts."},
+        metadata={
+            "description": "Package the Aries/Cancer/Libra/Capricorn ingress charts."
+        },
         payload={
             "implementation": "pending",
             "todo": [

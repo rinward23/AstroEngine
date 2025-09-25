@@ -12,8 +12,14 @@ def _load_diagnostics_module() -> ModuleType:
 
         return diag  # pragma: no cover - uses package path
     except Exception:
-        module_path = pathlib.Path(__file__).resolve().parents[1] / "astroengine" / "diagnostics.py"
-        spec = importlib.util.spec_from_file_location("astroengine.diagnostics_test", module_path)
+        module_path = (
+            pathlib.Path(__file__).resolve().parents[1]
+            / "astroengine"
+            / "diagnostics.py"
+        )
+        spec = importlib.util.spec_from_file_location(
+            "astroengine.diagnostics_test", module_path
+        )
         if spec is None or spec.loader is None:  # pragma: no cover - defensive
             raise RuntimeError("unable to load diagnostics module for testing")
         module = importlib.util.module_from_spec(spec)
@@ -40,4 +46,6 @@ def test_json_roundtrip():
     payload = diag.collect_diagnostics(strict=False)
     dumped = json.dumps(payload)
     assert isinstance(dumped, str) and dumped.startswith("{")
+
+
 # >>> AUTO-GEN END: test_diagnostics v1.0

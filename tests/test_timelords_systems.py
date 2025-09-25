@@ -3,7 +3,8 @@ from datetime import date
 
 import pytest
 
-from astroengine import cli, engine as engine_module
+from astroengine import cli
+from astroengine import engine as engine_module
 from astroengine.engine import scan_contacts
 from astroengine.timelords import (
     TimelordCalculator,
@@ -14,7 +15,6 @@ from astroengine.timelords import (
 )
 from astroengine.timelords.context import build_context
 from astroengine.timelords.utils import parse_iso
-
 
 NATAL_TS = "1984-10-17T04:30:00Z"
 LAT = 40.7128
@@ -27,7 +27,9 @@ def natal_context():
 
 
 def test_vimshottari_known_dates(natal_context):
-    periods = generate_vimshottari_periods(natal_context, parse_iso("1990-01-01T00:00:00Z"))
+    periods = generate_vimshottari_periods(
+        natal_context, parse_iso("1990-01-01T00:00:00Z")
+    )
     maha = next(period for period in periods if period.level == "maha")
     assert maha.start.date() == date(1984, 10, 17)
     assert maha.end.date() == date(1999, 10, 2)
@@ -42,7 +44,9 @@ def test_vimshottari_known_dates(natal_context):
 
 
 def test_zodiacal_releasing_spirit_first_periods(natal_context):
-    periods = generate_zodiacal_releasing(natal_context, parse_iso("1986-01-01T00:00:00Z"), lot="spirit")
+    periods = generate_zodiacal_releasing(
+        natal_context, parse_iso("1986-01-01T00:00:00Z"), lot="spirit"
+    )
     l1 = next(period for period in periods if period.level == "l1")
     assert l1.ruler == "scorpio"
     assert l1.start.date() == date(1984, 10, 17)
@@ -56,7 +60,9 @@ def test_zodiacal_releasing_spirit_first_periods(natal_context):
 
 
 def test_profections_multilevel_midpoints(natal_context):
-    periods = generate_profection_periods(natal_context, parse_iso("1985-12-17T04:30:00Z"))
+    periods = generate_profection_periods(
+        natal_context, parse_iso("1985-12-17T04:30:00Z")
+    )
     annual = next(period for period in periods if period.level == "annual")
     assert annual.metadata == {"house": 1, "sign": "leo"}
     monthly = [period for period in periods if period.level == "monthly"]

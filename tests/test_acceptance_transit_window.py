@@ -25,7 +25,9 @@ def test_mars_venus_exact_within_window() -> None:
     window_end = datetime(2025, 11, 19, tzinfo=UTC)
 
     events = list(
-        engine.scan_longitude_crossing(4, natal_venus_longitude, 0.0, window_start, window_end)
+        engine.scan_longitude_crossing(
+            4, natal_venus_longitude, 0.0, window_start, window_end
+        )
     )
     assert events, "Expected Mars to contact the natal Venus longitude"
 

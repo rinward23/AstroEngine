@@ -32,7 +32,9 @@ def is_within_orb(delta: float, orb_deg: float) -> bool:
     return abs(delta) <= abs(orb_deg)
 
 
-def classify_applying_separating(moving_lon: float, moving_speed: float, target_lon: float) -> str:
+def classify_applying_separating(
+    moving_lon: float, moving_speed: float, target_lon: float
+) -> str:
     """Return 'applying' if moving body heads toward target aspect, else 'separating'."""
 
     d = delta_angle(moving_lon, target_lon)

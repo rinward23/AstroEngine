@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 from .prompts import event_to_mapping
 
@@ -13,7 +14,12 @@ try:  # pragma: no cover - imported lazily to avoid circular deps
 except Exception:  # pragma: no cover - Timelord extras optional in tests
     TimelordStack = Any  # type: ignore[assignment]
 
-__all__ = ["NarrativeProfileSpec", "PROFILE_SPECS", "render_profile", "timelord_outline"]
+__all__ = [
+    "NarrativeProfileSpec",
+    "PROFILE_SPECS",
+    "render_profile",
+    "timelord_outline",
+]
 
 
 def _format_iso(value: Any) -> str:
@@ -34,7 +40,9 @@ def _coerce_float(value: Any) -> float | None:
 def _event_payload(event: Any) -> dict[str, Any]:
     payload = event_to_mapping(event)
     ts = payload.get("timestamp") or payload.get("ts")
-    moving = payload.get("moving") or payload.get("body") or payload.get("transiting_body")
+    moving = (
+        payload.get("moving") or payload.get("body") or payload.get("transiting_body")
+    )
     target = payload.get("target") or payload.get("natal_body") or payload.get("sign")
     aspect = payload.get("aspect") or payload.get("kind") or payload.get("level")
     score = _coerce_float(payload.get("score"))
@@ -75,7 +83,9 @@ def _timelord_payload(timelords: Any | None) -> dict[str, Any]:
     if timelords is None:
         return base
 
-    if isinstance(timelords, TimelordStack):  # pragma: no branch - direct access fast path
+    if isinstance(
+        timelords, TimelordStack
+    ):  # pragma: no branch - direct access fast path
         periods: Iterable[Any] = timelords.periods
     elif isinstance(timelords, Mapping):
         periods = timelords.get("periods", [])
@@ -114,7 +124,9 @@ def _timelord_payload(timelords: Any | None) -> dict[str, Any]:
         summary="; ".join(lines),
         primary=primary_label or base["primary"],
         primary_ruler=primary.get("ruler"),
-        systems=sorted({str(entry.get("system")) for entry in parsed if entry.get("system")}),
+        systems=sorted(
+            {str(entry.get("system")) for entry in parsed if entry.get("system")}
+        ),
     )
     return base
 
@@ -222,4 +234,3 @@ def timelord_outline(timelords: Any | None) -> Mapping[str, Any]:
     """Expose the structured timelord payload for external consumers."""
 
     return _timelord_payload(timelords)
-

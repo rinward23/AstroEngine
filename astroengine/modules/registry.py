@@ -62,7 +62,9 @@ class AstroChannel:
             if payload is not None:
                 sub.payload = payload
             return sub
-        subchannel = AstroSubchannel(name=name, metadata=dict(metadata or {}), payload=payload)
+        subchannel = AstroSubchannel(
+            name=name, metadata=dict(metadata or {}), payload=payload
+        )
         self.subchannels[name] = subchannel
         return subchannel
 
@@ -180,7 +182,9 @@ class AstroRegistry:
                         "subchannels": {},
                     }
                     for subchannel_name, subchannel in channel.subchannels.items():
-                        channel_payload["subchannels"][subchannel_name] = subchannel.describe()
+                        channel_payload["subchannels"][
+                            subchannel_name
+                        ] = subchannel.describe()
                     submodule_payload["channels"][channel_name] = channel_payload
                 module_payload["submodules"][submodule_name] = submodule_payload
             snapshot[module_name] = module_payload

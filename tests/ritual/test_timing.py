@@ -35,5 +35,7 @@ def test_filters_and_windows():
     rule_names = {rule.name for rule in VOID_OF_COURSE_RULES}
     assert "Classical void-of-course" in rule_names
     assert len(ELECTIONAL_WINDOWS) == 3
-    waxing = next(window for window in ELECTIONAL_WINDOWS if window.name.startswith("Waxing"))
+    waxing = next(
+        window for window in ELECTIONAL_WINDOWS if window.name.startswith("Waxing")
+    )
     assert "Moon increasing in light" in waxing.criteria

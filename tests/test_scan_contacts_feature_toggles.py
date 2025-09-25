@@ -76,9 +76,13 @@ def test_scan_contacts_respects_declination_feature_flags(
         "detect_decl_contacts",
         lambda *_args, **_kwargs: list(base_hits),
     )
-    monkeypatch.setattr(scanning, "detect_antiscia_contacts", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        scanning, "detect_antiscia_contacts", lambda *_args, **_kwargs: []
+    )
     monkeypatch.setattr(scanning, "detect_aspects", lambda *_args, **_kwargs: [])
-    monkeypatch.setattr(scanning, "compute_score", lambda *_args, **_kwargs: _DummyScore(0.0))
+    monkeypatch.setattr(
+        scanning, "compute_score", lambda *_args, **_kwargs: _DummyScore(0.0)
+    )
 
     plugin_manager = _DummyPluginManager()
     monkeypatch.setattr(scanning, "get_plugin_manager", lambda: plugin_manager)

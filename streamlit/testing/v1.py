@@ -12,7 +12,7 @@ __all__ = ["AppTest"]
 
 
 class _SidebarAccessor:
-    def __init__(self, app: "AppTest") -> None:
+    def __init__(self, app: AppTest) -> None:
         self._app = app
 
     def multiselect(self, label: str, *, key: str | None = None) -> MultiSelectWidget:
@@ -24,7 +24,7 @@ class _SidebarAccessor:
 
 
 class _ButtonAccessor:
-    def __init__(self, app: "AppTest") -> None:
+    def __init__(self, app: AppTest) -> None:
         self._app = app
 
     def __call__(self, label: str, *, key: str | None = None) -> ButtonWidget:
@@ -45,18 +45,23 @@ class AppTest:
         self.button = _ButtonAccessor(self)
 
     @classmethod
-    def from_file(cls, path: str | Path) -> "AppTest":
+    def from_file(cls, path: str | Path) -> AppTest:
         script_path = Path(path)
         if not script_path.exists():
             raise FileNotFoundError(script_path)
         runtime = StreamlitRuntime()
         return cls(script_path, runtime)
 
-    def run(self, timeout: float | None = None) -> "AppTest":  # noqa: D401 - mimic Streamlit API
+    def run(
+        self, timeout: float | None = None
+    ) -> AppTest:  # noqa: D401 - mimic Streamlit API
         del timeout  # not used; kept for API compatibility
         set_runtime(self._runtime)
         self._runtime.prepare_for_run()
-        module_globals: dict[str, Any] = {"__name__": "__main__", "__file__": str(self._path)}
+        module_globals: dict[str, Any] = {
+            "__name__": "__main__",
+            "__file__": str(self._path),
+        }
         code = self._path.read_text(encoding="utf-8")
         exec(compile(code, str(self._path), "exec"), module_globals)
         return self
@@ -64,5 +69,3 @@ class AppTest:
     @property
     def session_state(self) -> dict[str, Any]:
         return self._runtime.session_state
-
-

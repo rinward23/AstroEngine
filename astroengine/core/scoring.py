@@ -32,7 +32,9 @@ def compute_domain_factor(
         logits = {key: math.log(max(1e-9, multipliers[key])) for key in probabilities}
         temp = max(1e-6, float(temperature))
         max_logit = max(logits.values())
-        exps = {key: math.exp((logits[key] - max_logit) / temp) for key in probabilities}
+        exps = {
+            key: math.exp((logits[key] - max_logit) / temp) for key in probabilities
+        }
         normalizer = sum(exps.values()) or 1.0
         distribution = {key: exps[key] / normalizer for key in probabilities}
         return sum(distribution[key] * multipliers[key] for key in probabilities)

@@ -40,7 +40,9 @@ def refine_event(
     end_offset = bracket.end_offset
 
     if start_offset * end_offset > 0.0:
-        raise RefinementError("Bracket does not straddle aspect perfection; re-bracket required")
+        raise RefinementError(
+            "Bracket does not straddle aspect perfection; re-bracket required"
+        )
 
     start_speed = bracket.start_sample.speed_longitude
     end_speed = bracket.end_sample.speed_longitude

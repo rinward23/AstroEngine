@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import functools
-
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
+from typing import Any
 
-from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
-
-from ._runtime import ButtonWidget, MultiSelectWidget, StreamlitRuntime, Widget as _Widget
+from ._runtime import ButtonWidget, MultiSelectWidget, StreamlitRuntime
+from ._runtime import Widget as _Widget
 
 __all__ = [
     "AppTestUnavailableError",
@@ -57,7 +57,6 @@ def _container_scope(name: str) -> Iterator[None]:
 
 def _trigger_key(label: str, key: str | None = None) -> str:
     return key or f"button:{label}"
-
 
 
 class _SessionStateProxy:
@@ -117,7 +116,7 @@ session_state = _SessionStateProxy()
 
 
 class _Sidebar:
-    def __enter__(self) -> "_Sidebar":
+    def __enter__(self) -> _Sidebar:
 
         _CURRENT_CONTAINER.append("sidebar")
         return self
@@ -145,8 +144,9 @@ class _Sidebar:
         with _container_scope("sidebar"):
             return selectbox(label, options, **kwargs)
 
-
-    def multiselect(self, label: str, options: Sequence[Any], **kwargs: Any) -> list[Any]:
+    def multiselect(
+        self, label: str, options: Sequence[Any], **kwargs: Any
+    ) -> list[Any]:
         key = kwargs.get("key")
         if key is None:
             kwargs["key"] = f"sidebar-multiselect:{label}"
@@ -170,7 +170,6 @@ class _Sidebar:
         with _container_scope("sidebar"):
             return slider(label, **kwargs)
 
-
     def checkbox(self, label: str, **kwargs: Any) -> bool:
         key = kwargs.get("key")
         if key is None:
@@ -179,7 +178,6 @@ class _Sidebar:
         with _container_scope("sidebar"):
             return checkbox(label, **kwargs)
 
-
     def button(self, label: str, **kwargs: Any) -> bool:
         key = kwargs.get("key")
         if key is None:
@@ -187,7 +185,6 @@ class _Sidebar:
 
         with _container_scope("sidebar"):
             return button(label, **kwargs)
-
 
 
 sidebar = _Sidebar()
@@ -206,7 +203,6 @@ def set_runtime(runtime: StreamlitRuntime) -> None:
     for container in _WIDGETS.values():
         container.clear()
     _CURRENT_CONTAINER[:] = ["main"]
-
 
 
 def cache_data(func: Callable | None = None, **_kwargs: Any) -> Callable:
@@ -318,7 +314,6 @@ def selectbox(
     runtime.store_value(widget_key, value)
 
     _register_widget(
-
         _Widget(runtime=runtime, kind="selectbox", key=widget_key, label=label)
     )
     return value
@@ -496,7 +491,7 @@ class _Tab:
     def __init__(self, label: str) -> None:
         self.label = label
 
-    def __enter__(self) -> "_Tab":
+    def __enter__(self) -> _Tab:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:
@@ -511,14 +506,16 @@ class _Column:
     def __init__(self, weight: float | None = None) -> None:
         self.weight = weight
 
-    def __enter__(self) -> "_Column":
+    def __enter__(self) -> _Column:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:
         return False
 
 
-def columns(spec: int | Sequence[int | float], *, gap: str | None = None) -> tuple[_Column, ...]:
+def columns(
+    spec: int | Sequence[int | float], *, gap: str | None = None
+) -> tuple[_Column, ...]:
     if isinstance(spec, int):
         count = spec
         weights: tuple[float | None, ...] = (None,) * count

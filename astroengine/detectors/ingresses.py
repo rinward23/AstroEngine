@@ -1,12 +1,10 @@
-
 """Sign ingress detection utilities built on Swiss Ephemeris longitudes."""
-
 
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Sequence
 
 try:  # pragma: no cover - exercised indirectly via Swiss-enabled tests
     import swisseph as swe  # type: ignore
@@ -88,10 +86,10 @@ def _estimate_speed(body: str, jd_ut: float, *, hours: float = 6.0) -> float:
     return span / (2.0 * delta_days)
 
 
-
-def _generate_samples(body: str, start_jd: float, end_jd: float, step_days: float) -> Iterable[_Sample]:
+def _generate_samples(
+    body: str, start_jd: float, end_jd: float, step_days: float
+) -> Iterable[_Sample]:
     """Yield unwrapped longitude samples for ``body`` between ``start_jd`` and ``end_jd``."""
-
 
     jd = start_jd
     prev_unwrapped: float | None = None
@@ -137,16 +135,13 @@ def find_sign_ingresses(
     start_jd: float,
     end_jd: float,
     *,
-
     bodies: Sequence[str] | None = None,
-
     step_hours: float = 6.0,
 ) -> list[IngressEvent]:
     """Detect sign ingress events between ``start_jd`` and ``end_jd`` inclusive."""
 
     if end_jd <= start_jd:
         return []
-
 
     body_list = tuple(bodies or _DEFAULT_BODIES)
     step_days = max(step_hours, 1.0) / 24.0
@@ -195,13 +190,11 @@ def find_sign_ingresses(
                     ts=jd_to_iso(jd_root),
                     jd=jd_root,
                     body=body,
-
                     from_sign=sign_name(from_idx),
                     to_sign=sign_name(to_idx),
                     longitude=lon_exact,
                     speed_longitude=float(speed),
                     motion="retrograde" if retrograde else "direct",
-
                     retrograde=retrograde,
                 )
                 events.append(event)
@@ -234,9 +227,8 @@ def find_sign_ingresses(
 
             direction = 1 if current_index > prev_index else -1
             boundary_index = prev_index + 1 if direction > 0 else prev_index
-            while (
-                (direction > 0 and boundary_index <= current_index)
-                or (direction < 0 and boundary_index > current_index)
+            while (direction > 0 and boundary_index <= current_index) or (
+                direction < 0 and boundary_index > current_index
             ):
                 boundary = boundary_index * 30.0
                 jd_root = _refine_ingress(body_key, prev_sample, sample, boundary)
@@ -264,7 +256,9 @@ def find_sign_ingresses(
                     continue
 
                 longitude = norm360(body_lon(jd_root, body_key))
-                speed = abs(_estimate_speed(body_key, jd_root)) * (1 if direction > 0 else -1)
+                speed = abs(_estimate_speed(body_key, jd_root)) * (
+                    1 if direction > 0 else -1
+                )
                 motion = "retrograde" if direction < 0 else "direct"
                 if direction > 0:
                     from_index = boundary_index - 1
@@ -297,7 +291,6 @@ def find_sign_ingresses(
                     prev_index = boundary_index - 1
                     boundary_index += direction
                 prev_sample = _Sample(jd=jd_root, longitude=boundary)
-
 
             prev_sample = sample
             prev_index = current_index

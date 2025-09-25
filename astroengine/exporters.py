@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 try:  # pragma: no cover - optional dependency
     import sqlite3
@@ -15,6 +15,7 @@ except Exception:  # pragma: no cover
 try:  # pragma: no cover - optional dependency
     import pyarrow as pa
     import pyarrow.parquet as pq
+
     _PARQUET_OK = True
 except Exception:  # pragma: no cover
     pa = None  # type: ignore[assignment]
@@ -47,7 +48,6 @@ class LegacyTransitEvent:
     lon_target: float | None = None
 
     metadata: dict[str, object] = field(default_factory=dict)
-
 
     @property
     def when_iso(self) -> str:
@@ -144,9 +144,10 @@ class ParquetExporter:
 
 
 # >>> AUTO-GEN BEGIN: Canonical Export Adapters v1.0
-from typing import Iterable as _TypingIterable, Any as _TypingAny
+from collections.abc import Iterable as _TypingIterable
+from typing import Any as _TypingAny
 
-from .canonical import TransitEvent, sqlite_write_canonical, parquet_write_canonical
+from .canonical import parquet_write_canonical, sqlite_write_canonical
 
 
 def write_sqlite_canonical(db_path: str, events: _TypingIterable[_TypingAny]) -> int:

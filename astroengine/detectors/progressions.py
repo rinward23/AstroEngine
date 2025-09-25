@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime, timedelta
 
 from ..chart.config import ChartConfig
 from ..chart.natal import DEFAULT_BODIES
@@ -16,11 +16,11 @@ SIDEREAL_YEAR_DAYS = 365.2422
 
 
 def _parse_iso(ts: str) -> datetime:
-    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(timezone.utc)
+    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(UTC)
 
 
 def _iso(ts: datetime) -> str:
-    return ts.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return ts.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _resolve_bodies(names: Sequence[str] | None) -> Mapping[str, int]:
@@ -83,7 +83,9 @@ def secondary_progressions(
         progressed_dt = natal_dt + timedelta(days=progressed_offset_days)
         progressed_jd = adapter.julian_day(progressed_dt)
         progressed_positions = adapter.body_positions(progressed_jd, body_map)
-        positions = {name: pos.longitude % 360.0 for name, pos in progressed_positions.items()}
+        positions = {
+            name: pos.longitude % 360.0 for name, pos in progressed_positions.items()
+        }
 
         events.append(
             ProgressionEvent(

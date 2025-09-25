@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 import pytest
 
-from astroengine.detectors_aspects import AspectHit, detect_aspects, _load_policy
+from astroengine.detectors_aspects import AspectHit, _load_policy, detect_aspects
 
 
 @dataclass
@@ -19,12 +19,16 @@ class SyntheticProvider:
     default_state: dict[str, dict[str, float]]
     timeline: dict[str, dict[str, dict[str, float]]] | None = None
 
-    def positions_ecliptic(self, iso: str, bodies: Iterable[str]) -> dict[str, dict[str, float]]:
+    def positions_ecliptic(
+        self, iso: str, bodies: Iterable[str]
+    ) -> dict[str, dict[str, float]]:
         state = (self.timeline or {}).get(iso, self.default_state)
         return {body: dict(state[body]) for body in bodies}
 
 
-def _write_policy(tmp_path: Path, *, minors: Iterable[str], harmonics: Iterable[int | str]) -> Path:
+def _write_policy(
+    tmp_path: Path, *, minors: Iterable[str], harmonics: Iterable[int | str]
+) -> Path:
     base_policy = json.loads(json.dumps(_load_policy()))
     base_policy["enabled_minors"] = [name for name in minors]
     base_policy["enabled_harmonics"] = [value for value in harmonics]
@@ -58,7 +62,9 @@ ASPECT_CASES = (
 
 @pytest.mark.parametrize("aspect_name, angle_deg, family", ASPECT_CASES)
 @pytest.mark.parametrize("offset", (-0.05, 0.05))
-def test_detect_aspects_hits_angles(tmp_path: Path, aspect_name: str, angle_deg: float, family: str, offset: float) -> None:
+def test_detect_aspects_hits_angles(
+    tmp_path: Path, aspect_name: str, angle_deg: float, family: str, offset: float
+) -> None:
     provider = SyntheticProvider(
         default_state={
             "moving": {"lon": 0.0, "speed_lon": 1.0},
@@ -186,7 +192,9 @@ def test_delta_lambda_wraparound_continuity(tmp_path: Path) -> None:
             "target": {"lon": 30.7, "speed_lon": 0.0},
         },
     }
-    provider = SyntheticProvider(default_state=timeline["2024-01-01T00:00:00Z"], timeline=timeline)
+    provider = SyntheticProvider(
+        default_state=timeline["2024-01-01T00:00:00Z"], timeline=timeline
+    )
     hits = detect_aspects(
         provider,
         list(timeline.keys()),

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 __all__ = ["AlchemyStage", "ALCHEMY_STAGES"]
 
@@ -16,8 +15,8 @@ class AlchemyStage:
     name: str
     latin: str
     color: str
-    themes: Tuple[str, ...]
-    operations: Tuple[str, ...]
+    themes: tuple[str, ...]
+    operations: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -30,7 +29,7 @@ class AlchemyStage:
         }
 
 
-ALCHEMY_STAGES: Tuple[AlchemyStage, ...] = (
+ALCHEMY_STAGES: tuple[AlchemyStage, ...] = (
     AlchemyStage(
         order=1,
         name="Calcination",

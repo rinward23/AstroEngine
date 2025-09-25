@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 import math
-from typing import Sequence, Tuple
+from collections.abc import Sequence
 
 try:  # pragma: no cover - exercised via runtime availability checks
     import swisseph as swe  # type: ignore
 except Exception:  # pragma: no cover
     swe = None  # type: ignore
 
-from .common import jd_to_iso, moon_lon, sun_lon
 from ..events import EclipseEvent
+from .common import jd_to_iso, moon_lon, sun_lon
 
 __all__ = ["find_eclipses"]
 
-Location = Tuple[float, float] | Tuple[float, float, float]
+Location = tuple[float, float] | tuple[float, float, float]
 
 
 def _moon_latitude(jd_ut: float) -> float:
@@ -29,7 +29,9 @@ def _moon_latitude(jd_ut: float) -> float:
     return float(values[1])
 
 
-def _normalize_location(location: Location | Sequence[float] | None) -> tuple[float, float, float] | None:
+def _normalize_location(
+    location: Location | Sequence[float] | None,
+) -> tuple[float, float, float] | None:
     if location is None:
         return None
     seq = tuple(float(x) for x in location)  # type: ignore[arg-type]
@@ -40,7 +42,9 @@ def _normalize_location(location: Location | Sequence[float] | None) -> tuple[fl
     return (lon, lat, alt)
 
 
-def _visible_at_location(jd_ut: float, eclipse_type: str, location: tuple[float, float, float] | None) -> bool | None:
+def _visible_at_location(
+    jd_ut: float, eclipse_type: str, location: tuple[float, float, float] | None
+) -> bool | None:
     if swe is None or location is None:
         return None
 
@@ -159,6 +163,8 @@ def find_eclipses(
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
 
     loc = _normalize_location(location)
-    events = _solar_eclipses(start_jd, end_jd, loc) + _lunar_eclipses(start_jd, end_jd, loc)
+    events = _solar_eclipses(start_jd, end_jd, loc) + _lunar_eclipses(
+        start_jd, end_jd, loc
+    )
     events.sort(key=lambda event: event.jd)
     return events

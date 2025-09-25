@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 try:  # pragma: no cover - runtime availability guard
     import swisseph as swe  # type: ignore
@@ -28,7 +28,9 @@ _BODY_CODES = {
 
 
 def _declination(jd_ut: float, code: int) -> tuple[float, float]:
-    values, _ = swe.calc_ut(jd_ut, code, swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_EQUATORIAL)
+    values, _ = swe.calc_ut(
+        jd_ut, code, swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_EQUATORIAL
+    )
     dec = float(values[1])
     speed_dec = float(values[4]) if len(values) > 4 else float("nan")
     return dec, speed_dec
@@ -64,7 +66,9 @@ def find_out_of_bounds(
     if swe is None:
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
 
-    body_names = [b.lower() for b in (bodies if bodies is not None else _BODY_CODES.keys())]
+    body_names = [
+        b.lower() for b in (bodies if bodies is not None else _BODY_CODES.keys())
+    ]
     step_days = step_hours / 24.0
     events: list[OutOfBoundsEvent] = []
     seen: set[tuple[str, int]] = set()

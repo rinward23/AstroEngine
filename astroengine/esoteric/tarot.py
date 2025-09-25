@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 __all__ = [
     "TarotMajorArcana",
@@ -24,7 +23,7 @@ class TarotMajorArcana:
     hebrew_letter: str
     path_number: int
     attribution: str
-    keywords: Tuple[str, ...]
+    keywords: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -45,7 +44,7 @@ class TarotCourtCard:
     suit: str
     elemental_quality: str
     zodiacal_attribution: str
-    keywords: Tuple[str, ...]
+    keywords: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -64,7 +63,7 @@ class TarotSpread:
     name: str
     cards: int
     description: str
-    positions: Tuple[str, ...]
+    positions: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -75,7 +74,7 @@ class TarotSpread:
         }
 
 
-TAROT_MAJORS: Tuple[TarotMajorArcana, ...] = (
+TAROT_MAJORS: tuple[TarotMajorArcana, ...] = (
     TarotMajorArcana(
         number=0,
         name="The Fool",
@@ -255,7 +254,7 @@ TAROT_MAJORS: Tuple[TarotMajorArcana, ...] = (
 )
 
 
-TAROT_COURTS: Tuple[TarotCourtCard, ...] = (
+TAROT_COURTS: tuple[TarotCourtCard, ...] = (
     TarotCourtCard(
         rank="Knight",
         suit="Wands",
@@ -371,7 +370,7 @@ TAROT_COURTS: Tuple[TarotCourtCard, ...] = (
 )
 
 
-TAROT_SPREADS: Tuple[TarotSpread, ...] = (
+TAROT_SPREADS: tuple[TarotSpread, ...] = (
     TarotSpread(
         name="Three-Card Progression",
         cards=3,

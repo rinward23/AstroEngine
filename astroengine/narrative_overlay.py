@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Sequence
 
 from .profiles import ResonanceWeights
 
@@ -33,7 +33,9 @@ class NarrativeOverlay:
         }
 
 
-def select_resonance_focus(weights: Mapping[str, float], confidence: float, corridor_ratio: float) -> str:
+def select_resonance_focus(
+    weights: Mapping[str, float], confidence: float, corridor_ratio: float
+) -> str:
     """Return the dominant narrative layer based on confidence and corridor ratio."""
 
     normalized = ResonanceWeights(
@@ -89,4 +91,6 @@ def apply_resonance_overlay(
         phrases.append("Track concrete circumstances and tangible shifts.")
     else:
         phrases.append("Notice thought patterns and decision points.")
-    return NarrativeOverlay(focus=focus, confidence=confidence, emphasis=emphasis, phrases=phrases)
+    return NarrativeOverlay(
+        focus=focus, confidence=confidence, emphasis=emphasis, phrases=phrases
+    )

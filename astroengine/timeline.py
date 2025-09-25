@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Sequence
 
 from .refine import CorridorModel, branch_sensitive_angles
 
@@ -35,8 +35,8 @@ class TransitWindow:
     def time_membership(self, moment: dt.datetime) -> float:
         """Return the corridor membership for ``moment`` mapped into degrees."""
 
-        reference = moment.replace(tzinfo=dt.timezone.utc)
-        peak = self.peak.replace(tzinfo=dt.timezone.utc)
+        reference = moment.replace(tzinfo=dt.UTC)
+        peak = self.peak.replace(tzinfo=dt.UTC)
         delta_hours = abs((reference - peak).total_seconds()) / 3600.0
         if "hours_per_degree" not in self.metadata:
             raise KeyError("TransitWindow metadata requires 'hours_per_degree'.")
@@ -112,7 +112,8 @@ def merge_windows(windows: Sequence[TransitWindow]) -> list[TransitWindow]:
                     end=max(current.end, window.end),
                     corridor=window.corridor,
                     confidence=window.confidence,
-                    sensitive_angles=window.sensitive_angles or current.sensitive_angles,
+                    sensitive_angles=window.sensitive_angles
+                    or current.sensitive_angles,
                     metadata={**current.metadata, **window.metadata},
                 )
             else:
@@ -122,7 +123,8 @@ def merge_windows(windows: Sequence[TransitWindow]) -> list[TransitWindow]:
                     end=max(current.end, window.end),
                     corridor=current.corridor,
                     confidence=current.confidence,
-                    sensitive_angles=current.sensitive_angles or window.sensitive_angles,
+                    sensitive_angles=current.sensitive_angles
+                    or window.sensitive_angles,
                     metadata={**window.metadata, **current.metadata},
                 )
         else:

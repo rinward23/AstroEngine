@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime, timedelta
 
 from ..chart.config import ChartConfig
 from ..chart.natal import DEFAULT_BODIES
@@ -16,11 +16,11 @@ SIDEREAL_YEAR_DAYS = 365.2422
 
 
 def _parse_iso(ts: str) -> datetime:
-    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(timezone.utc)
+    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(UTC)
 
 
 def _iso(ts: datetime) -> str:
-    return ts.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return ts.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _resolve_bodies(names: Sequence[str] | None) -> Mapping[str, int]:
@@ -78,7 +78,9 @@ def solar_arc_directions(
 
     natal_jd = adapter.julian_day(natal_dt)
     natal_positions = adapter.body_positions(natal_jd, body_map)
-    natal_sun = adapter.body_position(natal_jd, DEFAULT_BODIES["Sun"], body_name="Sun").longitude
+    natal_sun = adapter.body_position(
+        natal_jd, DEFAULT_BODIES["Sun"], body_name="Sun"
+    ).longitude
 
     events: list[DirectionEvent] = []
     current = start_dt

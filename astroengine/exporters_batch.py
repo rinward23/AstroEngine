@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 from .canonical import events_from_any, parquet_write_canonical
 
@@ -11,9 +11,11 @@ __all__ = ["export_parquet_dataset"]
 
 def export_parquet_dataset(
     path: str,
-    events: Sequence[Mapping[str, object]]
-    | Iterable[Mapping[str, object]]
-    | Iterable[object],
+    events: (
+        Sequence[Mapping[str, object]]
+        | Iterable[Mapping[str, object]]
+        | Iterable[object]
+    ),
 ) -> int:
     """Write canonical events to a Parquet file or dataset directory.
 

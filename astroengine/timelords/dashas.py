@@ -1,18 +1,13 @@
-
 """Vimśottarī daśā timelines derived from the natal Moon nakṣatra."""
-
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime, timedelta
-
-from typing import Iterable, List, Sequence
-
 
 from ..detectors.common import UNIX_EPOCH_JD, iso_to_jd, jd_to_iso, moon_lon
 from ..events import DashaPeriod, DashaPeriodEvent
 from ..utils.angles import norm360
-
 
 YEAR_IN_DAYS = 365.2425
 SIDEREAL_YEAR_DAYS = 365.25636
@@ -127,7 +122,7 @@ def vimsottari_dashas(
     end_ts: str,
     *,
     include_partial: bool = True,
-) -> List[DashaPeriod]:
+) -> list[DashaPeriod]:
     """Return Vimśottarī daśā sub-periods intersecting ``start_ts`` → ``end_ts``."""
 
     start_jd = iso_to_jd(start_ts)
@@ -199,7 +194,7 @@ def _generate_antar_periods(
     maha_total_years: float,
     skip_years: float,
     method: str,
-) -> List[DashaPeriodEvent]:
+) -> list[DashaPeriodEvent]:
     if maha_start >= maha_end:
         return []
 
@@ -272,10 +267,8 @@ def compute_vimshottari_dasha(
     cycles: int = 1,
     levels: Sequence[str] = ("maha", "antar"),
     method: str = "vimshottari",
-
-) -> List[DashaPeriodEvent]:
+) -> list[DashaPeriodEvent]:
     """Return ordered daśā periods beginning from ``start``."""
-
 
     if cycles <= 0:
         raise ValueError("cycles must be >= 1")

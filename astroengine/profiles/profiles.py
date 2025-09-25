@@ -13,7 +13,11 @@ from typing import Any
 import yaml
 
 from ..infrastructure.paths import profiles_dir
-from ..scoring.policy import load_orb_policy, load_severity_policy, load_visibility_policy
+from ..scoring.policy import (
+    load_orb_policy,
+    load_severity_policy,
+    load_visibility_policy,
+)
 from ..utils import deep_merge
 
 __all__ = [
@@ -36,7 +40,7 @@ class ResonanceWeights:
     body: float = 1.0
     spirit: float = 1.0
 
-    def normalized(self) -> "ResonanceWeights":
+    def normalized(self) -> ResonanceWeights:
         total = max(self.mind, 0.0) + max(self.body, 0.0) + max(self.spirit, 0.0)
         if total <= 0.0:
             return ResonanceWeights(1.0, 1.0, 1.0)
@@ -49,6 +53,7 @@ class ResonanceWeights:
     def as_mapping(self) -> dict[str, float]:
         weights = self.normalized()
         return {"mind": weights.mind, "body": weights.body, "spirit": weights.spirit}
+
 
 @lru_cache(maxsize=1)
 def load_vca_outline() -> dict[str, Any]:
@@ -85,16 +90,22 @@ def _resonance_from_payload(payload: Mapping[str, Any] | None) -> ResonanceWeigh
 @lru_cache(maxsize=1)
 def _load_default_resonance() -> ResonanceWeights:
     profile = load_base_profile()
-    resonance_section = profile.get("resonance") if isinstance(profile, Mapping) else None
+    resonance_section = (
+        profile.get("resonance") if isinstance(profile, Mapping) else None
+    )
     return _resonance_from_payload(resonance_section)
 
 
-def load_resonance_weights(profile: Mapping[str, Any] | None = None) -> ResonanceWeights:
+def load_resonance_weights(
+    profile: Mapping[str, Any] | None = None,
+) -> ResonanceWeights:
     """Load the resonance weighting triple from a parsed profile mapping."""
 
     if profile is None:
         return _load_default_resonance()
-    resonance_section = profile.get("resonance") if isinstance(profile, Mapping) else None
+    resonance_section = (
+        profile.get("resonance") if isinstance(profile, Mapping) else None
+    )
     return _resonance_from_payload(resonance_section)
 
 
@@ -130,7 +141,9 @@ def load_profile(
     merged: Mapping[str, Any] = base
 
     if user:
-        overrides_file = Path(overrides_path) if overrides_path else _USER_OVERRIDES_PATH
+        overrides_file = (
+            Path(overrides_path) if overrides_path else _USER_OVERRIDES_PATH
+        )
         table = _load_user_overrides_table(overrides_file)
         user_payload = table.get(user)
         if isinstance(user_payload, Mapping):
@@ -141,7 +154,11 @@ def load_profile(
 
     profile_dict: dict[str, Any] = deepcopy(dict(merged))
 
-    policy_overrides = profile_dict.get("policies") if isinstance(profile_dict.get("policies"), Mapping) else {}
+    policy_overrides = (
+        profile_dict.get("policies")
+        if isinstance(profile_dict.get("policies"), Mapping)
+        else {}
+    )
     orb_overrides = None
     severity_overrides = None
     visibility_overrides = None

@@ -1,44 +1,51 @@
 # >>> AUTO-GEN BEGIN: performance core v1.0
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import List, Tuple, Optional
-import math, datetime as dt
 
-from ._cache import set_ephe_from_env, calc_ut_lon  # ENSURE-LINE
+import datetime as dt
+from dataclasses import dataclass
+
+from ._cache import calc_ut_lon, set_ephe_from_env  # ENSURE-LINE
 
 try:
     import swisseph as swe  # type: ignore
 except Exception:  # pragma: no cover
     swe = None
 
+
 def _jd_from_utc(ts: dt.datetime) -> float:
     """UTC naive/aware -> Julian Day."""
     if ts.tzinfo is not None:
-        ts = ts.astimezone(dt.timezone.utc).replace(tzinfo=None)
-    y,m,d = ts.year, ts.month, ts.day
-    h = ts.hour + ts.minute/60 + (ts.second + ts.microsecond/1e6)/3600
-    return (swe.julday(y,m,d,h) if swe else 0.0)
+        ts = ts.astimezone(dt.UTC).replace(tzinfo=None)
+    y, m, d = ts.year, ts.month, ts.day
+    h = ts.hour + ts.minute / 60 + (ts.second + ts.microsecond / 1e6) / 3600
+    return swe.julday(y, m, d, h) if swe else 0.0
+
 
 def _angnorm(a: float) -> float:
     return a % 360.0
+
 
 def _signed_delta(a: float, b: float) -> float:
     """Smallest signed diff a-b in [-180,180]."""
     d = (a - b + 540.0) % 360.0 - 180.0
     return d
 
+
 @dataclass(frozen=True)
 class ScanConfig:
-    body: int                          # e.g., swe.SUN
-    natal_lon_deg: float               # 0..360
-    aspect_angle_deg: float            # e.g., 0,60,90,120,180
+    body: int  # e.g., swe.SUN
+    natal_lon_deg: float  # 0..360
+    aspect_angle_deg: float  # e.g., 0,60,90,120,180
     orb_deg: float = 6.0
-    tick_minutes: int = 60             # coarse tick
+    tick_minutes: int = 60  # coarse tick
     refine_max_iter: int = 24
-    refine_tol_deg: float = 1e-4       # ~0.0001° (~0.36")
+    refine_tol_deg: float = 1e-4  # ~0.0001° (~0.36")
     flags: int = 0
 
-def _bracket_zero(jd0: float, jd1: float, cfg: ScanConfig) -> Optional[Tuple[float,float]]:
+
+def _bracket_zero(
+    jd0: float, jd1: float, cfg: ScanConfig
+) -> tuple[float, float] | None:
     """Return (jda, jdb) if signed delta crosses zero in [jd0,jd1]."""
     set_ephe_from_env()
     a0 = calc_ut_lon(jd0, cfg.body, cfg.flags)
@@ -54,6 +61,7 @@ def _bracket_zero(jd0: float, jd1: float, cfg: ScanConfig) -> Optional[Tuple[flo
         return (jd0, jd1)
     return None
 
+
 def _bisection(jda: float, jdb: float, cfg: ScanConfig) -> float:
     """Bisection to solve signed_delta=0."""
     set_ephe_from_env()
@@ -62,7 +70,7 @@ def _bisection(jda: float, jdb: float, cfg: ScanConfig) -> float:
     a, b = jda, jdb
     fa, fb = da(a), da(b)
     for _ in range(cfg.refine_max_iter):
-        m = 0.5*(a+b)
+        m = 0.5 * (a + b)
         fm = da(m)
         if abs(fm) <= cfg.refine_tol_deg:
             return m
@@ -70,9 +78,12 @@ def _bisection(jda: float, jdb: float, cfg: ScanConfig) -> float:
             b, fb = m, fm
         else:
             a, fa = m, fm
-    return 0.5*(a+b)
+    return 0.5 * (a + b)
 
-def fast_scan(start_utc: dt.datetime, end_utc: dt.datetime, cfg: ScanConfig) -> List[Tuple[dt.datetime, float]]:
+
+def fast_scan(
+    start_utc: dt.datetime, end_utc: dt.datetime, cfg: ScanConfig
+) -> list[tuple[dt.datetime, float]]:
     """
     Fast aspect scan:
       - coarse ticks at cfg.tick_minutes
@@ -84,13 +95,13 @@ def fast_scan(start_utc: dt.datetime, end_utc: dt.datetime, cfg: ScanConfig) -> 
         raise RuntimeError("Swiss not available; ensure py311 + pyswisseph installed.")
     set_ephe_from_env()
     tick_minutes = max(1, int(cfg.tick_minutes))
-    step_days = tick_minutes / (60*24)
+    step_days = tick_minutes / (60 * 24)
     jd = _jd_from_utc(start_utc)
     jd_end = _jd_from_utc(end_utc)
     target = _angnorm(cfg.natal_lon_deg + cfg.aspect_angle_deg)
 
-    hits: List[Tuple[dt.datetime, float]] = []
-    prev_jd: Optional[float] = None
+    hits: list[tuple[dt.datetime, float]] = []
+    prev_jd: float | None = None
 
     while jd <= jd_end + 1e-12:
         lon = calc_ut_lon(jd, cfg.body, cfg.flags)
@@ -100,10 +111,14 @@ def fast_scan(start_utc: dt.datetime, end_utc: dt.datetime, cfg: ScanConfig) -> 
             if br:
                 jx = _bisection(br[0], br[1], cfg)
                 y, m, d_, h = swe.revjul(jx, 1)
-                hh = int(h); mm = int((h-hh)*60); ss = int(round(((h-hh)*60 - mm)*60))
+                hh = int(h)
+                mm = int((h - hh) * 60)
+                ss = int(round(((h - hh) * 60 - mm) * 60))
                 hits.append((dt.datetime(y, m, d_, hh, mm, ss), d))
         prev_jd = jd
         jd += step_days
 
     return hits
+
+
 # >>> AUTO-GEN END: performance core v1.0

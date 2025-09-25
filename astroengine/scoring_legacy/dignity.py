@@ -71,7 +71,11 @@ def lookup_dignities(
             continue
         if sign_key and record.sign != sign_key:
             continue
-        if degree is not None and record.start_deg is not None and record.end_deg is not None:
+        if (
+            degree is not None
+            and record.start_deg is not None
+            and record.end_deg is not None
+        ):
             if not (record.start_deg <= degree < record.end_deg):
                 continue
         matches.append(record)

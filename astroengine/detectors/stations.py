@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 try:  # pragma: no cover - exercised via runtime availability checks
     import swisseph as swe  # type: ignore
@@ -39,7 +39,7 @@ def _longitude(jd_ut: float, code: int) -> float:
 def find_stations(
     start_jd: float,
     end_jd: float,
-    bodies: Optional[Sequence[str]] = None,
+    bodies: Sequence[str] | None = None,
     *,
     step_days: float = 0.5,
 ) -> list[StationEvent]:
@@ -50,7 +50,9 @@ def find_stations(
     if swe is None:
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
 
-    body_names = [b.lower() for b in (bodies if bodies is not None else _BODY_CODES.keys())]
+    body_names = [
+        b.lower() for b in (bodies if bodies is not None else _BODY_CODES.keys())
+    ]
 
     events: list[StationEvent] = []
     seen: set[tuple[str, int]] = set()

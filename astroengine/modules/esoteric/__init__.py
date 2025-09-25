@@ -173,7 +173,9 @@ def register_esoteric_module(registry: AstroRegistry) -> None:
         metadata={"count": len(TAROT_MAJORS)},
     ).register_subchannel(
         "golden_dawn_paths",
-        metadata={"description": "Major arcana with Hebrew letters and path attributions."},
+        metadata={
+            "description": "Major arcana with Hebrew letters and path attributions."
+        },
         payload={"cards": [card.to_payload() for card in TAROT_MAJORS]},
     )
     tarot.register_channel(
@@ -181,7 +183,9 @@ def register_esoteric_module(registry: AstroRegistry) -> None:
         metadata={"count": len(TAROT_COURTS)},
     ).register_subchannel(
         "book_t_quadrants",
-        metadata={"description": "Court cards with elemental qualities and zodiacal spans."},
+        metadata={
+            "description": "Court cards with elemental qualities and zodiacal spans."
+        },
         payload={"courts": [card.to_payload() for card in TAROT_COURTS]},
     )
     tarot.register_channel(
@@ -189,7 +193,9 @@ def register_esoteric_module(registry: AstroRegistry) -> None:
         metadata={"count": len(TAROT_SPREADS)},
     ).register_subchannel(
         "documented_spreads",
-        metadata={"description": "Classic spreads referenced in Golden Dawn and Waite materials."},
+        metadata={
+            "description": "Classic spreads referenced in Golden Dawn and Waite materials."
+        },
         payload={"spreads": [spread.to_payload() for spread in TAROT_SPREADS]},
     )
 
@@ -214,7 +220,9 @@ def register_esoteric_module(registry: AstroRegistry) -> None:
     )
     numbers_channel.register_subchannel(
         "master_numbers",
-        metadata={"description": "Master numbers emphasised in 20th century numerology."},
+        metadata={
+            "description": "Master numbers emphasised in 20th century numerology."
+        },
         payload={"numbers": [number.to_payload() for number in MASTER_NUMBERS]},
     )
 
@@ -232,7 +240,9 @@ def register_esoteric_module(registry: AstroRegistry) -> None:
     ).register_subchannel(
         "king_wen_sequence",
         metadata={"description": "Hexagrams with Chinese names and thematic keywords."},
-        payload={"hexagrams": [hexagram.to_payload() for hexagram in I_CHING_HEXAGRAMS]},
+        payload={
+            "hexagrams": [hexagram.to_payload() for hexagram in I_CHING_HEXAGRAMS]
+        },
     )
     divination.register_channel(
         "runes",

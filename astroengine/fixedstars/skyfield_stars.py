@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import csv
-from typing import Tuple
 
 from ..infrastructure.paths import datasets_dir
 
@@ -24,7 +23,7 @@ def _load_kernel():
     raise FileNotFoundError("No local JPL kernel found (e.g., de440s.bsp)")
 
 
-def _lookup_ra_dec(name: str) -> Tuple[float, float]:
+def _lookup_ra_dec(name: str) -> tuple[float, float]:
     if not DATASET.exists():
         raise FileNotFoundError(f"Dataset not found: {DATASET}")
     n = name.strip().lower()
@@ -38,7 +37,7 @@ def _lookup_ra_dec(name: str) -> Tuple[float, float]:
     raise KeyError(f"Star not found in dataset: {name}")
 
 
-def star_lonlat(name: str, iso_utc: str) -> Tuple[float, float]:
+def star_lonlat(name: str, iso_utc: str) -> tuple[float, float]:
     """Return ecliptic longitude/latitude (deg) true-of-date using Skyfield.
 
     Requires a local JPL kernel (e.g., de440s.bsp) and uses the bundled CSV to
@@ -49,7 +48,11 @@ def star_lonlat(name: str, iso_utc: str) -> Tuple[float, float]:
     ra_deg, dec_deg = _lookup_ra_dec(name)
     kern = _load_kernel()
     ts = load.timescale()
-    t = ts.utc(*map(int, iso_utc.replace("T", "-").replace(":", "-").rstrip("Z").split("-")[:6]))
+    t = ts.utc(
+        *map(
+            int, iso_utc.replace("T", "-").replace(":", "-").rstrip("Z").split("-")[:6]
+        )
+    )
     earth = kern["earth"]
     s = Star(ra_hours=ra_deg / 15.0, dec_degrees=dec_deg)
     ecl = earth.at(t).observe(s).apparent().ecliptic_position()

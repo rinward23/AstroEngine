@@ -33,4 +33,9 @@ def build_context(
     adapter = adapter or SwissEphemerisAdapter()
     location = ChartLocation(latitude=latitude, longitude=longitude)
     chart = compute_natal_chart(natal_moment.astimezone(UTC), location, adapter=adapter)
-    return TimelordContext(moment=natal_moment.astimezone(UTC), location=location, chart=chart, adapter=adapter)
+    return TimelordContext(
+        moment=natal_moment.astimezone(UTC),
+        location=location,
+        chart=chart,
+        adapter=adapter,
+    )

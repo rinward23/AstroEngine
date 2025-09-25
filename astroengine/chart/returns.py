@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Mapping, Sequence
 
+from ..detectors.returns import solar_lunar_returns
+from ..ephemeris import SwissEphemerisAdapter
+from ..events import ReturnEvent
+from ..scoring import DEFAULT_ASPECTS, OrbCalculator
 from .config import ChartConfig
 from .natal import (
+    DEFAULT_BODIES,
     ChartLocation,
     NatalChart,
     compute_natal_chart,
-    DEFAULT_BODIES,
 )
-from ..detectors.returns import solar_lunar_returns
-from ..events import ReturnEvent
-from ..ephemeris import SwissEphemerisAdapter
-from ..scoring import DEFAULT_ASPECTS, OrbCalculator
 
 __all__ = ["ReturnChart", "compute_return_chart"]
 
@@ -55,14 +55,11 @@ def compute_return_chart(
     bodies: Mapping[str, int] | None = None,
     aspect_angles: Sequence[int] | None = None,
     orb_profile: str = "standard",
-
     config: ChartConfig | None = None,
-
     adapter: SwissEphemerisAdapter | None = None,
     orb_calculator: OrbCalculator | None = None,
 ) -> ReturnChart:
     """Compute the solar or lunar return chart for ``target_year``."""
-
 
     chart_config = config or ChartConfig()
     adapter = adapter or SwissEphemerisAdapter.from_chart_config(chart_config)
@@ -80,7 +77,9 @@ def compute_return_chart(
     end_jd = adapter.julian_day(end_dt)
     events = solar_lunar_returns(natal_jd, start_jd, end_jd, kind, adapter=adapter)
     if not events:
-        raise ValueError(f"No {kind} return found between {start_dt.isoformat()} and {end_dt.isoformat()}")
+        raise ValueError(
+            f"No {kind} return found between {start_dt.isoformat()} and {end_dt.isoformat()}"
+        )
 
     # Pick the event closest to the anniversary within the search window.
     event = min(events, key=lambda ev: abs(ev.jd - start_jd))
@@ -92,9 +91,7 @@ def compute_return_chart(
         bodies=body_map,
         aspect_angles=angles,
         orb_profile=orb_profile,
-
         config=chart_config,
-
         adapter=adapter,
         orb_calculator=orb_calculator,
     )

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 __all__ = [
     "SephiraDefinition",
@@ -23,7 +22,7 @@ class SephiraDefinition:
     pillar: str
     sphere: str
     planetary_association: str
-    keywords: Tuple[str, ...]
+    keywords: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -44,9 +43,9 @@ class PathDefinition:
     path_number: int
     hebrew_letter: str
     tarot_key: str
-    connects: Tuple[int, int]
+    connects: tuple[int, int]
     attribution: str
-    keywords: Tuple[str, ...]
+    keywords: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -59,7 +58,7 @@ class PathDefinition:
         }
 
 
-TREE_OF_LIFE_SEPHIROTH: Tuple[SephiraDefinition, ...] = (
+TREE_OF_LIFE_SEPHIROTH: tuple[SephiraDefinition, ...] = (
     SephiraDefinition(
         number=1,
         name="Kether",
@@ -153,7 +152,7 @@ TREE_OF_LIFE_SEPHIROTH: Tuple[SephiraDefinition, ...] = (
 )
 
 
-TREE_OF_LIFE_PATHS: Tuple[PathDefinition, ...] = (
+TREE_OF_LIFE_PATHS: tuple[PathDefinition, ...] = (
     PathDefinition(
         path_number=11,
         hebrew_letter="Aleph",

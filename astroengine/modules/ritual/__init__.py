@@ -66,7 +66,10 @@ def register_ritual_module(registry: AstroRegistry) -> None:
         "hour_table",
         metadata={"order": list(CHALDEAN_ORDER)},
         payload={
-            "hours": {weekday: list(sequence) for weekday, sequence in PLANETARY_HOUR_TABLE.items()},
+            "hours": {
+                weekday: list(sequence)
+                for weekday, sequence in PLANETARY_HOUR_TABLE.items()
+            },
         },
     )
 
@@ -79,13 +82,17 @@ def register_ritual_module(registry: AstroRegistry) -> None:
         metadata={"count": len(VOID_OF_COURSE_RULES)},
     ).register_subchannel(
         "lunar_filters",
-        metadata={"description": "Void-of-course definitions with traditional sources."},
+        metadata={
+            "description": "Void-of-course definitions with traditional sources."
+        },
         payload={"rules": [rule.to_payload() for rule in VOID_OF_COURSE_RULES]},
     )
 
     elections = module.register_submodule(
         "elections",
-        metadata={"description": "Electional windows for talismanic and mundane timing."},
+        metadata={
+            "description": "Electional windows for talismanic and mundane timing."
+        },
     )
     elections.register_channel(
         "windows",
@@ -99,6 +106,8 @@ def register_ritual_module(registry: AstroRegistry) -> None:
         },
     ).register_subchannel(
         "guidelines",
-        metadata={"description": "Electional sequences emphasising benefic configurations."},
+        metadata={
+            "description": "Electional sequences emphasising benefic configurations."
+        },
         payload={"windows": [window.to_payload() for window in ELECTIONAL_WINDOWS]},
     )

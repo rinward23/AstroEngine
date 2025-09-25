@@ -113,10 +113,16 @@ def test_natal_chart_positions(
     chart = compute_natal_chart(moment, location)
 
     for body, expected_lon in expected_positions.items():
-        assert chart.positions[body].longitude == pytest.approx(expected_lon, abs=TOLERANCE_DEG)
+        assert chart.positions[body].longitude == pytest.approx(
+            expected_lon, abs=TOLERANCE_DEG
+        )
 
-    assert chart.houses.ascendant == pytest.approx(expected_angles["asc"], abs=TOLERANCE_DEG)
-    assert chart.houses.midheaven == pytest.approx(expected_angles["mc"], abs=TOLERANCE_DEG)
+    assert chart.houses.ascendant == pytest.approx(
+        expected_angles["asc"], abs=TOLERANCE_DEG
+    )
+    assert chart.houses.midheaven == pytest.approx(
+        expected_angles["mc"], abs=TOLERANCE_DEG
+    )
 
     seen = {}
     for hit in chart.aspects:
@@ -138,7 +144,11 @@ def test_transit_scanner_detects_self_contacts(
     natal_chart = compute_natal_chart(moment, location)
     scanner = TransitScanner()
     contacts = scanner.scan(natal_chart, moment)
-    sun_hits = [hit for hit in contacts if hit.transiting_body == "Sun" and hit.natal_body == "Sun"]
+    sun_hits = [
+        hit
+        for hit in contacts
+        if hit.transiting_body == "Sun" and hit.natal_body == "Sun"
+    ]
     assert sun_hits, f"expected Sun conjunction for {label}"
     assert sun_hits[0].orb == pytest.approx(0.0, abs=1e-6)
 

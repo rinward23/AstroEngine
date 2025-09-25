@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 __all__ = [
     "PlanetaryDay",
@@ -23,7 +22,7 @@ class PlanetaryDay:
 
     weekday: str
     ruler: str
-    themes: Tuple[str, ...]
+    themes: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -39,7 +38,7 @@ class VoidOfCourseRule:
 
     name: str
     description: str
-    sources: Tuple[str, ...]
+    sources: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -54,9 +53,9 @@ class ElectionalWindow:
     """Documented electional windows derived from traditional practice."""
 
     name: str
-    criteria: Tuple[str, ...]
+    criteria: tuple[str, ...]
     notes: str
-    sources: Tuple[str, ...]
+    sources: tuple[str, ...]
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -67,7 +66,7 @@ class ElectionalWindow:
         }
 
 
-CHALDEAN_ORDER: Tuple[str, ...] = (
+CHALDEAN_ORDER: tuple[str, ...] = (
     "Saturn",
     "Jupiter",
     "Mars",
@@ -78,7 +77,7 @@ CHALDEAN_ORDER: Tuple[str, ...] = (
 )
 
 
-def _build_hour_sequence(day_ruler: str) -> Tuple[str, ...]:
+def _build_hour_sequence(day_ruler: str) -> tuple[str, ...]:
     if day_ruler not in CHALDEAN_ORDER:
         raise ValueError(f"Unknown day ruler: {day_ruler}")
     start = CHALDEAN_ORDER.index(day_ruler)
@@ -88,7 +87,7 @@ def _build_hour_sequence(day_ruler: str) -> Tuple[str, ...]:
     return tuple(sequence)
 
 
-PLANETARY_DAYS: Tuple[PlanetaryDay, ...] = (
+PLANETARY_DAYS: tuple[PlanetaryDay, ...] = (
     PlanetaryDay("Sunday", "Sun", ("vitality", "clarity", "leadership")),
     PlanetaryDay("Monday", "Moon", ("intuition", "care", "rhythm")),
     PlanetaryDay("Tuesday", "Mars", ("courage", "initiative", "surgery")),
@@ -99,13 +98,12 @@ PLANETARY_DAYS: Tuple[PlanetaryDay, ...] = (
 )
 
 
-PLANETARY_HOUR_TABLE: Dict[str, Tuple[str, ...]] = {
-    day.weekday: _build_hour_sequence(day.ruler)
-    for day in PLANETARY_DAYS
+PLANETARY_HOUR_TABLE: dict[str, tuple[str, ...]] = {
+    day.weekday: _build_hour_sequence(day.ruler) for day in PLANETARY_DAYS
 }
 
 
-VOID_OF_COURSE_RULES: Tuple[VoidOfCourseRule, ...] = (
+VOID_OF_COURSE_RULES: tuple[VoidOfCourseRule, ...] = (
     VoidOfCourseRule(
         name="Classical void-of-course",
         description="Moon considered void after its last Ptolemaic aspect before changing sign.",
@@ -125,7 +123,7 @@ VOID_OF_COURSE_RULES: Tuple[VoidOfCourseRule, ...] = (
 )
 
 
-ELECTIONAL_WINDOWS: Tuple[ElectionalWindow, ...] = (
+ELECTIONAL_WINDOWS: tuple[ElectionalWindow, ...] = (
     ElectionalWindow(
         name="Waxing Moon projects",
         criteria=(

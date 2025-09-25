@@ -37,8 +37,8 @@ import json
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List, Tuple
 
 from .infrastructure.paths import project_root
 
@@ -47,7 +47,9 @@ REQ_DEV = ROOT / "requirements-dev.txt"
 
 
 # ---------- helpers ----------
-def sh(cmd: List[str], cwd: Path | None = None, allow_fail: bool = False) -> Tuple[int, str]:
+def sh(
+    cmd: list[str], cwd: Path | None = None, allow_fail: bool = False
+) -> tuple[int, str]:
     """Run a subprocess, return (code, combined_output)."""
 
     proc = subprocess.Popen(
@@ -71,10 +73,10 @@ def have_module(name: str) -> bool:
         return False
 
 
-def parse_requirements(path: Path) -> List[str]:
+def parse_requirements(path: Path) -> list[str]:
     if not path.exists():
         return []
-    pkgs: List[str] = []
+    pkgs: list[str] = []
     for line in path.read_text().splitlines():
         s = line.strip()
         if not s or s.startswith("#"):
@@ -149,7 +151,7 @@ def gate_auto_install(scope: str, non_interactive: bool) -> bool:
 
 
 def gate_clean() -> bool:
-    cleaned: List[str] = []
+    cleaned: list[str] = []
     for name in [".pytest_cache", ".ruff_cache", ".mypy_cache"]:
         d = ROOT / name
         if d.exists():
@@ -171,7 +173,7 @@ def gate_clean() -> bool:
 
 
 # ---------- CLI ----------
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="astroengine.maint", description="AstroEngine maintenance orchestrator"
     )
@@ -180,7 +182,9 @@ def main(argv: List[str] | None = None) -> int:
         action="store_true",
         help="run diagnostics + (fix)format/lint + tests (+ build if --with-build)",
     )
-    ap.add_argument("--strict", action="store_true", help="treat WARN as failure in diagnostics")
+    ap.add_argument(
+        "--strict", action="store_true", help="treat WARN as failure in diagnostics"
+    )
     ap.add_argument(
         "--fix",
         nargs="?",
@@ -189,7 +193,9 @@ def main(argv: List[str] | None = None) -> int:
     )
     ap.add_argument("--with-tests", action="store_true", help="run pytest")
     ap.add_argument(
-        "--with-build", action="store_true", help="build the package (if build is available)"
+        "--with-build",
+        action="store_true",
+        help="build the package (if build is available)",
     )
     ap.add_argument(
         "--auto-install",
@@ -197,7 +203,9 @@ def main(argv: List[str] | None = None) -> int:
         choices=["none", "dev", "runtime", "all"],
         help="auto-install missing deps from requirements-dev.txt",
     )
-    ap.add_argument("--clean", action="store_true", help="clean caches/artifacts and exit")
+    ap.add_argument(
+        "--clean", action="store_true", help="clean caches/artifacts and exit"
+    )
     ap.add_argument("--yes", action="store_true", help="assume yes for auto-install")
     args = ap.parse_args(argv)
 
@@ -209,7 +217,7 @@ def main(argv: List[str] | None = None) -> int:
     run_build = bool(args.with_build or (args.full and False))
     apply_fixes = args.fix in ("all", "format", "lint", "imports") or args.full
 
-    results: list[Tuple[str, bool]] = []
+    results: list[tuple[str, bool]] = []
 
     if args.auto_install != "none":
         results.append(("auto-install", gate_auto_install(args.auto_install, args.yes)))
@@ -222,7 +230,9 @@ def main(argv: List[str] | None = None) -> int:
         results.append(("tests", gate_tests()))
 
     if run_build:
-        results.append(("build", gate_build(ensure_build_tool=args.auto_install != "none")))
+        results.append(
+            ("build", gate_build(ensure_build_tool=args.auto_install != "none"))
+        )
 
     worst_fail = any(not ok for _, ok in results)
     print("\n=== Maintenance Summary ===")

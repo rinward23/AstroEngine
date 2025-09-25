@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from datetime import UTC, datetime, timedelta
 
 from ..ephemeris import SwissEphemerisAdapter
 
@@ -43,6 +43,7 @@ _BODY_CODE_CACHE: dict[str, int] | None = None
 
 # --- Angle helpers -----------------------------------------------------------
 
+
 def norm360(x: float) -> float:
     """Normalise ``x`` into the [0, 360) range."""
 
@@ -69,14 +70,14 @@ def jd_to_iso(jd_ut: float) -> str:
     """Convert a Julian day (UT) to an ISO-8601 UTC timestamp."""
 
     seconds = (jd_ut - UNIX_EPOCH_JD) * 86400.0
-    dt = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=seconds)
+    dt = datetime(1970, 1, 1, tzinfo=UTC) + timedelta(seconds=seconds)
     return dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def iso_to_jd(iso_ts: str) -> float:
     """Convert an ISO-8601 timestamp into a Julian day (UT)."""
 
-    dt = datetime.fromisoformat(iso_ts.replace("Z", "+00:00")).astimezone(timezone.utc)
+    dt = datetime.fromisoformat(iso_ts.replace("Z", "+00:00")).astimezone(UTC)
     return (dt.timestamp() / 86400.0) + UNIX_EPOCH_JD
 
 
@@ -165,7 +166,9 @@ def _resolve_body_code(name: str, swe_module) -> int:
     try:
         return cache[normalized]
     except KeyError:  # pragma: no cover - defensive guard
-        raise ValueError(f"Body '{name}' is not supported by Swiss ephemeris adapter") from None
+        raise ValueError(
+            f"Body '{name}' is not supported by Swiss ephemeris adapter"
+        ) from None
 
 
 def body_lon(jd_ut: float, body_name: str) -> float:
@@ -191,6 +194,7 @@ def body_lon(jd_ut: float, body_name: str) -> float:
 
 
 # --- Root finding ------------------------------------------------------------
+
 
 def solve_zero_crossing(
     f: Callable[[float], float],

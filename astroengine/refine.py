@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import datetime as dt
 import math
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Callable, Sequence
 
 from .utils.angles import delta_angle
 
@@ -39,17 +39,19 @@ def bisection_time(
     hi = _to_dt(iso_hi)
     for _ in range(max_iter):
         mid = lo + (hi - lo) / 2
-        v = f(mid.replace(tzinfo=dt.timezone.utc).isoformat().replace("+00:00", "Z"))
+        v = f(mid.replace(tzinfo=dt.UTC).isoformat().replace("+00:00", "Z"))
         if abs((hi - lo).total_seconds()) <= tol_seconds:
-            return mid.replace(tzinfo=dt.timezone.utc).isoformat().replace("+00:00", "Z")
+            return mid.replace(tzinfo=dt.UTC).isoformat().replace("+00:00", "Z")
         if v > 0:
             hi = mid
         else:
             lo = mid
-    return mid.replace(tzinfo=dt.timezone.utc).isoformat().replace("+00:00", "Z")
+    return mid.replace(tzinfo=dt.UTC).isoformat().replace("+00:00", "Z")
 
 
-def refine_mirror_exact(provider, iso_lo: str, iso_hi: str, moving: str, target: str, *, kind: str) -> str:
+def refine_mirror_exact(
+    provider, iso_lo: str, iso_hi: str, moving: str, target: str, *, kind: str
+) -> str:
     """Refine antiscia/contra-antiscia exact time between brackets.
     kind in {"antiscia", "contra_antiscia"}.
     """
@@ -66,7 +68,9 @@ def refine_mirror_exact(provider, iso_lo: str, iso_hi: str, moving: str, target:
     return bisection_time(iso_lo, iso_hi, lambda s: metric(s))
 
 
-def gaussian_membership(delta_deg: float, width_deg: float, *, softness: float = 0.5) -> float:
+def gaussian_membership(
+    delta_deg: float, width_deg: float, *, softness: float = 0.5
+) -> float:
     """Return a Gaussian membership score for ``delta_deg`` within ``width_deg``.
 
     Parameters
@@ -86,7 +90,9 @@ def gaussian_membership(delta_deg: float, width_deg: float, *, softness: float =
     return math.exp(-0.5 * (float(delta_deg) / sigma) ** 2)
 
 
-def sigmoid_membership(delta_deg: float, width_deg: float, *, steepness: float = 4.0) -> float:
+def sigmoid_membership(
+    delta_deg: float, width_deg: float, *, steepness: float = 4.0
+) -> float:
     """Return a logistic membership curve for ``delta_deg`` within ``width_deg``."""
 
     width = max(float(width_deg), 1e-9)
@@ -203,4 +209,6 @@ def branch_sensitive_angles(
             angles.add(round((idx * step) % 360.0, 6))
     ordered = sorted({(angle + 360.0) % 360.0 for angle in angles})
     return tuple(ordered)
+
+
 # >>> AUTO-GEN END: AE Refinement v1.0

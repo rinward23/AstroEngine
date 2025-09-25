@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Sequence
 
 from ..detectors.common import UNIX_EPOCH_JD
 from ..events import ZodiacalReleasingPeriod

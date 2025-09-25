@@ -1,16 +1,19 @@
 # >>> AUTO-GEN BEGIN: tests-eclipses v1.0
 from __future__ import annotations
+
 import os
+
 import pytest
 
 try:
-    import swisseph as swe  # type: ignore
     HAVE_SWISS = True
 except Exception:
     HAVE_SWISS = False
 
 SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
-pytestmark = pytest.mark.skipif(not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available")
+pytestmark = pytest.mark.skipif(
+    not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
+)
 
 from astroengine.detectors.common import iso_to_jd
 from astroengine.detectors.eclipses import find_eclipses
@@ -51,4 +54,6 @@ def test_eclipse_visibility_flag():
     london_events = find_eclipses(start, end, location=(0.0, 51.5, 0))
     london = _find_event(london_events, "2024-04-08T18:17:23Z", tolerance_minutes=5.0)
     assert london.is_visible is False
+
+
 # >>> AUTO-GEN END: tests-eclipses v1.0

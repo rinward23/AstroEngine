@@ -5,29 +5,33 @@ from __future__ import annotations
 from importlib.metadata import PackageNotFoundError, version
 
 from .astro import declination  # ENSURE-LINE
-from .catalogs import sbdb  # ENSURE-LINE
+from .canonical import (
+    BodyPosition,  # ENSURE-LINE
+    TransitEvent,  # ENSURE-LINE
+)
 from .catalogs import (
     VCA_CENTAURS,
     VCA_CORE_BODIES,
     VCA_EXT_ASTEROIDS,
     VCA_SENSITIVE_POINTS,
     VCA_TNOS,
+    sbdb,  # ENSURE-LINE
 )
 from .chart import (
     ChartLocation,
-    NatalChart,
-    ProgressedChart,
-    ReturnChart,
+    CompositePosition,
+    DirectedChart,
     HarmonicChart,
     HarmonicPosition,
     MidpointCompositeChart,
-    CompositePosition,
-    DirectedChart,
-    compute_natal_chart,
-    compute_secondary_progressed_chart,
-    compute_return_chart,
-    compute_harmonic_chart,
+    NatalChart,
+    ProgressedChart,
+    ReturnChart,
     compute_composite_chart,
+    compute_harmonic_chart,
+    compute_natal_chart,
+    compute_return_chart,
+    compute_secondary_progressed_chart,
     compute_solar_arc_chart,
 )
 from .chart.config import ChartConfig
@@ -54,9 +58,18 @@ from .core import (  # noqa: F401
     profile_into_ctx,
     to_tt,
 )
-from .canonical import TransitEvent  # ENSURE-LINE
-from .canonical import BodyPosition  # ENSURE-LINE
 from .diagnostics import collect_diagnostics  # ENSURE-LINE
+from .ephemeris import (  # noqa: F401
+    EphemerisAdapter,
+    EphemerisConfig,
+    EphemerisSample,
+    ObserverLocation,
+    RefinementBracket,
+    RefinementError,
+    SwissEphemerisAdapter,
+    TimeScaleContext,
+    refine_event,
+)
 from .esoteric import (
     ALCHEMY_STAGES,
     DECANS,
@@ -87,27 +100,17 @@ from .esoteric import (
     assign_decans,
     decan_for_longitude,
 )
-from .ephemeris import (  # noqa: F401
-    EphemerisAdapter,
-    EphemerisConfig,
-    EphemerisSample,
-    ObserverLocation,
-    RefinementBracket,
-    RefinementError,
-    SwissEphemerisAdapter,
-    TimeScaleContext,
-    refine_event,
-)
+
 try:
     from .events import (
-        LunationEvent,
-        EclipseEvent,
-        StationEvent,
-        ReturnEvent,
-        ProgressionEvent,
         DirectionEvent,
-        ProfectionEvent,
+        EclipseEvent,
+        LunationEvent,
         OutOfBoundsEvent,
+        ProfectionEvent,
+        ProgressionEvent,
+        ReturnEvent,
+        StationEvent,
     )
 except ImportError:  # pragma: no cover - optional legacy surface
     LunationEvent = EclipseEvent = StationEvent = ReturnEvent = None  # type: ignore
@@ -126,6 +129,12 @@ from .modules import (
     bootstrap_default_registry,
 )
 from .modules.vca import serialize_vca_ruleset
+from .narrative_overlay import (
+    NarrativeOverlay,
+    apply_resonance_overlay,
+    format_confidence_band,
+    select_resonance_focus,
+)
 from .profiles import (  # noqa: F401
     VCA_DOMAIN_PROFILES,
     DomainScoringProfile,
@@ -135,11 +144,10 @@ from .profiles import (  # noqa: F401
     load_resonance_weights,
     load_vca_outline,
 )
-from .narrative_overlay import (
-    NarrativeOverlay,
-    apply_resonance_overlay,
-    format_confidence_band,
-    select_resonance_focus,
+from .providers import (  # noqa: F401  # ENSURE-LINE
+    EphemerisProvider,  # noqa: F401  # ENSURE-LINE
+    get_provider,
+    list_providers,
 )
 from .ritual import (
     CHALDEAN_ORDER,
@@ -151,8 +159,6 @@ from .ritual import (
     PlanetaryDay,
     VoidOfCourseRule,
 )
-from .providers import EphemerisProvider  # noqa: F401  # ENSURE-LINE
-from .providers import get_provider, list_providers  # noqa: F401  # ENSURE-LINE
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
 from .scoring import (
     DEFAULT_ASPECTS,
@@ -166,9 +172,9 @@ from .scoring import (
     compute_uncertainty_confidence,
     load_dignities,
     load_orb_policy,
-    lookup_dignities,
     load_severity_policy,
     load_visibility_policy,
+    lookup_dignities,
 )
 
 __all__ = [

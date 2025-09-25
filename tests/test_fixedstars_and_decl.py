@@ -7,7 +7,8 @@ import pytest
 
 
 @pytest.mark.skipif(
-    importlib.util.find_spec("skyfield") is None or importlib.util.find_spec("jplephem") is None,
+    importlib.util.find_spec("skyfield") is None
+    or importlib.util.find_spec("jplephem") is None,
     reason="skyfield/jplephem missing",
 )
 def test_skyfield_star_regulus_lon_lat_range():

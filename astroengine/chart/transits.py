@@ -6,7 +6,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from .config import ChartConfig
 from ..ephemeris import SwissEphemerisAdapter
 from ..scoring import DEFAULT_ASPECTS, OrbCalculator
 from .config import ChartConfig
@@ -47,7 +46,9 @@ class TransitScanner:
     ) -> None:
 
         self.chart_config = chart_config or ChartConfig()
-        self.adapter = adapter or SwissEphemerisAdapter.from_chart_config(self.chart_config)
+        self.adapter = adapter or SwissEphemerisAdapter.from_chart_config(
+            self.chart_config
+        )
 
         self.orb_calculator = orb_calculator or OrbCalculator()
         self.aspect_angles = tuple(aspect_angles or DEFAULT_ASPECTS)
@@ -92,5 +93,7 @@ class TransitScanner:
                             )
                         )
                         break
-        contacts.sort(key=lambda item: (item.orb, item.transiting_body, item.natal_body))
+        contacts.sort(
+            key=lambda item: (item.orb, item.transiting_body, item.natal_body)
+        )
         return tuple(contacts)

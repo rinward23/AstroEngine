@@ -1,7 +1,5 @@
 from datetime import UTC, datetime
 
-import pytest
-
 from astroengine.chart.natal import ChartLocation
 from astroengine.detectors.ingress import find_ingresses
 from astroengine.ephemeris import SwissEphemerisAdapter

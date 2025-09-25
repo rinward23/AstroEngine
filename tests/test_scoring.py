@@ -10,7 +10,9 @@ from astroengine.scoring.contact import (
 from astroengine.scoring.policy import load_severity_policy
 
 
-def _score(kind: str, orb_abs: float, orb_allow: float, phase: str = "separating") -> float:
+def _score(
+    kind: str, orb_abs: float, orb_allow: float, phase: str = "separating"
+) -> float:
     return compute_score(
         ScoreInputs(
             kind=kind,

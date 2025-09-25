@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
 
 from ..astro.declination import DEFAULT_ANTISCIA_AXIS
 from ..profiles import load_resonance_weights
@@ -109,12 +110,12 @@ def _resolve_mirror_orb(
     )
 
 
-def _resolve_tradition(
-    profile: Mapping[str, Any], override: str | None
-) -> str | None:
+def _resolve_tradition(profile: Mapping[str, Any], override: str | None) -> str | None:
     if override:
         return override
-    tradition_section = profile.get("tradition") if isinstance(profile, Mapping) else None
+    tradition_section = (
+        profile.get("tradition") if isinstance(profile, Mapping) else None
+    )
     if isinstance(tradition_section, Mapping):
         default_trad = tradition_section.get("default")
         if isinstance(default_trad, str):
@@ -122,9 +123,7 @@ def _resolve_tradition(
     return None
 
 
-def _resolve_chart_sect(
-    profile: Mapping[str, Any], override: str | None
-) -> str | None:
+def _resolve_chart_sect(profile: Mapping[str, Any], override: str | None) -> str | None:
     if override:
         return override
     natal_section = profile.get("natal") if isinstance(profile, Mapping) else None
@@ -266,11 +265,15 @@ class ScanProfileContext:
         mirror_flags = self.antiscia_flags
 
         decl_enabled = bool(decl_flags.get("enabled", True)) if decl_flags else True
-        parallels_enabled = bool(decl_flags.get("parallels", True)) if decl_flags else True
+        parallels_enabled = (
+            bool(decl_flags.get("parallels", True)) if decl_flags else True
+        )
         contras_enabled = (
             bool(decl_flags.get("contraparallels", True)) if decl_flags else True
         )
-        antiscia_enabled = bool(mirror_flags.get("enabled", True)) if mirror_flags else True
+        antiscia_enabled = (
+            bool(mirror_flags.get("enabled", True)) if mirror_flags else True
+        )
 
         do_declination = include_declination and decl_enabled
         return ScanFeatureToggles(
@@ -334,7 +337,9 @@ def build_scan_profile_context(
     if isinstance(resonance_section, Mapping):
         bias_section = resonance_section.get("uncertainty_bias")
         if isinstance(bias_section, Mapping):
-            uncertainty_bias = {str(key): str(value) for key, value in bias_section.items()}
+            uncertainty_bias = {
+                str(key): str(value) for key, value in bias_section.items()
+            }
 
     tradition = _resolve_tradition(profile_data, tradition_profile)
     chart_sect_value = _resolve_chart_sect(profile_data, chart_sect)
@@ -399,4 +404,3 @@ def build_scan_profile_context(
 
 # Backwards compatibility hook for unit tests importing the private helper.
 _build_scan_profile_context = build_scan_profile_context
-

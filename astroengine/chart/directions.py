@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Mapping, Sequence
 
-from .config import ChartConfig
-from .natal import NatalChart, DEFAULT_BODIES
 from ..ephemeris import SwissEphemerisAdapter
+from .config import ChartConfig
+from .natal import DEFAULT_BODIES, NatalChart
 
 __all__ = ["DirectedChart", "compute_solar_arc_chart"]
 
@@ -35,13 +35,10 @@ def compute_solar_arc_chart(
     target_moment: datetime,
     *,
     bodies: Sequence[str] | None = None,
-
     config: ChartConfig | None = None,
-
     adapter: SwissEphemerisAdapter | None = None,
 ) -> DirectedChart:
     """Return solar arc directed longitudes for ``target_moment``."""
-
 
     chart_config = config or ChartConfig()
     adapter = adapter or SwissEphemerisAdapter.from_chart_config(chart_config)
@@ -59,17 +56,24 @@ def compute_solar_arc_chart(
     sun_code = DEFAULT_BODIES.get("Sun")
     if sun_code is None:
         raise ValueError("DEFAULT_BODIES missing Sun entry for solar arc computation")
-    progressed_sun = adapter.body_position(progressed_jd, sun_code, body_name="Sun").longitude
+    progressed_sun = adapter.body_position(
+        progressed_jd, sun_code, body_name="Sun"
+    ).longitude
     arc = (progressed_sun - natal_sun) % 360.0
 
-    selected = set(natal_chart.positions.keys()) if bodies is None else {
-        body for body in bodies if body in natal_chart.positions
-    }
+    selected = (
+        set(natal_chart.positions.keys())
+        if bodies is None
+        else {body for body in bodies if body in natal_chart.positions}
+    )
     if not selected:
         raise ValueError("No overlapping bodies to direct")
 
     directed_positions = {
-        body: (natal_chart.positions[body].longitude + arc) % 360.0 for body in sorted(selected)
+        body: (natal_chart.positions[body].longitude + arc) % 360.0
+        for body in sorted(selected)
     }
 
-    return DirectedChart(target_moment=target_moment, arc_degrees=arc, positions=directed_positions)
+    return DirectedChart(
+        target_moment=target_moment, arc_degrees=arc, positions=directed_positions
+    )

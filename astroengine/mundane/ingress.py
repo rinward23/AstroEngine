@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Sequence
 
 from ..chart.natal import (
-    ChartLocation,
     DEFAULT_BODIES,
+    ChartLocation,
     NatalChart,
 )
 from ..detectors.common import iso_to_jd
@@ -160,7 +160,9 @@ def compute_solar_ingress_chart(
     if location is not None:
         houses = adapter.houses(event.jd, location.latitude, location.longitude)
 
-    chart_aspects = _compute_chart_aspects(positions, list(angles), orb_calculator, orb_profile)
+    chart_aspects = _compute_chart_aspects(
+        positions, list(angles), orb_calculator, orb_profile
+    )
 
     natal_aspects: list[MundaneAspect] = []
     if natal_chart is not None:

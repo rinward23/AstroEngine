@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .engine import ensure_sqlite_schema
 
@@ -14,12 +14,12 @@ def top_events_by_score(
     db_path: str,
     *,
     limit: int = 10,
-    profile_id: Optional[str] = None,
-    natal_id: Optional[str] = None,
-    moving: Optional[str] = None,
-    target: Optional[str] = None,
-    year: Optional[int] = None,
-) -> List[Dict[str, Any]]:
+    profile_id: str | None = None,
+    natal_id: str | None = None,
+    moving: str | None = None,
+    target: str | None = None,
+    year: int | None = None,
+) -> list[dict[str, Any]]:
     """Return the highest scoring transit events with optional filters."""
 
     import sqlite3
@@ -32,8 +32,8 @@ def top_events_by_score(
             "SELECT ts, moving, target, aspect, score, profile_id, natal_id, event_year, meta_json "
             "FROM transits_events"
         )
-        conditions: List[str] = []
-        params: List[Any] = []
+        conditions: list[str] = []
+        params: list[Any] = []
         if profile_id:
             conditions.append("profile_id = ?")
             params.append(profile_id)
@@ -54,9 +54,9 @@ def top_events_by_score(
         query += " ORDER BY score IS NULL, score DESC, ts ASC LIMIT ?"
         params.append(int(limit))
         rows = con.execute(query, params).fetchall()
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for row in rows:
-            payload: Dict[str, Any] = {
+            payload: dict[str, Any] = {
                 "ts": row["ts"],
                 "moving": row["moving"],
                 "target": row["target"],

@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 try:
-    import swisseph as swe  # type: ignore
     HAVE_SWISS = True
 except Exception:
     HAVE_SWISS = False
 
 SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
 
-pytestmark = pytest.mark.skipif(not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available")
+pytestmark = pytest.mark.skipif(
+    not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
+)
 
 from astroengine.chart import (
     ChartLocation,
@@ -28,17 +29,19 @@ from astroengine.chart import (
 
 def _sample_natal_chart() -> tuple[datetime, ChartLocation, object]:
     location = ChartLocation(latitude=40.7128, longitude=-74.0060)
-    moment = datetime(1990, 1, 1, 12, tzinfo=timezone.utc)
+    moment = datetime(1990, 1, 1, 12, tzinfo=UTC)
     chart = compute_natal_chart(moment, location)
     return moment, location, chart
 
 
 def test_secondary_progressed_chart_matches_day_for_year():
     natal_moment, _, natal_chart = _sample_natal_chart()
-    target = datetime(2020, 1, 1, 12, tzinfo=timezone.utc)
+    target = datetime(2020, 1, 1, 12, tzinfo=UTC)
     progressed = compute_secondary_progressed_chart(natal_chart, target)
 
-    progressed_days = (progressed.progressed_moment - natal_moment).total_seconds() / 86400.0
+    progressed_days = (
+        progressed.progressed_moment - natal_moment
+    ).total_seconds() / 86400.0
     expected_days = (target - natal_moment).total_seconds() / 86400.0 / 365.2422
     assert progressed_days == pytest.approx(expected_days, rel=1e-3)
     assert "Sun" in progressed.chart.positions
@@ -57,7 +60,9 @@ def test_harmonic_chart_uses_natal_positions():
     harmonic = compute_harmonic_chart(natal_chart, 5)
     assert "Sun" in harmonic.positions
     sun_entry = harmonic.positions["Sun"]
-    assert sun_entry.harmonic_longitude == pytest.approx((sun_entry.base_longitude * 5) % 360.0)
+    assert sun_entry.harmonic_longitude == pytest.approx(
+        (sun_entry.base_longitude * 5) % 360.0
+    )
 
 
 def test_midpoint_composite_reduces_to_natal_for_identical_charts():
@@ -71,7 +76,7 @@ def test_midpoint_composite_reduces_to_natal_for_identical_charts():
 
 def test_solar_arc_chart_returns_directed_positions():
     _, _, natal_chart = _sample_natal_chart()
-    target = datetime(2020, 1, 1, 12, tzinfo=timezone.utc)
+    target = datetime(2020, 1, 1, 12, tzinfo=UTC)
     directed = compute_solar_arc_chart(natal_chart, target)
     assert directed.arc_degrees >= 0.0
     assert "Sun" in directed.positions

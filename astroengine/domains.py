@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, Mapping
+from typing import Any
 
 from .core.domains import (
     DOMAINS,
@@ -41,7 +42,7 @@ class SubchannelScore:
 @dataclass
 class ChannelScore:
     id: str
-    sub: Dict[str, SubchannelScore] = field(default_factory=dict)
+    sub: dict[str, SubchannelScore] = field(default_factory=dict)
 
     @property
     def score(self) -> float:
@@ -55,7 +56,7 @@ class ChannelScore:
 @dataclass
 class DomainScore:
     id: str
-    channels: Dict[str, ChannelScore] = field(default_factory=dict)
+    channels: dict[str, ChannelScore] = field(default_factory=dict)
 
     @property
     def score(self) -> float:
@@ -70,8 +71,8 @@ def _load_json(path: Path) -> dict:
     return load_json_document(path, default={})
 
 
-def _make_empty_scores(tree: Mapping[str, Any]) -> Dict[str, DomainScore]:
-    result: Dict[str, DomainScore] = {}
+def _make_empty_scores(tree: Mapping[str, Any]) -> dict[str, DomainScore]:
+    result: dict[str, DomainScore] = {}
     for domain_entry in tree.get("domains", []):
         domain = DomainScore(id=str(domain_entry.get("id")))
         for channel_entry in domain_entry.get("channels", []):
@@ -87,7 +88,7 @@ def _make_empty_scores(tree: Mapping[str, Any]) -> Dict[str, DomainScore]:
     return result
 
 
-def _channel_weights_for(body: str, mapping: Mapping[str, Any]) -> Dict[str, float]:
+def _channel_weights_for(body: str, mapping: Mapping[str, Any]) -> dict[str, float]:
     planet_map = mapping.get("planet_channels", {})
     return {
         key: float(value)
@@ -108,7 +109,11 @@ def _aspect_valence(event: object, mapping: Mapping[str, Any]) -> str:
         if aspect == "conjunction":
             moving = (_event_attr(event, "moving") or "").lower()
             overrides = mapping.get("conjunction_valence_overrides", {})
-            return str(overrides.get(moving, mapping.get("aspect_valence", {}).get(aspect, "neutral")))
+            return str(
+                overrides.get(
+                    moving, mapping.get("aspect_valence", {}).get(aspect, "neutral")
+                )
+            )
         return str(mapping.get("aspect_valence", {}).get(aspect, "neutral"))
     return "neutral"
 
@@ -118,7 +123,7 @@ def rollup_domain_scores(
     *,
     tree_path: str | Path | None = None,
     mapping_path: str | Path | None = None,
-) -> Dict[str, DomainScore]:
+) -> dict[str, DomainScore]:
     tree = _load_json(Path(tree_path) if tree_path else _DEF_TREE)
     mapping = _load_json(Path(mapping_path) if mapping_path else _DEF_MAP)
     scores = _make_empty_scores(tree)
@@ -129,7 +134,7 @@ def rollup_domain_scores(
         if not moving and not target:
             continue
 
-        base_weights: Dict[str, float] = {}
+        base_weights: dict[str, float] = {}
         for body in (moving, target):
             if not body:
                 continue

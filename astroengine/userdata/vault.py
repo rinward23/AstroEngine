@@ -1,23 +1,25 @@
 # >>> AUTO-GEN BEGIN: userdata-vault v1.0
 from __future__ import annotations
-from dataclasses import dataclass, asdict
-from typing import Optional, List, Dict
-from pathlib import Path
+
 import json
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
 from ..infrastructure.home import ae_home
 
 BASE = ae_home() / "natals"
 BASE.mkdir(parents=True, exist_ok=True)
 
+
 @dataclass
 class Natal:
     natal_id: str
-    name: Optional[str]
+    name: str | None
     utc: str  # ISO-8601 birth time (UTC)
     lat: float
     lon: float
-    tz: Optional[str] = None
-    place: Optional[str] = None
+    tz: str | None = None
+    place: str | None = None
 
 
 def _path(natal_id: str) -> Path:
@@ -33,12 +35,12 @@ def save_natal(n: Natal) -> Path:
 
 def load_natal(natal_id: str) -> Natal:
     p = _path(natal_id)
-    with open(p, "r", encoding="utf-8") as f:
+    with open(p, encoding="utf-8") as f:
         data = json.load(f)
     return Natal(**data)
 
 
-def list_natals() -> List[str]:
+def list_natals() -> list[str]:
     return sorted([p.stem for p in BASE.glob("*.json")])
 
 
@@ -48,4 +50,6 @@ def delete_natal(natal_id: str) -> bool:
         p.unlink()
         return True
     return False
+
+
 # >>> AUTO-GEN END: userdata-vault v1.0

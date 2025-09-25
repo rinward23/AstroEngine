@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Iterable, Mapping, MutableMapping
+from collections.abc import Iterable, Mapping, MutableMapping
+from datetime import UTC, datetime
 
 from ..canonical import BodyPosition
 from ..chart.composite import CompositeChart
@@ -44,7 +44,7 @@ class TargetFrameResolver:
         """Return a normalized ISO string and UTC datetime for ``ts``."""
 
         dt_obj = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-        dt_utc = dt_obj.astimezone(timezone.utc) if dt_obj.tzinfo else dt_obj.replace(tzinfo=timezone.utc)
+        dt_utc = dt_obj.astimezone(UTC) if dt_obj.tzinfo else dt_obj.replace(tzinfo=UTC)
         dt_utc = dt_utc.replace(microsecond=0)
         normalized = dt_utc.isoformat().replace("+00:00", "Z")
         return normalized, dt_utc
@@ -266,4 +266,3 @@ class FrameAwareProvider:
 
     def __getattr__(self, item):  # pragma: no cover - passthrough
         return getattr(self._provider, item)
-

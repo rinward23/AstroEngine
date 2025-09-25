@@ -18,7 +18,6 @@ from .paths import (
     rulesets_dir,
     schemas_dir,
 )
-
 from .storage import (
     SQLiteMigrator,
     downgrade_sqlite,

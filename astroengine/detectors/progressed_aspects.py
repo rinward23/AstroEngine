@@ -1,6 +1,7 @@
 # >>> AUTO-GEN BEGIN: detector-progressed-aspects v1.0
 from __future__ import annotations
-from typing import List, Sequence
+
+from collections.abc import Sequence
 
 
 def progressed_natal_aspects(
@@ -10,6 +11,8 @@ def progressed_natal_aspects(
     *,
     aspects: Sequence[int],
     orb_deg: float,
-) -> List[object]:
+) -> list[object]:
     return []
+
+
 # >>> AUTO-GEN END: detector-progressed-aspects v1.0

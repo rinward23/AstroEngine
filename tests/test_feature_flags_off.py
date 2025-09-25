@@ -1,5 +1,6 @@
 # >>> AUTO-GEN BEGIN: tests-feature-flags v1.0
 from __future__ import annotations
+
 import importlib
 
 
@@ -13,4 +14,6 @@ def test_experimental_detectors_default_off():
     assert getattr(eng, "FEATURE_RETURNS", False) is False
     assert getattr(eng, "FEATURE_PROFECTIONS", False) is False
     assert getattr(eng, "FEATURE_TIMELORDS", False) is False
+
+
 # >>> AUTO-GEN END: tests-feature-flags v1.0

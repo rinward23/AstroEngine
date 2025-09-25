@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import swisseph as swe
 
@@ -15,8 +15,10 @@ def _expected_sidereal_longitude(jd_ut: float, mode: int) -> float:
 
 
 def test_sun_lahiri_sidereal_zero() -> None:
-    moment = datetime(2000, 4, 13, 11, 52, 10, 808741, tzinfo=timezone.utc)
-    adapter = SwissEphemerisAdapter(chart_config=ChartConfig(zodiac="sidereal", ayanamsha="lahiri"))
+    moment = datetime(2000, 4, 13, 11, 52, 10, 808741, tzinfo=UTC)
+    adapter = SwissEphemerisAdapter(
+        chart_config=ChartConfig(zodiac="sidereal", ayanamsha="lahiri")
+    )
     if adapter.ephemeris_path:
         swe.set_ephe_path(adapter.ephemeris_path)
     jd_ut = adapter.julian_day(moment)
@@ -26,7 +28,7 @@ def test_sun_lahiri_sidereal_zero() -> None:
 
 
 def test_sun_fagan_bradley_sidereal_zero() -> None:
-    moment = datetime(1950, 4, 14, 13, 50, 30, 293000, tzinfo=timezone.utc)
+    moment = datetime(1950, 4, 14, 13, 50, 30, 293000, tzinfo=UTC)
     adapter = SwissEphemerisAdapter(
         chart_config=ChartConfig(zodiac="sidereal", ayanamsha="fagan_bradley")
     )

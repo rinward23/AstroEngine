@@ -1,8 +1,9 @@
 # >>> AUTO-GEN BEGIN: AE SBDB Catalog v1.0
 from __future__ import annotations
+
 import json
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 from ..infrastructure.paths import datasets_dir
 
@@ -18,7 +19,7 @@ except Exception:  # pragma: no cover
 @dataclass
 class SBDBObject:
     designation: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
 
 
 def fetch_sbdb(designation: str, use_cache: bool = True) -> SBDBObject:
@@ -42,4 +43,6 @@ def fetch_sbdb(designation: str, use_cache: bool = True) -> SBDBObject:
         return SBDBObject(designation=designation, data=json.loads(fpath.read_text()))
 
     raise RuntimeError("SBDB query failed and no cache available")
+
+
 # >>> AUTO-GEN END: AE SBDB Catalog v1.0

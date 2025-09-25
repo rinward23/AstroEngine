@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from .angles import AngleTracker, DeltaLambdaTracker, classify_relative_motion, normalize_degrees
+from .angles import (
+    AngleTracker,
+    DeltaLambdaTracker,
+    classify_relative_motion,
+    normalize_degrees,
+)
 from .api import TransitEvent, TransitScanConfig
 from .config import load_profile_json, profile_into_ctx
 from .domains import (

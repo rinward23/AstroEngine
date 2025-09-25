@@ -4,16 +4,15 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
+from collections.abc import Mapping as MappingType
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
-
-from typing import Mapping as MappingType
 
 from ..core.bodies import body_class
 from ..infrastructure.paths import profiles_dir
-from ..refine import branch_sensitive_angles, fuzzy_membership
 from ..plugins import apply_score_extensions
+from ..refine import branch_sensitive_angles, fuzzy_membership
 from ..utils import deep_merge, load_json_document
 from ..utils.angles import delta_angle
 from .tradition import get_tradition_spec
@@ -59,13 +58,15 @@ class ScoreResult:
     confidence: float = 1.0
 
 
-@lru_cache(maxsize=None)
+@cache
 def _load_policy(path: str | None) -> dict:
     policy_path = Path(path) if path else _DEF_POLICY
     return load_json_document(policy_path)
 
 
-def _resolve_policy(policy: Mapping[str, object] | None, policy_path: str | None) -> dict:
+def _resolve_policy(
+    policy: Mapping[str, object] | None, policy_path: str | None
+) -> dict:
     if policy is not None:
         return {key: value for key, value in policy.items()}
     return _load_policy(policy_path)
@@ -77,7 +78,9 @@ def _gaussian(value: float, sigma: float) -> float:
     return math.exp(-0.5 * (value / sigma) ** 2)
 
 
-def _dignity_factor(policy: Mapping[str, object], inputs: ScoreInputs) -> tuple[float, dict[str, float]]:
+def _dignity_factor(
+    policy: Mapping[str, object], inputs: ScoreInputs
+) -> tuple[float, dict[str, float]]:
     modifiers = inputs.dignity_modifiers or {}
     factor = 1.0
     applied: dict[str, float] = {}
@@ -99,7 +102,9 @@ def _dignity_factor(policy: Mapping[str, object], inputs: ScoreInputs) -> tuple[
     return max(factor, 0.0), applied
 
 
-def _condition_factor(policy: Mapping[str, object], inputs: ScoreInputs) -> tuple[float, dict[str, float]]:
+def _condition_factor(
+    policy: Mapping[str, object], inputs: ScoreInputs
+) -> tuple[float, dict[str, float]]:
     base = policy.get("condition_modifiers", {})
     table: dict[str, float] = {}
     if isinstance(base, Mapping):
@@ -199,7 +204,9 @@ def _resonance_factor(inputs: ScoreInputs) -> tuple[float, dict[str, float]]:
     return max(factor, 0.0), components
 
 
-def _tradition_factor(policy: Mapping[str, object], inputs: ScoreInputs) -> tuple[float, dict[str, float]]:
+def _tradition_factor(
+    policy: Mapping[str, object], inputs: ScoreInputs
+) -> tuple[float, dict[str, float]]:
     name = (inputs.tradition_profile or "").strip().lower()
     if not name:
         return 1.0, {}
@@ -222,7 +229,9 @@ def _tradition_factor(policy: Mapping[str, object], inputs: ScoreInputs) -> tupl
                     delta,
                     corridor,
                     profile=inputs.corridor_profile,
-                    softness=float(policy.get("curve", {}).get("sigma_frac_of_orb", 0.5)),
+                    softness=float(
+                        policy.get("curve", {}).get("sigma_frac_of_orb", 0.5)
+                    ),
                 )
                 components[f"drishti:{inputs.moving}:{angle:.1f}"] = membership
                 memberships.append(membership)
@@ -244,7 +253,9 @@ def _tradition_factor(policy: Mapping[str, object], inputs: ScoreInputs) -> tupl
     return max(factor, 0.0), components
 
 
-def _fractal_factor(policy: Mapping[str, object], inputs: ScoreInputs) -> tuple[float, dict[str, float]]:
+def _fractal_factor(
+    policy: Mapping[str, object], inputs: ScoreInputs
+) -> tuple[float, dict[str, float]]:
     if inputs.angle_deg is None:
         return 1.0, {}
     patterns = policy.get("fractal_patterns", {})
@@ -462,4 +473,3 @@ def compute_score(
 
     result = ScoreResult(score=score, components=components, confidence=confidence)
     return apply_score_extensions(inputs, result)
-

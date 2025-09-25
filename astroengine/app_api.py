@@ -5,16 +5,10 @@ import importlib
 import inspect
 import os
 import re
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, is_dataclass
 from typing import (
     Any,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
     Union,
 )
 
@@ -22,14 +16,15 @@ from typing import (
 try:
     from .canonical import events_from_any
 except Exception:  # pragma: no cover
-    def events_from_any(seq: Iterable[Any]) -> List[Any]:
+
+    def events_from_any(seq: Iterable[Any]) -> list[Any]:
         return list(seq)
 
 
-ScanCandidate = Tuple[str, str]  # (module, function)
+ScanCandidate = tuple[str, str]  # (module, function)
 ScanSpec = Union[ScanCandidate, str]
 SCAN_ENTRYPOINT_ENV = "ASTROENGINE_SCAN_ENTRYPOINTS"
-DEFAULT_SCAN_ENTRYPOINTS: Tuple[ScanCandidate, ...] = (
+DEFAULT_SCAN_ENTRYPOINTS: tuple[ScanCandidate, ...] = (
     ("astroengine.core.transit_engine", "scan_window"),
     ("astroengine.core.transit_engine", "scan_contacts"),
     ("astroengine.engine", "scan_window"),
@@ -37,7 +32,7 @@ DEFAULT_SCAN_ENTRYPOINTS: Tuple[ScanCandidate, ...] = (
 )
 
 
-def _parse_entrypoint_spec(spec: str) -> Optional[ScanCandidate]:
+def _parse_entrypoint_spec(spec: str) -> ScanCandidate | None:
     raw = spec.strip()
     if not raw:
         return None
@@ -58,12 +53,14 @@ def _parse_entrypoint_spec(spec: str) -> Optional[ScanCandidate]:
     return mod, fn
 
 
-def _normalize_entrypoints(entrypoints: Optional[Iterable[ScanSpec]]) -> List[ScanCandidate]:
-    normalized: List[ScanCandidate] = []
+def _normalize_entrypoints(
+    entrypoints: Iterable[ScanSpec] | None,
+) -> list[ScanCandidate]:
+    normalized: list[ScanCandidate] = []
     if not entrypoints:
         return normalized
     for item in entrypoints:
-        candidate: Optional[ScanCandidate]
+        candidate: ScanCandidate | None
         if isinstance(item, tuple) and len(item) == 2:
             candidate = (str(item[0]), str(item[1]))
         elif isinstance(item, str):
@@ -80,7 +77,7 @@ def _normalize_entrypoints(entrypoints: Optional[Iterable[ScanSpec]]) -> List[Sc
     return normalized
 
 
-def _env_entrypoints() -> List[ScanCandidate]:
+def _env_entrypoints() -> list[ScanCandidate]:
     raw = os.getenv(SCAN_ENTRYPOINT_ENV, "")
     if not raw:
         return []
@@ -88,8 +85,10 @@ def _env_entrypoints() -> List[ScanCandidate]:
     return [c for part in parts if (c := _parse_entrypoint_spec(part))]
 
 
-def _candidate_order(entrypoints: Optional[Iterable[ScanSpec]] = None) -> List[ScanCandidate]:
-    ordered: List[ScanCandidate] = []
+def _candidate_order(
+    entrypoints: Iterable[ScanSpec] | None = None,
+) -> list[ScanCandidate]:
+    ordered: list[ScanCandidate] = []
     seen: set[ScanCandidate] = set()
 
     def add_candidates(cands: Iterable[ScanCandidate]) -> None:
@@ -105,10 +104,12 @@ def _candidate_order(entrypoints: Optional[Iterable[ScanSpec]] = None) -> List[S
     return ordered
 
 
-def available_scan_entrypoints(entrypoints: Optional[Iterable[ScanSpec]] = None) -> List[ScanCandidate]:
+def available_scan_entrypoints(
+    entrypoints: Iterable[ScanSpec] | None = None,
+) -> list[ScanCandidate]:
     """Discover scan functions across old/new engine layouts and env overrides."""
 
-    found: List[ScanCandidate] = []
+    found: list[ScanCandidate] = []
     for mod, fn in _candidate_order(entrypoints):
         try:
             module = importlib.import_module(mod)
@@ -120,7 +121,7 @@ def available_scan_entrypoints(entrypoints: Optional[Iterable[ScanSpec]] = None)
     return found
 
 
-def _filter_kwargs_for(fn, proposed: Dict[str, Any]) -> Dict[str, Any]:
+def _filter_kwargs_for(fn, proposed: dict[str, Any]) -> dict[str, Any]:
     """
     Pass only kwargs the function actually accepts.
     Supports common alias keys for start/end/provider/profile fields.
@@ -142,8 +143,8 @@ def _filter_kwargs_for(fn, proposed: Dict[str, Any]) -> Dict[str, Any]:
         "target_frames": ["target_frames", "target_frame", "frames", "target_contexts"],
     }
 
-    final: Dict[str, Any] = {}
-    expanded: Dict[str, Any] = dict(proposed)
+    final: dict[str, Any] = {}
+    expanded: dict[str, Any] = dict(proposed)
     for key, aliases in alias_map.items():
         if key in proposed:
             for alias in aliases:
@@ -155,7 +156,7 @@ def _filter_kwargs_for(fn, proposed: Dict[str, Any]) -> Dict[str, Any]:
     return final
 
 
-def _event_like_to_dict(obj: Any) -> Optional[Dict[str, Any]]:
+def _event_like_to_dict(obj: Any) -> dict[str, Any] | None:
     if isinstance(obj, Mapping):
         return dict(obj)
     if hasattr(obj, "model_dump"):
@@ -188,7 +189,7 @@ def _event_like_to_dict(obj: Any) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _normalize_result_payload(result: Any) -> Optional[List[Dict[str, Any]]]:
+def _normalize_result_payload(result: Any) -> list[dict[str, Any]] | None:
     if result is None:
         return None
     payload: Any = result
@@ -209,7 +210,7 @@ def _normalize_result_payload(result: Any) -> Optional[List[Dict[str, Any]]]:
                 items = list(payload)
             except TypeError:
                 return None
-    normalized: List[Dict[str, Any]] = []
+    normalized: list[dict[str, Any]] = []
     for item in items:
         event_dict = _event_like_to_dict(item)
         if event_dict is None:
@@ -234,17 +235,17 @@ def run_scan_or_raise(
     end_utc: str,
     moving: Iterable[str],
     targets: Iterable[str],
-    provider: Optional[str] = None,
-    profile_id: Optional[str] = None,
+    provider: str | None = None,
+    profile_id: str | None = None,
     step_minutes: int = 60,
-    detectors: Optional[Iterable[str]] = None,
-    target_frames: Optional[Iterable[str]] = None,
-    sidereal: Optional[bool] = None,
-    ayanamsha: Optional[str] = None,
-    entrypoints: Optional[Iterable[ScanSpec]] = None,
+    detectors: Iterable[str] | None = None,
+    target_frames: Iterable[str] | None = None,
+    sidereal: bool | None = None,
+    ayanamsha: str | None = None,
+    entrypoints: Iterable[ScanSpec] | None = None,
     return_used_entrypoint: bool = False,
-    zodiac: Optional[str] = None,
-) -> Union[List[Dict[str, Any]], Tuple[List[Dict[str, Any]], ScanCandidate]]:
+    zodiac: str | None = None,
+) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], ScanCandidate]:
     """
     Try known scan entrypoints, call the first that matches a compatible signature,
     and return a plain list of event dicts (canonicalizable).
@@ -254,7 +255,7 @@ def run_scan_or_raise(
     events.
     """
 
-    errors: List[str] = []
+    errors: list[str] = []
     for mod, fn_name in _candidate_order(entrypoints):
         try:
             module = importlib.import_module(mod)
@@ -265,7 +266,7 @@ def run_scan_or_raise(
         if not callable(fn):
             errors.append(f"{mod}.{fn_name}: attribute is not callable")
             continue
-        kwargs: Dict[str, Any] = dict(
+        kwargs: dict[str, Any] = dict(
             start_utc=start_utc,
             end_utc=end_utc,
             moving=list(moving),
@@ -274,9 +275,8 @@ def run_scan_or_raise(
             step_minutes=step_minutes,
             zodiac=zodiac,
             ayanamsha=ayanamsha,
-
         )
-        optional_kwargs: Dict[str, Any] = {}
+        optional_kwargs: dict[str, Any] = {}
         if profile_id is not None:
             optional_kwargs["profile_id"] = profile_id
         if detectors:

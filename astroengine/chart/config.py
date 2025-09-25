@@ -26,6 +26,8 @@ VALID_HOUSE_SYSTEMS = {
     "equal",
     "porphyry",
 }
+
+
 @dataclass(frozen=True)
 class ChartConfig:
     """Container describing house system and zodiac configuration."""
@@ -39,7 +41,9 @@ class ChartConfig:
         object.__setattr__(self, "zodiac", zodiac_normalized)
         if zodiac_normalized not in VALID_ZODIAC_SYSTEMS:
             options = ", ".join(sorted(VALID_ZODIAC_SYSTEMS))
-            raise ValueError(f"Unknown zodiac mode '{self.zodiac}'. Valid options: {options}")
+            raise ValueError(
+                f"Unknown zodiac mode '{self.zodiac}'. Valid options: {options}"
+            )
 
         house_normalized = self.house_system.lower()
         object.__setattr__(self, "house_system", house_normalized)

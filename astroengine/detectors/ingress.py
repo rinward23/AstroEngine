@@ -58,13 +58,11 @@ def _to_ingress_event(
         ts=jd_to_iso(jd_ut),
         jd=jd_ut,
         body=body_label,
-
         from_sign=sign_from,
         to_sign=sign_to,
         longitude=longitude,
         speed_longitude=speed,
         motion="retrograde" if retrograde else "direct",
-
         retrograde=retrograde,
     )
 
@@ -111,9 +109,14 @@ def find_ingresses(
                 except ValueError:
                     root = None
 
-                if root is not None and start_jd - _STEP_TOL <= root <= end_jd + _STEP_TOL:
+                if (
+                    root is not None
+                    and start_jd - _STEP_TOL <= root <= end_jd + _STEP_TOL
+                ):
                     events.append(
-                        _to_ingress_event(body_label, body, root, prev_sign, target_sign)
+                        _to_ingress_event(
+                            body_label, body, root, prev_sign, target_sign
+                        )
                     )
 
             prev_jd = jd
