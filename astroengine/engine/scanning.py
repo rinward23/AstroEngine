@@ -229,14 +229,21 @@ def _resolution_from_minutes(step_minutes: int) -> str:
     return "long"
 
 
-def _gated_step_minutes(step_minutes: int, moving: str) -> tuple[int, str]:
-    resolution = _resolution_from_minutes(step_minutes)
+def _gated_step_minutes(step_minutes: int | None, moving: str) -> tuple[int, str]:
+    """Apply body gating to the requested cadence.
+
+    ``step_minutes`` may be ``None`` (callers rely on legacy defaults). We clamp
+    to at least one minute and ensure the resulting cadence honours the body
+    gating multiplier while never decreasing below the user-provided interval.
+    """
+
+    base_minutes = int(step_minutes) if step_minutes and step_minutes > 0 else 60
+    resolution = _resolution_from_minutes(base_minutes)
     gated = choose_step(resolution, moving)
-    gated_minutes = int(round(gated.total_seconds() / 60.0))
-    if gated_minutes <= 0:
-        gated_minutes = step_minutes
-    effective = max(step_minutes, gated_minutes)
-    return effective, resolution
+    gated_minutes = max(int(round(gated.total_seconds() / 60.0)), 1)
+    effective = max(base_minutes, gated_minutes)
+    effective_resolution = _resolution_from_minutes(effective)
+    return effective, effective_resolution
 
 
 def _score_from_hit(
@@ -611,6 +618,9 @@ def scan_contacts(
     )
 
     events: list[LegacyTransitEvent] = []
+    skip_metadata_payload: dict[str, object] | None = None
+    if skipped_bodies:
+        skip_metadata_payload = {"skipped_bodies": list(skipped_bodies)}
 
     supported_bodies, support_issues = filter_supported((moving, target), scan_provider)
     if support_issues:
@@ -627,7 +637,11 @@ def scan_contacts(
 
     gated_step_minutes, gated_resolution = _gated_step_minutes(step_minutes, moving)
 
-    tick_source = _iso_ticks(start_iso, end_iso, step_minutes=gated_step_minutes)
+    tick_source = _iso_ticks(
+        start_iso,
+        end_iso,
+        step=dt.timedelta(minutes=gated_step_minutes),
+    )
 
     decl_ticks, mirror_ticks, aspect_ticks, plugin_ticks = tee(tick_source, 4)
 
@@ -636,10 +650,12 @@ def scan_contacts(
 
     def _append_event(event: LegacyTransitEvent) -> None:
         _attach_timelords(event, timelord_calculator)
-        if skip_metadata:
+        if skip_metadata_payload:
             provenance = event.metadata.setdefault("provenance", {})
             if isinstance(provenance, dict):
-                provenance.setdefault("skipped_bodies", skip_metadata["skipped_bodies"])
+                provenance.setdefault(
+                    "skipped_bodies", skip_metadata_payload["skipped_bodies"]
+                )
         events.append(event)
 
     for event in _declination_events(

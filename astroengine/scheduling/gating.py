@@ -39,10 +39,27 @@ def choose_step(resolution: str, body: str) -> timedelta:
 
 
 def sort_bodies_for_scan(bodies: Iterable[str]) -> List[str]:
-    """Return bodies ordered by scanning priority (fast movers first)."""
+    """Return bodies ordered by scanning priority (fast movers first).
 
-    canonical = {canonical_name(body) for body in bodies}
-    return sorted((b for b in canonical if b), key=body_priority)
+    The incoming iterable may contain duplicates or aliases. We preserve the first
+    occurrence order within each priority tier to keep behavior intuitive for
+    callers that expect luminaries to lead the sweep (matching historical
+    defaults) while still deduplicating repeated symbols.
+    """
+
+    order: dict[str, int] = {}
+    canonical_list: list[str] = []
+    for idx, body in enumerate(bodies):
+        canon = canonical_name(body)
+        if not canon or canon in order:
+            continue
+        order[canon] = idx
+        canonical_list.append(canon)
+
+    return sorted(
+        canonical_list,
+        key=lambda name: (body_priority(name), order[name]),
+    )
 
 
 def adapt_step_near_bracket(step: timedelta) -> timedelta:

@@ -9,11 +9,14 @@ from ..ephemeris.sidereal import (
     SUPPORTED_AYANAMSHAS,
     normalize_ayanamsha_name,
 )
+from ..ephemeris.swisseph_adapter import HOUSE_ALIASES, HOUSE_CODE_BY_NAME
 
 __all__ = [
     "ChartConfig",
     "DEFAULT_SIDEREAL_AYANAMSHA",
     "SUPPORTED_AYANAMSHAS",
+    "HOUSE_SYSTEM_ALIASES",
+    "HOUSE_SYSTEM_CANONICAL_CODES",
     "HOUSE_SYSTEM_CHOICES",
     "VALID_HOUSE_SYSTEMS",
     "VALID_LILITH_VARIANTS",
@@ -23,26 +26,13 @@ __all__ = [
 
 VALID_ZODIAC_SYSTEMS = {"tropical", "sidereal"}
 
-VALID_HOUSE_SYSTEMS = {
-    "alcabitius",
-    "campanus",
-    "equal",
-    "equal_mc",
-    "koch",
-    "meridian",
-    "morinus",
-    "placidus",
-    "porphyry",
-    "regiomontanus",
-    "sripati",
-    "topocentric",
-    "vehlow_equal",
-    "whole_sign",
+# Mirror the Swiss Ephemeris adapter canonical/alias mappings to keep the runtime
+# configuration in sync with the provider layer.
+HOUSE_SYSTEM_CANONICAL_CODES = tuple(sorted(HOUSE_CODE_BY_NAME.keys()))
+HOUSE_SYSTEM_ALIASES = {key: value for key, value in HOUSE_ALIASES.items()}
 
-}
-
-VALID_HOUSE_SYSTEMS = set(_HOUSE_SYSTEM_CANONICAL_CODES)
-HOUSE_SYSTEM_CHOICES = sorted({*VALID_HOUSE_SYSTEMS, *(_HOUSE_SYSTEM_ALIASES.keys())})
+VALID_HOUSE_SYSTEMS = set(HOUSE_SYSTEM_CANONICAL_CODES)
+HOUSE_SYSTEM_CHOICES = sorted({*VALID_HOUSE_SYSTEMS, *HOUSE_SYSTEM_ALIASES.keys()})
 
 VALID_NODE_VARIANTS = {"mean", "true"}
 VALID_LILITH_VARIANTS = {"mean", "true"}
@@ -68,7 +58,7 @@ class ChartConfig:
             )
 
         house_normalized = self.house_system.lower()
-        canonical_house = _HOUSE_SYSTEM_ALIASES.get(house_normalized, house_normalized)
+        canonical_house = HOUSE_SYSTEM_ALIASES.get(house_normalized, house_normalized)
         if canonical_house not in VALID_HOUSE_SYSTEMS:
             options = ", ".join(sorted(HOUSE_SYSTEM_CHOICES))
             raise ValueError(
