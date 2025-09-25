@@ -1108,6 +1108,8 @@ def cmd_transits(args: argparse.Namespace) -> int:
         include_mirrors=include_mirrors,
         include_aspects=include_aspects,
         antiscia_axis=args.mirror_axis,
+        nodes_variant=args.nodes_variant,
+        lilith_variant=args.lilith_variant,
     )
 
     narrative_bundle = None
@@ -1925,6 +1927,18 @@ def build_parser() -> argparse.ArgumentParser:
     transits.add_argument("--step", type=int, default=None)
     transits.add_argument("--aspects-policy")
     transits.add_argument("--target-longitude", type=float, default=None)
+    transits.add_argument(
+        "--nodes-variant",
+        choices=("mean", "true"),
+        default="mean",
+        help="Lunar node variant to use (default: mean)",
+    )
+    transits.add_argument(
+        "--lilith-variant",
+        choices=("mean", "true"),
+        default="mean",
+        help="Black Moon Lilith variant to use (default: mean)",
+    )
 
     transits.add_argument(
         "--narrative",

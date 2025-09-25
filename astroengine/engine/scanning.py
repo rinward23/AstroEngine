@@ -5,6 +5,9 @@
 from __future__ import annotations
 
 import datetime as dt
+
+import inspect
+
 import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
@@ -20,9 +23,13 @@ from ..detectors import common as detectors_common
 from ..detectors import detect_antiscia_contacts, detect_decl_contacts
 from ..detectors.common import body_lon, delta_deg, iso_to_jd, jd_to_iso, norm360
 from ..detectors_aspects import AspectHit, detect_aspects
-from ..ephemeris import EphemerisConfig, SwissEphemerisAdapter, filter_supported
+
+from ..ephemeris import EphemerisConfig, SwissEphemerisAdapter
+from ..ephemeris.support import filter_supported
+
 from ..exporters import LegacyTransitEvent
 from ..plugins import DetectorContext, get_plugin_manager
+from ..scheduling.gating import choose_step
 from ..providers import get_provider
 from ..scoring import ScoreInputs, compute_score
 from ..scheduling.gating import choose_step
@@ -51,7 +58,9 @@ try:  # pragma: no cover - optional for environments without pyswisseph
 except Exception:  # pragma: no cover
     swe = None  # type: ignore
 
-logger = logging.getLogger(__name__)
+
+LOG = logging.getLogger(__name__)
+
 
 __all__ = [
     "events_to_dicts",
@@ -154,6 +163,7 @@ class ScanConfig:
     aspect_angle_deg: float
     orb_deg: float
     tick_minutes: int = 60
+    resolution: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,6 +213,30 @@ def _iso_ticks(
     while current <= end_dt:
         yield current.replace(tzinfo=dt.UTC).isoformat().replace("+00:00", "Z")
         current += delta
+
+
+def _resolution_from_minutes(step_minutes: int) -> str:
+    if step_minutes <= 1:
+        return "minute"
+    if step_minutes <= 60:
+        return "hour"
+    if step_minutes <= 1440:
+        return "day"
+    if step_minutes <= 4320:
+        return "month"
+    if step_minutes <= 20160:
+        return "year"
+    return "long"
+
+
+def _gated_step_minutes(step_minutes: int, moving: str) -> tuple[int, str]:
+    resolution = _resolution_from_minutes(step_minutes)
+    gated = choose_step(resolution, moving)
+    gated_minutes = int(round(gated.total_seconds() / 60.0))
+    if gated_minutes <= 0:
+        gated_minutes = step_minutes
+    effective = max(step_minutes, gated_minutes)
+    return effective, resolution
 
 
 def _score_from_hit(
@@ -471,6 +505,8 @@ def scan_contacts(
     antiscia_axis: str | None = None,
     tradition_profile: str | None = None,
     chart_sect: str | None = None,
+    nodes_variant: str = "mean",
+    lilith_variant: str = "mean",
 ) -> list[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
 
@@ -478,15 +514,23 @@ def scan_contacts(
     target = canonical_name(target)
 
     base_provider = provider or get_provider(provider_name)
+    nodes_variant = (nodes_variant or "mean").lower()
+    lilith_variant = (lilith_variant or "mean").lower()
     if ephemeris_config is not None:
         configure = getattr(base_provider, "configure", None)
         if callable(configure):
-            configure(
-                topocentric=ephemeris_config.topocentric,
-                observer=ephemeris_config.observer,
-                sidereal=ephemeris_config.sidereal,
-                time_scale=ephemeris_config.time_scale,
-            )
+            cfg_kwargs = {
+                "topocentric": ephemeris_config.topocentric,
+                "observer": ephemeris_config.observer,
+                "sidereal": ephemeris_config.sidereal,
+                "time_scale": ephemeris_config.time_scale,
+            }
+            params = inspect.signature(configure).parameters
+            if "nodes_variant" in params:
+                cfg_kwargs["nodes_variant"] = nodes_variant
+            if "lilith_variant" in params:
+                cfg_kwargs["lilith_variant"] = lilith_variant
+            configure(**cfg_kwargs)
 
     frame = (target_frame or "transit").lower()
     resolver = target_resolver
@@ -560,26 +604,35 @@ def scan_contacts(
         uncertainty_bias=profile_ctx.uncertainty_bias,
     )
 
-    feature_metadata = dict(feature_plan.plugin_metadata())
-    if skipped_bodies:
-        feature_metadata.setdefault("skipped_bodies", list(skipped_bodies))
 
-    gating_step_moving = choose_step(resolution, moving)
-    gating_step_target = choose_step(resolution, target)
-    gating_step = min(gating_step_moving, gating_step_target, key=lambda td: td.total_seconds())
-    if step_minutes is not None and step_minutes > 0:
-        effective_step = dt.timedelta(minutes=float(step_minutes))
-    else:
-        effective_step = gating_step
+    feature_metadata = feature_plan.plugin_metadata()
+    feature_metadata.setdefault(
+        "variants", {"nodes": nodes_variant, "lilith": lilith_variant}
+    )
 
-    tick_source = _iso_ticks(start_iso, end_iso, step=effective_step)
+    events: list[LegacyTransitEvent] = []
+
+    supported_bodies, support_issues = filter_supported((moving, target), scan_provider)
+    if support_issues:
+        feature_metadata["support_issues"] = [issue.__dict__ for issue in support_issues]
+        for issue in support_issues:
+            LOG.warning(
+                "body_unsupported: %s (%s)",
+                issue.body,
+                issue.reason,
+                extra={"event": "body_unsupported", "body": issue.body, "reason": issue.reason},
+            )
+    if moving not in supported_bodies or target not in supported_bodies:
+        return events
+
+    gated_step_minutes, gated_resolution = _gated_step_minutes(step_minutes, moving)
+
+    tick_source = _iso_ticks(start_iso, end_iso, step_minutes=gated_step_minutes)
+
     decl_ticks, mirror_ticks, aspect_ticks, plugin_ticks = tee(tick_source, 4)
 
     cached_provider = _TickCachingProvider(scan_provider)
 
-    events: list[LegacyTransitEvent] = []
-
-    skip_metadata = {"skipped_bodies": list(skipped_bodies)} if skipped_bodies else {}
 
     def _append_event(event: LegacyTransitEvent) -> None:
         _attach_timelords(event, timelord_calculator)
@@ -638,12 +691,11 @@ def scan_contacts(
             "decl_contra_orb": decl_contra_allow,
             "antiscia_orb": antiscia_allow,
             "contra_antiscia_orb": contra_antiscia_allow,
-            "step_minutes": (
-                step_minutes
-                if step_minutes is not None
-                else int(max(effective_step.total_seconds() // 60, 1))
-            ),
-            "resolution": resolution,
+
+            "step_minutes": gated_step_minutes,
+            "requested_step_minutes": step_minutes,
+            "gated_resolution": gated_resolution,
+
             "aspects_policy_path": aspects_policy_path,
             "antiscia_axis": axis,
             **feature_metadata,
@@ -689,12 +741,19 @@ def fast_scan(start: datetime, end: datetime, config: ScanConfig) -> list[dict]:
     if end_jd <= start_jd:
         return []
 
-    step_days = config.tick_minutes / (24.0 * 60.0)
+    resolution = config.resolution or _resolution_from_minutes(config.tick_minutes)
+    base_step = dt.timedelta(minutes=config.tick_minutes)
+    gated_step = choose_step(resolution, body_name)
+    if gated_step.total_seconds() <= base_step.total_seconds():
+        step_td = base_step
+    else:
+        step_td = gated_step
+    step_days = step_td.total_seconds() / 86400.0
     target_lon = norm360(config.natal_lon_deg + config.aspect_angle_deg)
 
     restore_cache_flag = detectors_common.USE_CACHE
     cache_available = getattr(detectors_common, "get_lon_daily", None) is not None
-    dense_sampling = config.tick_minutes < 720
+    dense_sampling = step_td.total_seconds() / 60.0 < 720
     toggled_cache = False
     if cache_available and dense_sampling and not restore_cache_flag:
         detectors_common.enable_cache(True)

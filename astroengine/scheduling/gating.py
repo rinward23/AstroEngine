@@ -1,19 +1,16 @@
-"""Body-aware gating helpers for scan cadence selection."""
+
+"""Resolution-aware body gating utilities used by the scan orchestrator."""
+
 
 from __future__ import annotations
 
 from datetime import timedelta
 from typing import Iterable, List
 
-from ..core.bodies import body_class, body_priority, canonical_name, step_multiplier
 
-__all__ = [
-    "adapt_step_near_bracket",
-    "base_step",
-    "choose_step",
-    "sort_bodies_for_scan",
-]
+from ..core.bodies import body_priority, canonical_name, step_multiplier
 
+# Base cadence per resolution before body-specific multipliers are applied.
 
 _BASE_STEP = {
     "minute": timedelta(seconds=15),
@@ -24,47 +21,43 @@ _BASE_STEP = {
     "long": timedelta(days=10),
 }
 
-_CLASS_ORDER = {
-    "luminary": 0,
-    "personal": 1,
-    "social": 2,
-    "point": 3,
-    "asteroid": 4,
-    "centaur": 4,
-    "outer": 5,
-    "tno": 6,
-}
 
 
 def base_step(resolution: str) -> timedelta:
-    """Return the baseline timestep for ``resolution``."""
+    """Return the base cadence for ``resolution`` (defaults to daily sweep)."""
+
 
     return _BASE_STEP.get(resolution, timedelta(hours=2))
 
 
-def choose_step(resolution: str, body: str | None) -> timedelta:
-    """Return the gated timestep for ``body`` at ``resolution``."""
+def choose_step(resolution: str, body: str) -> timedelta:
+    """Return the gated timestep for ``body`` at the given ``resolution``."""
 
-    base = base_step(resolution)
+    step = base_step(resolution)
     multiplier = step_multiplier(body)
-    seconds = max(base.total_seconds() * multiplier, 60.0)
-    return timedelta(seconds=seconds)
+    return timedelta(seconds=step.total_seconds() * multiplier)
 
 
 def sort_bodies_for_scan(bodies: Iterable[str]) -> List[str]:
-    """Return ``bodies`` sorted by priority for deterministic scheduling."""
+    """Return bodies ordered by scanning priority (fast movers first)."""
 
-    def _sort_key(name: str) -> tuple[float, int, str]:
-        priority = body_priority(name)
-        cls = body_class(name)
-        return (priority, _CLASS_ORDER.get(cls, 9), canonical_name(name))
-
-    canonical = {canonical_name(name) for name in bodies if canonical_name(name)}
-    return sorted(canonical, key=_sort_key)
+    canonical = {canonical_name(body) for body in bodies}
+    return sorted((b for b in canonical if b), key=body_priority)
 
 
 def adapt_step_near_bracket(step: timedelta) -> timedelta:
-    """Tighten the timestep near a detected bracket before refinement."""
+    """Tighten the step locally once a bracket has been detected."""
 
-    seconds = max(step.total_seconds() / 2.5, 30.0)
-    return timedelta(seconds=seconds)
+    if step.total_seconds() <= 0:
+        return step
+    return timedelta(seconds=step.total_seconds() / 2.5)
+
+
+__all__ = [
+    "adapt_step_near_bracket",
+    "base_step",
+    "body_priority",
+    "choose_step",
+    "sort_bodies_for_scan",
+]
+

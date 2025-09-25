@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Optional
 
 import swisseph as swe
 
@@ -65,6 +65,7 @@ class HousePositions:
     ascendant: float
     midheaven: float
     system_name: str | None = None
+    fallback_from: Optional[str] = None
 
     def to_dict(self) -> Mapping[str, float | str | tuple[float, ...] | None]:
         payload: dict[str, float | str | tuple[float, ...] | None] = {
@@ -75,6 +76,8 @@ class HousePositions:
         }
         if self.system_name is not None:
             payload["system_name"] = self.system_name
+        if self.fallback_from:
+            payload["fallback_from"] = self.fallback_from
         return payload
 
 
@@ -100,9 +103,25 @@ class SwissEphemerisAdapter:
     _HOUSE_SYSTEM_CODES: ClassVar[Mapping[str, bytes]] = {
         "placidus": b"P",
         "koch": b"K",
+        "regiomontanus": b"R",
+        "campanus": b"C",
+        "equal": b"A",
         "whole_sign": b"W",
-        "equal": b"E",
         "porphyry": b"O",
+        "alcabitius": b"B",
+        "topocentric": b"T",
+        "morinus": b"M",
+        "meridian": b"X",
+        "vehlow_equal": b"V",
+        "equal_mc": b"D",
+        "sripati": b"S",
+    }
+
+    _HOUSE_ALIASES: ClassVar[Mapping[str, str]] = {
+        "ws": "whole_sign",
+        "wholesign": "whole_sign",
+        "equal_mc": "D",
+        "axial": "X",
     }
 
     def __init__(
@@ -411,7 +430,15 @@ class SwissEphemerisAdapter:
         system_key, sys_code = self._resolve_house_system(system)
 
         self._apply_sidereal_mode()
-        cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, sys_code)
+        fallback_from: Optional[str] = None
+        try:
+            cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, sys_code)
+        except Exception:
+            fallback_from = system_key
+            fb_key = "whole_sign"
+            fb_code = self._HOUSE_SYSTEM_CODES[fb_key]
+            cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, fb_code)
+            system_key, sys_code = fb_key, fb_code
 
         if self._is_sidereal:
             ayan = swe.get_ayanamsa_ut(jd_ut)
@@ -433,6 +460,7 @@ class SwissEphemerisAdapter:
             ascendant=ascendant,
             midheaven=midheaven,
             system_name=system_key,
+            fallback_from=fallback_from,
         )
 
     # ------------------------------------------------------------------
@@ -448,6 +476,21 @@ class SwissEphemerisAdapter:
             key = self.chart_config.house_system.lower()
         else:
             key = system.lower()
+
+        alias = self._HOUSE_ALIASES.get(key)
+        if alias is not None:
+            if len(alias) == 1:
+                code = alias.upper().encode("ascii")
+                canonical = next(
+                    (
+                        name
+                        for name, candidate in self._HOUSE_SYSTEM_CODES.items()
+                        if candidate == code
+                    ),
+                    key,
+                )
+                return canonical, code
+            key = alias.lower()
 
         code = self._HOUSE_SYSTEM_CODES.get(key)
         if code is not None:
@@ -467,8 +510,6 @@ class SwissEphemerisAdapter:
 
         options = ", ".join(sorted(self._HOUSE_SYSTEM_CODES))
         raise ValueError(
-
             "Unsupported house system "
             f"'{system or self.chart_config.house_system}'. Valid options: {options}"
-
         )
