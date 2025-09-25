@@ -38,3 +38,22 @@ def test_house_system_mapping_uses_config() -> None:
     jd = adapter.julian_day(datetime(2024, 3, 20, tzinfo=UTC))
     houses = adapter.houses(jd, latitude=0.0, longitude=0.0)
     assert houses.system == "W"
+    assert houses.system_name == "whole_sign"
+    assert houses.requested_system == "whole_sign"
+    assert houses.provenance["house_system"]["used"] == "whole_sign"
+
+
+def test_house_system_fallback_records_provenance() -> None:
+    adapter = SwissEphemerisAdapter(
+        chart_config=ChartConfig(
+            zodiac="tropical", ayanamsha=None, house_system="placidus"
+        )
+    )
+    jd = adapter.julian_day(datetime(2020, 2, 1, tzinfo=UTC))
+    houses = adapter.houses(jd, latitude=78.2232, longitude=15.6469)
+    assert houses.system == "W"
+    assert houses.system_name == "whole_sign"
+    assert houses.requested_system == "placidus"
+    assert houses.fallback_from == "placidus"
+    assert houses.provenance["house_system"]["used"] == "whole_sign"
+    assert houses.provenance["house_fallback"]["from"] == "placidus"

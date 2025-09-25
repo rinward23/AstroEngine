@@ -20,11 +20,20 @@ __all__ = [
 
 VALID_ZODIAC_SYSTEMS = {"tropical", "sidereal"}
 VALID_HOUSE_SYSTEMS = {
-    "placidus",
-    "koch",
-    "whole_sign",
+    "alcabitius",
+    "campanus",
     "equal",
+    "equal_mc",
+    "koch",
+    "meridian",
+    "morinus",
+    "placidus",
     "porphyry",
+    "regiomontanus",
+    "sripati",
+    "topocentric",
+    "vehlow_equal",
+    "whole_sign",
 }
 
 

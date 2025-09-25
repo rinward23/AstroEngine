@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -10,6 +11,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 import swisseph as swe
+
+logger = logging.getLogger(__name__)
 
 from .sidereal import (
     DEFAULT_SIDEREAL_AYANAMSHA,
@@ -58,16 +61,20 @@ class EquatorialPosition:
 
 @dataclass(frozen=True)
 class HousePositions:
-    """Container for house cusps and angles."""
+    """Container for house cusps, angles, and provenance metadata."""
 
     system: str
     cusps: tuple[float, ...]
     ascendant: float
     midheaven: float
     system_name: str | None = None
+    requested_system: str | None = None
+    fallback_from: str | None = None
+    fallback_reason: str | None = None
+    provenance: Mapping[str, object] | None = None
 
-    def to_dict(self) -> Mapping[str, float | str | tuple[float, ...] | None]:
-        payload: dict[str, float | str | tuple[float, ...] | None] = {
+    def to_dict(self) -> Mapping[str, float | str | tuple[float, ...] | None | Mapping[str, object]]:
+        payload: dict[str, float | str | tuple[float, ...] | None | Mapping[str, object]] = {
             "system": self.system,
             "cusps": self.cusps,
             "ascendant": self.ascendant,
@@ -75,6 +82,14 @@ class HousePositions:
         }
         if self.system_name is not None:
             payload["system_name"] = self.system_name
+        if self.requested_system is not None:
+            payload["requested_system"] = self.requested_system
+        if self.fallback_from is not None:
+            payload["fallback_from"] = self.fallback_from
+        if self.fallback_reason is not None:
+            payload["fallback_reason"] = self.fallback_reason
+        if self.provenance is not None:
+            payload["provenance"] = dict(self.provenance)
         return payload
 
 
@@ -100,9 +115,29 @@ class SwissEphemerisAdapter:
     _HOUSE_SYSTEM_CODES: ClassVar[Mapping[str, bytes]] = {
         "placidus": b"P",
         "koch": b"K",
+        "regiomontanus": b"R",
+        "campanus": b"C",
+        "equal": b"A",
         "whole_sign": b"W",
-        "equal": b"E",
         "porphyry": b"O",
+        "alcabitius": b"B",
+        "topocentric": b"T",
+        "morinus": b"M",
+        "meridian": b"X",
+        "vehlow_equal": b"V",
+        "sripati": b"S",
+        "equal_mc": b"D",
+    }
+    _HOUSE_SYSTEM_ALIASES: ClassVar[Mapping[str, str]] = {
+        "ws": "whole_sign",
+        "wholesign": "whole_sign",
+        "whole": "whole_sign",
+        "equalmc": "equal_mc",
+        "equal_mc": "equal_mc",
+        "vehlow": "vehlow_equal",
+        "axial": "meridian",
+        "meridian_axial": "meridian",
+        "topo": "topocentric",
     }
 
     def __init__(
@@ -408,10 +443,37 @@ class SwissEphemerisAdapter:
     ) -> HousePositions:
         """Compute house cusps for a given location."""
 
-        system_key, sys_code = self._resolve_house_system(system)
+        requested_key, requested_code = self._resolve_house_system(system)
 
         self._apply_sidereal_mode()
-        cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, sys_code)
+
+        used_key = requested_key
+        used_code = requested_code
+        fallback_from: str | None = None
+        fallback_reason: str | None = None
+
+        try:
+            cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, used_code)
+        except Exception as exc:
+            # Certain quadrant systems fail at extreme latitudes; fallback to Whole Sign.
+            if used_key != "whole_sign":
+                fallback_from = used_key
+                fallback_reason = str(exc)
+                used_key = "whole_sign"
+                used_code = self._HOUSE_SYSTEM_CODES["whole_sign"]
+                logger.warning(
+                    {
+                        "event": "house_system_fallback",
+                        "from": fallback_from,
+                        "to": "whole_sign",
+                        "latitude": latitude,
+                        "longitude": longitude,
+                        "reason": fallback_reason,
+                    }
+                )
+                cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, used_code)
+            else:
+                raise
 
         if self._is_sidereal:
             ayan = swe.get_ayanamsa_ut(jd_ut)
@@ -422,17 +484,34 @@ class SwissEphemerisAdapter:
             ascendant = angles[0]
             midheaven = angles[1]
 
-        if isinstance(sys_code, bytes | bytearray):
-            system_label = sys_code.decode("ascii")
+        if isinstance(used_code, bytes | bytearray):
+            system_label = used_code.decode("ascii")
         else:
-            system_label = str(sys_code)
+            system_label = str(used_code)
+
+        provenance: dict[str, object] = {
+            "house_system": {
+                "requested": requested_key,
+                "used": used_key,
+                "code": system_label,
+            }
+        }
+        if fallback_from is not None:
+            fallback_info: dict[str, object] = {"from": fallback_from, "to": "whole_sign"}
+            if fallback_reason:
+                fallback_info["reason"] = fallback_reason
+            provenance["house_fallback"] = fallback_info
 
         return HousePositions(
             system=system_label,
             cusps=tuple(cusps),
             ascendant=ascendant,
             midheaven=midheaven,
-            system_name=system_key,
+            system_name=used_key,
+            requested_system=requested_key,
+            fallback_from=fallback_from,
+            fallback_reason=fallback_reason,
+            provenance=provenance,
         )
 
     # ------------------------------------------------------------------
@@ -444,14 +523,17 @@ class SwissEphemerisAdapter:
 
     def _resolve_house_system(self, system: str | None) -> tuple[str, bytes]:
         """Return the canonical house system key and Swiss code."""
+
         if system is None:
             key = self.chart_config.house_system.lower()
         else:
-            key = system.lower()
+            key = system.strip().lower()
 
-        code = self._HOUSE_SYSTEM_CODES.get(key)
+        alias = self._HOUSE_SYSTEM_ALIASES.get(key, key)
+
+        code = self._HOUSE_SYSTEM_CODES.get(alias)
         if code is not None:
-            return key, code
+            return alias, code
 
         if len(key) == 1:
             code = key.upper().encode("ascii")
@@ -461,14 +543,12 @@ class SwissEphemerisAdapter:
                     for name, candidate in self._HOUSE_SYSTEM_CODES.items()
                     if candidate == code
                 ),
-                key,
+                key.lower(),
             )
             return canonical, code
 
         options = ", ".join(sorted(self._HOUSE_SYSTEM_CODES))
         raise ValueError(
-
             "Unsupported house system "
             f"'{system or self.chart_config.house_system}'. Valid options: {options}"
-
         )
