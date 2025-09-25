@@ -32,7 +32,11 @@ _BODY_CLASS: Dict[str, str] = {
     "neptune": "outer",
     "pluto": "outer",
 
-    # Asteroids / centaurs
+    # Nodes
+    "mean_node": "point",
+    "true_node": "point",
+    "south_node": "point",
+    # Asteroids & centaurs
 
     "ceres": "asteroid",
     "pallas": "asteroid",
@@ -71,12 +75,12 @@ _BODY_CLASS: Dict[str, str] = {
 
 
 _BODY_ALIASES: Dict[str, str] = {
-    "nn": "mean_node",
-    "node": "mean_node",
-    "northnode": "mean_node",
+
     "north_node": "mean_node",
+    "node": "mean_node",
+    "nn": "mean_node",
     "sn": "south_node",
-    "southnode": "south_node",
+
     "black_moon_lilith": "mean_lilith",
     "lilith": "mean_lilith",
     "trueblackmoon": "true_lilith",
