@@ -653,13 +653,7 @@ def scan_contacts(
     tick_source = _iso_ticks(
         start_iso,
         end_iso,
-
-
-    tick_source = _iso_ticks(
-        start_iso,
-        end_iso,
         step=dt.timedelta(minutes=gated_step_minutes),
-
     )
 
     decl_ticks, mirror_ticks, aspect_ticks, plugin_ticks = tee(tick_source, 4)

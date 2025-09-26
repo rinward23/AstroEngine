@@ -416,6 +416,98 @@ def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> Non
     parser._ae_dataset_added = True
 
 
+def cmd_scheduler_enqueue(args: argparse.Namespace) -> int:
+    from .scheduler.queue import enqueue
+
+    try:
+        payload = json.loads(args.payload)
+    except json.JSONDecodeError as exc:
+        print(f"invalid payload: {exc}", file=sys.stderr)
+        return 1
+
+    jid = enqueue(
+        args.type,
+        payload,
+        priority=args.priority,
+        dedupe_key=args.dedupe_key,
+        run_at=args.run_at,
+        max_attempts=args.max_attempts,
+    )
+    print(jid)
+    return 0
+
+
+def cmd_scheduler_worker(args: argparse.Namespace) -> int:
+    from .scheduler.worker import run_worker
+
+    run_worker(sleep_sec=args.sleep_sec, heartbeat_sec=args.heartbeat_sec)
+    return 0
+
+
+def cmd_scheduler_status(args: argparse.Namespace) -> int:
+    from .scheduler.queue import get
+
+    record = get(args.job_id)
+    if record is None:
+        print(f"job '{args.job_id}' not found", file=sys.stderr)
+        return 1
+    _print_json(dict(record))
+    return 0
+
+
+def cmd_scheduler_cancel(args: argparse.Namespace) -> int:
+    from .scheduler.queue import cancel
+
+    cancel(args.job_id)
+    return 0
+
+
+def _augment_parser_with_scheduler(parser: argparse.ArgumentParser) -> None:
+    if getattr(parser, "_ae_scheduler_added", False):
+        return
+
+    subparsers = _ensure_subparsers(parser)
+    scheduler = subparsers.add_parser("scheduler", help="Manage background jobs")
+    scheduler_sub = scheduler.add_subparsers(dest="scheduler_command")
+    scheduler_sub.required = True
+
+    enqueue = scheduler_sub.add_parser("enqueue", help="Enqueue a job")
+    enqueue.add_argument("type", help="Job type identifier")
+    enqueue.add_argument("payload", help="JSON payload for the job")
+    enqueue.add_argument("--priority", type=int, default=100, help="Job priority")
+    enqueue.add_argument("--dedupe-key", help="Idempotency key")
+    enqueue.add_argument("--run-at", type=int, help="Earliest UNIX timestamp to run")
+    enqueue.add_argument(
+        "--max-attempts", type=int, default=5, help="Maximum retry attempts"
+    )
+    enqueue.set_defaults(func=cmd_scheduler_enqueue)
+
+    worker = scheduler_sub.add_parser("worker", help="Start a worker loop")
+    worker.add_argument(
+        "--sleep-sec",
+        type=float,
+        default=1.0,
+        help="Seconds to sleep when no job is available",
+    )
+    worker.add_argument(
+        "--heartbeat-sec",
+        type=float,
+        default=10.0,
+        help="Send a heartbeat when a job exceeds this duration",
+    )
+    worker.set_defaults(func=cmd_scheduler_worker)
+
+    status = scheduler_sub.add_parser("status", help="Inspect a job")
+    status.add_argument("job_id", help="Job identifier")
+    status.set_defaults(func=cmd_scheduler_status)
+
+    cancel = scheduler_sub.add_parser("cancel", help="Cancel a queued or running job")
+    cancel.add_argument("job_id", help="Job identifier")
+    cancel.set_defaults(func=cmd_scheduler_cancel)
+
+    parser._ae_scheduler_added = True
+
+
 def cmd_provision_status(args: argparse.Namespace) -> int:
     meta = get_ephemeris_meta()
     meta["provisioned"] = is_provisioned()
@@ -2169,6 +2261,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     _augment_parser_with_natals(parser)
     _augment_parser_with_cache(parser)
     _augment_parser_with_parquet_dataset(parser)
+    _augment_parser_with_scheduler(parser)
     _augment_parser_with_provisioning(parser)
     _augment_parser_with_features(parser)
     namespace = parser.parse_args(list(argv) if argv is not None else None)

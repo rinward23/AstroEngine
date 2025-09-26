@@ -670,10 +670,11 @@ class SwissEphemerisAdapter:
             midheaven = angles[1]
 
 
-        if isinstance(used_code, bytes | bytearray):
+        if isinstance(used_code, (bytes, bytearray)):
             system_label = used_code.decode("ascii")
         else:
             system_label = str(used_code)
+        used_name = str(used_key)
 
         provenance: dict[str, object] = {
             "house_system": {
@@ -706,10 +707,11 @@ class SwissEphemerisAdapter:
             cusps=tuple(cusps),
             ascendant=ascendant,
             midheaven=midheaven,
-
             system_name=used_name,
+            requested_system=requested_key,
             fallback_from=fallback_from,
-
+            fallback_reason=fallback_reason,
+            provenance=provenance,
         )
 
     # ------------------------------------------------------------------
