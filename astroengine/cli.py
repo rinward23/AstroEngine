@@ -1587,6 +1587,56 @@ def cmd_query(args: argparse.Namespace) -> int:
     return 0
 
 
+def _parse_body_list(raw: str | None) -> tuple[str, ...] | None:
+    if not raw:
+        return None
+    bodies = tuple(
+        token.strip()
+        for token in raw.split(",")
+        if token and token.strip()
+    )
+    return bodies or None
+
+
+def cmd_synastry(args: argparse.Namespace) -> int:
+    from .synastry.orchestrator import compute_synastry
+
+    aspects = tuple(
+        int(token.strip())
+        for token in (args.aspects or "").split(",")
+        if token.strip()
+    ) or (0, 60, 90, 120, 180)
+
+    payload_a = {"ts": args.a_ts, "lat": args.a_lat, "lon": args.a_lon}
+    payload_b = {"ts": args.b_ts, "lat": args.b_lat, "lon": args.b_lon}
+
+    hits = compute_synastry(
+        a=payload_a,
+        b=payload_b,
+        aspects=aspects,
+        orb_deg=args.orb_deg,
+        bodies_a=_parse_body_list(args.bodies_a),
+        bodies_b=_parse_body_list(args.bodies_b),
+    )
+
+    for hit in hits:
+        score_repr = f"{hit.score:.3f}" if hit.score is not None else "n/a"
+        line = (
+            f"{hit.direction} {hit.moving} {int(hit.angle_deg)} {hit.target} "
+            f"orb={hit.orb_abs:.2f} score={score_repr}"
+        )
+        if hit.domains:
+            domain_parts = ", ".join(
+                f"{key}={value:.2f}" for key, value in sorted(hit.domains.items())
+            )
+            line += f" domains[{domain_parts}]"
+        print(line)
+
+    if not hits:
+        print("No synastry hits within the requested orb.")
+    return 0
+
+
 def cmd_locational_astrocartography(args: argparse.Namespace) -> int:
     try:
         moment = _parse_iso_datetime(args.moment)
@@ -2147,80 +2197,36 @@ def build_parser() -> argparse.ArgumentParser:
     )
     scan.set_defaults(func=cmd_scan)
 
-    scan_sub = scan.add_subparsers(dest="scan_command")
-    scan_sub.required = False
 
-    scan_prog = scan_sub.add_parser(
-        "progressed-aspects",
-        help="Scan progressed-to-natal aspect hits",
-    )
-    scan_prog.add_argument("--natal", required=True, help="Natal ID or JSON file path")
-    scan_prog.add_argument("--from", dest="start", required=True, help="Start timestamp (ISO-8601)")
-    scan_prog.add_argument("--to", dest="end", required=True, help="End timestamp (ISO-8601)")
-    scan_prog.add_argument("--bodies", help="Comma-separated list of bodies to include")
-    scan_prog.add_argument(
+    synastry = sub.add_parser("synastry", help="Compute natal synastry aspects")
+    synastry.add_argument("--a-ts", required=True, help="Chart A timestamp (ISO-8601 UTC)")
+    synastry.add_argument("--a-lat", type=float, required=True, help="Chart A latitude")
+    synastry.add_argument("--a-lon", type=float, required=True, help="Chart A longitude")
+    synastry.add_argument("--b-ts", required=True, help="Chart B timestamp (ISO-8601 UTC)")
+    synastry.add_argument("--b-lat", type=float, required=True, help="Chart B latitude")
+    synastry.add_argument("--b-lon", type=float, required=True, help="Chart B longitude")
+    synastry.add_argument(
         "--aspects",
         default="0,60,90,120,180",
-        help="Comma-separated aspect angles in degrees (default: %(default)s)",
+        help="Comma-separated aspect angles (degrees)",
     )
-    scan_prog.add_argument(
+    synastry.add_argument(
         "--orb-deg",
+        dest="orb_deg",
         type=float,
-        default=1.5,
-        help="Orb allowance in degrees (default: %(default)s)",
+        default=2.0,
+        help="Orb allowance in degrees",
     )
-    scan_prog.add_argument(
-        "--step",
-        default="1d",
-        help="Sampling cadence in days (default: %(default)s)",
+    synastry.add_argument(
+        "--bodies-a",
+        help="Optional comma-separated moving bodies for chart A",
     )
-    scan_prog.add_argument(
-        "--out",
-        choices=("json", "sqlite", "parquet"),
-        help="Optional export format",
+    synastry.add_argument(
+        "--bodies-b",
+        help="Optional comma-separated moving bodies for chart B",
     )
-    scan_prog.add_argument(
-        "--path",
-        default="./out",
-        help="Output path when --out is provided (default: %(default)s)",
-    )
-    scan_prog.set_defaults(func=cmd_scan_progressed_aspects)
+    synastry.set_defaults(func=cmd_synastry)
 
-    scan_dir = scan_sub.add_parser(
-        "solar-arc-aspects",
-        help="Scan solar-arc directed aspect hits",
-    )
-    scan_dir.add_argument("--natal", required=True, help="Natal ID or JSON file path")
-    scan_dir.add_argument("--from", dest="start", required=True, help="Start timestamp (ISO-8601)")
-    scan_dir.add_argument("--to", dest="end", required=True, help="End timestamp (ISO-8601)")
-    scan_dir.add_argument("--bodies", help="Comma-separated list of bodies to include")
-    scan_dir.add_argument(
-        "--aspects",
-        default="0,60,90,120,180",
-        help="Comma-separated aspect angles in degrees (default: %(default)s)",
-    )
-    scan_dir.add_argument(
-        "--orb-deg",
-        type=float,
-        default=1.5,
-        help="Orb allowance in degrees (default: %(default)s)",
-    )
-    scan_dir.add_argument(
-        "--step",
-        default="1d",
-        help="Sampling cadence in days (default: %(default)s)",
-    )
-    scan_dir.add_argument(
-        "--out",
-        choices=("json", "sqlite", "parquet"),
-        help="Optional export format",
-    )
-    scan_dir.add_argument(
-        "--path",
-        default="./out",
-        help="Output path when --out is provided (default: %(default)s)",
-    )
-    scan_dir.set_defaults(func=cmd_scan_solar_arc_aspects)
 
     transits = sub.add_parser("transits", help="Scan for transit contacts")
     feature_targets = getattr(parser, "_ae_feature_parsers", [])

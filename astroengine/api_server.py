@@ -9,6 +9,11 @@ except Exception:  # pragma: no cover
 else:
     app = FastAPI(title="AstroEngine API")
 
+if app:
+    from .api.routers.synastry import router as syn_router
+
+    app.include_router(syn_router, prefix="/v1/synastry", tags=["synastry"])
+
 # >>> AUTO-GEN BEGIN: api-natals v1.0
 if app:
     from fastapi import HTTPException
