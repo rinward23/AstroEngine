@@ -1,7 +1,7 @@
-"""Scheduler utilities for AstroEngine background jobs."""
+
+"""Scheduler utilities for queueing and processing background jobs."""
 
 from __future__ import annotations
 
-from .worker import HANDLERS
+__all__ = []
 
-__all__ = ["HANDLERS"]

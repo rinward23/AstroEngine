@@ -1,25 +1,72 @@
-"""Lightweight job handler registry used by the background scheduler."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+import json
+import time
+import traceback
+from threading import Event
+from typing import Any, Callable
 
-from ..core.transit_engine import scan_transits as _scan_transits
-from ..detectors.directions import solar_arc_directions as _scan_directions
-from ..detectors.progressions import secondary_progressions as _scan_progressions
-from ..detectors.returns import scan_returns as _scan_returns
+from .queue import claim_one, done, fail, heartbeat
+from ..detectors.directed_aspects import solar_arc_natal_aspects
+from ..detectors.progressed_aspects import progressed_natal_aspects
 
-Handler = Callable[[dict[str, Any]], object]
-
-
-def _invoke(fn: Callable[..., object], params: dict[str, Any]) -> object:
-    return fn(**params)
-
-
-HANDLERS: dict[str, Handler] = {
-    "scan:progressions": lambda payload: _invoke(_scan_progressions, payload),
-    "scan:directions": lambda payload: _invoke(_scan_directions, payload),
-    "scan:transits": lambda payload: _invoke(_scan_transits, payload),
-    "scan:returns": lambda payload: _invoke(_scan_returns, payload),
+HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
+    "scan:progressions": lambda payload: progressed_natal_aspects(**payload),
+    "scan:directions": lambda payload: solar_arc_natal_aspects(**payload),
 }
+
+
+def _summarize_result(result: Any) -> dict[str, Any]:
+    if hasattr(result, "__len__"):
+        try:
+            return {"count": len(result)}  # type: ignore[arg-type]
+        except Exception:  # pragma: no cover - very defensive
+            pass
+    return {"ok": True}
+
+
+def run_worker(
+    sleep_sec: float = 1.0,
+    heartbeat_sec: float = 10.0,
+    *,
+    stop_event: Event | None = None,
+    max_iterations: int | None = None,
+) -> None:
+    iterations = 0
+
+    while True:
+        if stop_event is not None and stop_event.is_set():
+            break
+        if max_iterations is not None and iterations >= max_iterations:
+            break
+
+        job = claim_one()
+        iterations += 1
+
+        if job is None:
+            time.sleep(sleep_sec)
+            continue
+
+        jid = str(job["id"])
+        jtype = str(job["type"])
+        payload = json.loads(str(job["payload"]))
+        claimed_at = time.time()
+
+        try:
+            handler = HANDLERS.get(jtype)
+            if handler is None:
+                raise RuntimeError(f"No handler for {jtype}")
+            result = handler(payload)
+            if heartbeat_sec > 0 and time.time() - claimed_at >= heartbeat_sec:
+                heartbeat(jid)
+            done(jid, {"summary": _summarize_result(result)})
+        except Exception as exc:  # pragma: no cover - defensive
+            fail(
+                jid,
+                error=f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}",
+            )
+
+
+__all__ = ["HANDLERS", "run_worker"]
+
