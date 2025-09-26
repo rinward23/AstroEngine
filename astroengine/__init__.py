@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
+from .atlas import from_utc, is_ambiguous, is_nonexistent, to_utc, tzid_for
 from .astro import declination  # ENSURE-LINE
 from .canonical import BodyPosition  # ENSURE-LINE
 from .catalogs import sbdb  # ENSURE-LINE
