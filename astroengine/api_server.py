@@ -18,7 +18,10 @@ if app:
 if app:
     from fastapi import HTTPException
 
+    from .api.routers.scan import router as scan_router
     from .userdata.vault import Natal, list_natals, load_natal, save_natal
+
+    app.include_router(scan_router, prefix="/v1/scan", tags=["scan"])
 
     @app.get("/natals")
     def api_natals_list():
