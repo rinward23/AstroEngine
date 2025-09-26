@@ -4,11 +4,20 @@ from __future__ import annotations
 
 import swisseph as swe
 
+from datetime import UTC, datetime
+
 from ..ephemeris import SwissEphemerisAdapter
 from ..events import ReturnEvent
 from .common import delta_deg, jd_to_iso, solve_zero_crossing
 
-__all__ = ["solar_lunar_returns"]
+__all__ = ["solar_lunar_returns", "scan_returns"]
+
+
+def _parse_iso(ts: str) -> datetime:
+    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 def _body_accessor(kind: str) -> tuple[str, int]:
@@ -92,3 +101,34 @@ def solar_lunar_returns(
 
     events.sort(key=lambda event: event.jd)
     return events
+
+
+def scan_returns(
+    natal_ts: str,
+    start_ts: str,
+    end_ts: str,
+    *,
+    kind: str,
+    step_days: float | None = None,
+) -> list[ReturnEvent]:
+    """Wrapper translating ISO timestamps to Julian day inputs."""
+
+    adapter = SwissEphemerisAdapter.get_default_adapter()
+    start_dt = _parse_iso(start_ts)
+    end_dt = _parse_iso(end_ts)
+    if end_dt <= start_dt:
+        return []
+
+    natal_dt = _parse_iso(natal_ts)
+    natal_jd = adapter.julian_day(natal_dt)
+    start_jd = adapter.julian_day(start_dt)
+    end_jd = adapter.julian_day(end_dt)
+
+    return solar_lunar_returns(
+        natal_jd,
+        start_jd,
+        end_jd,
+        kind=kind,
+        step_days=step_days,
+        adapter=adapter,
+    )

@@ -26,6 +26,9 @@ dependencies = [
   "SQLAlchemy>=2.0",
   "alembic>=1.13",
   "ics>=0.7",
+
+  "timezonefinder>=6.2",
+
   "tzdata>=2023.3",
   "pluggy>=1.5",
 ]
@@ -82,9 +85,12 @@ astroengine = "astroengine.cli:main"
 astroengine-api = "astroengine.api_server:run"  # guarded import; only works with [api]
 
 [project.entry-points."astroengine.plugins"]
-
+# name = "module:function"
 fixed_star_hits = "astroengine.plugins.examples.fixed_star_hits"
 example = "astroengine.ux.plugins.example:ExamplePlugin"
+
+[project.entry-points."astroengine.providers"]
+# name = "module:function"
 
 
 [tool.setuptools]
