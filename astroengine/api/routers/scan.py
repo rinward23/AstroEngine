@@ -1,3 +1,4 @@
+
 """Scan-related API endpoints for AstroEngine."""
 
 from __future__ import annotations
@@ -19,7 +20,9 @@ from ...exporters import write_parquet_canonical, write_sqlite_canonical
 from ...exporters_ics import write_ics_canonical
 from ...detectors_aspects import AspectHit
 
+
 router = APIRouter()
+
 
 
 def _to_iso(dt: datetime) -> str:
@@ -304,3 +307,4 @@ def api_scan_returns(request: ReturnsScanRequest) -> ScanResponse:
         else None
     )
     return ScanResponse(method="returns", hits=hits, count=len(hits), export=export_info)
+

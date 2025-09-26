@@ -1,3 +1,4 @@
+
 """FastAPI application factory for AstroEngine services."""
 
 from __future__ import annotations
@@ -18,3 +19,4 @@ def create_app() -> FastAPI:
 app = create_app()
 
 __all__ = ["create_app", "app"]
+

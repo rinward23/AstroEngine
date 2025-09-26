@@ -1,3 +1,4 @@
+
 """Synastry-related API endpoints."""
 
 from __future__ import annotations
@@ -13,7 +14,9 @@ from ...chart.natal import DEFAULT_BODIES
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from .scan import Hit, ScanResponse
 
+
 router = APIRouter()
+
 
 
 def _to_iso(dt: datetime) -> str:
@@ -145,3 +148,4 @@ def _body_map(names: Sequence[str] | None) -> dict[str, int]:
             canonical, code = lookup[key]
             resolved[canonical] = code
     return resolved
+
