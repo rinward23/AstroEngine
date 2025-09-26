@@ -6,9 +6,9 @@ transitions to the new module/submodule/channel/subchannel structure.
 
 from __future__ import annotations
 
-from .core import TransitEngine
-from .core.api import TransitEvent, TransitScanConfig
-from .events import (
+from ..core import TransitEngine
+from ..core.api import TransitEvent, TransitScanConfig
+from ..events import (
     DirectionEvent,
     EclipseEvent,
     LunationEvent,

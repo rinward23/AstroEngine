@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any as _TypingAny
 
-from .canonical import parquet_write_canonical, sqlite_write_canonical
+from ..canonical import parquet_write_canonical, sqlite_write_canonical
 
 try:  # pragma: no cover - optional dependency
     import sqlite3
