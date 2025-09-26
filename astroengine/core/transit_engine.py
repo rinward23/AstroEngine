@@ -14,9 +14,13 @@ from dataclasses import dataclass, field
 from typing import Any as _TypingAny
 from typing import Literal
 
+from ..chart.natal import DEFAULT_BODIES
+from ..detectors_aspects import AspectHit
 from ..ephemeris import EphemerisAdapter, EphemerisConfig, EphemerisSample
+from ..ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from ..ephemeris.refinement import SECONDS_PER_DAY, RefineResult, refine_event
 from .angles import classify_relative_motion, signed_delta
+from .angles import normalize_degrees as _normalize_degrees
 from .api import TransitEvent as LegacyTransitEvent
 
 try:
@@ -281,3 +285,182 @@ class TransitEngine:
                 motion=motion_state.state,
                 metadata={"precision": precision_info},
             )
+
+
+_DEFAULT_TRANSIT_ASPECTS: dict[str, tuple[float, str]] = {
+    "conjunction": (0.0, "major"),
+    "semisextile": (30.0, "minor"),
+    "sextile": (60.0, "major"),
+    "square": (90.0, "major"),
+    "trine": (120.0, "major"),
+    "quincunx": (150.0, "minor"),
+    "opposition": (180.0, "major"),
+}
+
+
+def _parse_iso8601(ts: str) -> _dt.datetime:
+    dt = _dt.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=_dt.timezone.utc)
+    return dt.astimezone(_dt.timezone.utc)
+
+
+def _body_name_map(names: Iterable[str] | None) -> dict[str, int]:
+    if not names:
+        return {name: int(code) for name, code in DEFAULT_BODIES.items()}
+    lookup = {name.lower(): (name, int(code)) for name, code in DEFAULT_BODIES.items()}
+    resolved: dict[str, int] = {}
+    for candidate in names:
+        key = str(candidate).lower()
+        if key in lookup:
+            canonical, code = lookup[key]
+            resolved[canonical] = code
+    return resolved
+
+
+def _aspect_definitions(aspects: Iterable[object] | None) -> list[tuple[str, float, str]]:
+    if not aspects:
+        return [(name, angle, family) for name, (angle, family) in _DEFAULT_TRANSIT_ASPECTS.items()]
+
+    resolved: list[tuple[str, float, str]] = []
+    for item in aspects:
+        if isinstance(item, str):
+            key = item.strip().lower()
+            details = _DEFAULT_TRANSIT_ASPECTS.get(key)
+            if details is not None:
+                resolved.append((key, float(details[0]), details[1]))
+        elif isinstance(item, (int, float)):
+            angle = float(item)
+            resolved.append((f"angle_{angle:g}", angle % 360.0, "custom"))
+        elif isinstance(item, dict):
+            name = str(item.get("name", "custom"))
+            try:
+                angle_val = float(item.get("angle", 0.0))
+            except (TypeError, ValueError):
+                continue
+            family = str(item.get("family", "custom"))
+            resolved.append((name.strip().lower() or "custom", angle_val % 360.0, family))
+    if not resolved:
+        return [(name, angle, family) for name, (angle, family) in _DEFAULT_TRANSIT_ASPECTS.items()]
+    return resolved
+
+
+def scan_transits(
+    natal_ts: str,
+    start_ts: str,
+    end_ts: str,
+    *,
+    aspects: Iterable[object] | None = None,
+    orb_deg: float = 1.0,
+    bodies: Iterable[str] | None = None,
+    targets: Iterable[str] | None = None,
+    step_days: float = 1.0,
+) -> list[AspectHit]:
+    """Scan transit contacts against natal longitudes.
+
+    Parameters
+    ----------
+    natal_ts, start_ts, end_ts:
+        ISO-8601 timestamps in UTC describing the natal moment and scan window.
+    aspects:
+        Iterable of aspect descriptors. Strings reference the default aspect
+        catalogue (conjunction, square, etc.) while numeric entries are treated
+        as explicit angles in degrees.
+    orb_deg:
+        Maximum allowable deviation from the target aspect angle expressed in
+        **degrees**. Events exceeding this offset are filtered from the result
+        set even if the underlying engine refinement surfaced them.
+    bodies:
+        Iterable of moving bodies to consider. When omitted the default
+        AstroEngine body set is used.
+    targets:
+        Iterable of natal bodies to compare against. Defaults to the moving
+        body set.
+    step_days:
+        Coarse sampling cadence forwarded to
+        :meth:`TransitEngine.scan_longitude_crossing` in **days**.
+    """
+
+    start_dt = _parse_iso8601(start_ts)
+    end_dt = _parse_iso8601(end_ts)
+    if end_dt <= start_dt:
+        return []
+
+    natal_dt = _parse_iso8601(natal_ts)
+    adapter = SwissEphemerisAdapter.get_default_adapter()
+    engine = TransitEngine.with_default_adapter()
+
+    moving_map = _body_name_map(bodies)
+    target_map = _body_name_map(targets) if targets is not None else dict(moving_map)
+    if not moving_map or not target_map:
+        return []
+
+    natal_jd = adapter.julian_day(natal_dt)
+    target_longitudes: dict[str, float] = {}
+    for target_name, target_code in target_map.items():
+        sample = adapter.body_position(natal_jd, target_code, body_name=target_name)
+        target_longitudes[target_name] = float(sample.longitude % 360.0)
+
+    aspect_defs = _aspect_definitions(aspects)
+    if not aspect_defs:
+        return []
+
+    step_hours = max(float(step_days) * 24.0, 1.0)
+    orb_allow = max(float(orb_deg), 0.0)
+
+    hits: list[AspectHit] = []
+    for moving_name, moving_code in moving_map.items():
+        for target_name, target_lon in target_longitudes.items():
+            for aspect_name, aspect_angle, family in aspect_defs:
+                events = engine.scan_longitude_crossing(
+                    moving_code,
+                    target_lon,
+                    aspect_angle,
+                    start_dt,
+                    end_dt,
+                    step_hours=step_hours,
+                    refinement="accurate",
+                )
+                for event in events:
+                    event_time = event.timestamp
+                    if event_time is None:
+                        continue
+                    moment = event_time.astimezone(_dt.timezone.utc)
+                    moment_jd = adapter.julian_day(moment)
+                    sample = adapter.body_position(
+                        moment_jd, moving_code, body_name=moving_name
+                    )
+                    moving_lon = float(sample.longitude % 360.0)
+                    delta_lambda = _normalize_degrees(target_lon - moving_lon)
+                    offset = signed_delta(delta_lambda - aspect_angle)
+                    if abs(offset) > orb_allow:
+                        continue
+                    motion = classify_relative_motion(
+                        aspect_angle + offset,
+                        aspect_angle,
+                        float(sample.speed_longitude),
+                        0.0,
+                    )
+                    hits.append(
+                        AspectHit(
+                            kind=f"aspect_{aspect_name}",
+                            when_iso=moment.isoformat().replace("+00:00", "Z"),
+                            moving=moving_name,
+                            target=target_name,
+                            angle_deg=float(aspect_angle),
+                            lon_moving=moving_lon,
+                            lon_target=float(target_lon),
+                            delta_lambda_deg=float(delta_lambda),
+                            offset_deg=float(offset),
+                            orb_abs=float(abs(offset)),
+                            orb_allow=float(orb_allow),
+                            is_partile=abs(offset) <= min(orb_allow, 0.1),
+                            applying_or_separating=motion.state,
+                            family=family,
+                            corridor_width_deg=None,
+                            corridor_profile=None,
+                        )
+                    )
+
+    hits.sort(key=lambda item: item.when_iso)
+    return hits

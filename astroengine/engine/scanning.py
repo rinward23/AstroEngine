@@ -653,11 +653,6 @@ def scan_contacts(
     tick_source = _iso_ticks(
         start_iso,
         end_iso,
-
-
-    tick_source = _iso_ticks(
-        start_iso,
-        end_iso,
         step=dt.timedelta(minutes=gated_step_minutes),
 
     )
