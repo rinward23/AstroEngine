@@ -1345,6 +1345,56 @@ def cmd_query(args: argparse.Namespace) -> int:
     return 0
 
 
+def _parse_body_list(raw: str | None) -> tuple[str, ...] | None:
+    if not raw:
+        return None
+    bodies = tuple(
+        token.strip()
+        for token in raw.split(",")
+        if token and token.strip()
+    )
+    return bodies or None
+
+
+def cmd_synastry(args: argparse.Namespace) -> int:
+    from .synastry.orchestrator import compute_synastry
+
+    aspects = tuple(
+        int(token.strip())
+        for token in (args.aspects or "").split(",")
+        if token.strip()
+    ) or (0, 60, 90, 120, 180)
+
+    payload_a = {"ts": args.a_ts, "lat": args.a_lat, "lon": args.a_lon}
+    payload_b = {"ts": args.b_ts, "lat": args.b_lat, "lon": args.b_lon}
+
+    hits = compute_synastry(
+        a=payload_a,
+        b=payload_b,
+        aspects=aspects,
+        orb_deg=args.orb_deg,
+        bodies_a=_parse_body_list(args.bodies_a),
+        bodies_b=_parse_body_list(args.bodies_b),
+    )
+
+    for hit in hits:
+        score_repr = f"{hit.score:.3f}" if hit.score is not None else "n/a"
+        line = (
+            f"{hit.direction} {hit.moving} {int(hit.angle_deg)} {hit.target} "
+            f"orb={hit.orb_abs:.2f} score={score_repr}"
+        )
+        if hit.domains:
+            domain_parts = ", ".join(
+                f"{key}={value:.2f}" for key, value in sorted(hit.domains.items())
+            )
+            line += f" domains[{domain_parts}]"
+        print(line)
+
+    if not hits:
+        print("No synastry hits within the requested orb.")
+    return 0
+
+
 def cmd_locational_astrocartography(args: argparse.Namespace) -> int:
     try:
         moment = _parse_iso_datetime(args.moment)
@@ -1908,6 +1958,35 @@ def build_parser() -> argparse.ArgumentParser:
         "--ayanamsha", help="Sidereal ayanāṁśa to apply when sidereal is enabled"
     )
     scan.set_defaults(func=cmd_scan)
+
+    synastry = sub.add_parser("synastry", help="Compute natal synastry aspects")
+    synastry.add_argument("--a-ts", required=True, help="Chart A timestamp (ISO-8601 UTC)")
+    synastry.add_argument("--a-lat", type=float, required=True, help="Chart A latitude")
+    synastry.add_argument("--a-lon", type=float, required=True, help="Chart A longitude")
+    synastry.add_argument("--b-ts", required=True, help="Chart B timestamp (ISO-8601 UTC)")
+    synastry.add_argument("--b-lat", type=float, required=True, help="Chart B latitude")
+    synastry.add_argument("--b-lon", type=float, required=True, help="Chart B longitude")
+    synastry.add_argument(
+        "--aspects",
+        default="0,60,90,120,180",
+        help="Comma-separated aspect angles (degrees)",
+    )
+    synastry.add_argument(
+        "--orb-deg",
+        dest="orb_deg",
+        type=float,
+        default=2.0,
+        help="Orb allowance in degrees",
+    )
+    synastry.add_argument(
+        "--bodies-a",
+        help="Optional comma-separated moving bodies for chart A",
+    )
+    synastry.add_argument(
+        "--bodies-b",
+        help="Optional comma-separated moving bodies for chart B",
+    )
+    synastry.set_defaults(func=cmd_synastry)
 
     transits = sub.add_parser("transits", help="Scan for transit contacts")
     feature_targets = getattr(parser, "_ae_feature_parsers", [])

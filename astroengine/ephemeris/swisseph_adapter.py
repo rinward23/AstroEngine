@@ -706,8 +706,7 @@ class SwissEphemerisAdapter:
             cusps=tuple(cusps),
             ascendant=ascendant,
             midheaven=midheaven,
-
-            system_name=used_name,
+            system_name=used_key,
             fallback_from=fallback_from,
 
         )
