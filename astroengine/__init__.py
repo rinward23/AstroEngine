@@ -4,7 +4,12 @@
 
 from __future__ import annotations
 
-from importlib.metadata import PackageNotFoundError, version
+try:
+    from importlib.metadata import version as _get_version
+
+    __version__ = _get_version("astroengine")
+except Exception:  # pragma: no cover - metadata may be unavailable in editable installs
+    __version__ = "0.0.0.dev"
 
 
 from .atlas.tz import (  # noqa: F401
@@ -349,7 +354,3 @@ __all__ = [
     "OutOfBoundsEvent",
 ]
 
-try:  # pragma: no cover - package metadata not available during tests
-    __version__ = version("astroengine")
-except PackageNotFoundError:  # pragma: no cover
-    __version__ = "0.0.0"
