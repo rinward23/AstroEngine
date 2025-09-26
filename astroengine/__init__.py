@@ -11,6 +11,16 @@ try:
 except Exception:  # pragma: no cover - metadata may be unavailable in editable installs
     __version__ = "0.0.0.dev"
 
+
+from .atlas.tz import (  # noqa: F401
+    Policy,
+    from_utc,
+    is_ambiguous,
+    is_nonexistent,
+    to_utc,
+    tzid_for,
+)
+
 from .astro import declination  # ENSURE-LINE
 from .canonical import BodyPosition  # ENSURE-LINE
 from .catalogs import sbdb  # ENSURE-LINE
@@ -186,6 +196,12 @@ from .scoring import (
 
 __all__ = [
     "__version__",
+    "Policy",
+    "tzid_for",
+    "to_utc",
+    "from_utc",
+    "is_ambiguous",
+    "is_nonexistent",
     "ChartConfig",
     "ChartLocation",
     "NatalChart",

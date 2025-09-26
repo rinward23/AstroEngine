@@ -39,6 +39,8 @@ from .detectors import (
     solar_arc_directions,
     solar_lunar_returns,
 )
+from .detectors.directed_aspects import solar_arc_natal_aspects
+from .detectors.progressed_aspects import progressed_natal_aspects
 from .detectors.common import enable_cache, iso_to_jd
 from .detectors.ingress import find_ingresses
 from .engine import TargetFrameResolver, events_to_dicts, scan_contacts
@@ -388,6 +390,35 @@ def cmd_dataset_parquet(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_snapshot_create(args: argparse.Namespace) -> int:
+    from .snapshot.core import create_snapshot
+
+    meta: dict[str, str] = {}
+    for item in args.meta or []:
+        if "=" not in item:
+            print(f"invalid meta assignment: {item}", file=sys.stderr)
+            return 2
+        key, value = item.split("=", 1)
+        meta[key] = value
+
+    manifest = create_snapshot(
+        args.src,
+        args.out_path,
+        exclude_globs=args.exclude,
+        meta=meta or None,
+    )
+    print(manifest)
+    return 0
+
+
+def cmd_snapshot_verify(args: argparse.Namespace) -> int:
+    from .snapshot.core import verify_snapshot
+
+    report = verify_snapshot(args.archive)
+    print(report)
+    return 0 if report.ok else 2
+
+
 def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> None:
     if getattr(parser, "_ae_dataset_added", False):
         return
@@ -414,6 +445,98 @@ def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> Non
     parquet_cmd.set_defaults(func=cmd_dataset_parquet)
 
     parser._ae_dataset_added = True
+
+
+def cmd_scheduler_enqueue(args: argparse.Namespace) -> int:
+    from .scheduler.queue import enqueue
+
+    try:
+        payload = json.loads(args.payload)
+    except json.JSONDecodeError as exc:
+        print(f"invalid payload: {exc}", file=sys.stderr)
+        return 1
+
+    jid = enqueue(
+        args.type,
+        payload,
+        priority=args.priority,
+        dedupe_key=args.dedupe_key,
+        run_at=args.run_at,
+        max_attempts=args.max_attempts,
+    )
+    print(jid)
+    return 0
+
+
+def cmd_scheduler_worker(args: argparse.Namespace) -> int:
+    from .scheduler.worker import run_worker
+
+    run_worker(sleep_sec=args.sleep_sec, heartbeat_sec=args.heartbeat_sec)
+    return 0
+
+
+def cmd_scheduler_status(args: argparse.Namespace) -> int:
+    from .scheduler.queue import get
+
+    record = get(args.job_id)
+    if record is None:
+        print(f"job '{args.job_id}' not found", file=sys.stderr)
+        return 1
+    _print_json(dict(record))
+    return 0
+
+
+def cmd_scheduler_cancel(args: argparse.Namespace) -> int:
+    from .scheduler.queue import cancel
+
+    cancel(args.job_id)
+    return 0
+
+
+def _augment_parser_with_scheduler(parser: argparse.ArgumentParser) -> None:
+    if getattr(parser, "_ae_scheduler_added", False):
+        return
+
+    subparsers = _ensure_subparsers(parser)
+    scheduler = subparsers.add_parser("scheduler", help="Manage background jobs")
+    scheduler_sub = scheduler.add_subparsers(dest="scheduler_command")
+    scheduler_sub.required = True
+
+    enqueue = scheduler_sub.add_parser("enqueue", help="Enqueue a job")
+    enqueue.add_argument("type", help="Job type identifier")
+    enqueue.add_argument("payload", help="JSON payload for the job")
+    enqueue.add_argument("--priority", type=int, default=100, help="Job priority")
+    enqueue.add_argument("--dedupe-key", help="Idempotency key")
+    enqueue.add_argument("--run-at", type=int, help="Earliest UNIX timestamp to run")
+    enqueue.add_argument(
+        "--max-attempts", type=int, default=5, help="Maximum retry attempts"
+    )
+    enqueue.set_defaults(func=cmd_scheduler_enqueue)
+
+    worker = scheduler_sub.add_parser("worker", help="Start a worker loop")
+    worker.add_argument(
+        "--sleep-sec",
+        type=float,
+        default=1.0,
+        help="Seconds to sleep when no job is available",
+    )
+    worker.add_argument(
+        "--heartbeat-sec",
+        type=float,
+        default=10.0,
+        help="Send a heartbeat when a job exceeds this duration",
+    )
+    worker.set_defaults(func=cmd_scheduler_worker)
+
+    status = scheduler_sub.add_parser("status", help="Inspect a job")
+    status.add_argument("job_id", help="Job identifier")
+    status.set_defaults(func=cmd_scheduler_status)
+
+    cancel = scheduler_sub.add_parser("cancel", help="Cancel a queued or running job")
+    cancel.add_argument("job_id", help="Job identifier")
+    cancel.set_defaults(func=cmd_scheduler_cancel)
+
+    parser._ae_scheduler_added = True
 
 
 def cmd_provision_status(args: argparse.Namespace) -> int:
@@ -702,6 +825,243 @@ def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, in
     )
 
     return written
+
+
+_ASPECT_NAME_BY_DEG = {
+    0.0: "conjunction",
+    30.0: "semi-sextile",
+    45.0: "semi-square",
+    60.0: "sextile",
+    90.0: "square",
+    120.0: "trine",
+    135.0: "sesquiquadrate",
+    150.0: "quincunx",
+    180.0: "opposition",
+}
+
+
+def _parse_body_list(raw: str | None) -> list[str] | None:
+    if not raw:
+        return None
+    bodies = [token.strip() for token in str(raw).split(",") if token.strip()]
+    return bodies or None
+
+
+def _parse_aspect_list(raw: str | None) -> tuple[float, ...]:
+    if not raw:
+        return (0.0, 60.0, 90.0, 120.0, 180.0)
+    angles: list[float] = []
+    for token in str(raw).split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            angles.append(float(token))
+        except ValueError as exc:
+            raise ValueError(f"invalid aspect angle '{token}'") from exc
+    if not angles:
+        raise ValueError("no aspect angles provided")
+    return tuple(angles)
+
+
+def _parse_step_days(raw: str | None) -> float:
+    if raw is None:
+        return 1.0
+    token = str(raw).strip().lower()
+    if token.endswith("d"):
+        token = token[:-1]
+    try:
+        value = float(token)
+    except ValueError as exc:
+        raise ValueError(f"invalid step value '{raw}'") from exc
+    return value
+
+
+def _load_natal_for_aspects(value: str) -> tuple[str, dict[str, Any]]:
+    path = Path(value)
+    if path.exists():
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for key in ("utc", "timestamp", "ts"):
+            natal_ts = data.get(key)
+            if natal_ts:
+                break
+        else:
+            raise ValueError(f"natal file '{value}' missing 'utc' timestamp")
+        lat = data.get("lat") or data.get("latitude")
+        lon = data.get("lon") or data.get("longitude")
+        meta: dict[str, Any] = {
+            "source": "file",
+            "path": str(path),
+            "utc": str(natal_ts),
+            "lat": float(lat) if lat is not None else None,
+            "lon": float(lon) if lon is not None else None,
+        }
+        for key in ("name", "place", "tz", "id", "natal_id"):
+            if key in data and data[key] is not None:
+                meta[key] = data[key]
+        return str(natal_ts), meta
+
+    try:
+        entry = load_natal(value)
+    except FileNotFoundError as exc:
+        raise ValueError(f"natal '{value}' not found") from exc
+
+    meta = {
+        "source": "vault",
+        "id": entry.natal_id,
+        "utc": entry.utc,
+        "lat": entry.lat,
+        "lon": entry.lon,
+    }
+    if entry.name:
+        meta["name"] = entry.name
+    if entry.place:
+        meta["place"] = entry.place
+    if entry.tz:
+        meta["tz"] = entry.tz
+    return entry.utc, meta
+
+
+def _hits_to_json_payload(
+    hits: Sequence[Any], label: str, natal_meta: dict[str, Any] | None
+) -> list[dict[str, Any]]:
+    payload: list[dict[str, Any]] = []
+    natal_copy = dict(natal_meta) if natal_meta else None
+    for hit in hits:
+        record = asdict(hit) if is_dataclass(hit) else dict(hit)
+        record["detector"] = label
+        if natal_copy is not None:
+            record["natal"] = natal_copy
+        payload.append(record)
+    return payload
+
+
+def _canonical_aspect_name(angle: float) -> str:
+    for deg, name in _ASPECT_NAME_BY_DEG.items():
+        if abs(angle - deg) <= 1e-6:
+            return name
+    raise ValueError(f"unsupported aspect angle {angle:g}° for canonical export")
+
+
+def _hits_to_canonical_events(
+    hits: Sequence[Any],
+    prefix: str,
+    label: str,
+    natal_meta: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+    natal_copy = dict(natal_meta) if natal_meta else None
+    for hit in hits:
+        aspect_name = _canonical_aspect_name(float(getattr(hit, "angle_deg")))
+        state = getattr(hit, "applying_or_separating", "")
+        applying = state == "applying"
+        meta: dict[str, Any] = {
+            "detector": label,
+            "family": getattr(hit, "family", label),
+            "orb_allow": float(getattr(hit, "orb_allow", 0.0)),
+            "orb_abs": float(getattr(hit, "orb_abs", 0.0)),
+            "is_partile": bool(getattr(hit, "is_partile", False)),
+            "applying_state": state,
+            "delta_lambda_deg": float(getattr(hit, "delta_lambda_deg", 0.0)),
+            "lon_moving": float(getattr(hit, "lon_moving", 0.0)),
+            "lon_target": float(getattr(hit, "lon_target", 0.0)),
+            "angle_deg": float(getattr(hit, "angle_deg", 0.0)),
+        }
+        speed = getattr(hit, "speed_deg_per_day", None)
+        if speed is not None:
+            meta["speed_deg_per_day"] = float(speed)
+        retrograde = getattr(hit, "retrograde", None)
+        if retrograde is not None:
+            meta["retrograde"] = bool(retrograde)
+        if natal_copy is not None:
+            meta["natal"] = natal_copy
+        events.append(
+            {
+                "ts": getattr(hit, "when_iso"),
+                "moving": f"{prefix}_{getattr(hit, 'moving')}",
+                "target": f"natal_{getattr(hit, 'target')}",
+                "aspect": aspect_name,
+                "orb": float(getattr(hit, "offset_deg", 0.0)),
+                "applying": applying,
+                "score": None,
+                "meta": meta,
+            }
+        )
+    return events
+
+
+def _run_aspect_detector(
+    detector,
+    label: str,
+    prefix: str,
+    args: argparse.Namespace,
+) -> int:
+    try:
+        natal_ts, natal_meta = _load_natal_for_aspects(args.natal)
+        bodies = _parse_body_list(getattr(args, "bodies", None))
+        aspects = _parse_aspect_list(getattr(args, "aspects", None))
+        step_days = _parse_step_days(getattr(args, "step", None))
+    except ValueError as exc:
+        print(f"{label}: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        hits = detector(
+            natal_ts=natal_ts,
+            start_ts=args.start,
+            end_ts=args.end,
+            aspects=aspects,
+            orb_deg=float(getattr(args, "orb_deg", 0.0)),
+            bodies=bodies,
+            step_days=step_days,
+        )
+    except Exception as exc:  # pragma: no cover - runtime ephemeris errors
+        print(f"{label}: computation failed ({exc})", file=sys.stderr)
+        return 1
+
+    payload = _hits_to_json_payload(hits, label, natal_meta)
+
+    out_kind = getattr(args, "out", None)
+    if not out_kind:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+    else:
+        path = Path(getattr(args, "path", "./out"))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if out_kind == "json":
+            path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+            print(f"{label}: wrote {len(payload)} records to {path}")
+        else:
+            try:
+                canonical = _hits_to_canonical_events(hits, prefix, label, natal_meta)
+            except ValueError as exc:
+                print(f"{label}: {exc}", file=sys.stderr)
+                return 1
+            if out_kind == "sqlite":
+                rows = write_sqlite_canonical(str(path), canonical)
+            else:
+                rows = write_parquet_canonical(str(path), canonical)
+            print(f"{label}: wrote {rows} rows to {path}")
+
+    print(f"{label}: {len(hits)} hits", file=sys.stderr)
+    return 0
+
+
+def cmd_scan_progressed_aspects(args: argparse.Namespace) -> int:
+    return _run_aspect_detector(
+        progressed_natal_aspects,
+        "progressed-aspects",
+        "progressed",
+        args,
+    )
+
+
+def cmd_scan_solar_arc_aspects(args: argparse.Namespace) -> int:
+    return _run_aspect_detector(
+        solar_arc_natal_aspects,
+        "solar-arc-aspects",
+        "directed",
+        args,
+    )
 
 
 def _ingress_to_canonical(event: Any) -> dict[str, Any]:
@@ -1189,6 +1549,9 @@ def cmd_transits(args: argparse.Namespace) -> int:
 
 
 def cmd_scan(args: argparse.Namespace) -> int:
+    if not getattr(args, "start_utc", None) or not getattr(args, "end_utc", None):
+        print("scan: --start-utc and --end-utc are required", file=sys.stderr)
+        return 1
     detectors = _normalize_detectors(getattr(args, "detectors", None))
     _set_engine_detector_flags(detectors)
 
@@ -1342,6 +1705,56 @@ def cmd_query(args: argparse.Namespace) -> int:
         )
         print()
         print(summary)
+    return 0
+
+
+def _parse_body_list(raw: str | None) -> tuple[str, ...] | None:
+    if not raw:
+        return None
+    bodies = tuple(
+        token.strip()
+        for token in raw.split(",")
+        if token and token.strip()
+    )
+    return bodies or None
+
+
+def cmd_synastry(args: argparse.Namespace) -> int:
+    from .synastry.orchestrator import compute_synastry
+
+    aspects = tuple(
+        int(token.strip())
+        for token in (args.aspects or "").split(",")
+        if token.strip()
+    ) or (0, 60, 90, 120, 180)
+
+    payload_a = {"ts": args.a_ts, "lat": args.a_lat, "lon": args.a_lon}
+    payload_b = {"ts": args.b_ts, "lat": args.b_lat, "lon": args.b_lon}
+
+    hits = compute_synastry(
+        a=payload_a,
+        b=payload_b,
+        aspects=aspects,
+        orb_deg=args.orb_deg,
+        bodies_a=_parse_body_list(args.bodies_a),
+        bodies_b=_parse_body_list(args.bodies_b),
+    )
+
+    for hit in hits:
+        score_repr = f"{hit.score:.3f}" if hit.score is not None else "n/a"
+        line = (
+            f"{hit.direction} {hit.moving} {int(hit.angle_deg)} {hit.target} "
+            f"orb={hit.orb_abs:.2f} score={score_repr}"
+        )
+        if hit.domains:
+            domain_parts = ", ".join(
+                f"{key}={value:.2f}" for key, value in sorted(hit.domains.items())
+            )
+            line += f" domains[{domain_parts}]"
+        print(line)
+
+    if not hits:
+        print("No synastry hits within the requested orb.")
     return 0
 
 
@@ -1823,13 +2236,42 @@ def build_parser() -> argparse.ArgumentParser:
     )
     plugins.set_defaults(func=cmd_plugins)
 
+    snapshot = sub.add_parser("snapshot", help="Scenario snapshot utilities")
+    snapshot_sub = snapshot.add_subparsers(dest="snapshot_command")
+    snapshot_sub.required = True
+
+    snapshot_create = snapshot_sub.add_parser(
+        "create", help="Create a deterministic snapshot archive"
+    )
+    snapshot_create.add_argument("src", nargs="+", help="Source paths to include")
+    snapshot_create.add_argument(
+        "--out-path",
+        "--out",
+        dest="out_path",
+        default="snapshots/snapshot.tar.gz",
+        help="Destination archive path (default: snapshots/snapshot.tar.gz)",
+    )
+    snapshot_create.add_argument(
+        "--exclude",
+        action="append",
+        help="Glob pattern to exclude (repeatable)",
+    )
+    snapshot_create.add_argument(
+        "--meta",
+        action="append",
+        help="Metadata key=value pair (repeatable)",
+    )
+    snapshot_create.set_defaults(func=cmd_snapshot_create)
+
+    snapshot_verify = snapshot_sub.add_parser(
+        "verify", help="Verify an existing snapshot archive"
+    )
+    snapshot_verify.add_argument("archive", help="Snapshot archive to verify")
+    snapshot_verify.set_defaults(func=cmd_snapshot_verify)
+
     scan = sub.add_parser("scan", help="Run a canonical transit scan with presets")
-    scan.add_argument(
-        "--start-utc", required=True, help="Window start timestamp (ISO-8601)"
-    )
-    scan.add_argument(
-        "--end-utc", required=True, help="Window end timestamp (ISO-8601)"
-    )
+    scan.add_argument("--start-utc", help="Window start timestamp (ISO-8601)")
+    scan.add_argument("--end-utc", help="Window end timestamp (ISO-8601)")
     scan.add_argument(
         "--provider",
         default="auto",
@@ -1908,6 +2350,37 @@ def build_parser() -> argparse.ArgumentParser:
         "--ayanamsha", help="Sidereal ayanāṁśa to apply when sidereal is enabled"
     )
     scan.set_defaults(func=cmd_scan)
+
+
+    synastry = sub.add_parser("synastry", help="Compute natal synastry aspects")
+    synastry.add_argument("--a-ts", required=True, help="Chart A timestamp (ISO-8601 UTC)")
+    synastry.add_argument("--a-lat", type=float, required=True, help="Chart A latitude")
+    synastry.add_argument("--a-lon", type=float, required=True, help="Chart A longitude")
+    synastry.add_argument("--b-ts", required=True, help="Chart B timestamp (ISO-8601 UTC)")
+    synastry.add_argument("--b-lat", type=float, required=True, help="Chart B latitude")
+    synastry.add_argument("--b-lon", type=float, required=True, help="Chart B longitude")
+    synastry.add_argument(
+        "--aspects",
+        default="0,60,90,120,180",
+        help="Comma-separated aspect angles (degrees)",
+    )
+    synastry.add_argument(
+        "--orb-deg",
+        dest="orb_deg",
+        type=float,
+        default=2.0,
+        help="Orb allowance in degrees",
+    )
+    synastry.add_argument(
+        "--bodies-a",
+        help="Optional comma-separated moving bodies for chart A",
+    )
+    synastry.add_argument(
+        "--bodies-b",
+        help="Optional comma-separated moving bodies for chart B",
+    )
+    synastry.set_defaults(func=cmd_synastry)
+
 
     transits = sub.add_parser("transits", help="Scan for transit contacts")
     feature_targets = getattr(parser, "_ae_feature_parsers", [])
@@ -2169,6 +2642,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     _augment_parser_with_natals(parser)
     _augment_parser_with_cache(parser)
     _augment_parser_with_parquet_dataset(parser)
+    _augment_parser_with_scheduler(parser)
     _augment_parser_with_provisioning(parser)
     _augment_parser_with_features(parser)
     namespace = parser.parse_args(list(argv) if argv is not None else None)
