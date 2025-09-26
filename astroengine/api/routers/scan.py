@@ -1,383 +1,310 @@
-"""HTTP endpoints exposing scan detectors."""
+
+"""Scan-related API endpoints for AstroEngine."""
 
 from __future__ import annotations
 
-from collections import Counter
-from collections.abc import Iterable, Sequence
-from dataclasses import asdict, is_dataclass
+import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable, Literal, Sequence
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field, validator
 
-from ...detectors.directed_aspects import solar_arc_natal_aspects
-from ...detectors.progressed_aspects import progressed_natal_aspects
-from ...detectors.returns import solar_lunar_returns
-from ...ephemeris import SwissEphemerisAdapter
-from ..schemas import ExportSpec, Hit, ScanRequest, ScanResponse
-from ...exporters.ics_exporter import write_ics
+from ...core.transit_engine import scan_transits
+from ...detectors.directions import solar_arc_directions
+from ...detectors.progressions import secondary_progressions
+from ...detectors.returns import scan_returns
+from ...events import DirectionEvent, ProgressionEvent, ReturnEvent
+from ...exporters import write_parquet_canonical, write_sqlite_canonical
+from ...exporters_ics import write_ics_canonical
+from ...detectors_aspects import AspectHit
+
 
 router = APIRouter()
 
 
-def _parse_iso(ts: str) -> datetime:
-    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(UTC)
+
+def _to_iso(dt: datetime) -> str:
+    utc = dt.astimezone(UTC)
+    return utc.isoformat().replace("+00:00", "Z")
 
 
-def _to_mapping(record: Any) -> dict[str, Any]:
-    if isinstance(record, dict):
-        return dict(record)
-    if is_dataclass(record):
-        return asdict(record)
-    mapping: dict[str, Any] = {}
-    for key in (
-        "when_iso",
-        "ts",
-        "timestamp",
-        "moving",
-        "target",
-        "body",
-        "planet",
-        "reference",
-        "chart_point",
-        "aspect",
-        "aspect_deg",
-        "angle_deg",
-        "orb",
-        "orb_deg",
-        "orb_abs",
-        "offset_deg",
-        "applying",
-        "applying_or_separating",
-        "retrograde",
-        "moving_retrograde",
-        "is_retrograde",
-    ):
-        if hasattr(record, key):
-            mapping[key] = getattr(record, key)
-    return mapping
+class ExportOptions(BaseModel):
+    path: str = Field(..., description="Filesystem destination for exported events")
+    format: Literal["json", "ics", "parquet", "sqlite"]
+    calendar_name: str | None = Field(
+        default=None,
+        description="Optional calendar name used for ICS exports.",
+    )
 
-
-def _coerce_bool(value: Any) -> bool | None:
-    if value is None:
-        return None
-    if isinstance(value, bool):
+    @validator("path")
+    def _validate_path(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("export path must be provided")
         return value
-    if isinstance(value, str):
-        lowered = value.strip().lower()
-        if lowered in {"applying", "yes", "true", "t"}:
-            return True
-        if lowered in {"separating", "no", "false", "f"}:
-            return False
-    if isinstance(value, (int, float)):
-        return bool(value)
-    return None
 
 
-def _extract_aspect(mapping: dict[str, Any]) -> int:
-    for key in ("aspect", "aspect_deg", "angle_deg"):
-        value = mapping.get(key)
-        if value is None:
-            continue
-        try:
-            return int(round(float(value)))
-        except (TypeError, ValueError):
-            continue
-    kind = mapping.get("kind")
-    if isinstance(kind, str):
-        table = {
-            "conjunction": 0,
-            "sextile": 60,
-            "square": 90,
-            "trine": 120,
-            "opposition": 180,
-        }
-        lowered = kind.strip().lower()
-        if lowered in table:
-            return table[lowered]
-    return 0
+class TimeWindow(BaseModel):
+    natal: datetime
+    start: datetime
+    end: datetime
+
+    @validator("natal", "start", "end", pre=True)
+    def _coerce_datetime(cls, value: Any) -> datetime:
+        if isinstance(value, datetime):
+            return value.astimezone(UTC)
+        if isinstance(value, str):
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
+        raise TypeError("expected ISO-8601 timestamp")
+
+    def iso_tuple(self) -> tuple[str, str, str]:
+        return _to_iso(self.natal), _to_iso(self.start), _to_iso(self.end)
 
 
-def _extract_orb(mapping: dict[str, Any]) -> float:
-    for key in ("orb", "orb_deg", "orb_abs", "offset_deg"):
-        value = mapping.get(key)
-        if value is None:
-            continue
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            continue
-    return 0.0
+class TransitScanRequest(TimeWindow):
+    bodies: Sequence[str] | None = None
+    targets: Sequence[str] | None = None
+    aspects: Sequence[Any] | None = None
+    orb: float = Field(default=1.0, ge=0.0, description="Maximum aspect orb in degrees")
+    step_days: float = Field(default=1.0, gt=0.0)
+    export: ExportOptions | None = None
 
 
-def _record_to_hit(record: Any) -> Hit:
-    data = _to_mapping(record)
-    when = data.get("when_iso") or data.get("ts") or data.get("timestamp")
-    if not when:
-        raise ValueError("record missing timestamp information")
-    moving = data.get("moving") or data.get("body") or data.get("planet")
-    target = data.get("target") or data.get("reference") or data.get("chart_point")
-    if not moving or not target:
-        raise ValueError("record missing moving/target identifiers")
+class ReturnsScanRequest(TimeWindow):
+    bodies: Sequence[str] | None = None
+    step_days: float | None = None
+    export: ExportOptions | None = None
 
-    aspect = _extract_aspect(data)
-    orb = _extract_orb(data)
-    applying = _coerce_bool(
-        data.get("applying") or data.get("applying_or_separating")
-    )
-    retrograde = data.get("retrograde")
-    if retrograde is None:
-        retrograde = data.get("moving_retrograde") or data.get("is_retrograde")
-    retrograde_bool = _coerce_bool(retrograde)
 
+class Hit(BaseModel):
+    ts: str
+    moving: str
+    target: str
+    aspect: int
+    orb: float
+    orb_allow: float | None = None
+    motion: str | None = None
+    family: str | None = None
+    lon_moving: float | None = None
+    lon_target: float | None = None
+    delta: float | None = None
+    offset: float | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class ScanResponse(BaseModel):
+    method: str
+    hits: list[Hit]
+    count: int
+    export: dict[str, Any] | None = None
+
+
+def _hit_from_aspect(hit: AspectHit) -> Hit:
     return Hit(
-        when_iso=str(when),
-        moving=str(moving),
-        target=str(target),
-        aspect=int(aspect),
-        orb=float(orb),
-        applying=applying,
-        retrograde=retrograde_bool,
+        ts=hit.when_iso,
+        moving=hit.moving,
+        target=hit.target,
+        aspect=int(round(hit.angle_deg)),
+        orb=float(abs(hit.orb_abs)),
+        orb_allow=float(hit.orb_allow) if hit.orb_allow is not None else None,
+        motion=hit.applying_or_separating,
+        family=hit.family,
+        lon_moving=float(hit.lon_moving) if hit.lon_moving is not None else None,
+        lon_target=float(hit.lon_target) if hit.lon_target is not None else None,
+        delta=float(hit.delta_lambda_deg) if hit.delta_lambda_deg is not None else None,
+        offset=float(hit.offset_deg) if hit.offset_deg is not None else None,
     )
 
 
-def _summarise(hits: Iterable[Hit]) -> dict[str, int]:
-    counter: Counter[str] = Counter()
-    total = 0
-    for hit in hits:
-        counter[str(hit.aspect)] += 1
-        total += 1
-    counter["total"] = total
-    return dict(counter)
-
-
-def _export_hits(spec: ExportSpec | None, hits: Sequence[Hit]) -> ExportSpec | None:
-    if spec is None or spec.format == "json":
-        return spec
-
-    if not spec.path:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="export.path is required for non-JSON exports",
-        )
-
-    destination = Path(spec.path)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-
-    if spec.format == "ics":
-        write_ics(destination, hits)
-        return spec
-
-    if spec.format == "parquet":
-        _write_hits_parquet(destination, hits)
-        return spec
-
-    if spec.format == "sqlite":
-        _write_hits_sqlite(destination, hits)
-        return spec
-
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"Unsupported export format '{spec.format}'",
-    )
-
-
-def _write_hits_parquet(path: Path, hits: Sequence[Hit]) -> None:
-    try:
-        import pyarrow as pa
-        import pyarrow.parquet as pq
-    except Exception as exc:  # pragma: no cover - optional dependency
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Parquet export requires pyarrow",
-        ) from exc
-
-    rows = [hit.model_dump() for hit in hits]
-    table = pa.Table.from_pylist(rows)
-    pq.write_table(table, str(path))
-
-
-def _write_hits_sqlite(path: Path, hits: Sequence[Hit]) -> None:
-    try:
-        import sqlite3
-    except Exception as exc:  # pragma: no cover - optional dependency
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="SQLite export requires sqlite3",
-        ) from exc
-
-    con = sqlite3.connect(str(path))
-    try:
-        con.execute(
-            """
-            CREATE TABLE IF NOT EXISTS scan_hits (
-                when_iso TEXT,
-                moving TEXT,
-                target TEXT,
-                aspect INTEGER,
-                orb REAL,
-                applying INTEGER,
-                retrograde INTEGER
+def _hit_from_progression(event: ProgressionEvent) -> list[Hit]:
+    payload: list[Hit] = []
+    for body, longitude in event.positions.items():
+        payload.append(
+            Hit(
+                ts=event.ts,
+                moving=str(body),
+                target="Progression",
+                aspect=0,
+                orb=0.0,
+                metadata={
+                    "method": event.method,
+                    "longitude": float(longitude),
+                },
             )
-            """
         )
-        con.executemany(
-            """
-            INSERT INTO scan_hits (when_iso, moving, target, aspect, orb, applying, retrograde)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            [
-                (
-                    hit.when_iso,
-                    hit.moving,
-                    hit.target,
-                    hit.aspect,
-                    hit.orb,
-                    None if hit.applying is None else int(hit.applying),
-                    None if hit.retrograde is None else int(hit.retrograde),
-                )
-                for hit in hits
-            ],
+    return payload
+
+
+def _hit_from_direction(event: DirectionEvent) -> list[Hit]:
+    payload: list[Hit] = []
+    for body, longitude in event.positions.items():
+        payload.append(
+            Hit(
+                ts=event.ts,
+                moving=str(body),
+                target="Direction",
+                aspect=0,
+                orb=0.0,
+                metadata={
+                    "method": event.method,
+                    "longitude": float(longitude),
+                    "arc_degrees": float(event.arc_degrees),
+                },
+            )
         )
-        con.commit()
-    finally:
-        con.close()
+    return payload
 
 
-def _validate_method(request: ScanRequest, expected: str) -> None:
-    if request.method != expected:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"method must be '{expected}' for this endpoint",
-        )
-
-
-def _require_natal(request: ScanRequest) -> str:
-    natal = request.natal_inline
-    if natal is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="natal_inline is required for this scan",
-        )
-    return natal.ts
-
-
-def _build_response(
-    method: str,
-    request: ScanRequest,
-    records: Sequence[Any],
-) -> ScanResponse:
-    hits = [_record_to_hit(record) for record in records]
-    summary = _summarise(hits)
-    export_spec = _export_hits(request.export, hits)
-    return ScanResponse(
-        method=method,
-        count=len(hits),
-        summary=summary,
-        export=export_spec,
-        hits=hits,
+def _hit_from_return(event: ReturnEvent) -> Hit:
+    return Hit(
+        ts=event.ts,
+        moving=event.body,
+        target="Return",
+        aspect=0,
+        orb=0.0,
+        metadata={"kind": event.method, "longitude": float(event.longitude)},
     )
+
+
+def _hit_to_canonical(hit: Hit) -> dict[str, Any]:
+    meta = dict(hit.metadata or {})
+    if hit.family and "family" not in meta:
+        meta["family"] = hit.family
+    if hit.motion and "motion" not in meta:
+        meta["motion"] = hit.motion
+    if hit.delta is not None:
+        meta.setdefault("delta", hit.delta)
+    if hit.offset is not None:
+        meta.setdefault("offset", hit.offset)
+    if hit.lon_moving is not None:
+        meta.setdefault("lon_moving", hit.lon_moving)
+    if hit.lon_target is not None:
+        meta.setdefault("lon_target", hit.lon_target)
+    return {
+        "ts": hit.ts,
+        "moving": hit.moving,
+        "target": hit.target,
+        "aspect": str(hit.aspect),
+        "orb": hit.orb,
+        "orb_allow": hit.orb_allow,
+        "applying": hit.motion == "applying" if hit.motion else None,
+        "score": meta.get("score", 0.0),
+        "meta": meta,
+    }
+
+
+def _export_hits(options: ExportOptions, hits: Iterable[Hit], *, method: str) -> dict[str, Any]:
+    canonical = [_hit_to_canonical(hit) for hit in hits]
+    path = Path(options.path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fmt = options.format
+
+    if fmt == "json":
+        path.write_text(json.dumps(canonical, indent=2), encoding="utf-8")
+    elif fmt == "ics":
+        calendar_name = options.calendar_name or f"AstroEngine {method.title()}"
+        write_ics_canonical(path, canonical, calendar_name=calendar_name)
+    elif fmt == "parquet":
+        write_parquet_canonical(str(path), canonical)
+    elif fmt == "sqlite":
+        write_sqlite_canonical(str(path), canonical)
+    else:  # pragma: no cover - guarded by validator
+        raise HTTPException(status_code=400, detail="Unsupported export format")
+
+    return {"path": str(path), "format": fmt, "count": len(canonical)}
 
 
 @router.post("/progressions", response_model=ScanResponse)
-def scan_progressions(request: ScanRequest) -> ScanResponse:
-    """Scan progressed aspects derived from a natal chart."""
+def api_scan_progressions(request: TransitScanRequest) -> ScanResponse:
+    natal, start, end = request.iso_tuple()
+    events = secondary_progressions(
+        natal,
+        start,
+        end,
+        bodies=request.bodies,
+        step_days=request.step_days,
+    )
 
-    _validate_method(request, "progressions")
-    natal_ts = _require_natal(request)
-    try:
-        records = progressed_natal_aspects(
-            natal_ts=natal_ts,
-            start_ts=request.from_,
-            end_ts=request.to,
-            aspects=request.aspects,
-            orb_deg=request.orb_deg,
-        )
-    except NotImplementedError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail=str(exc),
-        ) from exc
-    return _build_response("progressions", request, records)
+    hits: list[Hit] = []
+    for event in events:
+        hits.extend(_hit_from_progression(event))
+
+    export_info = (
+        _export_hits(request.export, hits, method="progressions")
+        if request.export
+        else None
+    )
+    return ScanResponse(method="progressions", hits=hits, count=len(hits), export=export_info)
 
 
 @router.post("/directions", response_model=ScanResponse)
-def scan_directions(request: ScanRequest) -> ScanResponse:
-    """Scan solar arc directed aspects."""
+def api_scan_directions(request: TransitScanRequest) -> ScanResponse:
+    natal, start, end = request.iso_tuple()
+    events = solar_arc_directions(
+        natal,
+        start,
+        end,
+        bodies=request.bodies,
+    )
 
-    _validate_method(request, "directions")
-    natal_ts = _require_natal(request)
-    try:
-        records = solar_arc_natal_aspects(
-            natal_ts=natal_ts,
-            start_ts=request.from_,
-            end_ts=request.to,
-            aspects=request.aspects,
-            orb_deg=request.orb_deg,
-        )
-    except NotImplementedError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail=str(exc),
-        ) from exc
-    return _build_response("directions", request, records)
+    hits: list[Hit] = []
+    for event in events:
+        hits.extend(_hit_from_direction(event))
+
+    export_info = (
+        _export_hits(request.export, hits, method="directions")
+        if request.export
+        else None
+    )
+    return ScanResponse(method="directions", hits=hits, count=len(hits), export=export_info)
 
 
 @router.post("/transits", response_model=ScanResponse)
-def scan_transits(request: ScanRequest) -> ScanResponse:
-    """Transit scanning is not yet wired into the HTTP API."""
-
-    _validate_method(request, "transits")
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Transit scanning is not yet available via the HTTP API",
+def api_scan_transits(request: TransitScanRequest) -> ScanResponse:
+    natal, start, end = request.iso_tuple()
+    aspect_hits = scan_transits(
+        natal,
+        start,
+        end,
+        aspects=request.aspects,
+        orb_deg=request.orb,
+        bodies=request.bodies,
+        targets=request.targets,
+        step_days=request.step_days,
     )
+
+    hits = [_hit_from_aspect(item) for item in aspect_hits]
+    export_info = (
+        _export_hits(request.export, hits, method="transits")
+        if request.export
+        else None
+    )
+    return ScanResponse(method="transits", hits=hits, count=len(hits), export=export_info)
 
 
 @router.post("/returns", response_model=ScanResponse)
-def scan_returns(request: ScanRequest) -> ScanResponse:
-    """Solar or lunar returns derived from a natal timestamp."""
+def api_scan_returns(request: ReturnsScanRequest) -> ScanResponse:
+    natal, start, end = request.iso_tuple()
+    bodies = list(request.bodies or ["Sun", "Moon"])
 
-    _validate_method(request, "returns")
-    natal_ts = _require_natal(request)
-    adapter = SwissEphemerisAdapter.get_default_adapter()
-    natal_jd = adapter.julian_day(_parse_iso(natal_ts))
-    start_jd = adapter.julian_day(_parse_iso(request.from_))
-    end_jd = adapter.julian_day(_parse_iso(request.to))
-    kind = (request.dataset or "solar").split(":", 1)[0]
-
-    try:
-        events = solar_lunar_returns(
-            natal_jd,
-            start_jd,
-            end_jd,
+    hits: list[Hit] = []
+    for body in bodies:
+        kind = "solar" if body.lower() == "sun" else "lunar"
+        events = scan_returns(
+            natal,
+            start,
+            end,
             kind=kind,
+            step_days=request.step_days,
         )
-    except NotImplementedError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail=str(exc),
-        ) from exc
+        hits.extend(_hit_from_return(event) for event in events)
 
-    hits = [
-        Hit(
-            when_iso=event.ts,
-            moving=event.body,
-            target=f"natal_{event.body}",
-            aspect=0,
-            orb=0.0,
-            applying=None,
-            retrograde=None,
-        )
-        for event in events
-    ]
-    summary = _summarise(hits)
-    export_spec = _export_hits(request.export, hits)
-    return ScanResponse(
-        method="returns",
-        count=len(hits),
-        summary=summary,
-        export=export_spec,
-        hits=hits,
+    export_info = (
+        _export_hits(request.export, hits, method="returns")
+        if request.export
+        else None
     )
+    return ScanResponse(method="returns", hits=hits, count=len(hits), export=export_info)
+

@@ -1,34 +1,22 @@
-"""Compatibility re-export for :mod:`astroengine.core.api`.
 
-This shim keeps the public import surface stable while the project
-transitions to the new module/submodule/channel/subchannel structure.
-"""
+"""FastAPI application factory for AstroEngine services."""
 
 from __future__ import annotations
 
-from ..core import TransitEngine
-from ..core.api import TransitEvent, TransitScanConfig
-from ..events import (
-    DirectionEvent,
-    EclipseEvent,
-    LunationEvent,
-    OutOfBoundsEvent,
-    ProfectionEvent,
-    ProgressionEvent,
-    ReturnEvent,
-    StationEvent,
-)
+from fastapi import FastAPI
 
-__all__ = [
-    "TransitEvent",
-    "TransitScanConfig",
-    "TransitEngine",
-    "LunationEvent",
-    "EclipseEvent",
-    "StationEvent",
-    "ReturnEvent",
-    "ProgressionEvent",
-    "DirectionEvent",
-    "ProfectionEvent",
-    "OutOfBoundsEvent",
-]
+from .routers import scan as scan_router
+from .routers import synastry as synastry_router
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="AstroEngine API")
+    app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])
+    app.include_router(synastry_router.router, prefix="/v1/synastry", tags=["synastry"])
+    return app
+
+
+app = create_app()
+
+__all__ = ["create_app", "app"]
+

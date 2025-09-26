@@ -4,6 +4,8 @@ pipdeptree>=2.20.0  # ENSURE-LINE
 pyswisseph==2.10.3.2  # ENSURE-LINE
 
 jinja2>=3.1
+fastapi>=0.117
+httpx>=0.28
 
 pytest>=8.0.0  # ENSURE-LINE
 pytest-cov>=4.1.0  # ENSURE-LINE
