@@ -654,7 +654,6 @@ def scan_contacts(
         start_iso,
         end_iso,
         step=dt.timedelta(minutes=gated_step_minutes),
-
     )
 
     decl_ticks, mirror_ticks, aspect_ticks, plugin_ticks = tee(tick_source, 4)
