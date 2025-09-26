@@ -388,6 +388,35 @@ def cmd_dataset_parquet(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_snapshot_create(args: argparse.Namespace) -> int:
+    from .snapshot.core import create_snapshot
+
+    meta: dict[str, str] = {}
+    for item in args.meta or []:
+        if "=" not in item:
+            print(f"invalid meta assignment: {item}", file=sys.stderr)
+            return 2
+        key, value = item.split("=", 1)
+        meta[key] = value
+
+    manifest = create_snapshot(
+        args.src,
+        args.out_path,
+        exclude_globs=args.exclude,
+        meta=meta or None,
+    )
+    print(manifest)
+    return 0
+
+
+def cmd_snapshot_verify(args: argparse.Namespace) -> int:
+    from .snapshot.core import verify_snapshot
+
+    report = verify_snapshot(args.archive)
+    print(report)
+    return 0 if report.ok else 2
+
+
 def _augment_parser_with_parquet_dataset(parser: argparse.ArgumentParser) -> None:
     if getattr(parser, "_ae_dataset_added", False):
         return
@@ -1822,6 +1851,39 @@ def build_parser() -> argparse.ArgumentParser:
         "--json", action="store_true", help="Emit JSON payload instead of text"
     )
     plugins.set_defaults(func=cmd_plugins)
+
+    snapshot = sub.add_parser("snapshot", help="Scenario snapshot utilities")
+    snapshot_sub = snapshot.add_subparsers(dest="snapshot_command")
+    snapshot_sub.required = True
+
+    snapshot_create = snapshot_sub.add_parser(
+        "create", help="Create a deterministic snapshot archive"
+    )
+    snapshot_create.add_argument("src", nargs="+", help="Source paths to include")
+    snapshot_create.add_argument(
+        "--out-path",
+        "--out",
+        dest="out_path",
+        default="snapshots/snapshot.tar.gz",
+        help="Destination archive path (default: snapshots/snapshot.tar.gz)",
+    )
+    snapshot_create.add_argument(
+        "--exclude",
+        action="append",
+        help="Glob pattern to exclude (repeatable)",
+    )
+    snapshot_create.add_argument(
+        "--meta",
+        action="append",
+        help="Metadata key=value pair (repeatable)",
+    )
+    snapshot_create.set_defaults(func=cmd_snapshot_create)
+
+    snapshot_verify = snapshot_sub.add_parser(
+        "verify", help="Verify an existing snapshot archive"
+    )
+    snapshot_verify.add_argument("archive", help="Snapshot archive to verify")
+    snapshot_verify.set_defaults(func=cmd_snapshot_verify)
 
     scan = sub.add_parser("scan", help="Run a canonical transit scan with presets")
     scan.add_argument(
