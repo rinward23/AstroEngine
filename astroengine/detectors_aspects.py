@@ -35,6 +35,8 @@ class AspectHit:
     family: str
     corridor_width_deg: float | None = None
     corridor_profile: str | None = None
+    speed_deg_per_day: float | None = None
+    retrograde: bool | None = None
 
 
 _DEF_PATH = profiles_dir() / "aspects_policy.json"
@@ -264,6 +266,8 @@ def detect_aspects(
                         family=family,
                         corridor_width_deg=float(corridor_width),
                         corridor_profile=corridor_profile,
+                        speed_deg_per_day=float(motion.relative_speed_deg_per_day),
+                        retrograde=retrograde,
                     )
                 )
     return out

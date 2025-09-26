@@ -1,25 +1,32 @@
+
 """Timezone lookup and conversion helpers for atlas workflows."""
+
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+
 from typing import Literal
 from zoneinfo import ZoneInfo
 
 from timezonefinder import TimezoneFinder
 
+
 Policy = Literal["earliest", "latest", "shift_forward", "raise"]
 
 __all__ = [
     "Policy",
+
     "from_utc",
     "is_ambiguous",
     "is_nonexistent",
     "to_utc",
     "tzid_for",
+
 ]
 
 _tf = TimezoneFinder()
+
 
 
 def tzid_for(lat: float, lon: float) -> str:
@@ -58,13 +65,16 @@ def is_nonexistent(local_naive: datetime, tzid: str) -> bool:
     return utc0 != utc1 and utc0 > utc1
 
 
+
 def _dst_gap(local_naive: datetime, zone: ZoneInfo) -> timedelta:
     before = (local_naive - timedelta(hours=1)).replace(tzinfo=zone)
     after = (local_naive + timedelta(hours=1)).replace(tzinfo=zone)
+
     before_offset = before.utcoffset() or timedelta(0)
     after_offset = after.utcoffset() or timedelta(0)
     gap = after_offset - before_offset
     return gap if gap >= timedelta(0) else -gap
+
 
 
 def to_utc(
@@ -74,6 +84,7 @@ def to_utc(
     *,
     policy: Policy = "earliest",
 ) -> datetime:
+
     """Convert a naive local timestamp into a timezone-aware UTC datetime."""
 
     if policy not in {"earliest", "latest", "shift_forward", "raise"}:
@@ -92,16 +103,20 @@ def to_utc(
     if is_nonexistent(local_naive, tzid):
         if policy == "raise":
             raise ValueError("Nonexistent local time due to DST transition")
+
         if policy == "shift_forward":
             gap = _dst_gap(local_naive, zone)
             adjusted = local_naive + gap
             return adjusted.replace(tzinfo=zone).astimezone(timezone.utc)
+
         return _attach(local_naive, zone, 0).astimezone(timezone.utc)
+
 
     return local_naive.replace(tzinfo=zone).astimezone(timezone.utc)
 
 
 def from_utc(utc_dt: datetime, lat: float, lon: float) -> datetime:
+
     """Convert a UTC datetime into the local timezone for the coordinates."""
 
     tzid = tzid_for(lat, lon)
@@ -110,3 +125,4 @@ def from_utc(utc_dt: datetime, lat: float, lon: float) -> datetime:
     else:
         aware = utc_dt.astimezone(timezone.utc)
     return aware.astimezone(ZoneInfo(tzid))
+
