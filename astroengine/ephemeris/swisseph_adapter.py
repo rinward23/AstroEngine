@@ -701,15 +701,18 @@ class SwissEphemerisAdapter:
                 fallback_info["reason"] = fallback_reason
             self._last_house_metadata["fallback"] = fallback_info
 
+        used_name = used_key
+
         return HousePositions(
             system=system_label,
             cusps=tuple(cusps),
             ascendant=ascendant,
             midheaven=midheaven,
-
             system_name=used_name,
+            requested_system=requested_key,
             fallback_from=fallback_from,
-
+            fallback_reason=fallback_reason,
+            provenance=provenance,
         )
 
     # ------------------------------------------------------------------

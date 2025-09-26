@@ -2205,5 +2205,11 @@ def main(argv: Iterable[str] | None = None) -> int:
     return 0
 
 
+def console_main() -> None:
+    """Invoke :func:`main` and raise ``SystemExit`` with its return code."""
+
+    raise SystemExit(main())
+
+
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())

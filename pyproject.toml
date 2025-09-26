@@ -8,13 +8,14 @@ name = "astroengine"
 version = "0.1.0"
 description = "AstroEngine — modular transit engine and astrology toolkit"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{ name = "AstroEngine Maintainers" }]
-license = { text = "MIT" }
+license = { text = "Proprietary" }
 keywords = ["astrology", "ephemeris", "transits", "astronomy"]
 classifiers = [
   "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "License :: Other/Proprietary License",
 ]
 
 # Core runtime deps kept lean. Everything else under extras.
@@ -31,47 +32,55 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Swiss ephemeris stack
+# Core astroengine stacks
 ephem = [
   "pyswisseph>=2.10",
   "pymeeus>=0.5.12",
 ]
-# Skyfield provider + kernels
 skyfield = [
   "skyfield>=1.48",
   "jplephem>=2.21",
 ]
-# Catalog lookups
 catalogs = [
   "astroquery>=0.4",
 ]
-# Exporters
 exporters = [
   "pyarrow>=15",
   "ics>=0.7",
 ]
-# API + narrative
-api = [
-  "fastapi>=0.110",
-  "uvicorn[standard]>=0.23",
-]
-
 narrative = [
   "jinja2>=3.1",
 ]
-# Performance (optional)
 perf = [
   "numba>=0.58",
 ]
-# CLI polish / plugins (optional)
 cli = [
   "click>=8.1",
   "rich>=13.7",
   "pluggy>=1.5",
 ]
-# All the things
+
+# Release bundles
+api = [
+  "fastapi>=0.117",
+  "uvicorn>=0.37",
+  "pydantic>=2.11",
+  "icalendar>=6",
+]
+providers = [
+  "pyswisseph>=2.10",
+  "timezonefinder>=6",
+  "tzdata",
+]
+dev = [
+  "pytest",
+  "hypothesis",
+  "ruff",
+  "mypy",
+]
+
 all = [
-  "astroengine[ephem,skyfield,catalogs,exporters,api,narrative,perf,cli]",
+  "astroengine[ephem,skyfield,catalogs,exporters,api,narrative,perf,cli,providers]",
 ]
 
 [project.urls]
@@ -80,6 +89,9 @@ Homepage = "https://github.com/rinward23/AstroEngine"
 [project.scripts]
 astroengine = "astroengine.cli:main"
 astroengine-api = "astroengine.api_server:run"  # guarded import; only works with [api]
+
+[tool.setuptools.package-data]
+astroengine = ["py.typed"]
 
 [project.entry-points."astroengine.plugins"]
 
