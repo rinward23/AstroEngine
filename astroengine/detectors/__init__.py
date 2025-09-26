@@ -15,6 +15,8 @@ from ..astro.declination import (
 )
 from ..refine import adaptive_corridor_width
 from ..utils.angles import classify_applying_separating, delta_angle, is_within_orb
+from .directed_aspects import solar_arc_natal_aspects
+from .progressed_aspects import progressed_natal_aspects
 
 __all__ = [
     "CoarseHit",
@@ -28,6 +30,8 @@ __all__ = [
     "find_out_of_bounds",
     "secondary_progressions",
     "solar_arc_directions",
+    "progressed_natal_aspects",
+    "solar_arc_natal_aspects",
     "solar_lunar_returns",
 ]
 
