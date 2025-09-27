@@ -63,30 +63,19 @@ class ModuleScopeMixin:
 
 
 class OrbPolicy(ModuleScopeMixin, TimestampMixin, Base):
-    """Normalized orb policy entries keyed by profile, body, and aspect."""
+    """Aggregate orb policy definitions exposed via the Plus API."""
 
     __tablename__ = "orb_policies"
     __table_args__ = (
-        UniqueConstraint(
-            "profile_key",
-            "module",
-            "submodule",
-            "channel",
-            "subchannel",
-            "body",
-            "aspect",
-            name="uq_orb_policy_scope",
-        ),
-        Index("ix_orb_policies_profile_module", "profile_key", "module", "channel"),
+        UniqueConstraint("name", name="uq_orb_policy_name"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    profile_key: Mapped[str] = mapped_column(String(64), nullable=False)
-    body: Mapped[str] = mapped_column(String(64), nullable=False)
-    aspect: Mapped[str] = mapped_column(String(64), nullable=False)
-    orb_degrees: Mapped[float] = mapped_column(Float, nullable=False)
-    source_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    name: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    per_object: Mapped[dict[str, float]] = mapped_column(JSON, nullable=False, default=dict)
+    per_aspect: Mapped[dict[str, float]] = mapped_column(JSON, nullable=False, default=dict)
+    adaptive_rules: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
 
 class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
@@ -127,7 +116,7 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     events: Mapped[list["Event"]] = relationship(back_populates="chart", cascade="all, delete-orphan")
 
 
-class RulesetVersion(ModuleScopeMixin, TimestampMixin, Base):
+class RuleSetVersion(ModuleScopeMixin, TimestampMixin, Base):
     """Versioned rulesets linking scans to reproducible logic bundles."""
 
     __tablename__ = "ruleset_versions"
@@ -187,7 +176,7 @@ class Event(ModuleScopeMixin, TimestampMixin, Base):
     source: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     chart: Mapped[Chart] = relationship(back_populates="events")
-    ruleset_version: Mapped[RulesetVersion] = relationship(back_populates="events")
+    ruleset_version: Mapped[RuleSetVersion] = relationship(back_populates="events")
     severity_profile: Mapped[SeverityProfile | None] = relationship(back_populates="events")
     export_jobs: Mapped[list["ExportJob"]] = relationship(back_populates="event")
 
@@ -250,7 +239,7 @@ __all__ = [
     "ExportJob",
     "ModuleScopeMixin",
     "OrbPolicy",
-    "RulesetVersion",
+    "RuleSetVersion",
     "SeverityProfile",
     "TimestampMixin",
 
