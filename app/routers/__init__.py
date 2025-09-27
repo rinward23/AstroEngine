@@ -1,5 +1,6 @@
-"""FastAPI routers for the AstroEngine API surface."""
 
-from __future__ import annotations
+"""API routers for AstroEngine Plus services."""
 
-__all__ = []
+from .policies import router as policies_router
+
+__all__ = ["policies_router"]
