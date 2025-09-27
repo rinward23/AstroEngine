@@ -1,6 +1,8 @@
+
 """Base aspect angles for named harmonic relationships."""
 
 BASE_ASPECTS = {
+
     "conjunction": 0.0,
     "opposition": 180.0,
     "square": 90.0,
@@ -13,4 +15,6 @@ BASE_ASPECTS = {
     "biquintile": 144.0,
 }
 
+
 __all__ = ["BASE_ASPECTS"]
+

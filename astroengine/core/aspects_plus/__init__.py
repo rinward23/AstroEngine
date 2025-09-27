@@ -1,5 +1,6 @@
 """Aspect search extensions (harmonics, families, ranking)."""
 
+
 from . import search
 from .harmonics import BASE_ASPECTS
 from .matcher import angular_sep_deg, match_all, match_pair
