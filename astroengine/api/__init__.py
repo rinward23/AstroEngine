@@ -5,12 +5,14 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from .routers import plus as plus_router
 from .routers import scan as scan_router
 from .routers import synastry as synastry_router
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="AstroEngine API")
+    app.include_router(plus_router.router)
     app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])
     app.include_router(synastry_router.router, prefix="/v1/synastry", tags=["synastry"])
     return app
