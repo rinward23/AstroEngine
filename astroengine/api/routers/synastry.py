@@ -11,6 +11,9 @@ from typing import Any, Sequence
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
+
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+
 from ...chart.natal import DEFAULT_BODIES
 from ...core.aspects_plus.harmonics import BASE_ASPECTS
 from ...synastry.orchestrator import SynHit, compute_synastry

@@ -1,12 +1,10 @@
 
 """Aspect scanning utilities for AstroEngine Plus."""
 
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-
 from itertools import combinations
 from typing import (
     Any,
@@ -52,6 +50,73 @@ class AspectSpec:
     name: str
     angle: float
     harmonic: Optional[int] = None
+
+
+def _resolve_spec_name(angle: float) -> str:
+    for key, base_angle in BASE_ASPECTS.items():
+        if abs(float(base_angle) - float(angle)) < 1e-6:
+            return key
+    return f"{angle:g}"
+
+
+def _coerce_aspect_spec(entry: Any) -> Optional[AspectSpec]:
+    if isinstance(entry, AspectSpec):
+        return entry
+    if isinstance(entry, Mapping):
+        name = entry.get("name") or entry.get("aspect")
+        angle = entry.get("angle")
+        if angle is None and isinstance(name, str):
+            base = BASE_ASPECTS.get(name.strip().lower())
+            if base is not None:
+                angle = float(base)
+        if angle is None and "value" in entry:
+            try:
+                angle = float(entry["value"])
+            except (TypeError, ValueError):
+                angle = None
+        if angle is None and "angle_deg" in entry:
+            try:
+                angle = float(entry["angle_deg"])
+            except (TypeError, ValueError):
+                angle = None
+        if angle is None:
+            return None
+        harmonic = entry.get("harmonic")
+        try:
+            harmonic_int = int(harmonic) if harmonic is not None else None
+        except (TypeError, ValueError):
+            harmonic_int = None
+        if not name:
+            name = _resolve_spec_name(float(angle))
+        return AspectSpec(name=str(name).strip().lower(), angle=float(angle), harmonic=harmonic_int)
+    if isinstance(entry, str):
+        key = entry.strip().lower()
+        if key in BASE_ASPECTS:
+            return AspectSpec(name=key, angle=float(BASE_ASPECTS[key]))
+        try:
+            angle = float(entry)
+        except ValueError:
+            return None
+        return AspectSpec(name=_resolve_spec_name(angle), angle=angle)
+    if isinstance(entry, (int, float)):
+        angle = float(entry)
+        return AspectSpec(name=_resolve_spec_name(angle), angle=angle)
+    return None
+
+
+def _normalize_aspect_specs(entries: Sequence[Any]) -> List[AspectSpec]:
+    specs: List[AspectSpec] = []
+    seen: set[Tuple[str, float, Optional[int]]] = set()
+    for entry in entries:
+        spec = _coerce_aspect_spec(entry)
+        if not spec:
+            continue
+        signature = (spec.name, round(float(spec.angle), 6), spec.harmonic)
+        if signature in seen:
+            continue
+        seen.add(signature)
+        specs.append(spec)
+    return specs
 
 
 
@@ -187,6 +252,18 @@ def _resolve_orb_limit(
             limit_val = max(limit_val, float(per_object.get(obj, 0.0)))
         except Exception:
             continue
+
+    if limit_val <= 0.0:
+        default_limit = policy.get("default")
+        if default_limit is None:
+            default_limit = policy.get("default_orb_deg")
+        try:
+            limit_val = float(default_limit)
+        except (TypeError, ValueError):
+            limit_val = 1.0
+        if limit_val <= 0.0:
+            limit_val = 1.0
+
     return max(0.0, limit_val)
 
 
@@ -269,7 +346,7 @@ def scan_pair_time_range(
     window: TimeWindow,
     position_provider: Callable[[datetime], Mapping[str, float]],
 
-    aspect_specs: Sequence[AspectInput],
+    aspect_specs: Sequence[Any],
 
     orb_policy: Mapping[str, Any] | None,
     *,
@@ -277,10 +354,14 @@ def scan_pair_time_range(
 ) -> List[Hit]:
     """Scan a pair of bodies for the provided aspects."""
 
+    specs = _normalize_aspect_specs(aspect_specs)
+    if not specs:
+        return []
+
     hits: List[Hit] = []
 
-    for raw_spec in aspect_specs:
-        spec = _coerce_spec(raw_spec)
+    for spec in specs:
+
         limit = _resolve_orb_limit(orb_policy, spec, body_a, body_b)
         hits.extend(
             _scan_single_spec(body_a, body_b, window, position_provider, spec, limit, step_minutes)

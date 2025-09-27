@@ -7,8 +7,23 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from typing import Any, Iterable, Sequence
-from typing import Literal
+
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+
+from ...core.transit_engine import scan_transits
+from ...detectors.directions import solar_arc_directions
+from ...detectors.progressions import secondary_progressions
+
+from ...detectors.returns import solar_lunar_returns as _solar_lunar_returns
+from ...ephemeris import SwissEphemerisAdapter
+from ...events import DirectionEvent, ProgressionEvent, ReturnEvent
+from ...exporters import write_parquet_canonical, write_sqlite_canonical
+from ...exporters_ics import write_ics_canonical
+from ...detectors_aspects import AspectHit
+
+
+router = APIRouter()
+
 
 
 
@@ -66,7 +81,6 @@ class TimeWindow(BaseModel):
 
     """Normalized scan time bounds with legacy payload support."""
 
-    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
 
     @field_validator("natal", "start", "end", mode="before")

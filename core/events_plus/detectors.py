@@ -60,81 +60,66 @@ def next_sign_ingress(
     provider: PositionProvider,
     *,
     step_minutes: int = 60,
-    max_days: float = 60.0,
-) -> datetime | None:
-    """Return the timestamp when a body enters the next zodiac sign.
 
-    The calculation samples ephemeris positions using ``provider`` and
-    refines the crossing by bisecting the final interval to minute-level
-    precision. If the body fails to change signs within ``max_days`` the
-    function returns ``None``.
+    max_days: float = 45.0,
+) -> datetime | None:
+    """Return the timestamp when ``body`` enters the next zodiac sign.
+
+    The detector samples the supplied ``provider`` on a regular cadence and
+    linearly interpolates the crossing moment once the sign index advances.
+    ``None`` is returned when no ingress occurs within ``max_days``.
+
     """
 
     if step_minutes <= 0:
         raise ValueError("step_minutes must be positive")
 
-    start_positions = provider(start)
-    if body not in start_positions:
-        raise KeyError(f"{body!r} not provided by ephemeris")
 
-    start_lon = _norm360(start_positions[body])
+    positions = provider(start)
+    lon = positions.get(body)
+    if lon is None:
+        raise KeyError(f"{body} position missing from provider output")
+
+    start_lon = _norm360(float(lon))
     start_sign = int(start_lon // 30.0)
-    window_end = start + timedelta(days=max_days)
-    samples = _sample_range(start, window_end, step_minutes)
+    target_boundary = (start_sign + 1) * 30.0
+    # ensure we always look ahead to the next sign even if already on a cusp
+    if target_boundary <= start_lon + 1e-9:
+        target_boundary += 30.0
 
-    prev_ts = samples[0]
-    prev_lon = start_lon
-    prev_sign = start_sign
+    end = start + timedelta(days=max_days)
+    samples = _sample_range(start, end, step_minutes)
+
+    prev_ts = start
+    prev_lon_unwrapped = start_lon
+
     for ts in samples[1:]:
         positions = provider(ts)
-        lon_raw = positions.get(body)
-        if lon_raw is None:
-            raise KeyError(f"{body!r} not provided by ephemeris")
-        lon = _norm360(lon_raw)
-        delta = _angle_delta(lon, prev_lon)
-        if delta == 0.0:
-            prev_ts, prev_lon = ts, lon
+        lon = positions.get(body)
+        if lon is None:
+            raise KeyError(f"{body} position missing from provider output")
+        current_lon = _norm360(float(lon))
+        delta = _angle_delta(current_lon, prev_lon_unwrapped % 360.0)
+        curr_unwrapped = prev_lon_unwrapped + delta
+
+        if curr_unwrapped == prev_lon_unwrapped:
+            prev_ts = ts
+            prev_lon_unwrapped = curr_unwrapped
             continue
 
-        direction = 1 if delta > 0 else -1
-        current_sign = int(lon // 30.0)
-        if current_sign != prev_sign:
-            boundary_sign = (prev_sign + direction) % 12 if direction > 0 else prev_sign % 12
-            boundary_deg = boundary_sign * 30.0
-
-            # Ensure offsets straddle the boundary before bisecting.
-            start_offset = _angle_delta(prev_lon, boundary_deg)
-            end_offset = _angle_delta(lon, boundary_deg)
-            if start_offset == 0.0:
-                return prev_ts
-            if end_offset == 0.0:
+        if target_boundary <= curr_unwrapped:
+            span = (ts - prev_ts).total_seconds()
+            if span <= 0:
                 return ts
+            frac = (target_boundary - prev_lon_unwrapped) / (
+                curr_unwrapped - prev_lon_unwrapped
+            )
+            frac = max(0.0, min(1.0, frac))
+            return prev_ts + timedelta(seconds=frac * span)
 
-            if start_offset > 0 and end_offset > 0:
-                # Adjust boundary if wrap-around mis-detected.
-                boundary_deg = prev_sign * 30.0
-                start_offset = _angle_delta(prev_lon, boundary_deg)
-                end_offset = _angle_delta(lon, boundary_deg)
+        prev_ts = ts
+        prev_lon_unwrapped = curr_unwrapped
 
-            lower_ts, upper_ts = (prev_ts, ts)
-            lower_offset, upper_offset = start_offset, end_offset
-
-            for _ in range(16):
-                mid = lower_ts + (upper_ts - lower_ts) / 2
-                if (upper_ts - lower_ts).total_seconds() <= 60:
-                    return mid
-                mid_lon = _norm360(provider(mid)[body])
-                mid_offset = _angle_delta(mid_lon, boundary_deg)
-                if mid_offset == 0.0:
-                    return mid
-                if (mid_offset > 0 and lower_offset > 0) or (mid_offset < 0 and lower_offset < 0):
-                    lower_ts, lower_offset = mid, mid_offset
-                else:
-                    upper_ts, upper_offset = mid, mid_offset
-
-            return lower_ts if abs(lower_offset) < abs(upper_offset) else upper_ts
-
-        prev_ts, prev_lon, prev_sign = ts, lon, current_sign
 
     return None
 
@@ -218,8 +203,8 @@ def detect_voc_moon(
     window: Any,
     provider: PositionProvider,
     aspects: Iterable[str],
-    orb_policy: Dict[str, Any] | None = None,
 
+    policy: Dict[str, Any] | None = None,
     other_objects: Iterable[str] = (),
 
     *,
@@ -236,11 +221,9 @@ def detect_voc_moon(
     samples = _sample_range(start, end, step_minutes)
 
 
-    resolved_policy = policy if policy is not None else orb_policy
-    per_aspect = resolved_policy.get("per_aspect", {}) if resolved_policy else {}
-    default_orb = (
-        float(resolved_policy.get("default", 3.0)) if resolved_policy else 3.0
-    )
+    orb_policy = policy or {}
+    per_aspect = orb_policy.get("per_aspect", {}) if orb_policy else {}
+    default_orb = float(orb_policy.get("default", 3.0)) if orb_policy else 3.0
 
     aspect_list = [name for name in aspects if name in _ASPECT_ANGLES]
     other_targets = list(other_objects or [])
@@ -266,14 +249,28 @@ def detect_voc_moon(
 
     intervals: List[EventInterval] = []
     current_start: datetime | None = None
+    current_ingress: datetime | None = None
     for idx, ts in enumerate(samples):
         state = states[idx]
         if state and current_start is None:
             current_start = ts
+            remaining_days = max(0.0, (end - ts).total_seconds() / 86400.0)
+            current_ingress = next_sign_ingress(
+                "Moon",
+                ts,
+                provider,
+                step_minutes=step_minutes,
+                max_days=remaining_days + 2.0,
+            )
         if (not state or idx == len(samples) - 1) and current_start is not None:
-            end_ts = ts if not state else samples[-1]
-            if ingress_limit is not None and ingress_limit < end_ts:
-                end_ts = ingress_limit
+
+            if not state:
+                end_ts = ts
+            else:
+                end_ts = samples[-1]
+                if current_ingress is not None and current_ingress <= end_ts:
+                    end_ts = current_ingress
+
             intervals.append(
                 EventInterval(
                     kind="voc_moon",
@@ -283,6 +280,7 @@ def detect_voc_moon(
                 )
             )
             current_start = None
+            current_ingress = None
 
     return intervals
 

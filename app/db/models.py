@@ -4,10 +4,11 @@ from __future__ import annotations
 
 
 import uuid
-from datetime import datetime
 
-from typing import Any
-from uuid import uuid4
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Any, Dict, Optional
+
 
 from sqlalchemy import (
     Boolean,
@@ -122,10 +123,17 @@ class OrbPolicy(ModuleScopeMixin, TimestampMixin, Base):
         elif per_object is None:
             per_object = {}
 
-        if aspect is not None and orb_degrees is not None:
-            per_aspect = {str(aspect).lower(): float(orb_degrees)}
-        elif per_aspect is None:
-            per_aspect = {}
+
+def _render_orb_policy_name(profile_key: str, body: str | None, aspect: str | None) -> str:
+    parts = [profile_key or "default"]
+    parts.append((body or "any").lower())
+    parts.append((aspect or "custom").lower())
+    return ":".join(parts)
+
+
+class OrbPolicy(ModuleScopeMixin, TimestampMixin, Base):
+    """Aggregate orb policy definitions exposed via the Plus API."""
+
 
         kwargs.setdefault("adaptive_rules", {})
         kwargs["per_object"] = per_object
@@ -137,14 +145,51 @@ class OrbPolicy(ModuleScopeMixin, TimestampMixin, Base):
 
         super().__init__(**kwargs)
 
-        if profile_key is not None:
-            self.profile_key = profile_key
-        if body is not None:
-            self.body = body
-        if aspect is not None:
-            self.aspect = aspect
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    per_object: Mapped[dict[str, float]] = mapped_column(JSON, nullable=False, default=dict)
+    per_aspect: Mapped[dict[str, float]] = mapped_column(JSON, nullable=False, default=dict)
+    adaptive_rules: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    profile_key: Mapped[str] = mapped_column(String(64), nullable=False, default="default")
+    body: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    aspect: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    orb_degrees: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    def __init__(self, **kwargs: Any) -> None:
+        profile_key = kwargs.pop("profile_key", None)
+        body = kwargs.pop("body", None)
+        aspect = kwargs.pop("aspect", None)
+        orb_degrees = kwargs.pop("orb_degrees", None)
+
+        per_object: Dict[str, float] = dict(kwargs.pop("per_object", {}) or {})
+        per_aspect: Dict[str, float] = dict(kwargs.pop("per_aspect", {}) or {})
+        adaptive_rules: Dict[str, Any] = dict(kwargs.pop("adaptive_rules", {}) or {})
+
+        orb_value: Optional[float] = None
         if orb_degrees is not None:
-            self.orb_degrees = float(orb_degrees)
+            try:
+                orb_value = float(orb_degrees)
+            except (TypeError, ValueError):
+                orb_value = None
+        if orb_value is not None:
+            if body:
+                per_object.setdefault(str(body), orb_value)
+            if aspect:
+                per_aspect.setdefault(str(aspect).lower(), orb_value)
+
+        kwargs.setdefault("name", _render_orb_policy_name(profile_key or "default", body, aspect))
+        kwargs["per_object"] = per_object
+        kwargs["per_aspect"] = per_aspect
+        kwargs["adaptive_rules"] = adaptive_rules
+        kwargs["profile_key"] = profile_key or "default"
+        kwargs["body"] = body
+        kwargs["aspect"] = aspect.lower() if isinstance(aspect, str) else aspect
+        kwargs["orb_degrees"] = orb_value
+
+        super().__init__(**kwargs)
+
 
 
 class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
@@ -154,11 +199,11 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
 
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    profile_key: Mapped[str] = mapped_column(String(64), nullable=False)
-    name: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    weights: Mapped[dict[str, Any]] = mapped_column(
-        JSON, nullable=False, default=dict
-    )
+
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    profile_key: Mapped[str] = mapped_column(String(64), nullable=False, default="default")
+    weights: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+
     modifiers: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -166,43 +211,16 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
 
     events: Mapped[list["Event"]] = relationship(back_populates="severity_profile")
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
-        """Support legacy ``name`` keyword aliasing ``profile_key``."""
-
-        name = kwargs.pop("name", None)
-        super().__init__(*args, **kwargs)
-        if name is not None:
-            self.profile_key = str(name)
-
-    @property
-    def name(self) -> str:
-        return self.profile_key
-
-    @name.setter
-    def name(self, value: str) -> None:
-        self.profile_key = value
-
 
     def __init__(self, **kwargs: Any) -> None:
         profile_key = kwargs.pop("profile_key", None)
         weights = kwargs.pop("weights", None)
-        modifiers = kwargs.pop("modifiers", None)
-
         if profile_key is not None:
-            kwargs.setdefault("name", str(profile_key))
-
+            kwargs["profile_key"] = profile_key
         if weights is not None:
             kwargs["weights"] = weights
-        else:
-            kwargs.setdefault("weights", {})
-
-        if modifiers is not None:
-            kwargs["modifiers"] = modifiers
-
+        kwargs.setdefault("name", f"{kwargs.get('profile_key', 'default')}_severity")
         super().__init__(**kwargs)
-
-        if profile_key is not None:
-            self.profile_key = profile_key
 
 
 
@@ -231,8 +249,33 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
         back_populates="chart", cascade="all, delete-orphan"
     )
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
-        """Normalize legacy keyword arguments used throughout tests."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        profile_key = kwargs.pop("profile_key", None)
+        if profile_key is not None:
+            kwargs["profile_key"] = profile_key
+        data = kwargs.pop("data", None)
+        if data is not None:
+            kwargs["data"] = data
+            if "kind" not in kwargs and isinstance(data, dict):
+                kind_value = data.get("kind")
+                if isinstance(kind_value, str):
+                    try:
+                        kwargs["kind"] = ChartKind(kind_value)
+                    except ValueError:
+                        try:
+                            kwargs["kind"] = ChartKind[kind_value]
+                        except Exception:
+                            kwargs["kind"] = ChartKind.custom
+        if "kind" not in kwargs:
+            kwargs["kind"] = ChartKind.custom
+        if "dt_utc" not in kwargs or kwargs["dt_utc"] is None:
+            kwargs["dt_utc"] = datetime.now(timezone.utc)
+        kwargs.setdefault("lat", 0.0)
+        kwargs.setdefault("lon", 0.0)
+        super().__init__(**kwargs)
+
+
 
         dt_utc = kwargs.pop("dt_utc", None)
         kind = kwargs.pop("kind", None)
@@ -305,6 +348,21 @@ class RulesetVersion(ModuleScopeMixin, TimestampMixin, Base):
 
     events: Mapped[list["Event"]] = relationship(back_populates="ruleset_version")
 
+    def __init__(self, **kwargs: Any) -> None:
+        ruleset_key = kwargs.pop("ruleset_key", None)
+        definition = kwargs.pop("definition", None)
+        if ruleset_key is not None and "key" not in kwargs:
+            kwargs["key"] = str(ruleset_key)
+        if definition is not None and "definition_json" not in kwargs:
+            kwargs["definition_json"] = definition
+        version_value = kwargs.get("version")
+        if isinstance(version_value, str):
+            try:
+                kwargs["version"] = int(float(version_value))
+            except ValueError:
+                pass
+        super().__init__(**kwargs)
+
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
         """Allow ``key`` to alias ``ruleset_key`` for backwards compatibility."""
@@ -355,10 +413,9 @@ class Event(ModuleScopeMixin, TimestampMixin, Base):
 
     event_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
-    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
-    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
-    objects: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="pending", server_default=text("'pending'")
@@ -377,76 +434,28 @@ class Event(ModuleScopeMixin, TimestampMixin, Base):
     )
     export_jobs: Mapped[list["ExportJob"]] = relationship(back_populates="event")
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
-        """Normalize legacy keyword arguments used in fixtures and tests."""
-
-        event_key = kwargs.pop("event_key", None)
-        event_type = kwargs.pop("type", None)
-        start_ts = kwargs.pop("start_ts", None)
-        objects = kwargs.pop("objects", None)
-        super().__init__(*args, **kwargs)
-        self.event_key = str(event_key or uuid4().hex)
-        if event_type is not None:
-            self.event_type = (
-                event_type.value if isinstance(event_type, EventType) else str(event_type)
-            )
-        if start_ts is not None:
-            self.event_time = start_ts
-        if objects is not None:
-            payload = dict(self.payload or {})
-            payload.setdefault("objects", objects)
-            self.payload = payload
-
-    @property
-    def type(self) -> EventType | str:
-        try:
-            return EventType(self.event_type)
-        except ValueError:
-            return self.event_type
-
-    @type.setter
-    def type(self, value: EventType | str) -> None:
-        self.event_type = value.value if isinstance(value, EventType) else str(value)
-
-    @property
-    def start_ts(self) -> datetime:
-        return self.event_time
-
-    @start_ts.setter
-    def start_ts(self, value: datetime) -> None:
-        self.event_time = value
-
 
     def __init__(self, **kwargs: Any) -> None:
         event_time = kwargs.pop("event_time", None)
-        if event_time is None:
-            event_time = kwargs.pop("start_ts", None)
-        if event_time is None:
-            event_time = datetime.now(timezone.utc)
-        elif isinstance(event_time, datetime) and event_time.tzinfo is None:
-            event_time = event_time.replace(tzinfo=timezone.utc)
-        kwargs.setdefault("start_ts", event_time)
-
+        if event_time is not None and "start_ts" not in kwargs:
+            kwargs["start_ts"] = event_time
         event_type = kwargs.pop("event_type", None)
-        if event_type is not None:
+        if event_type is not None and "type" not in kwargs:
             if isinstance(event_type, EventType):
-                kwargs.setdefault("type", event_type)
+                kwargs["type"] = event_type
             else:
                 try:
-                    kwargs.setdefault("type", EventType(str(event_type)))
-                except Exception:
-                    kwargs.setdefault("type", EventType.custom)
-        elif "type" not in kwargs:
-            kwargs["type"] = EventType.custom
-
-        payload = kwargs.pop("payload", None)
-        if payload is not None:
-            kwargs.setdefault("payload", payload)
-
-        objects = kwargs.pop("objects", None)
-        if objects is not None:
-            kwargs.setdefault("objects", objects)
-
+                    kwargs["type"] = EventType(event_type)
+                except ValueError:
+                    try:
+                        kwargs["type"] = EventType[event_type]
+                    except Exception:
+                        kwargs["type"] = EventType.custom
+        if "objects" not in kwargs:
+            payload = kwargs.get("payload")
+            if isinstance(payload, dict) and "objects" in payload:
+                kwargs["objects"] = payload["objects"]
+        kwargs.setdefault("objects", {})
         super().__init__(**kwargs)
 
 
@@ -468,44 +477,23 @@ class AsteroidMeta(ModuleScopeMixin, TimestampMixin, Base):
     orbit_class: Mapped[str | None] = mapped_column(String(64), nullable=True)
     source_catalog: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
-        """Allow legacy keyword aliases and sensible defaults."""
-
-        name = kwargs.pop("name", None)
-        designation = kwargs.get("designation")
-        asteroid_id = kwargs.pop("asteroid_id", None)
-        attributes = kwargs.pop("attributes", None)
-        super().__init__(*args, **kwargs)
-        if asteroid_id is None and designation is not None:
-            self.asteroid_id = str(designation)
-        elif asteroid_id is not None:
-            self.asteroid_id = str(asteroid_id)
-        if name is not None:
-            self.common_name = str(name)
-        elif not getattr(self, "common_name", None):
-            self.common_name = str(designation) if designation is not None else ""
-        if attributes is None and not getattr(self, "attributes", None):
-            self.attributes = {}
-        elif attributes is not None:
-            self.attributes = dict(attributes)
-
 
     def __init__(self, **kwargs: Any) -> None:
         asteroid_id = kwargs.pop("asteroid_id", None)
-        if "designation" not in kwargs and asteroid_id is not None:
-            kwargs["designation"] = str(asteroid_id)
         common_name = kwargs.pop("common_name", None)
-        if "name" not in kwargs and common_name is not None:
-            kwargs["name"] = common_name
-        attributes = kwargs.pop("attributes", None)
-        if attributes is not None:
-            kwargs.setdefault("attributes", attributes)
-        else:
-            kwargs.setdefault("attributes", {})
+        if asteroid_id is not None and "designation" not in kwargs:
+            kwargs["designation"] = str(asteroid_id)
+        if common_name is not None and "name" not in kwargs:
+            kwargs["name"] = str(common_name)
         super().__init__(**kwargs)
 
-        if common_name is not None:
-            self.common_name = common_name
+    @property
+    def common_name(self) -> str | None:
+        return self.name
+
+    @common_name.setter
+    def common_name(self, value: str | None) -> None:
+        self.name = value if value is not None else self.name
 
 
 
@@ -546,49 +534,40 @@ class ExportJob(ModuleScopeMixin, TimestampMixin, Base):
 
     event: Mapped[Event | None] = relationship(back_populates="export_jobs")
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
-        """Normalize legacy keyword arguments used in repositories."""
-
-        job_type = kwargs.pop("type", None)
-        params = kwargs.pop("params", None)
-        job_key = kwargs.pop("job_key", None)
-        super().__init__(*args, **kwargs)
-        if job_type is not None:
-            self.job_type = job_type.value if isinstance(job_type, ExportType) else str(job_type)
-        if params is not None:
-            self.payload = params
-        self.job_key = str(job_key) if job_key is not None else uuid4().hex
-
 
     def __init__(self, **kwargs: Any) -> None:
         job_type = kwargs.pop("job_type", None)
-        if job_type is not None:
+        if job_type is not None and "type" not in kwargs:
             if isinstance(job_type, ExportType):
-                kwargs.setdefault("type", job_type)
+                kwargs["type"] = job_type
             else:
                 try:
-                    kwargs.setdefault("type", ExportType(str(job_type)))
-                except Exception:
-                    kwargs.setdefault("type", ExportType.json)
-
+                    kwargs["type"] = ExportType(job_type)
+                except ValueError:
+                    try:
+                        kwargs["type"] = ExportType[job_type]
+                    except Exception:
+                        kwargs["type"] = ExportType.json
         payload = kwargs.pop("payload", None)
-        params = kwargs.pop("params", None)
-        if payload is not None and params is None:
-            params = payload
-        if params is not None:
-            kwargs.setdefault("params", params)
-        else:
-            kwargs.setdefault("params", {})
-
-        resolved_type = kwargs.get("type")
-
+        if payload is not None and "params" not in kwargs:
+            kwargs["params"] = payload
         super().__init__(**kwargs)
 
-        if resolved_type is not None:
-            if isinstance(resolved_type, ExportType):
-                self.job_type = resolved_type.value
-            else:
-                self.job_type = str(resolved_type)
+    @property
+    def job_type(self) -> str:
+        return self.type.value
+
+    @job_type.setter
+    def job_type(self, value: str) -> None:
+        self.type = ExportType(value)
+
+    @property
+    def payload(self) -> dict[str, Any]:
+        return self.params
+
+    @payload.setter
+    def payload(self, value: dict[str, Any]) -> None:
+        self.params = value
 
 
 
@@ -608,8 +587,8 @@ __all__ = [
 ]
 
 
-# Backwards compatible alias retained for older imports
-RuleSetVersion = RulesetVersion
-__all__.append("RuleSetVersion")
+# Backwards compatible alias retained for legacy imports
+RulesetVersion = RuleSetVersion
 
+__all__.append("RulesetVersion")
 
