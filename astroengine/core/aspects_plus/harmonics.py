@@ -1,8 +1,11 @@
+"""Harmonic aspect angle helpers."""
 
-"""Base aspect angles for named harmonic relationships."""
+from __future__ import annotations
+
+from math import gcd
+from typing import Iterable, List
 
 BASE_ASPECTS = {
-
     "conjunction": 0.0,
     "opposition": 180.0,
     "square": 90.0,
@@ -16,5 +19,52 @@ BASE_ASPECTS = {
 }
 
 
-__all__ = ["BASE_ASPECTS"]
+def base_aspect_angles(names: Iterable[str]) -> List[float]:
+    """Return sorted unique base aspect angles for the provided names."""
 
+    seen = set()
+    angles: List[float] = []
+    for name in names:
+        key = (name or "").strip().lower()
+        if key in BASE_ASPECTS and key not in seen:
+            seen.add(key)
+            angles.append(BASE_ASPECTS[key])
+    angles.sort()
+    return angles
+
+
+def harmonic_angles(order: int) -> List[float]:
+    """Return fundamental harmonic angles for ``order``."""
+
+    n = int(order)
+    if n <= 1:
+        return []
+    # Reduce redundant harmonics (e.g., even orders share bases with lower orders).
+    # We keep only the angles in (0, 180] unique to this harmonic.
+    fundamental: List[float] = []
+    for k in range(1, (n // 2) + 1):
+        if gcd(k, n) != 1:
+            continue
+        angle = 360.0 * k / n
+        if angle <= 180.0:
+            fundamental.append(angle)
+    fundamental.sort()
+    return fundamental
+
+
+def combined_angles(aspects: Iterable[str], harmonics: Iterable[int]) -> List[float]:
+    """Merge base aspects and harmonic-derived angles, deduplicated and sorted."""
+
+    out = set(base_aspect_angles(aspects))
+    for order in harmonics:
+        for angle in harmonic_angles(int(order)):
+            out.add(round(angle, 6))
+    return sorted(out)
+
+
+__all__ = [
+    "BASE_ASPECTS",
+    "base_aspect_angles",
+    "harmonic_angles",
+    "combined_angles",
+]
