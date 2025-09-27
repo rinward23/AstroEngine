@@ -1,28 +1,46 @@
 from datetime import datetime, timezone
 
 from app.db.models import (
-    OrbPolicy,
-    SeverityProfile,
+    AsteroidMeta,
     Chart,
     Event,
-    RuleSetVersion,
-    AsteroidMeta,
     ExportJob,
-    ChartKind,
-    EventType,
-    ExportType,
+    OrbPolicy,
+    RuleSetVersion,
+    RulesetVersion,
+    SeverityProfile,
 )
 
 
 def test_model_instantiation():
-    op = OrbPolicy(name="classic")
-    sp = SeverityProfile(name="default")
-    ch = Chart(kind=ChartKind.natal, dt_utc=datetime.now(timezone.utc), lat=0.0, lon=0.0)
-    rs = RuleSetVersion(key="electional_default")
-    ev = Event(type=EventType.custom, start_ts=datetime.now(timezone.utc), chart=ch)
-    am = AsteroidMeta(name="Chiron", designation="2060")
-    ex = ExportJob(type=ExportType.ics)
+    op = OrbPolicy(profile_key="default", body="Sun", aspect="sextile", orb_degrees=4.0)
+    sp = SeverityProfile(profile_key="default", weights={"sextile": 0.5})
+    ch = Chart(chart_key="chart-1", profile_key="default", data={"kind": "natal"})
+    rs = RulesetVersion(
+        ruleset_key="electional_default",
+        version="1.0",
+        checksum="abc123",
+        definition={"rules": []},
+    )
+    ev = Event(
+        event_key="event-1",
+        chart=ch,
+        ruleset_version=rs,
+        event_time=datetime.now(timezone.utc),
+        event_type="custom",
+        payload={"objects": {"A": "Mars", "B": "Venus"}},
+    )
+    am = AsteroidMeta(
+        asteroid_id="2060",
+        designation="2060",
+        common_name="Chiron",
+        attributes={"alias": "Chiron"},
+    )
+    ex = ExportJob(job_key="job-1", job_type="ics")
 
-    assert op.name == "classic"
-    assert ch.kind == ChartKind.natal
+    assert op.profile_key == "default"
+    assert ch.events == [ev]
     assert ev.chart is ch
+    assert isinstance(rs, RuleSetVersion)
+    assert am.common_name == "Chiron"
+    assert ex.job_type == "ics"

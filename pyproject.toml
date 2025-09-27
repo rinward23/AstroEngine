@@ -23,6 +23,7 @@ dependencies = [
   "numpy>=1.24",
   "pandas>=2.0",
   "python-dateutil>=2.8",
+  "pydantic>=2.11",
   "PyYAML>=6.0",
   "SQLAlchemy>=2.0",
   "alembic>=1.13",
@@ -65,9 +66,11 @@ cli = [
   "rich>=13.7",
   "pluggy>=1.5",
 ]
+
 ui = [
   "streamlit>=1.39",
   "plotly>=5.23",
+
 ]
 
 # Release bundles
@@ -90,7 +93,9 @@ dev = [
 ]
 
 all = [
+
   "astroengine[ephem,skyfield,catalogs,exporters,api,narrative,perf,cli,ui,providers]",
+
 ]
 
 [project.urls]
@@ -99,6 +104,7 @@ Homepage = "https://github.com/rinward23/AstroEngine"
 [project.scripts]
 astroengine = "astroengine.cli:main"
 astroengine-api = "astroengine.api_server:run"  # guarded import; only works with [api]
+astroengine-streamlit = "astroengine.ux.streamlit.cli:main"
 
 [tool.setuptools.package-data]
 astroengine = ["py.typed"]

@@ -1,6 +1,13 @@
 from datetime import datetime
+from datetime import datetime
+
 from app.schemas.aspects import (
-    AspectSearchRequest, AspectSearchResponse, AspectHit, DayBin, TimeWindow, Paging
+    AspectSearchRequest,
+    AspectSearchResponse,
+    AspectHit,
+    DayBin,
+    Paging,
+    TimeWindow,
 )
 
 

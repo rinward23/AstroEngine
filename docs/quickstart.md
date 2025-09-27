@@ -94,6 +94,14 @@ pip install -e .[ui]
 streamlit run apps/streamlit_transit_scanner.py
 ```
 
+If you installed AstroEngine with the ``streamlit`` extra you can also launch
+the Aspect Search dashboard directly:
+
+```bash
+pip install "astroengine[streamlit]"
+astroengine-streamlit
+```
+
 The sidebar echoes the detected providers, Swiss ephemeris path, and the
 scan entrypoints that will be attempted. Use the **Run scan** button to
 produce the same events as the CLI example above.

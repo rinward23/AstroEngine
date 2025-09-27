@@ -4,8 +4,13 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
 from app.db.models import (
-    OrbPolicy, SeverityProfile, Chart, Event, RuleSetVersion,
-    AsteroidMeta, ExportJob, ChartKind, EventType, ExportType
+    AsteroidMeta,
+    Chart,
+    Event,
+    ExportJob,
+    OrbPolicy,
+    RuleSetVersion,
+    SeverityProfile,
 )
 from app.repo import (
     OrbPolicyRepo, SeverityProfileRepo, ChartRepo, EventRepo,
@@ -21,42 +26,77 @@ Base.metadata.create_all(engine)
 def test_crud_cycle():
     with TestSession() as db:
         # OrbPolicy
-        op = OrbPolicyRepo().create(db, name="classic", per_object={"Sun": 8.0})
+        op = OrbPolicyRepo().create(
+            db,
+            profile_key="default",
+            body="Sun",
+            aspect="sextile",
+            orb_degrees=4.0,
+        )
         assert op.id is not None
 
         # SeverityProfile
-        sp = SeverityProfileRepo().create(db, name="default", weights={"conjunction": 1.0})
+        sp = SeverityProfileRepo().create(
+            db,
+            profile_key="default",
+            weights={"sextile": 0.5},
+        )
         assert sp.id is not None
 
         # Chart
-        ch = ChartRepo().create(db, kind=ChartKind.natal, dt_utc=datetime.now(timezone.utc), lat=0.0, lon=0.0)
+        ch = ChartRepo().create(
+            db,
+            chart_key="chart-1",
+            profile_key="default",
+            data={"kind": "natal"},
+        )
         assert ch.id is not None
 
-        # Event linked to chart
+        # Ruleset
+        rs = RuleSetRepo().create(
+            db,
+            ruleset_key="electional_default",
+            version="1.0",
+            checksum="abc123",
+            definition={"rules": []},
+        )
+        assert rs.id is not None
+        assert isinstance(rs, RuleSetVersion)
+
+        # Event linked to chart and ruleset
         ev = EventRepo().create(
             db,
-            type=EventType.custom,
-            start_ts=datetime.now(timezone.utc),
-            chart=ch,
-            objects={"A": "Mars", "B": "Venus"},
+            event_key="event-1",
+            chart_id=ch.id,
+            ruleset_version_id=rs.id,
+            event_time=datetime.now(timezone.utc),
+            event_type="custom",
+            payload={"objects": {"A": "Mars", "B": "Venus"}},
         )
         assert ev.id is not None and ev.chart_id == ch.id
 
-        # Ruleset
-        rs = RuleSetRepo().create(db, key="electional_default", version=1, definition_json={})
-        assert rs.id is not None
-
         # Asteroid
-        am = AsteroidRepo().create(db, name="Chiron", designation="2060")
+        am = AsteroidRepo().create(
+            db,
+            asteroid_id="2060",
+            designation="2060",
+            common_name="Chiron",
+            attributes={"alias": "Chiron"},
+        )
         assert am.id is not None
 
         # Export job
-        ex = ExportJobRepo().create(db, type=ExportType.ics, params={"foo": "bar"})
+        ex = ExportJobRepo().create(
+            db,
+            job_key="job-1",
+            job_type="ics",
+            payload={"foo": "bar"},
+        )
         assert ex.id is not None
 
         # Update
-        ChartRepo().update(db, ch.id, location_name="Greenwich")
-        assert ChartRepo().get(db, ch.id).location_name == "Greenwich"
+        ChartRepo().update(db, ch.id, source="Greenwich")
+        assert ChartRepo().get(db, ch.id).source == "Greenwich"
 
         # Delete
         EventRepo().delete(db, ev.id)

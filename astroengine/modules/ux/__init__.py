@@ -87,6 +87,7 @@ def register_ux_module(registry: AstroRegistry) -> None:
         metadata={"description": "Placeholder for Streamlit-hosted UI panels."},
         payload={
             "implementation": "pending",
+            "commands": ["astroengine-streamlit"],
             "todo": [
                 "Document commands to launch example panels",
                 "Track dataset provenance for any panel-derived outputs",
