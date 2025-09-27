@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pytest
+
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from astroengine.api import app
