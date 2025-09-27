@@ -1,5 +1,6 @@
 
-"""SQLAlchemy declarative base for AstroEngine application models."""
+"""Declarative base used by Alembic to reflect AstroEngine Plus models."""
+
 
 from __future__ import annotations
 
@@ -7,7 +8,11 @@ from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
-    """Declarative base class used by all ORM models in the app package."""
+
+    """Shared declarative base ensuring a single metadata tree for migrations."""
 
     pass
+
+
+__all__ = ["Base"]
 
