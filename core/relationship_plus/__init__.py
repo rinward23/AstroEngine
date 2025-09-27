@@ -10,6 +10,13 @@ from .composite import (
     norm360,
     delta_short,
 )
+from .synastry import (
+    SynastryHit,
+    overlay_positions,
+    synastry_grid,
+    synastry_hits,
+    synastry_score,
+)
 
 __all__ = [
     "Geo",
@@ -20,4 +27,9 @@ __all__ = [
     "midpoint_angle",
     "norm360",
     "delta_short",
+    "SynastryHit",
+    "overlay_positions",
+    "synastry_grid",
+    "synastry_hits",
+    "synastry_score",
 ]

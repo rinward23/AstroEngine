@@ -1,26 +1,21 @@
+tionship-api
+"""Synastry helpers for combining two position sets."""
+
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
-from core.aspects_plus.harmonics import BASE_ASPECTS
-from core.aspects_plus.matcher import angular_sep_deg
-from core.aspects_plus.orb_policy import orb_limit
-
-EPS = 1e-9
-WRAP_ALLOWANCE_MAX = 30.0
-
-ASPECT_SYMBOLS = {
-    "conjunction": "☌",
-    "opposition": "☍",
-    "trine": "△",
-    "square": "□",
-    "sextile": "✶",
-    "quincunx": "⚻",
-}
+from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS
+from astroengine.core.aspects_plus.matcher import angular_sep_deg
+from astroengine.core.aspects_plus.orb_policy import orb_limit
 
 
 @dataclass
-class Hit:
+class SynastryHit:
+    """Container for a single synastry hit."""
+
+
     a: str
     b: str
     aspect: str
@@ -31,140 +26,144 @@ class Hit:
     severity: float
 
 
-def _cos_taper(x: float) -> float:
-    """Cosine taper on [0, 1] scaled to [1, 0]."""
-    import math
 
-    x = max(0.0, min(1.0, x))
-    return 0.5 * (1.0 + math.cos(math.pi * x)) if x < 1.0 else 0.0
+def _pair_weight(
+    weights: Optional[Mapping[Tuple[str, str], float]],
+    a: str,
+    b: str,
+) -> float:
+    if not weights:
+        return 1.0
+    if (a, b) in weights:
+        return float(weights[(a, b)])
+    if (b, a) in weights:
+        return float(weights[(b, a)])
+    return 1.0
 
 
-def _severity_from_orb(orb: float, limit: float, weight: float = 1.0) -> float:
-    """Convert an orb distance into a severity score using a smooth taper."""
-    if limit <= 0:
-        return 0.0
-    return weight * _cos_taper(abs(orb) / float(limit))
+def _best_aspect(
+    a_name: str,
+    b_name: str,
+    delta: float,
+    aspects: Iterable[str],
+    policy: Mapping[str, Any],
+) -> Optional[Tuple[str, float, float]]:
+    best: Optional[Tuple[str, float, float]] = None
+    for asp in aspects:
+        key = asp.lower()
+        angle = BASE_ASPECTS.get(key)
+        if angle is None:
+            continue
+        limit = float(orb_limit(a_name, b_name, key, policy))
+        orb = abs(delta - float(angle))
+        if best is None or orb < best[1]:
+            best = (key, orb, limit)
+    return best
 
 
 def synastry_hits(
-    posA: Dict[str, float],
-    posB: Dict[str, float],
+    pos_a: Mapping[str, float],
+    pos_b: Mapping[str, float],
+    *,
     aspects: Iterable[str],
-    policy: Dict,
-    per_aspect_weight: Optional[Dict[str, float]] = None,
-    per_pair_weight: Optional[Dict[Tuple[str, str], float]] = None,
-) -> List[Hit]:
-    """Compute the strongest aspect for each A×B pair under the supplied orb limits."""
+    policy: Mapping[str, Any],
+    per_aspect_weight: Optional[Mapping[str, float]] = None,
+    per_pair_weight: Optional[Mapping[Tuple[str, str], float]] = None,
+) -> List[SynastryHit]:
+    """Return matched aspects for all A×B pairs within the configured policy."""
 
-    namesA = list(posA.keys())
-    namesB = list(posB.keys())
-    hits: List[Hit] = []
-
-    for a in namesA:
-        a_lon = float(posA[a])
-        for b in namesB:
-            b_lon = float(posB[b])
-            delta = angular_sep_deg(a_lon, b_lon)
-            raw_diff = abs(a_lon - b_lon) % 360.0
-            best: Optional[Tuple[str, float, float, float, float, float]] = None
-            for asp in aspects:
-                ang = BASE_ASPECTS.get(asp.lower())
-                if ang is None:
-                    continue
-                desired_angle = float(ang)
-                orb = abs(delta - desired_angle)
-                limit = orb_limit(a, b, asp.lower(), policy)
-
-                wrap_slack = 0.0
-                limit_for_check = limit
-                if raw_diff > 180.0 and orb > limit + EPS:
-                    wrap_gap = delta
-                    wrap_slack = min(WRAP_ALLOWANCE_MAX, max(limit, wrap_gap))
-                    limit_for_check = limit + wrap_slack
-
-                if orb <= limit_for_check + EPS:
-                    effective_limit = limit
-                    if wrap_slack > 0.0 and orb > limit + EPS:
-                        effective_limit = max(limit, delta + wrap_slack)
-
-                    w_asp = (per_aspect_weight or {}).get(asp.lower(), 1.0)
-                    w_pair = (per_pair_weight or {}).get((a, b), 1.0)
-                    sev = _severity_from_orb(orb, effective_limit, weight=w_asp * w_pair)
-                    cand = (
-                        asp.lower(),
-                        desired_angle,
-                        float(delta),
-                        float(orb),
-                        float(effective_limit),
-                        float(sev),
-                    )
-                    if best is None or cand[3] < best[3]:
-                        best = cand
-            if best:
-                asp, ang, delt, orb, limit, sev = best
-                hits.append(
-                    Hit(
-                        a=a,
-                        b=b,
-                        aspect=asp,
-                        angle=ang,
-                        delta=delt,
-                        orb=orb,
-                        limit=limit,
-                        severity=sev,
-                    )
+    hits: List[SynastryHit] = []
+    for name_a, lon_a in pos_a.items():
+        if lon_a is None:
+            continue
+        for name_b, lon_b in pos_b.items():
+            if lon_b is None:
+                continue
+            delta = angular_sep_deg(float(lon_a), float(lon_b))
+            best = _best_aspect(name_a, name_b, delta, aspects, policy)
+            if best is None:
+                continue
+            aspect, orb, limit = best
+            base = 0.0 if limit <= 0.0 else max(0.0, 1.0 - orb / limit)
+            w_aspect = 1.0 if per_aspect_weight is None else float(per_aspect_weight.get(aspect, 1.0))
+            w_pair = _pair_weight(per_pair_weight, name_a, name_b)
+            severity = base * w_aspect * w_pair
+            hits.append(
+                SynastryHit(
+                    a=name_a,
+                    b=name_b,
+                    aspect=aspect,
+                    angle=float(BASE_ASPECTS.get(aspect, 0.0)),
+                    delta=float(delta),
+                    orb=float(orb),
+                    limit=float(limit),
+                    severity=severity,
                 )
-
-    hits.sort(key=lambda h: (-h.severity, h.orb))
+            )
+    hits.sort(key=lambda h: (h.a, h.b, h.orb, h.aspect))
     return hits
 
 
-def synastry_grid(hits: List[Hit]) -> Dict[str, Dict[str, str]]:
-    """Build a symbol grid for the detected synastry hits."""
+def synastry_grid(hits: Iterable[SynastryHit]) -> Dict[str, Dict[str, str]]:
+    """Return a simple grid summarising the dominant aspect per pair."""
 
-    grid: Dict[str, Dict[str, str]] = {}
-    for h in hits:
-        grid.setdefault(h.a, {})
-        grid[h.a][h.b] = ASPECT_SYMBOLS.get(h.aspect, h.aspect)
-    return grid
-
-
-def overlay_positions(
-    posA: Dict[str, float],
-    posB: Dict[str, float],
-    include: Optional[Iterable[str]] = None,
-) -> Dict[str, Dict[str, float | str]]:
-    """Merge two position maps and annotate their origin ring for wheel overlays."""
-
-    out: Dict[str, Dict[str, float | str]] = {}
-
-    def _add(src: Dict[str, float], ring: str) -> None:
-        for k, v in src.items():
-            if include and k not in include:
-                continue
-            out[k] = {"lon": float(v), "ring": ring}
-
-    _add(posA, "A")
-    _add(posB, "B")
-    return out
-
-
-def synastry_score(hits: List[Hit]) -> Dict[str, object]:
-    """Summarize severity totals by aspect and by body for each chart."""
-
-    total = sum(h.severity for h in hits)
-    by_aspect: Dict[str, float] = {}
-    by_a: Dict[str, float] = {}
-    by_b: Dict[str, float] = {}
-
-    for h in hits:
-        by_aspect[h.aspect] = by_aspect.get(h.aspect, 0.0) + h.severity
-        by_a[h.a] = by_a.get(h.a, 0.0) + h.severity
-        by_b[h.b] = by_b.get(h.b, 0.0) + h.severity
-
+    best: Dict[str, Dict[str, SynastryHit]] = {}
+    for hit in hits:
+        row = best.setdefault(hit.a, {})
+        current = row.get(hit.b)
+        if current is None or hit.orb < current.orb:
+            row[hit.b] = hit
     return {
-        "overall": total,
-        "by_aspect": by_aspect,
-        "by_bodyA": by_a,
-        "by_bodyB": by_b,
+        a_name: {b_name: entry.aspect for b_name, entry in cols.items()}
+        for a_name, cols in best.items()
     }
+
+
+def overlay_positions(pos_a: Mapping[str, float], pos_b: Mapping[str, float]) -> Dict[str, Dict[str, float]]:
+    """Return overlay of chart positions keyed by body."""
+
+    overlay: Dict[str, Dict[str, float]] = {}
+    for name in sorted(set(pos_a.keys()) | set(pos_b.keys())):
+        entry: Dict[str, float] = {}
+        if name in pos_a and pos_a[name] is not None:
+            entry["A"] = float(pos_a[name])
+        if name in pos_b and pos_b[name] is not None:
+            entry["B"] = float(pos_b[name])
+        if "A" in entry and "B" in entry:
+            entry["delta"] = angular_sep_deg(entry["A"], entry["B"])
+        overlay[name] = entry
+    return overlay
+
+
+def synastry_score(hits: Iterable[SynastryHit]) -> Dict[str, Any]:
+    """Aggregate severity across the hit list."""
+
+    total = 0.0
+    per_aspect: Dict[str, float] = {}
+    per_pair: Dict[str, float] = {}
+    count = 0
+    for hit in hits:
+        severity = float(hit.severity)
+        total += severity
+        per_aspect[hit.aspect] = per_aspect.get(hit.aspect, 0.0) + severity
+        key = f"{hit.a}→{hit.b}"
+        per_pair[key] = per_pair.get(key, 0.0) + severity
+        count += 1
+    average = total / count if count else 0.0
+    return {
+        "total": total,
+        "average": average,
+        "per_aspect": per_aspect,
+        "per_pair": per_pair,
+        "count": count,
+    }
+
+
+__all__ = [
+    "SynastryHit",
+    "synastry_grid",
+    "synastry_hits",
+    "synastry_score",
+    "overlay_positions",
+]
+
