@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import site
-import sys
+
+import importlib
+
 from importlib.metadata import entry_points
 
 
@@ -49,6 +50,7 @@ class Registry:
 def load_plugins(registry: Registry) -> list[str]:
     """Load plugin entry points and allow them to self-register."""
 
+    importlib.invalidate_caches()
     names: list[str] = []
     for ep in _prepare_entrypoints("astroengine.plugins"):
         fn = ep.load()
@@ -60,6 +62,7 @@ def load_plugins(registry: Registry) -> list[str]:
 def load_providers(registry: Registry) -> list[str]:
     """Load provider entry points and register them with the runtime."""
 
+    importlib.invalidate_caches()
     names: list[str] = []
     for ep in _prepare_entrypoints("astroengine.providers"):
         fn = ep.load()

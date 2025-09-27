@@ -81,3 +81,9 @@ class APIClient:
             raise RuntimeError("Unexpected response payload from /events/returns")
         return data
 
+    def electional_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Invoke the electional search endpoint."""
+        r = requests.post(f"{self.base}/electional/search", json=payload, timeout=90)
+        r.raise_for_status()
+        return r.json()
+

@@ -14,7 +14,7 @@ from typing import Any, Iterable, Literal, Sequence
 
 from fastapi import APIRouter, HTTPException
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from ...core.transit_engine import scan_transits
 
@@ -129,11 +129,6 @@ class TimeWindow(BaseModel):
     )
 
     model_config = ConfigDict(extra="ignore")
-
-
-    natal: datetime = Field(validation_alias=AliasChoices("natal_inline", "natal"))
-    start: datetime = Field(validation_alias=AliasChoices("from", "start"))
-    end: datetime = Field(validation_alias=AliasChoices("to", "end"))
 
     @field_validator("natal", "start", "end", mode="before")
     @classmethod

@@ -8,8 +8,9 @@ from collections.abc import Mapping
 from typing import Any, Sequence
 
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, validator
+
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+
 
 from ...chart.natal import DEFAULT_BODIES
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter

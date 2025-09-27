@@ -85,6 +85,7 @@ def _resolve_orb_policy_inline_or_id(
     "/transits/score-series",
     response_model=ScoreSeriesResponse,
     summary="Daily & monthly composite severity",
+    operation_id="plus_score_series",
 )
 def score_series(req: ScoreSeriesRequest):
     if req.hits:
