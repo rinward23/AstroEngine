@@ -6,15 +6,16 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable, Literal, Sequence
+from typing import Any, Iterable, Literal, Mapping, Sequence
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from ...core.transit_engine import scan_transits
-from ...detectors.directions import solar_arc_directions
-from ...detectors.progressions import secondary_progressions
-from ...detectors.returns import scan_returns
+from ...detectors.directions import solar_arc_directions as _solar_arc_directions
+from ...detectors.progressions import secondary_progressions as _secondary_progressions
+from ...detectors.returns import solar_lunar_returns as _solar_lunar_returns
+from ...ephemeris import SwissEphemerisAdapter
 from ...events import DirectionEvent, ProgressionEvent, ReturnEvent
 from ...exporters import write_parquet_canonical, write_sqlite_canonical
 from ...exporters_ics import write_ics_canonical
@@ -22,6 +23,51 @@ from ...detectors_aspects import AspectHit
 
 
 router = APIRouter()
+
+
+def progressed_natal_aspects(
+    *,
+    natal: str,
+    start: str,
+    end: str,
+    bodies: Sequence[str] | None = None,
+    step_days: float = 30.0,
+):
+    return _secondary_progressions(
+        natal,
+        start,
+        end,
+        bodies=bodies,
+        step_days=step_days,
+    )
+
+
+def solar_arc_natal_aspects(
+    *, natal: str, start: str, end: str, bodies: Sequence[str] | None = None
+):
+    return _solar_arc_directions(
+        natal,
+        start,
+        end,
+        bodies=bodies,
+    )
+
+
+def solar_lunar_returns(
+    natal_jd: float,
+    start_jd: float,
+    end_jd: float,
+    *,
+    kind: str,
+    adapter: SwissEphemerisAdapter | None = None,
+):
+    return _solar_lunar_returns(
+        natal_jd,
+        start_jd,
+        end_jd,
+        kind,
+        adapter=adapter,
+    )
 
 
 
@@ -38,7 +84,8 @@ class ExportOptions(BaseModel):
         description="Optional calendar name used for ICS exports.",
     )
 
-    @validator("path")
+    @field_validator("path")
+    @classmethod
     def _validate_path(cls, value: str) -> str:
         if not value or not value.strip():
             raise ValueError("export path must be provided")
@@ -46,17 +93,25 @@ class ExportOptions(BaseModel):
 
 
 class TimeWindow(BaseModel):
-    natal: datetime
-    start: datetime
-    end: datetime
+    model_config = ConfigDict(populate_by_name=True)
 
-    @validator("natal", "start", "end", pre=True)
+    natal: datetime = Field(validation_alias=AliasChoices("natal_inline", "natal"))
+    start: datetime = Field(validation_alias=AliasChoices("from", "start"))
+    end: datetime = Field(validation_alias=AliasChoices("to", "end"))
+
+    @field_validator("natal", "start", "end", mode="before")
+    @classmethod
     def _coerce_datetime(cls, value: Any) -> datetime:
         if isinstance(value, datetime):
             return value.astimezone(UTC)
         if isinstance(value, str):
             dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
             return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
+        if isinstance(value, dict):
+            ts = value.get("ts")
+            if ts:
+                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
         raise TypeError("expected ISO-8601 timestamp")
 
     def iso_tuple(self) -> tuple[str, str, str]:
@@ -118,43 +173,91 @@ def _hit_from_aspect(hit: AspectHit) -> Hit:
     )
 
 
-def _hit_from_progression(event: ProgressionEvent) -> list[Hit]:
-    payload: list[Hit] = []
-    for body, longitude in event.positions.items():
-        payload.append(
-            Hit(
-                ts=event.ts,
-                moving=str(body),
-                target="Progression",
-                aspect=0,
-                orb=0.0,
-                metadata={
-                    "method": event.method,
-                    "longitude": float(longitude),
-                },
+def _hit_from_progression(event: ProgressionEvent | Mapping[str, Any] | Any) -> list[Hit]:
+    if hasattr(event, "positions"):
+        payload: list[Hit] = []
+        for body, longitude in event.positions.items():  # type: ignore[union-attr]
+            payload.append(
+                Hit(
+                    ts=getattr(event, "ts"),
+                    moving=str(body),
+                    target="Progression",
+                    aspect=0,
+                    orb=0.0,
+                    metadata={
+                        "method": getattr(event, "method", "secondary"),
+                        "longitude": float(longitude),
+                    },
+                )
             )
+        return payload
+
+    data: Mapping[str, Any]
+    if isinstance(event, Mapping):
+        data = event
+    else:
+        data = getattr(event, "__dict__", {})
+
+    ts = str(data.get("when_iso") or data.get("ts"))
+    motion = data.get("motion") or data.get("applying_or_separating")
+    motion = motion or ("applying" if data.get("applying") else None)
+    meta = {"method": data.get("method", "progressions")}
+    if "retrograde" in data:
+        meta["retrograde"] = data.get("retrograde")
+    return [
+        Hit(
+            ts=ts,
+            moving=str(data.get("moving", "")),
+            target=str(data.get("target", "Progression")),
+            aspect=int(data.get("aspect", 0)),
+            orb=float(data.get("orb", 0.0)),
+            motion=motion,
+            metadata=meta,
         )
-    return payload
+    ]
 
 
-def _hit_from_direction(event: DirectionEvent) -> list[Hit]:
-    payload: list[Hit] = []
-    for body, longitude in event.positions.items():
-        payload.append(
-            Hit(
-                ts=event.ts,
-                moving=str(body),
-                target="Direction",
-                aspect=0,
-                orb=0.0,
-                metadata={
-                    "method": event.method,
-                    "longitude": float(longitude),
-                    "arc_degrees": float(event.arc_degrees),
-                },
+def _hit_from_direction(event: DirectionEvent | Mapping[str, Any] | Any) -> list[Hit]:
+    if hasattr(event, "positions"):
+        payload: list[Hit] = []
+        for body, longitude in event.positions.items():  # type: ignore[union-attr]
+            payload.append(
+                Hit(
+                    ts=getattr(event, "ts"),
+                    moving=str(body),
+                    target="Direction",
+                    aspect=0,
+                    orb=0.0,
+                    metadata={
+                        "method": getattr(event, "method", "solar_arc"),
+                        "longitude": float(longitude),
+                        "arc_degrees": float(getattr(event, "arc_degrees", 0.0)),
+                    },
+                )
             )
+        return payload
+
+    data: Mapping[str, Any]
+    if isinstance(event, Mapping):
+        data = event
+    else:
+        data = getattr(event, "__dict__", {})
+
+    motion = data.get("motion") or data.get("applying_or_separating")
+    return [
+        Hit(
+            ts=str(data.get("when_iso") or data.get("ts")),
+            moving=str(data.get("moving", "")),
+            target=str(data.get("target", "Direction")),
+            aspect=int(data.get("aspect", 0)),
+            orb=float(data.get("orb", 0.0)),
+            motion=motion,
+            metadata={
+                "method": data.get("method", "directions"),
+                "arc_degrees": data.get("arc_degrees"),
+            },
         )
-    return payload
+    ]
 
 
 def _hit_from_return(event: ReturnEvent) -> Hit:
@@ -219,10 +322,10 @@ def _export_hits(options: ExportOptions, hits: Iterable[Hit], *, method: str) ->
 @router.post("/progressions", response_model=ScanResponse)
 def api_scan_progressions(request: TransitScanRequest) -> ScanResponse:
     natal, start, end = request.iso_tuple()
-    events = secondary_progressions(
-        natal,
-        start,
-        end,
+    events = progressed_natal_aspects(
+        natal=natal,
+        start=start,
+        end=end,
         bodies=request.bodies,
         step_days=request.step_days,
     )
@@ -242,10 +345,10 @@ def api_scan_progressions(request: TransitScanRequest) -> ScanResponse:
 @router.post("/directions", response_model=ScanResponse)
 def api_scan_directions(request: TransitScanRequest) -> ScanResponse:
     natal, start, end = request.iso_tuple()
-    events = solar_arc_directions(
-        natal,
-        start,
-        end,
+    events = solar_arc_natal_aspects(
+        natal=natal,
+        start=start,
+        end=end,
         bodies=request.bodies,
     )
 
@@ -264,6 +367,11 @@ def api_scan_directions(request: TransitScanRequest) -> ScanResponse:
 @router.post("/transits", response_model=ScanResponse)
 def api_scan_transits(request: TransitScanRequest) -> ScanResponse:
     natal, start, end = request.iso_tuple()
+    if not request.bodies or not request.targets or not request.aspects:
+        raise HTTPException(
+            status_code=501,
+            detail="transit scanning requires bodies, targets, and aspects",
+        )
     aspect_hits = scan_transits(
         natal,
         start,
@@ -287,17 +395,24 @@ def api_scan_transits(request: TransitScanRequest) -> ScanResponse:
 @router.post("/returns", response_model=ScanResponse)
 def api_scan_returns(request: ReturnsScanRequest) -> ScanResponse:
     natal, start, end = request.iso_tuple()
-    bodies = list(request.bodies or ["Sun", "Moon"])
+    bodies = list(request.bodies or ["Sun"])
+
+    adapter = SwissEphemerisAdapter.get_default_adapter()
+    natal_jd = adapter.julian_day(request.natal)
+    start_jd = adapter.julian_day(request.start)
+    end_jd = adapter.julian_day(request.end)
 
     hits: list[Hit] = []
     for body in bodies:
         kind = "solar" if body.lower() == "sun" else "lunar"
-        events = scan_returns(
-            natal,
-            start,
-            end,
-            kind=kind,
-            step_days=request.step_days,
+        kwargs: dict[str, Any] = {"kind": kind}
+        if request.step_days is not None:
+            kwargs["step_days"] = request.step_days
+        events = solar_lunar_returns(
+            natal_jd,
+            start_jd,
+            end_jd,
+            **kwargs,
         )
         hits.extend(_hit_from_return(event) for event in events)
 
