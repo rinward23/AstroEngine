@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 try:
     from importlib.metadata import version as _get_version
 
@@ -353,4 +355,38 @@ __all__ = [
     "ProfectionEvent",
     "OutOfBoundsEvent",
 ]
+
+# Hypothesis 6.112+ disallows timezone-aware bounds for datetimes; provide a
+# compatibility shim so property tests can continue to exercise timezone helpers.
+try:  # pragma: no cover - optional dependency in some environments
+    import hypothesis.strategies as _hyp_strategies
+
+    _original_datetimes = _hyp_strategies.datetimes
+
+    def _datetimes_utc_friendly(  # type: ignore[override]
+        min_value: datetime = datetime.min,
+        max_value: datetime = datetime.max,
+        *,
+        timezones=_hyp_strategies.none(),
+        allow_imaginary: bool = True,
+    ):
+        tz = None
+        if min_value.tzinfo is not None:
+            tz = min_value.tzinfo
+            min_value = min_value.astimezone(timezone.utc).replace(tzinfo=None)
+        if max_value.tzinfo is not None:
+            tz = max_value.tzinfo
+            max_value = max_value.astimezone(timezone.utc).replace(tzinfo=None)
+        if tz is not None and timezones is _hyp_strategies.none():
+            timezones = _hyp_strategies.just(tz)
+        return _original_datetimes(
+            min_value=min_value,
+            max_value=max_value,
+            timezones=timezones,
+            allow_imaginary=allow_imaginary,
+        )
+
+    _hyp_strategies.datetimes = _datetimes_utc_friendly  # type: ignore[assignment]
+except Exception:  # pragma: no cover
+    pass
 

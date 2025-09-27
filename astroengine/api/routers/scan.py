@@ -7,24 +7,88 @@ import inspect
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+
 from collections.abc import Mapping
 from typing import Any, Iterable, Literal, Sequence
 
+
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, validator
+
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, validator
 
 from ...core.transit_engine import scan_transits
+
 from ...detectors.directed_aspects import solar_arc_natal_aspects
 from ...detectors.progressed_aspects import progressed_natal_aspects
 from ...detectors.returns import solar_lunar_returns
 from ...detectors_aspects import AspectHit
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from ...events import ReturnEvent
+
 from ...exporters import write_parquet_canonical, write_sqlite_canonical
 from ...exporters_ics import write_ics_canonical
 
 
 router = APIRouter()
+
+
+def progressed_natal_aspects(
+
+    natal_iso: str,
+    start_iso: str,
+    end_iso: str,
+    *,
+    bodies: Sequence[str] | None = None,
+    step_days: float = 30.0,
+):
+    return secondary_progressions(
+        natal_iso,
+        start_iso,
+        end_iso,
+
+        bodies=bodies,
+        step_days=step_days,
+    )
+
+
+def solar_arc_natal_aspects(
+
+    natal_iso: str,
+    start_iso: str,
+    end_iso: str,
+    *,
+    bodies: Sequence[str] | None = None,
+):
+    return solar_arc_directions(
+        natal_iso,
+        start_iso,
+        end_iso,
+
+        bodies=bodies,
+    )
+
+
+def solar_lunar_returns(
+    natal_jd: float,
+    start_jd: float,
+    end_jd: float,
+    *,
+    kind: str,
+
+    step_days: float | None = None,
+
+    adapter: SwissEphemerisAdapter | None = None,
+):
+    return _solar_lunar_returns(
+        natal_jd,
+        start_jd,
+        end_jd,
+
+        kind=kind,
+        step_days=step_days,
+
+        adapter=adapter,
+    )
 
 
 
@@ -41,7 +105,8 @@ class ExportOptions(BaseModel):
         description="Optional calendar name used for ICS exports.",
     )
 
-    @validator("path")
+    @field_validator("path")
+    @classmethod
     def _validate_path(cls, value: str) -> str:
         if not value or not value.strip():
             raise ValueError("export path must be provided")
@@ -49,17 +114,42 @@ class ExportOptions(BaseModel):
 
 
 class TimeWindow(BaseModel):
-    natal: datetime
-    start: datetime
-    end: datetime
 
-    @validator("natal", "start", "end", pre=True)
+    natal: datetime = Field(
+        ...,
+        validation_alias=AliasChoices("natal", "natal_inline"),
+    )
+    start: datetime = Field(
+        ...,
+        validation_alias=AliasChoices("start", "from"),
+    )
+    end: datetime = Field(
+        ...,
+        validation_alias=AliasChoices("end", "to"),
+    )
+
+    model_config = ConfigDict(extra="ignore")
+
+
+    natal: datetime = Field(validation_alias=AliasChoices("natal_inline", "natal"))
+    start: datetime = Field(validation_alias=AliasChoices("from", "start"))
+    end: datetime = Field(validation_alias=AliasChoices("to", "end"))
+
+    @field_validator("natal", "start", "end", mode="before")
+    @classmethod
     def _coerce_datetime(cls, value: Any) -> datetime:
+        if isinstance(value, Mapping):
+            value = value.get("ts")
         if isinstance(value, datetime):
             return value.astimezone(UTC)
         if isinstance(value, str):
             dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
             return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
+        if isinstance(value, dict):
+            ts = value.get("ts")
+            if ts:
+                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
         raise TypeError("expected ISO-8601 timestamp")
 
     def iso_tuple(self) -> tuple[str, str, str]:
@@ -74,11 +164,15 @@ class TransitScanRequest(TimeWindow):
     step_days: float = Field(default=1.0, gt=0.0)
     export: ExportOptions | None = None
 
+    model_config = ConfigDict(extra="ignore")
+
 
 class ReturnsScanRequest(TimeWindow):
     bodies: Sequence[str] | None = None
     step_days: float | None = None
     export: ExportOptions | None = None
+
+    model_config = ConfigDict(extra="ignore")
 
 
 class Hit(BaseModel):
@@ -183,6 +277,7 @@ def _normalize_scan_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
         "end": end,
     }
 
+
     step_days = data.get("step_days")
     if step_days is None and "step_minutes" in data:
         try:
@@ -277,14 +372,29 @@ def _hit_from_aspect(hit: AspectHit | Mapping[str, Any] | object) -> Hit:
     )
 
 
+
 def _hit_from_return(event: ReturnEvent) -> Hit:
+    if hasattr(event, "body"):
+        return Hit(
+            ts=event.ts,
+            moving=event.body,
+            target="Return",
+            aspect=0,
+            orb=0.0,
+            metadata={"kind": event.method, "longitude": float(event.longitude)},
+        )
+
+    data = event if isinstance(event, Mapping) else event.__dict__
     return Hit(
-        ts=event.ts,
-        moving=event.body,
+        ts=str(data.get("ts", "")),
+        moving=str(data.get("body", "")),
         target="Return",
         aspect=0,
         orb=0.0,
-        metadata={"kind": event.method, "longitude": float(event.longitude)},
+        metadata={
+            "kind": str(data.get("method", "")),
+            "longitude": float(data.get("longitude", 0.0) or 0.0),
+        },
     )
 
 
@@ -341,6 +451,7 @@ def api_scan_progressions(payload: dict[str, Any]) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = TransitScanRequest(**request_data)
     natal, start, end = request.iso_tuple()
+
     aspects = _resolve_progression_aspects(request.aspects)
     hits_raw = progressed_natal_aspects(
         natal_ts=natal,
@@ -348,6 +459,7 @@ def api_scan_progressions(payload: dict[str, Any]) -> ScanResponse:
         end_ts=end,
         aspects=aspects,
         orb_deg=float(request.orb),
+
         bodies=request.bodies,
         step_days=float(request.step_days),
     )
@@ -366,6 +478,7 @@ def api_scan_directions(payload: dict[str, Any]) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = TransitScanRequest(**request_data)
     natal, start, end = request.iso_tuple()
+
     aspects = _resolve_progression_aspects(request.aspects)
     hits_raw = solar_arc_natal_aspects(
         natal_ts=natal,
@@ -373,6 +486,7 @@ def api_scan_directions(payload: dict[str, Any]) -> ScanResponse:
         end_ts=end,
         aspects=aspects,
         orb_deg=float(request.orb),
+
         bodies=request.bodies,
         step_days=float(request.step_days),
     )
@@ -394,6 +508,11 @@ def api_scan_transits(payload: dict[str, Any]) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = TransitScanRequest(**request_data)
     natal, start, end = request.iso_tuple()
+    if not request.bodies or not request.targets or not request.aspects:
+        raise HTTPException(
+            status_code=501,
+            detail="transit scanning requires bodies, targets, and aspects",
+        )
     aspect_hits = scan_transits(
         natal,
         start,
@@ -415,6 +534,7 @@ def api_scan_transits(payload: dict[str, Any]) -> ScanResponse:
 
 
 @router.post("/returns", response_model=ScanResponse)
+
 def api_scan_returns(payload: dict[str, Any]) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = ReturnsScanRequest(**request_data)
@@ -435,6 +555,7 @@ def api_scan_returns(payload: dict[str, Any]) -> ScanResponse:
             kwargs["step_days"] = request.step_days
         if "adapter" in params:
             kwargs["adapter"] = adapter
+
         events = solar_lunar_returns(
             natal_jd,
             start_jd,

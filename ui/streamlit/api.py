@@ -1,41 +1,39 @@
 from __future__ import annotations
-import os
+
+import os, requests
 from typing import Any, Dict
 
-import requests
-
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
-
-
-def _extract_error_message(response: requests.Response | None) -> str | None:
-    """Best-effort extraction of a useful error message from an HTTP response."""
-
-    if response is None:
-        return None
-
-    try:
-        payload = response.json()
-    except ValueError:
-        text = response.text.strip()
-        return text or None
-
-    if isinstance(payload, dict):
-        detail = payload.get("detail")
-        if isinstance(detail, str) and detail.strip():
-            return detail.strip()
-        # FastAPI may return a list of errors under ``detail``
-        if isinstance(detail, list) and detail:
-            first = detail[0]
-            if isinstance(first, dict):
-                msg = first.get("msg")
-                if isinstance(msg, str) and msg.strip():
-                    return msg.strip()
-    return None
-
 
 class APIClient:
     def __init__(self, base_url: str | None = None) -> None:
         self.base = (base_url or API_BASE_URL).rstrip("/")
+
+
+    # existing: aspects_search(...)
+    def aspects_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        url = f"{self.base}/aspects/search"
+        r = requests.post(url, json=payload, timeout=60)
+        r.raise_for_status()
+        return r.json()
+
+    # ---- OrbPolicy CRUD ---------------------------------------------------
+    def list_policies(self, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        r = requests.get(f"{self.base}/policies", params={"limit": limit, "offset": offset}, timeout=30)
+        r.raise_for_status(); return r.json()
+
+    def get_policy(self, policy_id: int) -> Dict[str, Any]:
+        r = requests.get(f"{self.base}/policies/{policy_id}", timeout=30)
+        r.raise_for_status(); return r.json()
+
+    def create_policy(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        r = requests.post(f"{self.base}/policies", json=payload, timeout=30)
+        r.raise_for_status(); return r.json()
+
+    def update_policy(self, policy_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
+        r = requests.put(f"{self.base}/policies/{policy_id}", json=payload, timeout=30)
+        r.raise_for_status(); return r.json()
+
 
     # ---- Internal helpers --------------------------------------------------
     def _post_json(self, path: str, payload: Dict[str, Any], timeout: int = 60) -> Any:
@@ -82,3 +80,4 @@ class APIClient:
         if not isinstance(data, list):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /events/returns")
         return data
+

@@ -86,11 +86,11 @@ from the real ephemeris queried in step 4.
 
 ## 6. Launch the Streamlit scanner (optional)
 
-For a graphical overview install Streamlit and the optional tabular
-stack, then start the minimal app:
+For a graphical overview install the UI extras, then start the minimal
+app:
 
 ```bash
-pip install streamlit pandas pyarrow
+pip install -e .[ui]
 streamlit run apps/streamlit_transit_scanner.py
 ```
 

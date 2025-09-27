@@ -60,9 +60,9 @@ trying richer recipes.
 1. **Python 3.11** recommended. Create a venv and install runtime + optional UI deps:
    ```bash
    python -m venv .venv && source .venv/bin/activate
-   pip install -e . streamlit
+   pip install -e .[ui]
    # optional exports/providers:
-   pip install pandas pyarrow skyfield jplephem
+   pip install pyarrow skyfield jplephem
    ```
 
 2. Ensure Swiss ephemeris files exist and set `SE_EPHE_PATH` (if using swiss provider):

@@ -7,11 +7,13 @@ from datetime import UTC, datetime
 from collections.abc import Mapping
 from typing import Any, Sequence
 
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, validator
 
 from ...chart.natal import DEFAULT_BODIES
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
+
 
 
 router = APIRouter()
@@ -22,15 +24,25 @@ def _to_iso(dt: datetime) -> str:
 
 
 class NatalPayload(BaseModel):
-    ts: datetime
+    model_config = ConfigDict(populate_by_name=True)
 
-    @validator("ts", pre=True)
+    ts: datetime = Field(validation_alias=AliasChoices("ts", "utc"))
+    lat: float | None = None
+    lon: float | None = None
+
+    @field_validator("ts", mode="before")
+    @classmethod
     def _validate_ts(cls, value: Any) -> datetime:
         if isinstance(value, datetime):
             return value.astimezone(UTC)
         if isinstance(value, str):
             dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
             return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
+        if isinstance(value, dict):
+            ts = value.get("ts") or value.get("utc")
+            if ts:
+                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
         raise TypeError("expected ISO-8601 timestamp")
 
     def positions(
@@ -45,11 +57,25 @@ class NatalPayload(BaseModel):
 
 
 class SynastryRequest(BaseModel):
-    subject: NatalPayload
-    partner: NatalPayload
+
+    subject: NatalPayload = Field(
+        ..., validation_alias=AliasChoices("subject", "a")
+    )
+    partner: NatalPayload = Field(
+        ..., validation_alias=AliasChoices("partner", "b")
+    )
+
     bodies: Sequence[str] | None = None
     aspects: Sequence[int] | None = None
     orb: float = Field(default=2.0, ge=0.0)
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class SynastryResponse(BaseModel):
+    count: int
+    summary: dict[str, Any]
+    hits: list[Hit]
 
 
 @dataclass
@@ -116,6 +142,7 @@ def _scan_synastry(request: SynastryRequest) -> list[_SynastryAspect]:
     return hits
 
 
+
 def _normalize_synastry_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     data = dict(payload)
     subject = data.get("subject") or data.get("a")
@@ -156,6 +183,7 @@ def api_synastry_aspects(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
     return {"count": len(hits), "summary": summary, "hits": hits}
+
 
 
 def _body_map(names: Sequence[str] | None) -> dict[str, int]:

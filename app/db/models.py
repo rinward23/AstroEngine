@@ -1,8 +1,10 @@
 
-"""SQLAlchemy models backing AstroEngine Plus persistence."""
+"""SQLAlchemy models backing the AstroEngine Plus API."""
 
 from __future__ import annotations
 
+import enum
+import uuid
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -25,9 +27,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 from sqlalchemy.sql import func
 
-
 from .base import Base
-
 
 
 class TimestampMixin:
@@ -65,13 +65,55 @@ class ModuleScopeMixin:
     subchannel: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
+
+def _uuid_hex() -> str:
+    return uuid.uuid4().hex
+
+
+class ChartKind(str, enum.Enum):
+    """Kinds of charts supported by AstroEngine persistence."""
+
+    natal = "natal"
+    progressed = "progressed"
+    solar_arc = "solar_arc"
+    solar_return = "solar_return"
+    lunar_return = "lunar_return"
+    transit = "transit"
+    custom = "custom"
+
+
+class EventType(str, enum.Enum):
+    """Classes of detected events tracked by the engine."""
+
+    transit = "transit"
+    progression = "progression"
+    return_ = "return"
+    solar_arc = "solar_arc"
+    custom = "custom"
+
+
+class ExportType(str, enum.Enum):
+    """Supported export targets for queued jobs."""
+
+
+    ics = "ics"
+    json = "json"
+    csv = "csv"
+
+    webhook = "webhook"
+
+
+
 class OrbPolicy(ModuleScopeMixin, TimestampMixin, Base):
     """Aggregate orb policy definitions exposed via the Plus API."""
 
     __tablename__ = "orb_policies"
+
     __table_args__ = (
         UniqueConstraint("name", name="uq_orb_policy_name"),
+        Index("ix_orb_policies_module_channel", "module", "channel"),
     )
+
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
@@ -86,13 +128,13 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
 
     __tablename__ = "severity_profiles"
     __table_args__ = (
-        UniqueConstraint("profile_key", name="uq_severity_profile_key"),
+        UniqueConstraint("name", name="uq_severity_profile_name"),
         Index("ix_severity_profiles_module_channel", "module", "channel"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    profile_key: Mapped[str] = mapped_column(String(64), nullable=False)
-    weights: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    weights: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     modifiers: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -123,10 +165,12 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     __tablename__ = "charts"
     __table_args__ = (
         UniqueConstraint("chart_key", name="uq_charts_chart_key"),
-        Index("ix_charts_profile_module", "profile_key", "module", "channel"),
+
+        Index("ix_charts_kind_module", "kind", "module", "channel"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
     chart_key: Mapped[str] = mapped_column(
         String(64), nullable=False, default=lambda: f"chart-{uuid4().hex}"
     )
@@ -171,20 +215,23 @@ class EventType(str, Enum):
     voc_moon = "voc_moon"
 
 
+
 class RuleSetVersion(ModuleScopeMixin, TimestampMixin, Base):
     """Versioned rulesets linking scans to reproducible logic bundles."""
 
     __tablename__ = "ruleset_versions"
     __table_args__ = (
-        UniqueConstraint("ruleset_key", "version", name="uq_ruleset_version"),
+        UniqueConstraint("key", "version", name="uq_ruleset_version"),
         Index("ix_ruleset_versions_module_channel", "module", "channel"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
     ruleset_key: Mapped[str] = mapped_column(String(64), nullable=False)
     version: Mapped[str] = mapped_column(String(32), nullable=False)
     checksum: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     definition: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean,
@@ -211,13 +258,16 @@ class Event(ModuleScopeMixin, TimestampMixin, Base):
 
     __tablename__ = "events"
     __table_args__ = (
+
         UniqueConstraint("event_key", name="uq_events_event_key"),
-        Index("ix_events_event_time", "event_time"),
+        Index("ix_events_start_ts", "start_ts"),
+
         Index("ix_events_chart", "chart_id"),
         Index("ix_events_module_channel", "module", "channel"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
     event_key: Mapped[str] = mapped_column(
         String(64), nullable=False, default=lambda: f"event-{uuid4().hex}"
     )
@@ -226,27 +276,35 @@ class Event(ModuleScopeMixin, TimestampMixin, Base):
     )
     ruleset_version_id: Mapped[int | None] = mapped_column(
         ForeignKey("ruleset_versions.id", ondelete="RESTRICT"), nullable=True
+
     )
     severity_profile_id: Mapped[int | None] = mapped_column(
         ForeignKey("severity_profiles.id", ondelete="SET NULL"), nullable=True
     )
+
     event_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     event_type: Mapped[EventType] = mapped_column(
         SAEnum(EventType, name="event_type"), nullable=False, default=EventType.custom
     )
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    objects: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="pending", server_default=text("'pending'")
     )
+
     source: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
 
     key = synonym("event_key")
     type = synonym("event_type")
     start_ts = synonym("event_time")
 
+
     chart: Mapped[Chart] = relationship(back_populates="events")
-    ruleset_version: Mapped[RuleSetVersion] = relationship(back_populates="events")
+    ruleset_version: Mapped[RuleSetVersion | None] = relationship(back_populates="events")
     severity_profile: Mapped[SeverityProfile | None] = relationship(back_populates="events")
     export_jobs: Mapped[list["ExportJob"]] = relationship(back_populates="event")
 
@@ -304,11 +362,13 @@ class AsteroidMeta(ModuleScopeMixin, TimestampMixin, Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
     asteroid_id: Mapped[str] = mapped_column(
         String(32), nullable=False, default=lambda: f"asteroid-{uuid4().hex}"
     )
     designation: Mapped[str] = mapped_column(String(64), nullable=False)
     common_name: Mapped[str] = mapped_column(String(128), nullable=False)
+
     attributes: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     orbit_class: Mapped[str | None] = mapped_column(String(64), nullable=True)
     source_catalog: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -326,29 +386,33 @@ class ExportJob(ModuleScopeMixin, TimestampMixin, Base):
 
     __tablename__ = "export_jobs"
     __table_args__ = (
-        UniqueConstraint("job_key", name="uq_export_job_key"),
         Index("ix_export_jobs_status_requested", "status", "requested_at"),
         Index("ix_export_jobs_module_channel", "module", "channel"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
     job_key: Mapped[str] = mapped_column(
         String(64), nullable=False, default=lambda: f"export-{uuid4().hex}"
     )
+
     event_id: Mapped[int | None] = mapped_column(
         ForeignKey("events.id", ondelete="SET NULL"), nullable=True
     )
     job_type: Mapped[ExportType] = mapped_column(
         SAEnum(ExportType, name="export_job_type"), nullable=False, default=ExportType.json
     )
+
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="queued", server_default=text("'queued'")
     )
+
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True, default=dict)
     result_uri: Mapped[str | None] = mapped_column(String(255), nullable=True)
     requested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -385,5 +449,9 @@ __all__ = [
     "RuleSetVersion",
     "SeverityProfile",
     "TimestampMixin",
-
 ]
+
+# Backwards compatible alias retained for legacy imports
+RuleSetVersion = RulesetVersion
+
+__all__.append("RuleSetVersion")
