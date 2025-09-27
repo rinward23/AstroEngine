@@ -1,131 +1,114 @@
-"""Utilities to rank scan hits, bin them by day, and paginate results."""
+
+"""Aggregation helpers for aspect search results."""
+
 
 from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
-from astroengine.core.scan_plus.ranking import severity
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 
-from .scan import Hit
+from astroengine.core.scan_plus.ranking import severity as compute_severity
 
-# Best-effort mapping angle → canonical aspect name; keep in sync with scanner
-_ASPECT_LOOKUP: Dict[float, str] = {
-    0.0: "conjunction",
-    30.0: "semisextile",
-    45.0: "semisquare",
-    60.0: "sextile",
-    72.0: "quintile",
-    90.0: "square",
-    120.0: "trine",
-    135.0: "sesquisquare",
-    144.0: "biquintile",
-    150.0: "quincunx",
-    180.0: "opposition",
-}
+from .harmonics import BASE_ASPECTS
+
+try:  # pragma: no cover - avoid runtime import loop during static analysis
+    from .scan import Hit
+except Exception:  # pragma: no cover
+    Hit = Any  # type: ignore
+
+DateKey = str
 
 
 def _aspect_name_from_angle(angle: float) -> str:
-    """Normalize an aspect angle to the canonical scanner label."""
-
-    key = round(float(angle), 6)
-    return _ASPECT_LOOKUP.get(key, str(key))
-
-
-def _ensure_utc(dt: datetime) -> datetime:
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+    for name, base_angle in BASE_ASPECTS.items():
+        if abs(float(angle) - float(base_angle)) <= 1e-6:
+            return name
+    raise ValueError(f"Unsupported aspect angle: {angle}")
 
 
-def _utc_date_key(dt: datetime) -> str:
-    return _ensure_utc(dt).strftime("%Y-%m-%d")
+def _utc_date(ts: datetime) -> DateKey:
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    else:
+        ts = ts.astimezone(timezone.utc)
+    return ts.strftime("%Y-%m-%d")
 
-
-def _hit_dict(hit: Hit, aspect_name: str, sev: float) -> Dict[str, Any]:
-    return {
-        "a": hit.a,
-        "b": hit.b,
-        "aspect": aspect_name,
-        "aspect_angle": float(hit.aspect_angle),
-        "exact_time": hit.exact_time,
-        "orb": float(hit.orb),
-        "orb_limit": float(hit.orb_limit),
-        "severity": float(sev),
-    }
-
-
-def _sort_key(order_by: str):
-    if order_by == "severity":
-        return lambda item: (-item["severity"], item["exact_time"])
-    if order_by == "orb":
-        return lambda item: (item["orb"], item["exact_time"])
-    return lambda item: item["exact_time"]
 
 
 def rank_hits(
     hits: Iterable[Hit],
-    profile: Optional[Mapping[str, Any]] = None,
+
+    profile: Mapping[str, Any] | None = None,
     order_by: str = "time",
 ) -> List[Dict[str, Any]]:
-    """Attach severity to each hit and return a sorted list of mappings."""
+    """Convert raw scan hits into ranked dictionaries ready for serialization."""
 
     ranked: List[Dict[str, Any]] = []
     for hit in hits:
-        aspect_name = _aspect_name_from_angle(hit.aspect_angle)
-        sev = severity(aspect_name, hit.orb, hit.orb_limit, profile)
-        ranked.append(_hit_dict(hit, aspect_name, sev))
+        aspect_name = _aspect_name_from_angle(getattr(hit, "aspect_angle"))
+        sev = compute_severity(aspect_name, float(hit.orb), float(hit.orb_limit), profile)
+        ranked.append(
+            {
+                "a": hit.a,
+                "b": hit.b,
+                "aspect": aspect_name,
+                "harmonic": None,
+                "exact_time": hit.exact_time,
+                "orb": float(hit.orb),
+                "orb_limit": float(hit.orb_limit),
+                "severity": float(sev) if sev is not None else None,
+                "meta": {"angle": float(getattr(hit, "aspect_angle", 0.0))},
+            }
+        )
 
-    ranked.sort(key=_sort_key(order_by))
+    if order_by == "severity":
+        ranked.sort(key=lambda h: (-(h["severity"] or 0.0), h["exact_time"]))
+    elif order_by == "orb":
+        ranked.sort(key=lambda h: (h["orb"], h["exact_time"]))
+    else:
+        ranked.sort(key=lambda h: (h["exact_time"], h["orb"]))
     return ranked
 
 
-def day_bins(hits_with_severity: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]]:
-    """Aggregate hits per UTC date, computing counts and average severity."""
+def day_bins(hits: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+    """Aggregate ranked hits into UTC day buckets."""
 
-    counts: Dict[str, int] = defaultdict(int)
-    severity_values: Dict[str, List[float]] = defaultdict(list)
+    counts: Dict[DateKey, int] = defaultdict(int)
+    scores: Dict[DateKey, List[float]] = defaultdict(list)
 
-    for hit in hits_with_severity:
-        exact = hit.get("exact_time")
-        if not isinstance(exact, datetime):
+    for hit in hits:
+        ts = hit.get("exact_time")
+        if not isinstance(ts, datetime):
             continue
-        day_key = _utc_date_key(exact)
-        counts[day_key] += 1
-        severity_val = hit.get("severity")
-        try:
-            if severity_val is not None:
-                severity_values[day_key].append(float(severity_val))
-        except Exception:
-            continue
+        key = _utc_date(ts)
+        counts[key] += 1
+        sev = hit.get("severity")
+        if sev is not None:
+            scores[key].append(float(sev))
 
-    bins: List[Dict[str, Any]] = []
-    for day in sorted(counts):
-        values = severity_values.get(day, [])
-        score: Optional[float]
-        if values:
-            score = sum(values) / len(values)
-        else:
-            score = None
-        bins.append({"date": day, "count": counts[day], "score": score})
-    return bins
+    out: List[Dict[str, Any]] = []
+    for key in sorted(counts):
+        daily_scores = scores.get(key, [])
+        avg = sum(daily_scores) / len(daily_scores) if daily_scores else None
+        out.append({"date": key, "count": counts[key], "score": avg})
+    return out
 
 
 def paginate(
-    items: Iterable[Mapping[str, Any]],
+    hits: Sequence[Mapping[str, Any]],
     limit: int,
     offset: int,
 ) -> Tuple[List[Mapping[str, Any]], int]:
-    """Return a window of ``items`` alongside the total length."""
+    """Return a window slice with total count for pagination."""
 
-    if limit < 0 or offset < 0:
-        raise ValueError("limit and offset must be non-negative")
+    total = len(hits)
+    if offset >= total:
+        return [], total
+    end = offset + limit
+    return list(hits[offset:end]), total
 
-    if isinstance(items, list):
-        total = len(items)
-        return items[offset : offset + limit], total
 
-    materialized = list(items)
-    total = len(materialized)
-    return materialized[offset : offset + limit], total
+__all__ = ["rank_hits", "day_bins", "paginate"]
+
