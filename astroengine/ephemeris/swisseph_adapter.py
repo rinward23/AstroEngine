@@ -757,4 +757,3 @@ class SwissEphemerisAdapter:
             "Unsupported house system "
             f"'{system or self.chart_config.house_system}'. Valid options: {options}"
         )
-

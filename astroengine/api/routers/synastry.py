@@ -168,4 +168,3 @@ def api_synastry_aspects(request: SynastryRequest) -> SynastryResponse:
 
     return SynastryResponse(count=len(dto_hits), summary=summary, hits=dto_hits)
 
-

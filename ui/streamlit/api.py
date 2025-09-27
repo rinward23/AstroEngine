@@ -112,4 +112,3 @@ class APIClient:
     def lots_compute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         r = requests.post(f"{self.base}/lots/compute", json=payload, timeout=60)
         r.raise_for_status(); return r.json()
-

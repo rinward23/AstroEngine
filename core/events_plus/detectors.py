@@ -418,4 +418,3 @@ __all__ = [
     "detect_combust_cazimi",
     "detect_returns",
 ]
-

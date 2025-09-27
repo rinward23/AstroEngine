@@ -151,4 +151,3 @@ def score_series(req: ScoreSeriesRequest):
             "window": {"start": start.isoformat(), "end": end.isoformat()},
         },
     )
-

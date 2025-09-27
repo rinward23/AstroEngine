@@ -125,4 +125,3 @@ def from_utc(utc_dt: datetime, lat: float, lon: float) -> datetime:
     else:
         aware = utc_dt.astimezone(timezone.utc)
     return aware.astimezone(ZoneInfo(tzid))
-

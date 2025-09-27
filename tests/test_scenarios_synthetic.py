@@ -65,4 +65,3 @@ def test_converging_conjunction_near_cazimi_window():
     best = min(hits, key=lambda h: h.orb)
     sep = best.orb
     assert sep < 0.2
-

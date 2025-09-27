@@ -591,4 +591,3 @@ __all__ = [
 RulesetVersion = RuleSetVersion
 
 __all__.append("RulesetVersion")
-
