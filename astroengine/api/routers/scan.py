@@ -9,11 +9,13 @@ from pathlib import Path
 from typing import Any, Iterable, Literal, Mapping, Sequence
 
 from fastapi import APIRouter, HTTPException
+
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, validator
 
 from ...core.transit_engine import scan_transits
 from ...detectors.directions import solar_arc_directions
 from ...detectors.progressions import secondary_progressions
+
 from ...detectors.returns import solar_lunar_returns as _solar_lunar_returns
 from ...ephemeris import SwissEphemerisAdapter
 from ...events import DirectionEvent, ProgressionEvent, ReturnEvent
@@ -26,6 +28,7 @@ router = APIRouter()
 
 
 def progressed_natal_aspects(
+
     natal_iso: str,
     start_iso: str,
     end_iso: str,
@@ -37,12 +40,14 @@ def progressed_natal_aspects(
         natal_iso,
         start_iso,
         end_iso,
+
         bodies=bodies,
         step_days=step_days,
     )
 
 
 def solar_arc_natal_aspects(
+
     natal_iso: str,
     start_iso: str,
     end_iso: str,
@@ -53,6 +58,7 @@ def solar_arc_natal_aspects(
         natal_iso,
         start_iso,
         end_iso,
+
         bodies=bodies,
     )
 
@@ -63,15 +69,19 @@ def solar_lunar_returns(
     end_jd: float,
     *,
     kind: str,
+
     step_days: float | None = None,
+
     adapter: SwissEphemerisAdapter | None = None,
 ):
     return _solar_lunar_returns(
         natal_jd,
         start_jd,
         end_jd,
+
         kind=kind,
         step_days=step_days,
+
         adapter=adapter,
     )
 
@@ -90,7 +100,8 @@ class ExportOptions(BaseModel):
         description="Optional calendar name used for ICS exports.",
     )
 
-    @validator("path")
+    @field_validator("path")
+    @classmethod
     def _validate_path(cls, value: str) -> str:
         if not value or not value.strip():
             raise ValueError("export path must be provided")
@@ -98,6 +109,7 @@ class ExportOptions(BaseModel):
 
 
 class TimeWindow(BaseModel):
+
     natal: datetime = Field(
         ...,
         validation_alias=AliasChoices("natal", "natal_inline"),
@@ -113,7 +125,13 @@ class TimeWindow(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    @validator("natal", "start", "end", pre=True)
+
+    natal: datetime = Field(validation_alias=AliasChoices("natal_inline", "natal"))
+    start: datetime = Field(validation_alias=AliasChoices("from", "start"))
+    end: datetime = Field(validation_alias=AliasChoices("to", "end"))
+
+    @field_validator("natal", "start", "end", mode="before")
+    @classmethod
     def _coerce_datetime(cls, value: Any) -> datetime:
         if isinstance(value, Mapping):
             value = value.get("ts")
@@ -122,6 +140,11 @@ class TimeWindow(BaseModel):
         if isinstance(value, str):
             dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
             return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
+        if isinstance(value, dict):
+            ts = value.get("ts")
+            if ts:
+                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
         raise TypeError("expected ISO-8601 timestamp")
 
     def iso_tuple(self) -> tuple[str, str, str]:
@@ -187,6 +210,7 @@ def _hit_from_aspect(hit: AspectHit) -> Hit:
     )
 
 
+
 def _hit_from_progression(event: ProgressionEvent) -> list[Hit]:
     if hasattr(event, "positions"):
         payload: list[Hit] = []
@@ -194,17 +218,21 @@ def _hit_from_progression(event: ProgressionEvent) -> list[Hit]:
             payload.append(
                 Hit(
                     ts=event.ts,
+
                     moving=str(body),
                     target="Progression",
                     aspect=0,
                     orb=0.0,
                     metadata={
+
                         "method": getattr(event, "method", "progressions"),
+
                         "longitude": float(longitude),
                     },
                 )
             )
         return payload
+
 
     data = event if isinstance(event, Mapping) else event.__dict__
     return [
@@ -226,18 +254,22 @@ def _hit_from_direction(event: DirectionEvent) -> list[Hit]:
             payload.append(
                 Hit(
                     ts=event.ts,
+
                     moving=str(body),
                     target="Direction",
                     aspect=0,
                     orb=0.0,
                     metadata={
+
                         "method": getattr(event, "method", "directions"),
+
                         "longitude": float(longitude),
                         "arc_degrees": float(getattr(event, "arc_degrees", 0.0)),
                     },
                 )
             )
         return payload
+
 
     data = event if isinstance(event, Mapping) else event.__dict__
     return [
@@ -250,6 +282,7 @@ def _hit_from_direction(event: DirectionEvent) -> list[Hit]:
             metadata={
                 "method": "directions",
                 "motion": data.get("applying_or_separating"),
+
             },
         )
     ]
@@ -332,9 +365,11 @@ def _export_hits(options: ExportOptions, hits: Iterable[Hit], *, method: str) ->
 def api_scan_progressions(request: TransitScanRequest) -> ScanResponse:
     natal, start, end = request.iso_tuple()
     events = progressed_natal_aspects(
+
         natal_iso=natal,
         start_iso=start,
         end_iso=end,
+
         bodies=request.bodies,
         step_days=request.step_days,
     )
@@ -355,9 +390,11 @@ def api_scan_progressions(request: TransitScanRequest) -> ScanResponse:
 def api_scan_directions(request: TransitScanRequest) -> ScanResponse:
     natal, start, end = request.iso_tuple()
     events = solar_arc_natal_aspects(
+
         natal_iso=natal,
         start_iso=start,
         end_iso=end,
+
         bodies=request.bodies,
     )
 
@@ -407,6 +444,7 @@ def api_scan_returns(request: ReturnsScanRequest) -> ScanResponse:
     bodies = list(request.bodies or ["Sun"])
 
     adapter = SwissEphemerisAdapter.get_default_adapter()
+
     natal_dt = datetime.fromisoformat(natal.replace("Z", "+00:00")).astimezone(UTC)
     start_dt = datetime.fromisoformat(start.replace("Z", "+00:00")).astimezone(UTC)
     end_dt = datetime.fromisoformat(end.replace("Z", "+00:00")).astimezone(UTC)
@@ -414,6 +452,7 @@ def api_scan_returns(request: ReturnsScanRequest) -> ScanResponse:
     natal_jd = adapter.julian_day(natal_dt)
     start_jd = adapter.julian_day(start_dt)
     end_jd = adapter.julian_day(end_dt)
+
 
     hits: list[Hit] = []
     for body in bodies:

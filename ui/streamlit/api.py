@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import os, requests
 from typing import Any, Dict
 
@@ -7,6 +8,7 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 class APIClient:
     def __init__(self, base_url: str | None = None) -> None:
         self.base = (base_url or API_BASE_URL).rstrip("/")
+
 
     # existing: aspects_search(...)
     def aspects_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -36,3 +38,4 @@ class APIClient:
         r = requests.delete(f"{self.base}/policies/{policy_id}", timeout=30)
         if r.status_code not in (200, 204):
             r.raise_for_status()
+

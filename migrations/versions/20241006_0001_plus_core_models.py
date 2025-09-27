@@ -17,16 +17,15 @@ def upgrade() -> None:
     op.create_table(
         "orb_policies",
         sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
-        sa.Column("profile_key", sa.String(length=64), nullable=False),
+        sa.Column("name", sa.String(length=80), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("per_object", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),
+        sa.Column("per_aspect", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),
+        sa.Column("adaptive_rules", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),
         sa.Column("module", sa.String(length=64), nullable=False, server_default=sa.text("'plus'")),
         sa.Column("submodule", sa.String(length=64), nullable=True),
         sa.Column("channel", sa.String(length=64), nullable=False, server_default=sa.text("'transits'")),
         sa.Column("subchannel", sa.String(length=64), nullable=True),
-        sa.Column("body", sa.String(length=64), nullable=False),
-        sa.Column("aspect", sa.String(length=64), nullable=False),
-        sa.Column("orb_degrees", sa.Float(), nullable=False),
-        sa.Column("source_id", sa.String(length=128), nullable=True),
-        sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=timestamp_default, nullable=False),
         sa.Column(
             "updated_at",
@@ -35,21 +34,12 @@ def upgrade() -> None:
             server_onupdate=timestamp_default,
             nullable=False,
         ),
-        sa.UniqueConstraint(
-            "profile_key",
-            "module",
-            "submodule",
-            "channel",
-            "subchannel",
-            "body",
-            "aspect",
-            name="uq_orb_policy_scope",
-        ),
+        sa.UniqueConstraint("name", name="uq_orb_policy_name"),
     )
     op.create_index(
-        "ix_orb_policies_profile_module",
+        "ix_orb_policies_module_channel",
         "orb_policies",
-        ["profile_key", "module", "channel"],
+        ["module", "channel"],
     )
 
     op.create_table(
@@ -262,5 +252,5 @@ def downgrade() -> None:
     op.drop_index("ix_severity_profiles_module_channel", table_name="severity_profiles")
     op.drop_table("severity_profiles")
 
-    op.drop_index("ix_orb_policies_profile_module", table_name="orb_policies")
+    op.drop_index("ix_orb_policies_module_channel", table_name="orb_policies")
     op.drop_table("orb_policies")

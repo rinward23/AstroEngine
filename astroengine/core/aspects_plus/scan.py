@@ -1,17 +1,22 @@
+
 """Aspect scanning utilities for AstroEngine Plus."""
+
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+
 from itertools import combinations
 from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
 
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS, harmonic_angles
 
 
+
 @dataclass(slots=True)
 class TimeWindow:
+
     """Inclusive start/exclusive end window used for scans."""
 
     start: datetime
@@ -38,6 +43,7 @@ class AspectSpec:
     harmonic: Optional[int] = None
 
 
+
 @dataclass(slots=True)
 class Hit:
     """Raw aspect hit emitted by scanning routines."""
@@ -62,6 +68,7 @@ class Hit:
         if self.meta:
             base.update(self.meta)
         return base
+
 
 
 def _separation(
@@ -293,10 +300,12 @@ def _build_specs(aspects: Sequence[str], harmonics: Sequence[int]) -> List[Aspec
     return specs
 
 
+
 def scan_time_range(
     *,
     objects: Sequence[str],
     window: TimeWindow,
+
     position_provider: Callable[[datetime], Mapping[str, float]],
     aspects: Sequence[str],
     harmonics: Sequence[int],
@@ -334,3 +343,4 @@ __all__ = [
     "scan_pair_time_range",
     "scan_time_range",
 ]
+
