@@ -1,0 +1,5 @@
+AstroEngine Plus Alembic migrations.
+
+This directory is intentionally tracked to ensure reproducible schema updates
+for the Plus data models. The migrations rely on the metadata defined in
+``app.db.base`` and ``app.db.models``.
