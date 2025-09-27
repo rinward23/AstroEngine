@@ -21,11 +21,11 @@ except Exception:  # pragma: no cover
 DateKey = str
 
 
-def _aspect_name_from_angle(angle: float) -> str:
+def _aspect_name_from_angle(angle: float) -> str | None:
     for name, base_angle in BASE_ASPECTS.items():
         if abs(float(angle) - float(base_angle)) <= 1e-6:
             return name
-    raise ValueError(f"Unsupported aspect angle: {angle}")
+    return None
 
 
 def _utc_date(ts: datetime) -> DateKey:
@@ -47,19 +47,39 @@ def rank_hits(
 
     ranked: List[Dict[str, Any]] = []
     for hit in hits:
-        aspect_name = _aspect_name_from_angle(getattr(hit, "aspect_angle"))
-        sev = compute_severity(aspect_name, float(hit.orb), float(hit.orb_limit), profile)
+        hit_meta = getattr(hit, "meta", {}) or {}
+        if isinstance(hit_meta, Mapping):
+            meta: Dict[str, Any] = dict(hit_meta)
+        else:
+            meta = {}
+
+        aspect_name = meta.get("aspect")
+        inferred = _aspect_name_from_angle(getattr(hit, "aspect_angle"))
+        if not aspect_name:
+            aspect_name = inferred or f"angle_{float(getattr(hit, 'aspect_angle')):.3f}"
+        harmonic = meta.get("harmonic")
+
+        if inferred:
+            sev = compute_severity(aspect_name, float(hit.orb), float(hit.orb_limit), profile)
+        else:
+            sev = None
+
+        meta_out: Dict[str, Any] = {"angle": float(getattr(hit, "aspect_angle", 0.0))}
+        for k, v in meta.items():
+            if k in {"aspect", "harmonic"}:
+                continue
+            meta_out[k] = v
         ranked.append(
             {
                 "a": hit.a,
                 "b": hit.b,
                 "aspect": aspect_name,
-                "harmonic": None,
+                "harmonic": harmonic,
                 "exact_time": hit.exact_time,
                 "orb": float(hit.orb),
                 "orb_limit": float(hit.orb_limit),
                 "severity": float(sev) if sev is not None else None,
-                "meta": {"angle": float(getattr(hit, "aspect_angle", 0.0))},
+                "meta": meta_out,
             }
         )
 
@@ -102,6 +122,9 @@ def paginate(
     offset: int,
 ) -> Tuple[List[Mapping[str, Any]], int]:
     """Return a window slice with total count for pagination."""
+
+    if limit < 0 or offset < 0:
+        raise ValueError("limit and offset must be non-negative")
 
     total = len(hits)
     if offset >= total:

@@ -255,3 +255,8 @@ __all__ = [
     "TimestampMixin",
 
 ]
+
+# Backwards compatible alias retained for legacy imports
+RuleSetVersion = RulesetVersion
+
+__all__.append("RuleSetVersion")

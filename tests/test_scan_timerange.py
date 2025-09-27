@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from astroengine.core.aspects_plus.scan import (
-    Hit,
+    AspectSpec,
     TimeWindow,
     scan_pair_time_range,
     scan_time_range,
@@ -46,7 +46,7 @@ def test_find_single_sextile_with_bisection():
         "Venus",
         win,
         eph,
-        [60.0],
+        [AspectSpec(name="sextile", angle=60.0)],
         POLICY,
         step_minutes=720,
     )

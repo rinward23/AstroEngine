@@ -8,11 +8,10 @@ from datetime import UTC, datetime
 from typing import Any, Sequence
 
 from fastapi import APIRouter
-from pydantic import BaseModel, Field, validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, validator
 
 from ...chart.natal import DEFAULT_BODIES
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
-from .scan import Hit, ScanResponse
 
 
 router = APIRouter()
@@ -47,11 +46,17 @@ class NatalPayload(BaseModel):
 
 
 class SynastryRequest(BaseModel):
-    subject: NatalPayload
-    partner: NatalPayload
+    subject: NatalPayload = Field(
+        ..., validation_alias=AliasChoices("subject", "a")
+    )
+    partner: NatalPayload = Field(
+        ..., validation_alias=AliasChoices("partner", "b")
+    )
     bodies: Sequence[str] | None = None
     aspects: Sequence[int] | None = None
     orb: float = Field(default=2.0, ge=0.0)
+
+    model_config = ConfigDict(extra="ignore")
 
 
 @dataclass
@@ -118,23 +123,24 @@ def _scan_synastry(request: SynastryRequest) -> list[_SynastryAspect]:
     return hits
 
 
-@router.post("/aspects", response_model=ScanResponse)
-def api_synastry_aspects(request: SynastryRequest) -> ScanResponse:
+@router.post("/aspects")
+def api_synastry_aspects(request: SynastryRequest) -> dict[str, Any]:
     aspects = _scan_synastry(request)
     hits = [
-        Hit(
-            ts=item.when_iso,
-            moving=item.moving,
-            target=item.target,
-            aspect=item.aspect,
-            orb=item.orb,
-            lon_moving=item.lon_moving,
-            lon_target=item.lon_target,
-            metadata={"context": "synastry"},
-        )
+        {
+            "ts": item.when_iso,
+            "moving": item.moving,
+            "target": item.target,
+            "aspect": item.aspect,
+            "orb": item.orb,
+            "lon_moving": item.lon_moving,
+            "lon_target": item.lon_target,
+            "direction": "partner_to_subject",
+        }
         for item in aspects
     ]
-    return ScanResponse(method="synastry_aspects", hits=hits, count=len(hits))
+    summary = {"method": "synastry_aspects", "pairs": len(hits)}
+    return {"count": len(hits), "summary": summary, "hits": hits}
 
 
 def _body_map(names: Sequence[str] | None) -> dict[str, int]:
