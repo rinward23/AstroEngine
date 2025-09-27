@@ -192,6 +192,22 @@ def _augment_parser_with_natals(parser: argparse.ArgumentParser) -> None:
     parser._ae_natals_added = True
 
 
+def cmd_vca_houses(args: argparse.Namespace) -> int:
+    from .vca.houses import load_house_profile, weights_for_body
+
+    profile, _ = load_house_profile(None)
+    system = str(args.system or "placidus").lower()
+    chart_spec = {
+        "ts": args.ts,
+        "lat": float(args.lat),
+        "lon": float(args.lon),
+    }
+    for body in ("Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"):
+        weights = weights_for_body(chart_spec, body, system, profile=profile)
+        print(body, weights)
+    return 0
+
+
 def cmd_plugins(args: argparse.Namespace) -> int:
     runtime = get_plugin_manager()
     show_all = not any(
@@ -2235,6 +2251,20 @@ def build_parser() -> argparse.ArgumentParser:
         "--json", action="store_true", help="Emit JSON payload instead of text"
     )
     plugins.set_defaults(func=cmd_plugins)
+
+    vca_houses = sub.add_parser(
+        "vca-houses", help="Display house domain weights for key bodies"
+    )
+    vca_houses.add_argument("ts", help="Chart timestamp (UTC ISO-8601)")
+    vca_houses.add_argument("lat", type=float, help="Latitude in decimal degrees")
+    vca_houses.add_argument("lon", type=float, help="Longitude in decimal degrees")
+    vca_houses.add_argument(
+        "--system",
+        choices=sorted(HOUSE_SYSTEM_CHOICES),
+        default="placidus",
+        help="House system to evaluate (default: placidus)",
+    )
+    vca_houses.set_defaults(func=cmd_vca_houses)
 
     snapshot = sub.add_parser("snapshot", help="Scenario snapshot utilities")
     snapshot_sub = snapshot.add_subparsers(dest="snapshot_command")
