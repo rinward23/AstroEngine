@@ -1,12 +1,48 @@
 """Relationship-oriented composite and synastry helpers."""
 
-from .composite import circular_midpoint, composite_midpoint_positions, davison_positions
+from .composite import (
+    Body,
+    BirthEvent,
+    ChartPositions,
+    DavisonResult,
+    Ephemeris,
+    EphemerisError,
+    EclipticPos,
+    NodePolicy,
+    SkyfieldAdapter,
+    SwissEphemerisAdapter,
+    angular_difference,
+    circular_midpoint,
+    composite_midpoints,
+    composite_midpoint_positions,
+    davison_chart,
+    davison_positions,
+    geodesic_midpoint,
+    midpoint_time,
+    wrap_degrees,
+)
 from .synastry import synastry_grid, synastry_interaspects
 
 __all__ = [
+    "Body",
+    "BirthEvent",
+    "ChartPositions",
+    "DavisonResult",
+    "Ephemeris",
+    "EphemerisError",
+    "EclipticPos",
+    "NodePolicy",
+    "SkyfieldAdapter",
+    "SwissEphemerisAdapter",
+    "angular_difference",
     "circular_midpoint",
+    "composite_midpoints",
     "composite_midpoint_positions",
+    "davison_chart",
     "davison_positions",
+    "geodesic_midpoint",
+    "midpoint_time",
     "synastry_interaspects",
     "synastry_grid",
+    "wrap_degrees",
 ]

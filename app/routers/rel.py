@@ -1,5 +1,4 @@
 from __future__ import annotations
-from datetime import timezone
 from importlib import util
 from typing import Any, Dict
 
@@ -15,7 +14,12 @@ from app.schemas.rel import (
     CompositeResponse,
 )
 from core.rel_plus.synastry import synastry_interaspects, synastry_grid
-from core.rel_plus.composite import composite_midpoint_positions, davison_positions
+from core.rel_plus.composite import (
+    composite_midpoint_positions,
+    davison_positions,
+    geodesic_midpoint,
+    midpoint_time,
+)
 
 if util.find_spec("app.repo.orb_policies") and util.find_spec("app.db.session"):
     from app.repo.orb_policies import OrbPolicyRepo  # type: ignore
@@ -108,11 +112,23 @@ def composites_midpoint(req: CompositeMidpointRequest):
 )
 def composites_davison(req: CompositeDavisonRequest):
     provider = aspects_module._get_provider()
-    pos = davison_positions(req.objects, req.dt_a, req.dt_b, provider)
-    mid_a = req.dt_a.astimezone(timezone.utc)
-    mid_b = req.dt_b.astimezone(timezone.utc)
-    midpoint = mid_a + (mid_b - mid_a) / 2
+    pos = davison_positions(
+        req.objects,
+        req.dt_a,
+        req.dt_b,
+        provider,
+        lat_a=req.lat_a,
+        lon_a=req.lon_a,
+        lat_b=req.lat_b,
+        lon_b=req.lon_b,
+    )
+    midpoint = midpoint_time(req.dt_a, req.dt_b)
+    mid_lat, mid_lon = geodesic_midpoint(req.lat_a, req.lon_a, req.lat_b, req.lon_b)
     return CompositeResponse(
         positions=pos,
-        meta={"method": "davison", "midpoint_time": midpoint.isoformat()},
+        meta={
+            "method": "davison",
+            "midpoint_time": midpoint.isoformat(),
+            "midpoint_location": {"lat": mid_lat, "lon": mid_lon},
+        },
     )
