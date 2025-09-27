@@ -1,159 +1,153 @@
-"""REST router exposing transit score series aggregation."""
 
 from __future__ import annotations
 
-from collections import defaultdict
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Iterable, List
+from datetime import datetime, timezone
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException
 
-from app.routers import aspects as aspects_router
-from app.schemas.aspects import AspectHit, AspectSearchRequest
 from app.schemas.series import (
-    DailyScore,
-    MonthlyScore,
-    ScoreSeriesMeta,
+    DailyPoint,
+    MonthlyPoint,
     ScoreSeriesRequest,
     ScoreSeriesResponse,
-    ScoreSeriesScan,
-    TimeWindow,
 )
 from astroengine.core.aspects_plus.aggregate import rank_hits
-from astroengine.core.aspects_plus.scan import TimeWindow as ScanTimeWindow, scan_time_range
+from astroengine.core.aspects_plus.scan import TimeWindow, scan_time_range
+from astroengine.core.scan_plus.ranking import (
+    EventPoint,
+    daily_composite,
+    monthly_composite,
+    severity as compute_severity,
+)
+
+try:  # Optional: DB repo for orb policy id
+    from app.repo.orb_policies import OrbPolicyRepo  # type: ignore
+    from app.db.session import session_scope  # type: ignore
+except Exception:  # pragma: no cover
+    OrbPolicyRepo = None  # type: ignore
+    session_scope = None  # type: ignore
+
+from app.schemas.aspects import OrbPolicyInline
+
+# Reuse provider injection from aspects router
+from app.routers import aspects as aspects_module
 
 router = APIRouter(prefix="", tags=["Plus"])
 
-
-def _ensure_provider():
-    try:
-        return aspects_router._get_provider()
-    except AttributeError as exc:  # pragma: no cover - defensive guard
-        raise HTTPException(status_code=500, detail="position provider unavailable") from exc
-
-
-def _scan_hits(scan: ScoreSeriesScan) -> List[AspectHit]:
-    provider = _ensure_provider()
-    stub_request = AspectSearchRequest(
-        objects=scan.objects,
-        aspects=scan.aspects,
-        harmonics=scan.harmonics,
-        window=scan.window,
-        pairs=scan.pairs,
-        orb_policy_id=scan.orb_policy_id,
-        orb_policy_inline=scan.orb_policy_inline,
-        step_minutes=scan.step_minutes,
-        limit=5000,
-        offset=0,
-        order_by="time",
-    )
-    policy = aspects_router._resolve_orb_policy(stub_request)
-
-    start = scan.window.start.astimezone(timezone.utc)
-    end = scan.window.end.astimezone(timezone.utc)
-    scan_window = ScanTimeWindow(start=start, end=end)
-
-    raw_hits = scan_time_range(
-        objects=scan.objects,
-        window=scan_window,
-        position_provider=provider,
-        aspects=scan.aspects,
-        harmonics=scan.harmonics or [],
-        orb_policy=policy,
-        pairs=scan.pairs,
-        step_minutes=scan.step_minutes,
-    )
-    ranked = rank_hits(raw_hits, profile=None, order_by="time")
-    return [
-        AspectHit(
-            a=item["a"],
-            b=item["b"],
-            aspect=item["aspect"],
-            harmonic=item.get("harmonic"),
-            exact_time=item["exact_time"],
-            orb=float(item["orb"]),
-            orb_limit=float(item["orb_limit"]),
-            severity=item.get("severity"),
-            meta=item.get("meta", {}),
-        )
-        for item in ranked
-    ]
+DEFAULT_POLICY: Dict[str, Any] = {
+    "per_object": {},
+    "per_aspect": {
+        "conjunction": 8.0,
+        "opposition": 7.0,
+        "square": 6.0,
+        "trine": 6.0,
+        "sextile": 4.0,
+        "quincunx": 3.0,
+        "semisquare": 2.0,
+        "sesquisquare": 2.0,
+        "quintile": 2.0,
+        "biquintile": 2.0,
+    },
+    "adaptive_rules": {
+        "luminaries_factor": 0.9,
+        "outers_factor": 1.1,
+        "minor_aspect_factor": 0.9,
+    },
+}
 
 
-def _aggregate_daily(hits: Iterable[AspectHit]) -> List[DailyScore]:
-    buckets: Dict[datetime, List[float]] = defaultdict(list)
-    for hit in hits:
-        ts = hit.exact_time
-        if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=timezone.utc)
-        else:
-            ts = ts.astimezone(timezone.utc)
-        if hit.severity is not None:
-            buckets[datetime(ts.year, ts.month, ts.day, tzinfo=timezone.utc)].append(float(hit.severity))
-    daily: List[DailyScore] = []
-    for key in sorted(buckets):
-        scores = buckets[key]
-        avg = sum(scores) / len(scores) if scores else None
-        daily.append(DailyScore(date=key.date(), score=avg))
-    return daily
-
-
-def _aggregate_monthly(daily: Iterable[DailyScore]) -> List[MonthlyScore]:
-    buckets: Dict[str, List[float]] = defaultdict(list)
-    for entry in daily:
-        if entry.score is None:
-            continue
-        key = entry.date.strftime("%Y-%m")
-        buckets[key].append(float(entry.score))
-    monthly: List[MonthlyScore] = []
-    for key in sorted(buckets):
-        scores = buckets[key]
-        avg = sum(scores) / len(scores) if scores else None
-        monthly.append(MonthlyScore(month=key, score=avg))
-    return monthly
-
-
-def _infer_window(request: ScoreSeriesRequest, hits: List[AspectHit]) -> TimeWindow | None:
-    if request.scan is not None:
-        return request.scan.window
-    times = [hit.exact_time for hit in hits if isinstance(hit.exact_time, datetime)]
-    if not times:
-        return None
-    start = min(times)
-    end = max(times)
-    if start.tzinfo is None:
-        start = start.replace(tzinfo=timezone.utc)
-    else:
-        start = start.astimezone(timezone.utc)
-    if end.tzinfo is None:
-        end = end.replace(tzinfo=timezone.utc)
-    else:
-        end = end.astimezone(timezone.utc)
-    if end <= start:
-        end = start + timedelta(minutes=1)
-    return TimeWindow(start=start, end=end)
+def _resolve_orb_policy_inline_or_id(
+    orb_policy_inline: OrbPolicyInline | None,
+    orb_policy_id: int | None,
+) -> Dict[str, Any]:
+    if orb_policy_inline is not None:
+        return orb_policy_inline.model_dump()
+    if orb_policy_id is not None:
+        if OrbPolicyRepo is None or session_scope is None:
+            raise HTTPException(
+                status_code=400,
+                detail="orb_policy_id requires DB repos; provide orb_policy_inline instead",
+            )
+        with session_scope() as db:
+            rec = OrbPolicyRepo().get(db, orb_policy_id)
+            if not rec:
+                raise HTTPException(status_code=404, detail="orb policy not found")
+            return {
+                "per_object": rec.per_object or {},
+                "per_aspect": rec.per_aspect or {},
+                "adaptive_rules": rec.adaptive_rules or {},
+            }
+    return DEFAULT_POLICY
 
 
 @router.post(
     "/transits/score-series",
     response_model=ScoreSeriesResponse,
     summary="Daily & monthly composite severity",
-    description="Aggregate severity by UTC day and month from either a fresh scan or a provided list of hits.",
-    operation_id="plus_score_series",
 )
-def score_series(request: ScoreSeriesRequest) -> ScoreSeriesResponse:
-    if request.hits is not None:
-        hits = request.hits
-    elif request.scan is not None:
-        hits = _scan_hits(request.scan)
-    else:  # pragma: no cover - guarded by model validator
-        raise HTTPException(status_code=400, detail="Either scan or hits must be provided")
+def score_series(req: ScoreSeriesRequest):
+    if req.hits:
+        events: List[EventPoint] = []
+        utc_times: List[datetime] = []
+        for h in req.hits:
+            ts = h.exact_time.astimezone(timezone.utc)
+            utc_times.append(ts)
+            severity = (
+                float(h.severity)
+                if h.severity is not None
+                else compute_severity(h.aspect, float(h.orb), float(h.orb_limit))
+            )
+            events.append(EventPoint(ts=ts, score=float(severity)))
+        daily = daily_composite(events)
+        monthly = monthly_composite(daily)
+        window_meta = None
+        if utc_times:
+            window_meta = {
+                "start": min(utc_times).isoformat(),
+                "end": max(utc_times).isoformat(),
+            }
+        return ScoreSeriesResponse(
+            daily=[DailyPoint(date=k, score=v) for k, v in daily.items()],
+            monthly=[MonthlyPoint(month=k, score=v) for k, v in monthly.items()],
+            meta={"count_hits": len(req.hits), "window": window_meta},
+        )
 
-    daily = _aggregate_daily(hits)
-    monthly = _aggregate_monthly(daily)
-    window = _infer_window(request, hits)
-    meta = ScoreSeriesMeta(count_hits=len(hits), window=window)
-    return ScoreSeriesResponse(daily=daily, monthly=monthly, meta=meta)
+    scan = req.scan  # type: ignore[assignment]
+    provider = aspects_module._get_provider()
+    policy = _resolve_orb_policy_inline_or_id(scan.orb_policy_inline, scan.orb_policy_id)
 
+    start = scan.window.start.astimezone(timezone.utc)
+    end = scan.window.end.astimezone(timezone.utc)
+    window = TimeWindow(start=start, end=end)
 
-__all__ = ["router", "score_series"]
+    hits = scan_time_range(
+        objects=scan.objects,
+        window=window,
+
+        position_provider=provider,
+        aspects=scan.aspects,
+        harmonics=scan.harmonics or [],
+        orb_policy=policy,
+
+        pairs=None,
+        step_minutes=scan.step_minutes,
+    )
+    ranked = rank_hits(hits, profile=None, order_by="time")
+
+    events = [
+        EventPoint(ts=h["exact_time"], score=float(h.get("severity") or 0.0))
+        for h in ranked
+    ]
+    daily = daily_composite(events)
+    monthly = monthly_composite(daily)
+
+    return ScoreSeriesResponse(
+        daily=[DailyPoint(date=k, score=v) for k, v in daily.items()],
+        monthly=[MonthlyPoint(month=k, score=v) for k, v in monthly.items()],
+        meta={
+            "count_hits": len(ranked),
+            "window": {"start": start.isoformat(), "end": end.isoformat()},
+        },
+    )
+
