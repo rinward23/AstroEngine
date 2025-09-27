@@ -1,3 +1,4 @@
+
 """SQLAlchemy models backing AstroEngine Plus persistence."""
 
 from __future__ import annotations
@@ -21,7 +22,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+
 from .base import Base
+
 
 
 class TimestampMixin:
@@ -250,4 +253,5 @@ __all__ = [
     "RulesetVersion",
     "SeverityProfile",
     "TimestampMixin",
+
 ]
