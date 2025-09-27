@@ -59,6 +59,14 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .policies import router as policies_router
 
         return policies_router
+    if name == "configure_position_provider":
+        from .aspects import configure_position_provider as _configure
+
+        return _configure
+    if name == "clear_position_provider":
+        from .aspects import clear_position_provider as _clear
+
+        return _clear
     if name == "rel_router":
         from .rel import router as rel_router
 
