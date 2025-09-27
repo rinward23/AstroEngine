@@ -1,15 +1,16 @@
-
 """Synastry-related API endpoints."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from collections.abc import Mapping
 from typing import Any, Sequence
 
-from fastapi import APIRouter
+
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+
 
 from ...chart.natal import DEFAULT_BODIES
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
@@ -17,7 +18,6 @@ from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
 
 
 router = APIRouter()
-
 
 
 def _to_iso(dt: datetime) -> str:
@@ -144,25 +144,45 @@ def _scan_synastry(request: SynastryRequest) -> list[_SynastryAspect]:
 
 
 
+def _normalize_synastry_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    data = dict(payload)
+    subject = data.get("subject") or data.get("a")
+    partner = data.get("partner") or data.get("b")
+    if subject is None or partner is None:
+        raise HTTPException(status_code=422, detail="subject and partner payloads are required")
+
+    normalized: dict[str, Any] = {"subject": subject, "partner": partner}
+    for key in ("bodies", "aspects", "orb"):
+        if key in data and data[key] is not None:
+            normalized[key] = data[key]
+    return normalized
+
+
 @router.post("/aspects")
-def api_synastry_aspects(request: SynastryRequest) -> dict[str, Any]:
-
+def api_synastry_aspects(payload: dict[str, Any]) -> dict[str, Any]:
+    request = SynastryRequest(**_normalize_synastry_payload(payload))
     aspects = _scan_synastry(request)
-    hits = [
-        {
-            "ts": item.when_iso,
-            "moving": item.moving,
-            "target": item.target,
-            "aspect": item.aspect,
-            "orb": item.orb,
-            "lon_moving": item.lon_moving,
-            "lon_target": item.lon_target,
-            "direction": "partner_to_subject",
-        }
-        for item in aspects
-    ]
+    hits: list[dict[str, Any]] = []
+    for item in aspects:
+        hits.append(
+            {
+                "direction": "partner→subject",
+                "moving": item.moving,
+                "target": item.target,
+                "aspect": item.aspect,
+                "orb": item.orb,
+                "lon_moving": item.lon_moving,
+                "lon_target": item.lon_target,
+                "ts": item.when_iso,
+            }
+        )
 
-    summary = {"method": "synastry_aspects", "pairs": len(hits)}
+    summary = {
+        "method": "synastry_aspects",
+        "orb": float(request.orb),
+        "bodies": list(request.bodies) if request.bodies else "default",
+    }
+
     return {"count": len(hits), "summary": summary, "hits": hits}
 
 
@@ -178,4 +198,3 @@ def _body_map(names: Sequence[str] | None) -> dict[str, int]:
             canonical, code = lookup[key]
             resolved[canonical] = code
     return resolved
-

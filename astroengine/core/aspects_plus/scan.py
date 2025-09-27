@@ -71,6 +71,7 @@ class Hit:
 
 
 
+
 def _separation(
     provider: Callable[[datetime], Mapping[str, float]],
     ts: datetime,
@@ -171,39 +172,7 @@ def _resolve_orb_limit(
     return max(0.0, limit_val)
 
 
-def _bisect_refine(
-    provider: Callable[[datetime], Mapping[str, float]],
-    a: str,
-    b: str,
-    target_angle: float,
-    left_time: datetime,
-    left_delta: float,
-    right_time: datetime,
-    right_delta: float,
-    limit: float,
-) -> Optional[Tuple[datetime, float]]:
-    best_time = left_time if abs(left_delta) <= abs(right_delta) else right_time
-    best_delta = left_delta if abs(left_delta) <= abs(right_delta) else right_delta
-    for _ in range(40):
-        span = right_time - left_time
-        if span.total_seconds() <= 1:
-            break
-        mid_time = left_time + span / 2
-        mid_delta = _angle_delta(provider, mid_time, a, b, target_angle)
-        if mid_delta is None:
-            break
-        if abs(mid_delta) < abs(best_delta):
-            best_time, best_delta = mid_time, mid_delta
-        if left_delta == 0.0 and right_delta == 0.0:
-            break
-        if left_delta * mid_delta <= 0:
-            right_time, right_delta = mid_time, mid_delta
-        else:
-            left_time, left_delta = mid_time, mid_delta
-    orb = abs(best_delta)
-    if orb <= limit + 1e-6:
-        return best_time, orb
-    return None
+
 
 
 def _scan_single_spec(
@@ -294,6 +263,7 @@ def scan_pair_time_range(
     """Scan a pair of bodies for the provided aspects."""
 
     hits: List[Hit] = []
+
     for raw_spec in aspect_specs:
         spec = _coerce_spec(raw_spec)
         limit = _resolve_orb_limit(orb_policy, spec, body_a, body_b)
@@ -301,6 +271,7 @@ def scan_pair_time_range(
             _scan_single_spec(body_a, body_b, window, position_provider, spec, limit, step_minutes)
         )
     hits.sort(key=lambda h: (h.exact_time, h.orb))
+
     return hits
 
 

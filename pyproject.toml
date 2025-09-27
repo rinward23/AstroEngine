@@ -67,9 +67,9 @@ cli = [
   "pluggy>=1.5",
 ]
 
-ui = [
-  "streamlit>=1.39",
-  "plotly>=5.23",
+streamlit = [
+  "streamlit>=1.35",
+  "fastapi>=0.117",
 
 ]
 
