@@ -1,8 +1,11 @@
+
 """Aspect scan dataclasses for search/ranking pipelines."""
+
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 from datetime import datetime
 from typing import Any, Mapping, MutableMapping, Optional
 
@@ -43,3 +46,4 @@ class Hit:
         if self.meta:
             base.update(self.meta)
         return base
+
