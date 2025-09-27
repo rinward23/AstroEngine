@@ -21,6 +21,7 @@ Thumbs.db
 
 # Local artifacts
 diagnostics.json
+dev.db
 # >>> AUTO-GEN END: Gitignore Additions v1.0
 # >>> AUTO-GEN BEGIN: perf artifacts ignore v1.0
 .prof
