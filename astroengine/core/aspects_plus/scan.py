@@ -71,94 +71,24 @@ class Hit:
 
 
 
-def _separation(
-    provider: Callable[[datetime], Mapping[str, float]],
-    ts: datetime,
-    a: str,
-    b: str,
-) -> Optional[float]:
-    try:
-        positions = provider(ts)
-        lon_a = float(positions[a])
-        lon_b = float(positions[b])
-    except Exception:
-        return None
-    diff = (lon_a - lon_b + 180.0) % 360.0 - 180.0
-    return abs(diff)
+
+def _normalize_angle(angle: float) -> float:
+    return float(angle) % 360.0
 
 
-def _angle_delta(
-    provider: Callable[[datetime], Mapping[str, float]],
-    ts: datetime,
-    a: str,
-    b: str,
-    target_angle: float,
-) -> Optional[float]:
-    sep = _separation(provider, ts, a, b)
-    if sep is None:
-        return None
-    return float(sep) - float(target_angle)
+def _signed_sep(delta: float, target: float) -> float:
+    """Return signed difference between ``delta`` and ``target`` in degrees."""
+
+    normalized = _normalize_angle(delta)
+    base = ((normalized - target + 180.0) % 360.0) - 180.0
+    if target not in (0.0, 180.0):
+        alternate = 360.0 - target
+        alt = ((normalized - alternate + 180.0) % 360.0) - 180.0
+        if abs(alt) < abs(base):
+            return alt
+    return base
 
 
-def _resolve_orb_limit(
-    orb_policy: Mapping[str, Any] | None,
-    spec: AspectSpec,
-    body_a: str,
-    body_b: str,
-) -> float:
-    policy = orb_policy or {}
-    aspect_limits = policy.get("per_aspect", {}) or {}
-    key = spec.name.lower()
-    limit = aspect_limits.get(key)
-    if limit is None:
-        limit = aspect_limits.get(str(spec.angle))
-    try:
-        limit_val = float(limit) if limit is not None else 0.0
-    except Exception:
-        limit_val = 0.0
-
-    per_object = policy.get("per_object", {}) or {}
-    for obj in (body_a, body_b):
-        try:
-            limit_val = max(limit_val, float(per_object.get(obj, 0.0)))
-        except Exception:
-            continue
-    return max(0.0, limit_val)
-
-
-def _bisect_refine(
-    provider: Callable[[datetime], Mapping[str, float]],
-    a: str,
-    b: str,
-    target_angle: float,
-    left_time: datetime,
-    left_delta: float,
-    right_time: datetime,
-    right_delta: float,
-    limit: float,
-) -> Optional[Tuple[datetime, float]]:
-    best_time = left_time if abs(left_delta) <= abs(right_delta) else right_time
-    best_delta = left_delta if abs(left_delta) <= abs(right_delta) else right_delta
-    for _ in range(40):
-        span = right_time - left_time
-        if span.total_seconds() <= 1:
-            break
-        mid_time = left_time + span / 2
-        mid_delta = _angle_delta(provider, mid_time, a, b, target_angle)
-        if mid_delta is None:
-            break
-        if abs(mid_delta) < abs(best_delta):
-            best_time, best_delta = mid_time, mid_delta
-        if left_delta == 0.0 and right_delta == 0.0:
-            break
-        if left_delta * mid_delta <= 0:
-            right_time, right_delta = mid_time, mid_delta
-        else:
-            left_time, left_delta = mid_time, mid_delta
-    orb = abs(best_delta)
-    if orb <= limit + 1e-6:
-        return best_time, orb
-    return None
 
 
 def _scan_single_spec(
@@ -249,12 +179,69 @@ def scan_pair_time_range(
     """Scan a pair of bodies for the provided aspects."""
 
     hits: List[Hit] = []
-    for spec in aspect_specs:
-        limit = _resolve_orb_limit(orb_policy, spec, body_a, body_b)
-        hits.extend(
-            _scan_single_spec(body_a, body_b, window, position_provider, spec, limit, step_minutes)
-        )
-    hits.sort(key=lambda h: (h.exact_time, h.orb))
+
+    recorded: set[tuple[str, str, float, datetime]] = set()
+
+    current = window.start
+    while current <= window.end:
+        delta = _pair_delta(position_provider, current, primary, secondary)
+        for angle in aspect_angles:
+            diff = _signed_sep(delta, angle)
+            prev_time, prev_diff = previous[angle]
+            if prev_time is None and abs(diff) <= 1e-6:
+                limit = _orb_limit(angle, orb_policy, primary, secondary)
+                if abs(diff) <= limit:
+                    key = (
+                        primary,
+                        secondary,
+                        angle,
+                        current.replace(second=0, microsecond=0),
+                    )
+                    if key not in recorded:
+                        hits.append(
+                            Hit(
+                                a=primary,
+                                b=secondary,
+                                aspect_angle=angle,
+                                exact_time=current,
+                                orb=abs(diff),
+                                orb_limit=limit,
+                                meta={"pair": (primary, secondary)},
+                            )
+                        )
+                        recorded.add(key)
+                previous[angle] = (current, diff)
+                continue
+            if prev_time is not None and prev_diff is not None:
+                if prev_diff == 0.0 and abs(diff) <= abs(prev_diff):
+                    continue
+                if prev_diff * diff <= 0 or abs(diff) < 1e-2:
+                    hit_time, hit_diff = _refine_hit(
+                        position_provider, primary, secondary, angle, prev_time, current, prev_diff, diff
+                    )
+                    if window.clamp(hit_time):
+                        limit = _orb_limit(angle, orb_policy, primary, secondary)
+                        if abs(hit_diff) <= limit:
+                            key = (primary, secondary, angle, hit_time.replace(second=0, microsecond=0))
+                            if key not in recorded:
+                                hits.append(
+                                    Hit(
+                                        a=primary,
+                                        b=secondary,
+                                        aspect_angle=angle,
+                                        exact_time=hit_time,
+                                        orb=abs(hit_diff),
+                                        orb_limit=limit,
+                                        meta={"pair": (primary, secondary)},
+                                    )
+                                )
+                                recorded.add(key)
+            previous[angle] = (current, diff)
+        current += step
+
+
+    hits.sort(key=lambda h: h.exact_time)
+
     return hits
 
 
