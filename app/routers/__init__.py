@@ -11,6 +11,7 @@ __all__ = [
     "events_router",
 
     "policies_router",
+    "lots_router",
     "configure_position_provider",
     "clear_position_provider",
 ]
@@ -29,6 +30,10 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .events import router as events_router
 
         return events_router
+    if name == "lots_router":
+        from .lots import router as lots_router
+
+        return lots_router
     if name == "policies_router":
         from .policies import router as policies_router
 
