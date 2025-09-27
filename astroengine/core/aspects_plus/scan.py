@@ -1,5 +1,7 @@
 
-"""Aspect scan dataclasses and utilities for search/ranking pipelines."""
+
+"""Aspect scan dataclasses and helpers used by Plus endpoints."""
+
 
 
 from __future__ import annotations
@@ -17,11 +19,39 @@ from typing import (
     Sequence,
 )
 
+
+from datetime import datetime, timedelta
+from itertools import combinations
+from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
+
 from .harmonics import BASE_ASPECTS, combined_angles
-from .orb_policy import orb_limit as compute_orb_limit
 
 
 PositionProvider = Callable[[datetime], Mapping[str, float]]
+
+
+@dataclass(frozen=True)
+class TimeWindow:
+    """Closed interval used to scan for aspect hits."""
+
+    start: datetime
+    end: datetime
+
+    def __post_init__(self) -> None:  # pragma: no cover - pydantic already enforces in API
+        if self.end <= self.start:
+            raise ValueError("end must be after start")
+
+    def clamp(self, ts: datetime) -> bool:
+        """Return ``True`` if ``ts`` lies inside the window (inclusive)."""
+
+        return self.start <= ts <= self.end
+
+    @property
+    def span(self) -> timedelta:
+        """Duration of the window."""
+
+        return self.end - self.start
+
 
 
 @dataclass(slots=True)
@@ -37,8 +67,6 @@ class Hit:
     meta: Optional[MutableMapping[str, Any]] = None
 
     def as_mapping(self) -> Mapping[str, Any]:
-        """Return a shallow mapping representation of this hit."""
-
         base = {
             "a": self.a,
             "b": self.b,
@@ -52,210 +80,149 @@ class Hit:
         return base
 
 
-@dataclass(slots=True)
-class TimeWindow:
-    """Closed interval representing the scan window."""
 
-    start: datetime
-    end: datetime
-
-    def __post_init__(self) -> None:
-        if self.end <= self.start:
-            raise ValueError("TimeWindow end must be after start")
+def _normalize_angle(angle: float) -> float:
+    return float(angle) % 360.0
 
 
-def _raw_angle_difference(lon_a: float, lon_b: float, target_angle: float) -> float:
-    """Return signed separation delta minus the target angle."""
+def _signed_sep(delta: float, target: float) -> float:
+    """Return signed difference between ``delta`` and ``target`` in degrees."""
 
-    separation = abs(((float(lon_a) - float(lon_b) + 180.0) % 360.0) - 180.0)
-    return separation - float(target_angle)
-
-
-def _unwrap(value: float, anchor: Optional[float]) -> float:
-    """Adjust ``value`` by ±360° so it remains close to ``anchor``."""
-
-    if anchor is None:
-        return value
-    result = value
-    while result - anchor > 180.0:
-        result -= 360.0
-    while result - anchor < -180.0:
-        result += 360.0
-    return result
+    return ((_normalize_angle(delta) - target + 180.0) % 360.0) - 180.0
 
 
-def _difference(
-    ts: datetime,
-    angle: float,
-    provider: PositionProvider,
-    object_a: str,
-    object_b: str,
-    anchor: Optional[float] = None,
-) -> tuple[float, float]:
-    """Compute unwrapped difference and absolute orb at ``ts``."""
-
+def _pair_delta(provider: PositionProvider, ts: datetime, primary: str, secondary: str) -> float:
     positions = provider(ts)
-    if object_a not in positions or object_b not in positions:
-        missing = object_a if object_a not in positions else object_b
-        raise KeyError(f"Position provider missing body '{missing}'")
-    raw = _raw_angle_difference(positions[object_a], positions[object_b], angle)
-    unwrapped = _unwrap(raw, anchor)
-    orb = abs(raw)
-    return unwrapped, orb
+    if primary not in positions or secondary not in positions:
+        missing = [name for name in (primary, secondary) if name not in positions]
+        raise KeyError(f"position provider missing objects: {missing!r}")
+    return _normalize_angle(positions[primary] - positions[secondary])
 
 
-def _aspect_name_for_angle(angle: float) -> str:
-    for name, base in BASE_ASPECTS.items():
-        if abs(float(base) - float(angle)) <= 1e-6:
+def _aspect_name_for_angle(angle: float) -> Optional[str]:
+    for name, base_angle in BASE_ASPECTS.items():
+        if abs(base_angle - angle) <= 1e-6:
             return name
-    return f"angle_{float(angle):.3f}"
+    return None
 
 
-def _refine_root(
-    left_time: datetime,
-    left_val: float,
-    left_orb: float,
-    right_time: datetime,
-    right_val: float,
-    right_orb: float,
+def _orb_limit(
     angle: float,
-    provider: PositionProvider,
-    object_a: str,
-    object_b: str,
-    tolerance: float,
-) -> tuple[datetime, float]:
-    """Bisection refinement of a bracketed root."""
+    orb_policy: Mapping[str, Any] | None,
+    primary: str,
+    secondary: str,
+) -> float:
+    if orb_policy is None:
+        return 3.0
+    limit: Optional[float] = None
+    per_aspect = orb_policy.get("per_aspect") if isinstance(orb_policy, Mapping) else None
+    name = _aspect_name_for_angle(angle)
+    if isinstance(per_aspect, Mapping) and name and name in per_aspect:
+        try:
+            limit = float(per_aspect[name])
+        except (TypeError, ValueError):  # pragma: no cover - defensive
+            limit = None
+    if limit is None:
+        per_object = orb_policy.get("per_object") if isinstance(orb_policy, Mapping) else None
+        object_limits: List[float] = []
+        if isinstance(per_object, Mapping):
+            for key in (primary, secondary):
+                if key in per_object:
+                    try:
+                        object_limits.append(float(per_object[key]))
+                    except (TypeError, ValueError):
+                        continue
+        if object_limits:
+            limit = max(object_limits)
+    return float(limit if limit is not None else 3.0)
 
-    a, fa, oa = left_time, left_val, left_orb
-    b, fb, ob = right_time, right_val, right_orb
-    best_time = a if oa <= ob else b
-    best_orb = oa if oa <= ob else ob
-    for _ in range(40):
-        anchor = fa if abs(fa) <= abs(fb) else fb
+
+def _refine_hit(
+    provider: PositionProvider,
+    primary: str,
+    secondary: str,
+    angle: float,
+    t0: datetime,
+    t1: datetime,
+    d0: float,
+    d1: float,
+) -> Tuple[datetime, float]:
+    a, b = t0, t1
+    fa, fb = d0, d1
+    for _ in range(24):
         mid = a + (b - a) / 2
-        fm, orb = _difference(mid, angle, provider, object_a, object_b, anchor=anchor)
-        best_time, best_orb = mid, orb
-        if abs(fm) <= tolerance or (b - a).total_seconds() <= 1.0:
-            break
+        fm = _signed_sep(_pair_delta(provider, mid, primary, secondary), angle)
+        if abs(fm) <= 1e-5 or (b - a).total_seconds() <= 30:
+            return mid, fm
+        if fa == 0.0:
+            return a, fa
+        if fb == 0.0:
+            return b, fb
         if fa * fm <= 0:
-            b, fb, ob = mid, fm, orb
+            b, fb = mid, fm
         else:
-            a, fa, oa = mid, fm, orb
-    return best_time, best_orb
-
-
-def _scan_pair_for_angle(
-    object_a: str,
-    object_b: str,
-    window: TimeWindow,
-    provider: PositionProvider,
-    angle: float,
-    aspect_name: str,
-    orb_policy: Mapping[str, Any],
-    step_minutes: int,
-    tolerance: float,
-) -> List[Hit]:
-    hits: List[Hit] = []
-    orb_limit = compute_orb_limit(object_a, object_b, aspect_name, orb_policy)
-    step = timedelta(minutes=max(1, int(step_minutes)))
-
-    try:
-        prev_val, prev_orb = _difference(
-            window.start, angle, provider, object_a, object_b
-        )
-    except KeyError:
-        return hits
-
-    if prev_orb <= tolerance:
-        hits.append(
-            Hit(
-                a=object_a,
-                b=object_b,
-                aspect_angle=float(angle),
-                exact_time=window.start,
-                orb=prev_orb,
-                orb_limit=orb_limit,
-                meta=None,
-            )
-        )
-
-    prev_time = window.start
-    current_time = window.start + step
-
-    while current_time <= window.end:
-        curr_val, curr_orb = _difference(
-            current_time, angle, provider, object_a, object_b, anchor=prev_val
-        )
-
-        crossed_zero = prev_val * curr_val < 0.0
-        hits_zero_now = curr_orb <= tolerance and prev_orb > tolerance
-
-        if crossed_zero or hits_zero_now:
-            exact_time, orb = _refine_root(
-                prev_time,
-                prev_val,
-                prev_orb,
-                current_time,
-                curr_val,
-                curr_orb,
-                angle,
-                provider,
-                object_a,
-                object_b,
-                tolerance,
-            )
-            hits.append(
-                Hit(
-                    a=object_a,
-                    b=object_b,
-                    aspect_angle=float(angle),
-                    exact_time=exact_time,
-                    orb=orb,
-                    orb_limit=orb_limit,
-                    meta=None,
-                )
-            )
-
-        prev_time = current_time
-        prev_val = curr_val
-        prev_orb = curr_orb
-        current_time += step
-
-    hits.sort(key=lambda h: h.exact_time)
-    return hits
+            a, fa = mid, fm
+    return mid, fm
 
 
 def scan_pair_time_range(
-    object_a: str,
-    object_b: str,
+    primary: str,
+    secondary: str,
     window: TimeWindow,
     position_provider: PositionProvider,
     aspect_angles: Sequence[float],
-    orb_policy: Mapping[str, Any],
+    orb_policy: Mapping[str, Any] | None = None,
     step_minutes: int = 60,
 ) -> List[Hit]:
-    """Scan a pair of bodies for aspect hits across ``aspect_angles``."""
+    """Scan ``primary``/``secondary`` pair for aspect hits within ``window``."""
 
-    if step_minutes <= 0:
-        raise ValueError("step_minutes must be positive")
+    if window.end <= window.start:
+        return []
+    if not aspect_angles:
+        return []
 
-    tolerance = 1e-6
+    step = timedelta(minutes=max(1, int(step_minutes)))
+    aspect_angles = sorted({round(float(a), 6) for a in aspect_angles})
+    previous: dict[float, tuple[Optional[datetime], Optional[float]]] = {
+        angle: (None, None) for angle in aspect_angles
+    }
     hits: List[Hit] = []
-    for angle in sorted(float(a) for a in aspect_angles):
-        aspect_name = _aspect_name_for_angle(angle)
-        hits.extend(
-            _scan_pair_for_angle(
-                object_a,
-                object_b,
-                window,
-                position_provider,
-                angle,
-                aspect_name,
-                orb_policy,
-                step_minutes,
-                tolerance,
-            )
-        )
+    recorded: set[tuple[str, str, float, datetime]] = set()
+
+    current = window.start
+    while current <= window.end:
+        delta = _pair_delta(position_provider, current, primary, secondary)
+        for angle in aspect_angles:
+            diff = _signed_sep(delta, angle)
+            prev_time, prev_diff = previous[angle]
+            if prev_time is not None and prev_diff is not None:
+                if prev_diff == 0.0 and abs(diff) <= abs(prev_diff):
+                    continue
+                if prev_diff * diff <= 0 or abs(diff) < 1e-2:
+                    hit_time, hit_diff = _refine_hit(
+                        position_provider, primary, secondary, angle, prev_time, current, prev_diff, diff
+                    )
+                    if window.clamp(hit_time):
+                        limit = _orb_limit(angle, orb_policy, primary, secondary)
+                        if abs(hit_diff) <= limit:
+                            key = (primary, secondary, angle, hit_time.replace(second=0, microsecond=0))
+                            if key not in recorded:
+                                hits.append(
+                                    Hit(
+                                        a=primary,
+                                        b=secondary,
+                                        aspect_angle=angle,
+                                        exact_time=hit_time,
+                                        orb=abs(hit_diff),
+                                        orb_limit=limit,
+                                        meta={"pair": (primary, secondary)},
+                                    )
+                                )
+                                recorded.add(key)
+            previous[angle] = (current, diff)
+        current += step
+
+
     hits.sort(key=lambda h: h.exact_time)
     return hits
 
@@ -266,37 +233,36 @@ def scan_time_range(
     window: TimeWindow,
     position_provider: PositionProvider,
     aspects: Iterable[str],
-    harmonics: Iterable[int],
-    orb_policy: Mapping[str, Any],
-    pairs: Optional[Sequence[Sequence[str]]] = None,
+
+    harmonics: Iterable[int] | None = None,
+    orb_policy: Mapping[str, Any] | None = None,
+    pairs: Sequence[Tuple[str, str]] | None = None,
     step_minutes: int = 60,
 ) -> List[Hit]:
-    """Scan multiple objects/pairs and return sorted aspect hits."""
+    """Scan all requested pairs for aspect hits within ``window``."""
 
-    if len(objects) < 2 and not pairs:
+    if not objects:
         return []
-
-    target_angles = combined_angles(aspects, harmonics)
-    if not target_angles:
+    aspect_angles = combined_angles(aspects, harmonics or [])
+    if not aspect_angles:
         return []
 
     if pairs:
-        pair_list = [(str(a), str(b)) for a, b in pairs]
+        pair_list = [(a, b) for a, b in pairs]
     else:
-        from itertools import combinations
-
-        pair_list = [(a, b) for a, b in combinations(objects, 2)]
+        pair_list = list(combinations(objects, 2))
 
     hits: List[Hit] = []
-    for a, b in pair_list:
+    for primary, secondary in pair_list:
         hits.extend(
             scan_pair_time_range(
-                a,
-                b,
+                primary,
+                secondary,
                 window,
                 position_provider,
-                target_angles,
-                orb_policy,
+                aspect_angles,
+                orb_policy=orb_policy,
+
                 step_minutes=step_minutes,
             )
         )
@@ -305,5 +271,12 @@ def scan_time_range(
     return hits
 
 
-__all__ = ["Hit", "TimeWindow", "scan_pair_time_range", "scan_time_range"]
+
+__all__ = [
+    "TimeWindow",
+    "Hit",
+    "scan_pair_time_range",
+    "scan_time_range",
+]
+
 

@@ -54,12 +54,14 @@ class AspectSearchRequest(BaseModel):
                 "objects": ["Sun", "Moon", "Mars", "Venus"],
                 "aspects": ["sextile", "trine", "square"],
                 "harmonics": [5, 7, 13],
-                "window": {"start": "2025-01-01T00:00:00Z", "end": "2025-04-01T00:00:00Z"},
+                "window": {"start": "2025-01-01T00:00:00Z", "end": "2025-03-01T00:00:00Z"},
                 "pairs": [["Mars", "Venus"]],
-                "orb_policy_id": 1,
-                "step_minutes": 30,
+                "step_minutes": 60,
+                "order_by": "time",
                 "limit": 200,
-                "order_by": "severity",
+                "orb_policy_inline": {
+                    "per_aspect": {"sextile": 3.0, "square": 6.0, "trine": 6.0}
+                },
             }
         }
     )
@@ -98,12 +100,11 @@ class AspectSearchResponse(BaseModel):
                     {
                         "a": "Mars", "b": "Venus", "aspect": "sextile", "harmonic": 5,
                         "exact_time": "2025-02-14T08:12:00Z", "orb": 0.12, "orb_limit": 3.0,
-                        "severity": 0.66, "meta": {"step": 30}
+                        "severity": 0.66
                     }
                 ],
                 "bins": [
-                    {"date": "2025-02-14", "count": 3, "score": 0.71},
-                    {"date": "2025-02-15", "count": 1, "score": 0.40}
+                    {"date": "2025-02-14", "count": 3, "score": 0.71}
                 ],
                 "paging": {"limit": 200, "offset": 0, "total": 137}
             }
