@@ -1,9 +1,12 @@
+
 """Aggregation helpers for aspect search results."""
+
 
 from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime, timezone
+
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 
 from astroengine.core.scan_plus.ranking import severity as compute_severity
@@ -33,8 +36,10 @@ def _utc_date(ts: datetime) -> DateKey:
     return ts.strftime("%Y-%m-%d")
 
 
+
 def rank_hits(
     hits: Iterable[Hit],
+
     profile: Mapping[str, Any] | None = None,
     order_by: str = "time",
 ) -> List[Dict[str, Any]]:
@@ -106,3 +111,4 @@ def paginate(
 
 
 __all__ = ["rank_hits", "day_bins", "paginate"]
+
