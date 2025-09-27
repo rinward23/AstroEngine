@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Optional
+
+from typing import Any, Callable, Dict
+
 
 from fastapi import APIRouter, HTTPException
 
@@ -32,9 +34,12 @@ __all__ = ["router", "configure_position_provider", "clear_position_provider"]
 # -----------------------------------------------------------------------------
 # Position provider injection
 # -----------------------------------------------------------------------------
-PositionProvider = Callable[[datetime], Dict[str, float]]
-position_provider: Optional[PositionProvider] = None
-_cached: Any = None
+position_provider: Callable[[datetime], Dict[str, float]] | None = None
+_cached: tuple[
+    Callable[[datetime], Dict[str, float]],
+    Callable[[datetime], Dict[str, float]],
+] | None = None
+
 
 
 def configure_position_provider(provider: PositionProvider) -> PositionProvider:
@@ -63,20 +68,27 @@ def _get_provider() -> PositionProvider:
 
     if position_provider is None:
 
-        def _stub(_ts: datetime) -> Dict[str, float]:
+        _cached = None
+
+        def _stub(_ts: datetime):
+
             raise RuntimeError("position_provider not configured")
 
         return _stub
 
-    if _cached is None:
+    cached_entry = _cached
+    if cached_entry is None or cached_entry[0] is not position_provider:
+
         res_min = int(os.getenv("ASTRO_CACHE_RES_MIN", "5"))
         ttl_sec = float(os.getenv("ASTRO_CACHE_TTL_SEC", "600"))
-        _cached = cached_position_provider(
+        wrapper = cached_position_provider(
             position_provider,
             resolution_minutes=res_min,
             ttl_seconds=ttl_sec,
         )
-    return _cached
+        _cached = (position_provider, wrapper)
+        cached_entry = _cached
+    return cached_entry[1]
 
 
 # -----------------------------------------------------------------------------

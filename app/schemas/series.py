@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.aspects import AspectName, TimeWindow, OrbPolicyInline
@@ -33,6 +34,51 @@ class HitIn(BaseModel):
 class ScoreSeriesRequest(BaseModel):
     scan: Optional[ScanInput] = None
     hits: Optional[List[HitIn]] = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "name": "scan",
+                    "summary": "Scan Mars–Venus sextiles",
+                    "value": {
+                        "scan": {
+                            "objects": ["Mars", "Venus"],
+                            "aspects": ["sextile"],
+                            "harmonics": [],
+                            "window": {
+                                "start": "2025-01-01T00:00:00Z",
+                                "end": "2025-03-01T00:00:00Z",
+                            },
+                            "step_minutes": 120,
+                            "orb_policy_inline": {
+                                "per_aspect": {"sextile": 3.0},
+                                "per_object": {},
+                                "adaptive_rules": {},
+                            },
+                        }
+                    },
+                },
+                {
+                    "name": "hits",
+                    "summary": "Replay precomputed hits",
+                    "value": {
+                        "hits": [
+                            {
+                                "a": "Mars",
+                                "b": "Venus",
+                                "aspect": "sextile",
+                                "exact_time": "2025-02-14T08:12:00Z",
+                                "orb": 0.12,
+                                "orb_limit": 3.0,
+                                "severity": 0.6,
+                            }
+                        ]
+                    },
+                },
+            ]
+        }
+    )
 
     @model_validator(mode="after")
     def _one_of_scan_or_hits(self) -> "ScoreSeriesRequest":
@@ -99,6 +145,7 @@ class ScoreSeriesResponse(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
+
                 "daily": [
                     {"date": "2025-02-14", "score": 0.62},
                 ],
@@ -111,6 +158,7 @@ class ScoreSeriesResponse(BaseModel):
                         "end": "2025-03-01T00:00:00Z",
                     }
                 },
+
             }
         }
     )

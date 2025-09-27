@@ -15,12 +15,23 @@ __all__ = [
     "ButtonWidget",
     "MultiSelectWidget",
     "cache_data",
+    "file_uploader",
+    "datetime_input",
     "columns",
+    "expander",
+    "number_input",
+    "plotly_chart",
+    "radio",
+    "spinner",
     "set_runtime",
     "sidebar",
     "session_state",
+    "stop",
+    "StreamlitStop",
     "tabs",
+
     "StopExecution",
+
 ]
 
 
@@ -293,6 +304,10 @@ def dataframe(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
+def plotly_chart(*_args: Any, **_kwargs: Any) -> None:
+    pass
+
+
 def selectbox(
     label: str,
     options: Sequence[Any],
@@ -381,6 +396,7 @@ def _register_text_value(
     return resolved
 
 
+
 def text_input(
     label: str,
     value: str | None = "",
@@ -399,6 +415,7 @@ def text_area(
     **_kwargs: Any,
 ) -> str:
     return _register_text_value(label, value, key=key, kind="text_area")
+
 
 
 def slider(
@@ -455,6 +472,22 @@ def checkbox(
     return value
 
 
+class _Expander:
+    def __init__(self, label: str, *, expanded: bool = False) -> None:
+        self.label = label
+        self.expanded = bool(expanded)
+
+    def __enter__(self) -> _Expander:
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+
+def expander(label: str, *, expanded: bool = False) -> _Expander:
+    return _Expander(label, expanded=expanded)
+
+
 def button(label: str, *, key: str | None = None, **_kwargs: Any) -> bool:
     runtime = _require_runtime()
     widget_key = key or f"button:{label}"
@@ -480,6 +513,7 @@ def button(label: str, *, key: str | None = None, **_kwargs: Any) -> bool:
 
 def download_button(*_args: Any, **_kwargs: Any) -> bool:
     return False
+
 
 
 def radio(
@@ -513,12 +547,28 @@ def plotly_chart(*_args: Any, **_kwargs: Any) -> None:
     return None
 
 
+
 class _Progress:
     def __init__(self) -> None:
         self.value = 0
 
     def progress(self, value: int, *, text: str | None = None) -> None:
         self.value = int(value)
+
+
+class _Spinner:
+    def __init__(self, text: str | None = None) -> None:
+        self.text = text or ""
+
+    def __enter__(self) -> "_Spinner":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+
+def spinner(text: str | None = None) -> _Spinner:
+    return _Spinner(text)
 
 
 class _Status:
@@ -585,9 +635,11 @@ def columns(
     return tuple(_Column(weight) for weight in weights)
 
 
+
 def experimental_rerun() -> None:
     return None
 
 
 def stop() -> None:
     raise StopExecution()
+

@@ -122,51 +122,61 @@ def _compute_directional_hits(
 
 def compute_synastry(
     *,
-    a: dict,
-    b: dict,
+    subject: dict,
+    partner: dict,
     aspects: Sequence[int],
     orb_deg: float,
-    bodies_a: Sequence[str] | None = None,
-    bodies_b: Sequence[str] | None = None,
+    subject_bodies: Sequence[str] | None = None,
+    partner_bodies: Sequence[str] | None = None,
 ) -> list[SynHit]:
-    """Return merged A→B/B→A aspect hits for the provided natal charts."""
+    """Return merged subject→partner and partner→subject aspect hits."""
 
-    moment_a = _parse_timestamp(a["ts"])
-    moment_b = _parse_timestamp(b["ts"])
-    location_a = ChartLocation(latitude=float(a["lat"]), longitude=float(a["lon"]))
-    location_b = ChartLocation(latitude=float(b["lat"]), longitude=float(b["lon"]))
+    moment_subject = _parse_timestamp(subject["ts"])
+    moment_partner = _parse_timestamp(partner["ts"])
+    location_subject = ChartLocation(
+        latitude=float(subject["lat"]), longitude=float(subject["lon"])
+    )
+    location_partner = ChartLocation(
+        latitude=float(partner["lat"]), longitude=float(partner["lon"])
+    )
 
-    chart_a = compute_natal_chart(moment_a, location_a)
-    chart_b = compute_natal_chart(moment_b, location_b)
+    chart_subject = compute_natal_chart(moment_subject, location_subject)
+    chart_partner = compute_natal_chart(moment_partner, location_partner)
 
-    longitudes_a = {name: pos.longitude for name, pos in chart_a.positions.items()}
-    longitudes_b = {name: pos.longitude for name, pos in chart_b.positions.items()}
+    longitudes_subject = {
+        name: pos.longitude for name, pos in chart_subject.positions.items()
+    }
+    longitudes_partner = {
+        name: pos.longitude for name, pos in chart_partner.positions.items()
+    }
 
-    available_a = set(longitudes_a)
-    available_b = set(longitudes_b)
+    available_subject = set(longitudes_subject)
+    available_partner = set(longitudes_partner)
 
-    bodies_a_resolved = _normalize_body_names(bodies_a, available_a)
-    bodies_b_resolved = _normalize_body_names(bodies_b, available_b)
+    subject_resolved = _normalize_body_names(subject_bodies, available_subject)
+    partner_resolved = _normalize_body_names(partner_bodies, available_partner)
 
-    dir_ab = _compute_directional_hits(
+    dir_subject_partner = _compute_directional_hits(
         direction="A->B",
-        moving_bodies=bodies_a_resolved,
-        target_bodies=bodies_b_resolved,
-        moving_longitudes=longitudes_a,
-        target_longitudes=longitudes_b,
+        moving_bodies=subject_resolved,
+        target_bodies=partner_resolved,
+        moving_longitudes=longitudes_subject,
+        target_longitudes=longitudes_partner,
         aspects=aspects,
         orb_deg=orb_deg,
     )
-    dir_ba = _compute_directional_hits(
+    dir_partner_subject = _compute_directional_hits(
         direction="B->A",
-        moving_bodies=bodies_b_resolved,
-        target_bodies=bodies_a_resolved,
-        moving_longitudes=longitudes_b,
-        target_longitudes=longitudes_a,
+        moving_bodies=partner_resolved,
+        target_bodies=subject_resolved,
+        moving_longitudes=longitudes_partner,
+        target_longitudes=longitudes_subject,
         aspects=aspects,
         orb_deg=orb_deg,
     )
 
-    hits = dir_ab + dir_ba
-    hits.sort(key=lambda h: (h.direction, h.moving, h.target, h.angle_deg, h.orb_abs))
+    hits = dir_subject_partner + dir_partner_subject
+    hits.sort(
+        key=lambda h: (h.direction, h.moving, h.target, h.angle_deg, h.orb_abs)
+    )
     return hits

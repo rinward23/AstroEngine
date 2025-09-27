@@ -123,8 +123,12 @@ def paginate(
 ) -> Tuple[List[Mapping[str, Any]], int]:
     """Return a window slice with total count for pagination."""
 
-    if limit < 0 or offset < 0:
-        raise ValueError("limit and offset must be non-negative")
+
+    if limit < 0:
+        raise ValueError("limit must be non-negative")
+    if offset < 0:
+        raise ValueError("offset must be non-negative")
+
 
     total = len(hits)
     if offset >= total:
