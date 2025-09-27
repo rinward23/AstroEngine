@@ -151,6 +151,23 @@ class ScanResponse(BaseModel):
 
 
 
+def _normalize_scan_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Return a mutable copy of *payload* with inline natal data surfaced."""
+
+    if not isinstance(payload, Mapping):
+        raise HTTPException(status_code=422, detail="scan payload must be an object")
+
+    data = dict(payload)
+    inline = data.get("natal_inline")
+    if isinstance(inline, Mapping):
+        ts = inline.get("ts") or inline.get("timestamp")
+        if ts and "natal" not in data and "natal_ts" not in data:
+            data["natal"] = ts
+
+    return data
+
+
+
 def _value_from_hit(hit: AspectHit | Mapping[str, Any], *names: str) -> Any:
     for name in names:
         if isinstance(hit, Mapping) and name in hit and hit[name] is not None:

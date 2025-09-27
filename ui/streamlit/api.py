@@ -1,62 +1,51 @@
 from __future__ import annotations
 
-import os, requests
-from typing import Any, Dict
+import os
+from typing import Any, Dict, Iterable, Optional
+
+import requests
+from requests import Response
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+
+
+def _extract_error_message(response: Optional[Response]) -> Optional[str]:
+    """Attempt to pull a human-friendly error message from a response."""
+
+    if response is None:
+        return None
+
+    # Try JSON first – FastAPI typically returns {"detail": ...}
+    try:
+        data = response.json()
+    except ValueError:
+        text = response.text.strip()
+        return text or None
+
+    if isinstance(data, dict):
+        for key in ("detail", "message", "error"):
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+            if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
+                first = next((item for item in value if isinstance(item, str) and item.strip()), None)
+                if first:
+                    return first.strip()
+    return None
+
 
 class APIClient:
     def __init__(self, base_url: str | None = None) -> None:
         self.base = (base_url or API_BASE_URL).rstrip("/")
 
-
-    # existing: aspects_search(...)
-    def aspects_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        url = f"{self.base}/aspects/search"
-        r = requests.post(url, json=payload, timeout=60)
-        r.raise_for_status()
-        return r.json()
-
-    # ---- OrbPolicy CRUD ---------------------------------------------------
-    def list_policies(self, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        r = requests.get(f"{self.base}/policies", params={"limit": limit, "offset": offset}, timeout=30)
-        r.raise_for_status(); return r.json()
-
-    def get_policy(self, policy_id: int) -> Dict[str, Any]:
-        r = requests.get(f"{self.base}/policies/{policy_id}", timeout=30)
-        r.raise_for_status(); return r.json()
-
-    def create_policy(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        r = requests.post(f"{self.base}/policies", json=payload, timeout=30)
-        r.raise_for_status(); return r.json()
-
-    def update_policy(self, policy_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
-        r = requests.put(f"{self.base}/policies/{policy_id}", json=payload, timeout=30)
-        r.raise_for_status(); return r.json()
-
-
-
-        return self._post_json("/aspects/search", payload, timeout=60)
-
-    # ---- Synastry & Composites -------------------------------------------
-    def synastry_compute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        return self._post_json("/synastry/compute", payload, timeout=60)
-
-    def composite_midpoint(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        return self._post_json("/composites/midpoint", payload, timeout=30)
-
-    def composite_davison(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        return self._post_json("/composites/davison", payload, timeout=30)
-
-    # ------------------------------------------------------------------
-    def _post_json(self, path: str, payload: Dict[str, Any], *, timeout: int) -> Dict[str, Any]:
+    # ---- Low-level helpers -------------------------------------------------
+    def _post_json(self, path: str, payload: Dict[str, Any], *, timeout: int) -> Dict[str, Any] | list[Any]:
         """POST ``payload`` to ``path`` and return the parsed JSON response."""
 
         if not path.startswith("/"):
             path = f"/{path}"
 
         url = f"{self.base}{path}"
-
         try:
             response = requests.post(url, json=payload, timeout=timeout)
             response.raise_for_status()
@@ -71,36 +60,100 @@ class APIClient:
         except ValueError as exc:  # pragma: no cover - streamlit UI only
             raise RuntimeError("API returned a non-JSON response") from exc
 
+    # ---- Aspects -----------------------------------------------------------
     def aspects_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Call the aspect search endpoint and return the parsed JSON body."""
 
-        data = self._post_json("/aspects/search", payload)
+        data = self._post_json("/aspects/search", payload, timeout=60)
         if not isinstance(data, dict):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /aspects/search")
         return data
 
+    # ---- OrbPolicy CRUD ----------------------------------------------------
+    def list_policies(self, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        r = requests.get(
+            f"{self.base}/policies",
+            params={"limit": limit, "offset": offset},
+            timeout=30,
+        )
+        r.raise_for_status()
+        return r.json()
+
+    def get_policy(self, policy_id: int) -> Dict[str, Any]:
+        r = requests.get(f"{self.base}/policies/{policy_id}", timeout=30)
+        r.raise_for_status()
+        return r.json()
+
+    def create_policy(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        r = requests.post(f"{self.base}/policies", json=payload, timeout=30)
+        r.raise_for_status()
+        return r.json()
+
+    def update_policy(self, policy_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
+        r = requests.put(f"{self.base}/policies/{policy_id}", json=payload, timeout=30)
+        r.raise_for_status()
+        return r.json()
+
+    # ---- Synastry & Composites --------------------------------------------
+    def synastry_compute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        data = self._post_json("/synastry/compute", payload, timeout=60)
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /synastry/compute")
+        return data
+
+    def composite_midpoint(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        data = self._post_json("/composites/midpoint", payload, timeout=30)
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /composites/midpoint")
+        return data
+
+    def composite_davison(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        data = self._post_json("/composites/davison", payload, timeout=30)
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /composites/davison")
+        return data
+
     # ---- Events ------------------------------------------------------------
     def voc_moon(self, payload: Dict[str, Any]) -> list[Dict[str, Any]]:
-        data = self._post_json("/events/voc-moon", payload)
+        data = self._post_json("/events/voc-moon", payload, timeout=60)
         if not isinstance(data, list):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /events/voc-moon")
         return data
 
     def combust_cazimi(self, payload: Dict[str, Any]) -> list[Dict[str, Any]]:
-        data = self._post_json("/events/combust-cazimi", payload)
+        data = self._post_json("/events/combust-cazimi", payload, timeout=60)
         if not isinstance(data, list):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /events/combust-cazimi")
         return data
 
     def returns(self, payload: Dict[str, Any]) -> list[Dict[str, Any]]:
-        data = self._post_json("/events/returns", payload)
+        data = self._post_json("/events/returns", payload, timeout=60)
         if not isinstance(data, list):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /events/returns")
         return data
 
     def electional_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Invoke the electional search endpoint."""
+
         r = requests.post(f"{self.base}/electional/search", json=payload, timeout=90)
         r.raise_for_status()
         return r.json()
 
+    # ---- Relationship ------------------------------------------------------
+    def relationship_synastry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        data = self._post_json("/relationship/synastry", payload, timeout=60)
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /relationship/synastry")
+        return data
+
+    def relationship_composite(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        data = self._post_json("/relationship/composite", payload, timeout=30)
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /relationship/composite")
+        return data
+
+    def relationship_davison(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        data = self._post_json("/relationship/davison", payload, timeout=60)
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /relationship/davison")
+        return data

@@ -18,7 +18,10 @@ from app.schemas.aspects import (
     Paging,
 )
 from astroengine.core.aspects_plus.aggregate import day_bins, paginate, rank_hits
-from astroengine.core.aspects_plus.provider_wrappers import cached_position_provider
+from astroengine.core.aspects_plus.provider_wrappers import (
+    PositionProvider,
+    cached_position_provider,
+)
 from astroengine.core.aspects_plus.scan import TimeWindow, scan_time_range
 
 try:  # Optional repositories for policy lookup

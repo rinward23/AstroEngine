@@ -4,6 +4,8 @@ from __future__ import annotations
 
 
 import importlib
+import site
+import sys
 
 from importlib.metadata import entry_points
 

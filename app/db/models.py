@@ -1,12 +1,16 @@
+"""SQLAlchemy models backing the AstroEngine Plus API.
 
-"""SQLAlchemy models backing the AstroEngine Plus API."""
+This module defines a compact set of persistence primitives that power the
+Plus routers and repositories used throughout the test-suite.  The goal is to
+provide ergonomic model constructors that mirror the lightweight repositories
+used in tests while keeping the schema aligned with the module → submodule →
+channel → subchannel hierarchy enforced elsewhere in the project.
+"""
 
 from __future__ import annotations
 
-
-from datetime import datetime
-from enum import Enum
-
+import enum
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -30,41 +34,66 @@ from sqlalchemy.sql import func
 from .base import Base
 
 
+def _table_args(*constraints: Any) -> tuple[Any, ...]:
+    """Return ``__table_args__`` with SQLite autoincrement enabled."""
 
-class ChartKind(str, Enum):
+    return (*constraints, {"sqlite_autoincrement": True})
+
+
+def _coerce_version_value(value: Any) -> str:
+    """Normalise version values supplied as tuples, lists, or numbers."""
+
+    if isinstance(value, (tuple, list)):
+        return ".".join(str(part) for part in value)
+    return str(value)
+
+
+def _ensure_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+class ChartKind(str, enum.Enum):
     """Enumeration of supported chart archetypes."""
 
     natal = "natal"
     transit = "transit"
     synastry = "synastry"
     composite = "composite"
+    progressed = "progressed"
+    solar_arc = "solar_arc"
+    solar_return = "solar_return"
+    lunar_return = "lunar_return"
+    custom = "custom"
 
 
-class EventType(str, Enum):
+class EventType(str, enum.Enum):
     """Enumeration of supported event types."""
 
     transit = "transit"
     return_ = "return"
+    progression = "progression"
+    solar_arc = "solar_arc"
     custom = "custom"
 
 
-class ExportType(str, Enum):
+class ExportType(str, enum.Enum):
     """Enumeration of supported export job types."""
 
     ics = "ics"
     csv = "csv"
     json = "json"
-
-
+    webhook = "webhook"
 
 
 class TimestampMixin:
     """Adds audited timestamps used across persisted AstroEngine records."""
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -78,70 +107,23 @@ class ModuleScopeMixin:
     """Ensures every record tracks the module/submodule/channel scope."""
 
     module: Mapped[str] = mapped_column(
-        String(64),
-        nullable=False,
-        default="plus",
-        server_default=text("'plus'"),
+        String(64), nullable=False, default="plus", server_default=text("'plus'")
     )
     submodule: Mapped[str | None] = mapped_column(String(64), nullable=True)
     channel: Mapped[str] = mapped_column(
-        String(64),
-        nullable=False,
-        default="transits",
-        server_default=text("'transits'"),
+        String(64), nullable=False, default="transits", server_default=text("'transits'")
     )
     subchannel: Mapped[str | None] = mapped_column(String(64), nullable=True)
-
-
-
-def _uuid_hex() -> str:
-    return uuid.uuid4().hex
-
-
-class ChartKind(str, enum.Enum):
-    """Kinds of charts supported by AstroEngine persistence."""
-
-    natal = "natal"
-    progressed = "progressed"
-    solar_arc = "solar_arc"
-    solar_return = "solar_return"
-    lunar_return = "lunar_return"
-    transit = "transit"
-    custom = "custom"
-
-
-class EventType(str, enum.Enum):
-    """Classes of detected events tracked by the engine."""
-
-    transit = "transit"
-    progression = "progression"
-    return_ = "return"
-    solar_arc = "solar_arc"
-    custom = "custom"
-
-
-class ExportType(str, enum.Enum):
-    """Supported export targets for queued jobs."""
-
-
-    ics = "ics"
-    json = "json"
-    csv = "csv"
-
-    webhook = "webhook"
-
 
 
 class OrbPolicy(ModuleScopeMixin, TimestampMixin, Base):
     """Aggregate orb policy definitions exposed via the Plus API."""
 
     __tablename__ = "orb_policies"
-
     __table_args__ = _table_args(
         UniqueConstraint("name", name="uq_orb_policy_name"),
         Index("ix_orb_policies_module_channel", "module", "channel"),
     )
-
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
@@ -150,6 +132,8 @@ class OrbPolicy(ModuleScopeMixin, TimestampMixin, Base):
     per_aspect: Mapped[dict[str, float]] = mapped_column(JSON, nullable=False, default=dict)
     adaptive_rules: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
+    profile_key = synonym("name")
+
     def __init__(self, **kwargs: Any) -> None:
         profile_key = kwargs.pop("profile_key", None)
         body = kwargs.pop("body", None)
@@ -157,6 +141,7 @@ class OrbPolicy(ModuleScopeMixin, TimestampMixin, Base):
         orb_degrees = kwargs.pop("orb_degrees", None)
 
         if profile_key is not None:
+            kwargs.setdefault("name", str(profile_key))
             kwargs.setdefault("module", str(profile_key))
 
         per_object = kwargs.pop("per_object", None)
@@ -172,9 +157,9 @@ class OrbPolicy(ModuleScopeMixin, TimestampMixin, Base):
         elif per_aspect is None:
             per_aspect = {}
 
+        kwargs.setdefault("per_object", per_object)
+        kwargs.setdefault("per_aspect", per_aspect)
         kwargs.setdefault("adaptive_rules", {})
-        kwargs["per_object"] = per_object
-        kwargs["per_aspect"] = per_aspect
 
         if "name" not in kwargs:
             tokens = [profile_key or "policy", body or "object", aspect or "aspect"]
@@ -183,13 +168,7 @@ class OrbPolicy(ModuleScopeMixin, TimestampMixin, Base):
         super().__init__(**kwargs)
 
         if profile_key is not None:
-            self.profile_key = profile_key
-        if body is not None:
-            self.body = body
-        if aspect is not None:
-            self.aspect = aspect
-        if orb_degrees is not None:
-            self.orb_degrees = float(orb_degrees)
+            self.profile_key = str(profile_key)
 
 
 class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
@@ -202,31 +181,14 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     weights: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     modifiers: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    name = synonym("profile_key")
+    profile_key = synonym("name")
 
     events: Mapped[list["Event"]] = relationship(back_populates="severity_profile")
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
-        """Support legacy ``name`` keyword aliasing ``profile_key``."""
-
-        name = kwargs.pop("name", None)
-        super().__init__(*args, **kwargs)
-        if name is not None:
-            self.profile_key = str(name)
-
-    @property
-    def name(self) -> str:
-        return self.profile_key
-
-    @name.setter
-    def name(self, value: str) -> None:
-        self.profile_key = value
-
 
     def __init__(self, **kwargs: Any) -> None:
         profile_key = kwargs.pop("profile_key", None)
@@ -236,23 +198,18 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
         if profile_key is not None:
             kwargs.setdefault("name", str(profile_key))
 
-        if weights is not None:
-            kwargs["weights"] = weights
-        else:
-            kwargs.setdefault("weights", {})
-
+        kwargs.setdefault("weights", weights or {})
         if modifiers is not None:
-            kwargs["modifiers"] = modifiers
+            kwargs.setdefault("modifiers", modifiers)
 
         super().__init__(**kwargs)
 
         if profile_key is not None:
-            self.profile_key = profile_key
-
+            self.profile_key = str(profile_key)
 
 
 class Chart(ModuleScopeMixin, TimestampMixin, Base):
-    """Natal or derived charts used to contextualize detected events."""
+    """Natal or derived charts used to contextualise detected events."""
 
     __tablename__ = "charts"
     __table_args__ = _table_args(
@@ -261,14 +218,10 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-
     chart_key: Mapped[str] = mapped_column(String(64), nullable=False)
-    profile_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    profile_key: Mapped[str] = mapped_column(String(64), nullable=False, default="default")
     kind: Mapped[str] = mapped_column(
-        String(32),
-        nullable=False,
-        default=ChartKind.natal.value,
-        server_default=text("'natal'"),
+        String(32), nullable=False, default=ChartKind.natal.value, server_default=text("'natal'")
     )
     reference_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -282,23 +235,28 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
         back_populates="chart", cascade="all, delete-orphan"
     )
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
-        """Normalize legacy keyword arguments used throughout tests."""
-
+    def __init__(self, **kwargs: Any) -> None:
         dt_utc = kwargs.pop("dt_utc", None)
         kind = kwargs.pop("kind", None)
         chart_key = kwargs.pop("chart_key", None)
         profile_key = kwargs.pop("profile_key", None)
-        super().__init__(*args, **kwargs)
+
         if dt_utc is not None:
-            self.reference_time = dt_utc
+            kwargs.setdefault("reference_time", _ensure_utc(dt_utc))
+
         if kind is not None:
-            self.kind = kind.value if isinstance(kind, ChartKind) else str(kind)
-        self.chart_key = str(chart_key) if chart_key is not None else uuid4().hex
-        if profile_key is not None:
-            self.profile_key = str(profile_key)
-        elif not getattr(self, "profile_key", None):
-            self.profile_key = "default"
+            if isinstance(kind, ChartKind):
+                kwargs.setdefault("kind", kind.value)
+            else:
+                kwargs.setdefault("kind", str(kind))
+
+        kwargs.setdefault("chart_key", str(chart_key or uuid4().hex))
+        kwargs.setdefault("profile_key", str(profile_key or "default"))
+
+        data = kwargs.pop("data", None)
+        kwargs.setdefault("data", data or {})
+
+        super().__init__(**kwargs)
 
     @property
     def dt_utc(self) -> datetime | None:
@@ -306,8 +264,7 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
 
     @dt_utc.setter
     def dt_utc(self, value: datetime | None) -> None:
-        self.reference_time = value
-
+        self.reference_time = _ensure_utc(value) if value is not None else None
 
 
 class RuleSetVersion(ModuleScopeMixin, TimestampMixin, Base):
@@ -315,65 +272,47 @@ class RuleSetVersion(ModuleScopeMixin, TimestampMixin, Base):
 
     __tablename__ = "ruleset_versions"
     __table_args__ = _table_args(
-        UniqueConstraint("key", "version", name="uq_ruleset_version"),
+        UniqueConstraint("ruleset_key", "version", name="uq_ruleset_version"),
         Index("ix_ruleset_versions_module_channel", "module", "channel"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-
     ruleset_key: Mapped[str] = mapped_column(String(64), nullable=False)
-    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    version: Mapped[str] = mapped_column(String(32), nullable=False, default="1")
     checksum: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     definition: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
-
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        default=True,
-        server_default=text("1"),
+        Boolean, nullable=False, default=True, server_default=text("1")
     )
 
-
-    def __init__(self, **kwargs: Any) -> None:
-        ruleset_key = kwargs.pop("ruleset_key", None)
-        if ruleset_key is not None:
-            kwargs.setdefault("key", str(ruleset_key))
-
-        version_value = kwargs.pop("version", None)
-        if version_value is not None:
-            kwargs["version"] = _coerce_version_value(version_value)
-        else:
-            kwargs.setdefault("version", 1)
-
-        definition = kwargs.pop("definition", None)
-        if definition is not None:
-            kwargs.setdefault("definition_json", definition)
-
-        super().__init__(**kwargs)
-
-        if ruleset_key is not None:
-            self.ruleset_key = str(ruleset_key)
-
+    key = synonym("ruleset_key")
 
     events: Mapped[list["Event"]] = relationship(back_populates="ruleset_version")
 
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
-        """Allow ``key`` to alias ``ruleset_key`` for backwards compatibility."""
-
-        key = kwargs.pop("key", None)
-        definition_json = kwargs.pop("definition_json", None)
+    def __init__(self, **kwargs: Any) -> None:
+        ruleset_key = kwargs.pop("ruleset_key", None)
+        version_value = kwargs.pop("version", None)
+        definition = kwargs.pop("definition", None)
         checksum = kwargs.pop("checksum", None)
-        super().__init__(*args, **kwargs)
-        if key is not None:
-            self.ruleset_key = str(key)
-        if definition_json is not None:
-            self.definition = definition_json
+
+        if ruleset_key is not None:
+            kwargs.setdefault("ruleset_key", str(ruleset_key))
+
+        if version_value is not None:
+            kwargs.setdefault("version", _coerce_version_value(version_value))
+
+        if definition is not None:
+            kwargs.setdefault("definition", definition)
+        else:
+            kwargs.setdefault("definition", {})
+
         if checksum is not None:
-            self.checksum = str(checksum)
-        elif not getattr(self, "checksum", None):
-            self.checksum = uuid4().hex
+            kwargs.setdefault("checksum", str(checksum))
+        else:
+            kwargs.setdefault("checksum", uuid4().hex)
+
+        super().__init__(**kwargs)
 
     @property
     def key(self) -> str:
@@ -384,127 +323,79 @@ class RuleSetVersion(ModuleScopeMixin, TimestampMixin, Base):
         self.ruleset_key = value
 
 
-
 class Event(ModuleScopeMixin, TimestampMixin, Base):
     """Detected events ready for downstream export and auditing."""
 
     __tablename__ = "events"
     __table_args__ = _table_args(
         UniqueConstraint("event_key", name="uq_events_event_key"),
-        Index("ix_events_start_ts", "start_ts"),
+        Index("ix_events_start_ts", "event_time"),
         Index("ix_events_chart", "chart_id"),
         Index("ix_events_module_channel", "module", "channel"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-
     event_key: Mapped[str] = mapped_column(String(64), nullable=False)
     chart_id: Mapped[int] = mapped_column(ForeignKey("charts.id", ondelete="CASCADE"), nullable=False)
     ruleset_version_id: Mapped[int | None] = mapped_column(
-        ForeignKey("ruleset_versions.id", ondelete="RESTRICT"),
-        nullable=True,
-
+        ForeignKey("ruleset_versions.id", ondelete="RESTRICT"), nullable=True
     )
     severity_profile_id: Mapped[int | None] = mapped_column(
         ForeignKey("severity_profiles.id", ondelete="SET NULL"), nullable=True
     )
-
     event_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
-
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="pending", server_default=text("'pending'")
     )
-
     source: Mapped[str | None] = mapped_column(String(128), nullable=True)
-
 
     key = synonym("event_key")
     type = synonym("event_type")
     start_ts = synonym("event_time")
-
 
     chart: Mapped[Chart] = relationship(back_populates="events")
     ruleset_version: Mapped[RuleSetVersion | None] = relationship(back_populates="events")
     severity_profile: Mapped[SeverityProfile | None] = relationship(back_populates="events")
     export_jobs: Mapped[list["ExportJob"]] = relationship(back_populates="event")
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
-        """Normalize legacy keyword arguments used in fixtures and tests."""
-
-        event_key = kwargs.pop("event_key", None)
-        event_type = kwargs.pop("type", None)
-        start_ts = kwargs.pop("start_ts", None)
-        objects = kwargs.pop("objects", None)
-        super().__init__(*args, **kwargs)
-        self.event_key = str(event_key or uuid4().hex)
-        if event_type is not None:
-            self.event_type = (
-                event_type.value if isinstance(event_type, EventType) else str(event_type)
-            )
-        if start_ts is not None:
-            self.event_time = start_ts
-        if objects is not None:
-            payload = dict(self.payload or {})
-            payload.setdefault("objects", objects)
-            self.payload = payload
-
-    @property
-    def type(self) -> EventType | str:
-        try:
-            return EventType(self.event_type)
-        except ValueError:
-            return self.event_type
-
-    @type.setter
-    def type(self, value: EventType | str) -> None:
-        self.event_type = value.value if isinstance(value, EventType) else str(value)
-
-    @property
-    def start_ts(self) -> datetime:
-        return self.event_time
-
-    @start_ts.setter
-    def start_ts(self, value: datetime) -> None:
-        self.event_time = value
-
-
     def __init__(self, **kwargs: Any) -> None:
+        event_key = kwargs.pop("event_key", None)
+        start_ts = kwargs.pop("start_ts", None)
         event_time = kwargs.pop("event_time", None)
-        if event_time is None:
-            event_time = kwargs.pop("start_ts", None)
-        if event_time is None:
-            event_time = datetime.now(timezone.utc)
-        elif isinstance(event_time, datetime) and event_time.tzinfo is None:
-            event_time = event_time.replace(tzinfo=timezone.utc)
-        kwargs.setdefault("start_ts", event_time)
-
         event_type = kwargs.pop("event_type", None)
+        objects = kwargs.pop("objects", None)
+        payload = kwargs.pop("payload", None)
+
+        resolved_time = _ensure_utc(event_time or start_ts or datetime.now(timezone.utc))
+        kwargs.setdefault("event_time", resolved_time)
+
         if event_type is not None:
             if isinstance(event_type, EventType):
-                kwargs.setdefault("type", event_type)
+                kwargs.setdefault("event_type", event_type.value)
             else:
                 try:
-                    kwargs.setdefault("type", EventType(str(event_type)))
-                except Exception:
-                    kwargs.setdefault("type", EventType.custom)
-        elif "type" not in kwargs:
-            kwargs["type"] = EventType.custom
+                    kwargs.setdefault("event_type", EventType(str(event_type)).value)
+                except ValueError:
+                    kwargs.setdefault("event_type", str(event_type))
+        else:
+            kwargs.setdefault("event_type", EventType.custom.value)
 
-        payload = kwargs.pop("payload", None)
-        if payload is not None:
-            kwargs.setdefault("payload", payload)
-
-        objects = kwargs.pop("objects", None)
+        data = payload or {}
         if objects is not None:
-            kwargs.setdefault("objects", objects)
+            data = dict(data)
+            data.setdefault("objects", objects)
+        kwargs.setdefault("payload", data)
+
+        kwargs.setdefault("event_key", str(event_key or uuid4().hex))
 
         super().__init__(**kwargs)
 
+    @property
+    def objects(self) -> dict[str, Any] | None:
+        return (self.payload or {}).get("objects") if self.payload is not None else None
 
 
 class AsteroidMeta(ModuleScopeMixin, TimestampMixin, Base):
@@ -517,56 +408,37 @@ class AsteroidMeta(ModuleScopeMixin, TimestampMixin, Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-
     asteroid_id: Mapped[str] = mapped_column(
         String(32), nullable=False, default=lambda: f"asteroid-{uuid4().hex}"
     )
     designation: Mapped[str] = mapped_column(String(64), nullable=False)
-    common_name: Mapped[str] = mapped_column(String(128), nullable=False)
-
+    common_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     attributes: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
-    orbit_class: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    source_catalog: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
-        """Allow legacy keyword aliases and sensible defaults."""
-
-        name = kwargs.pop("name", None)
-        designation = kwargs.get("designation")
-        asteroid_id = kwargs.pop("asteroid_id", None)
-        attributes = kwargs.pop("attributes", None)
-        super().__init__(*args, **kwargs)
-        if asteroid_id is None and designation is not None:
-            self.asteroid_id = str(designation)
-        elif asteroid_id is not None:
-            self.asteroid_id = str(asteroid_id)
-        if name is not None:
-            self.common_name = str(name)
-        elif not getattr(self, "common_name", None):
-            self.common_name = str(designation) if designation is not None else ""
-        if attributes is None and not getattr(self, "attributes", None):
-            self.attributes = {}
-        elif attributes is not None:
-            self.attributes = dict(attributes)
-
+    name = synonym("common_name")
 
     def __init__(self, **kwargs: Any) -> None:
-        asteroid_id = kwargs.pop("asteroid_id", None)
-        if "designation" not in kwargs and asteroid_id is not None:
-            kwargs["designation"] = str(asteroid_id)
+        designation = kwargs.pop("designation", None)
         common_name = kwargs.pop("common_name", None)
-        if "name" not in kwargs and common_name is not None:
-            kwargs["name"] = common_name
+        name = kwargs.pop("name", None)
         attributes = kwargs.pop("attributes", None)
-        if attributes is not None:
-            kwargs.setdefault("attributes", attributes)
-        else:
-            kwargs.setdefault("attributes", {})
-        super().__init__(**kwargs)
+
+        if designation is not None:
+            kwargs.setdefault("designation", str(designation))
+
+        if common_name is None and name is not None:
+            common_name = name
 
         if common_name is not None:
-            self.common_name = common_name
+            kwargs.setdefault("common_name", str(common_name))
 
+        kwargs.setdefault("attributes", attributes or {})
+
+        super().__init__(**kwargs)
+
+    @property
+    def display_name(self) -> str | None:
+        return self.common_name or self.designation
 
 
 class ExportJob(ModuleScopeMixin, TimestampMixin, Base):
@@ -579,28 +451,21 @@ class ExportJob(ModuleScopeMixin, TimestampMixin, Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-
     job_key: Mapped[str] = mapped_column(
         String(64), nullable=False, default=lambda: f"export-{uuid4().hex}"
     )
-
-    event_id: Mapped[int | None] = mapped_column(
-        ForeignKey("events.id", ondelete="SET NULL"), nullable=True
-    )
-    job_type: Mapped[ExportType] = mapped_column(
+    event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id", ondelete="SET NULL"), nullable=True)
+    job_type: Mapped[str] = mapped_column(
         SAEnum(ExportType, name="export_job_type"), nullable=False, default=ExportType.json
     )
-
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="queued", server_default=text("'queued'")
     )
-
-    payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True, default=dict)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     result_uri: Mapped[str | None] = mapped_column(String(255), nullable=True)
     requested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -611,50 +476,31 @@ class ExportJob(ModuleScopeMixin, TimestampMixin, Base):
 
     event: Mapped[Event | None] = relationship(back_populates="export_jobs")
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
-        """Normalize legacy keyword arguments used in repositories."""
-
-        job_type = kwargs.pop("type", None)
-        params = kwargs.pop("params", None)
-        job_key = kwargs.pop("job_key", None)
-        super().__init__(*args, **kwargs)
-        if job_type is not None:
-            self.job_type = job_type.value if isinstance(job_type, ExportType) else str(job_type)
-        if params is not None:
-            self.payload = params
-        self.job_key = str(job_key) if job_key is not None else uuid4().hex
-
-
     def __init__(self, **kwargs: Any) -> None:
+        job_key = kwargs.pop("job_key", None)
         job_type = kwargs.pop("job_type", None)
-        if job_type is not None:
-            if isinstance(job_type, ExportType):
-                kwargs.setdefault("type", job_type)
-            else:
-                try:
-                    kwargs.setdefault("type", ExportType(str(job_type)))
-                except Exception:
-                    kwargs.setdefault("type", ExportType.json)
-
+        type_alias = kwargs.pop("type", None)
         payload = kwargs.pop("payload", None)
         params = kwargs.pop("params", None)
-        if payload is not None and params is None:
-            params = payload
-        if params is not None:
-            kwargs.setdefault("params", params)
-        else:
-            kwargs.setdefault("params", {})
 
-        resolved_type = kwargs.get("type")
+        kwargs.setdefault("job_key", str(job_key or uuid4().hex))
 
-        super().__init__(**kwargs)
-
+        resolved_type = job_type if job_type is not None else type_alias
         if resolved_type is not None:
             if isinstance(resolved_type, ExportType):
-                self.job_type = resolved_type.value
+                kwargs.setdefault("job_type", resolved_type.value)
             else:
-                self.job_type = str(resolved_type)
+                try:
+                    kwargs.setdefault("job_type", ExportType(str(resolved_type)).value)
+                except ValueError:
+                    kwargs.setdefault("job_type", str(resolved_type))
+        else:
+            kwargs.setdefault("job_type", ExportType.json.value)
 
+        payload_data = params if params is not None else payload
+        kwargs.setdefault("payload", payload_data or {})
+
+        super().__init__(**kwargs)
 
 
 __all__ = [
@@ -663,11 +509,8 @@ __all__ = [
     "ExportType",
     "AsteroidMeta",
     "Chart",
-    "ChartKind",
     "Event",
-    "EventType",
     "ExportJob",
-    "ExportType",
     "ModuleScopeMixin",
     "OrbPolicy",
     "RuleSetVersion",
@@ -677,5 +520,3 @@ __all__ = [
 
 # Backwards compatible alias retained for legacy imports
 RulesetVersion = RuleSetVersion
-
-__all__.append("RulesetVersion")
