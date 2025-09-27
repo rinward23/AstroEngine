@@ -1,17 +1,11 @@
 """Aspect search extensions (harmonics, families, ranking)."""
 
 
+from . import aggregate, harmonics, search
 
-from . import search
-from .harmonics import BASE_ASPECTS
-from .matcher import angular_sep_deg, match_all, match_pair
 from .orb_policy import orb_limit
+from .scan import Hit
 
-__all__ = [
-    "search",
-    "orb_limit",
-    "BASE_ASPECTS",
-    "match_pair",
-    "match_all",
-    "angular_sep_deg",
-]
+
+__all__ = ["aggregate", "search", "harmonics", "orb_limit", "Hit"]
+
