@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.routers import (
     aspects_router,
+    electional_router,
     events_router,
     policies_router,
     rel_router,
@@ -16,6 +17,7 @@ from app.routers import (
 
 app = FastAPI(title="AstroEngine Plus API")
 app.include_router(aspects_router)
+app.include_router(electional_router)
 app.include_router(transits_router)
 app.include_router(policies_router)
 app.include_router(rel_router)
