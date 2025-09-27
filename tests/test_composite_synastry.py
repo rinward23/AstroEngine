@@ -1,11 +1,24 @@
 """Tests for composite, Davison, and synastry helpers."""
 
 from datetime import datetime, timedelta, timezone
+from typing import Iterable
+
+import math
+import pytest
 
 from astroengine.core.rel_plus.composite import (
+    Body,
+    BirthEvent,
+    ChartPositions,
+    DavisonResult,
+    EclipticPos,
     circular_midpoint,
+    composite_midpoints,
     composite_midpoint_positions,
+    davison_chart,
     davison_positions,
+    geodesic_midpoint,
+    midpoint_time,
 )
 from astroengine.core.rel_plus.synastry import synastry_grid, synastry_interaspects
 
@@ -46,9 +59,32 @@ def test_circular_midpoint_wrap():
 def test_composite_midpoint_positions():
     pos_a = {"Sun": 10.0, "Moon": 200.0}
     pos_b = {"Sun": 50.0, "Moon": 220.0}
-    out = composite_midpoint_positions(pos_a, pos_b, ["Sun", "Moon", "Mars"])
+    out = composite_midpoint_positions(pos_a, pos_b, ["Sun", "Moon"])
     assert abs(out["Sun"] - 30.0) < 1e-9
     assert abs(out["Moon"] - 210.0) < 1e-9
+
+
+def test_composite_midpoint_positions_missing_body():
+    pos_a = {"Sun": 10.0}
+    pos_b = {"Sun": 50.0}
+    with pytest.raises(KeyError):
+        composite_midpoint_positions(pos_a, pos_b, ["Sun", "Mars"])
+
+
+def test_composite_midpoints_handles_wrap_and_latitude():
+    chart_a = {
+        Body("Sun"): EclipticPos(lon=350.0, lat=5.0),
+        Body("Moon"): EclipticPos(lon=120.0, lat=-2.5),
+    }
+    chart_b = {
+        Body("Sun"): EclipticPos(lon=10.0, lat=-1.0),
+        Body("Moon"): EclipticPos(lon=240.0, lat=4.5),
+    }
+    result = composite_midpoints(chart_a, chart_b, [Body("Sun"), Body("Moon")])
+    assert math.isclose(result[Body("Sun")].lon, 0.0, abs_tol=1e-9)
+    assert math.isclose(result[Body("Sun")].lat, 2.0, abs_tol=1e-9)
+    assert math.isclose(result[Body("Moon")].lon, 180.0, abs_tol=1e-9)
+    assert math.isclose(result[Body("Moon")].lat, 1.0, abs_tol=1e-9)
 
 
 def test_davison_positions_time_midpoint():
@@ -59,9 +95,63 @@ def test_davison_positions_time_midpoint():
         base={"Sun": 0.0, "Venus": 20.0},
         rates={"Sun": 1.0, "Venus": 1.2},
     )
-    pos = davison_positions(["Sun", "Venus"], t0, t1, eph)
+    pos = davison_positions(
+        ["Sun", "Venus"],
+        t0,
+        t1,
+        eph,
+        lat_a=40.0,
+        lon_a=-75.0,
+        lat_b=-35.0,
+        lon_b=150.0,
+    )
     assert abs(pos["Sun"] - 5.0) < 1e-9
     assert abs(pos["Venus"] - (20.0 + 6.0)) < 1e-9
+
+
+def test_midpoint_time_and_geodesic_midpoint():
+    dt_a = datetime(2024, 6, 1, 12, tzinfo=timezone.utc)
+    dt_b = datetime(2024, 6, 3, 12, tzinfo=timezone.utc)
+    mid = midpoint_time(dt_a, dt_b)
+    assert mid == datetime(2024, 6, 2, 12, tzinfo=timezone.utc)
+
+    lat, lon = geodesic_midpoint(0.0, 0.0, 0.0, 180.0)
+    assert math.isclose(lat, 0.0, abs_tol=1e-9)
+    assert math.isclose(abs(lon), 90.0, abs_tol=1e-4)
+
+
+class StubEphemeris:
+    def __init__(self) -> None:
+        self.calls: list[tuple[datetime, float, float, tuple[str, ...]]] = []
+
+    def positions_at(
+        self,
+        when: datetime,
+        lat: float,
+        lon: float,
+        bodies: Iterable[Body],
+        node_policy,
+    ) -> ChartPositions:
+        self.calls.append((when, lat, lon, tuple(str(b) for b in bodies)))
+        return {
+            Body("Sun"): EclipticPos(lon=100.0, lat=0.0, dist=1.0, speed_lon=1.0, retrograde=False),
+            Body("Venus"): EclipticPos(lon=220.0, lat=1.0, dist=0.7, speed_lon=-1.2, retrograde=True),
+        }
+
+
+def test_davison_chart_records_midpoint_location():
+    event_a = BirthEvent(datetime(2024, 1, 1, tzinfo=timezone.utc), lat=40.0, lon=-75.0)
+    event_b = BirthEvent(datetime(2024, 1, 11, tzinfo=timezone.utc), lat=-35.0, lon=150.0)
+    eph = StubEphemeris()
+    result: DavisonResult = davison_chart(event_a, event_b, [Body("Sun"), Body("Venus")], eph)
+
+    assert result.mid_when == midpoint_time(event_a.when, event_b.when)
+    expected_lat, expected_lon = geodesic_midpoint(event_a.lat, event_a.lon, event_b.lat, event_b.lon)
+    assert math.isclose(result.mid_lat, expected_lat, abs_tol=1e-9)
+    assert math.isclose(result.mid_lon, expected_lon, abs_tol=1e-9)
+    assert Body("Sun") in result.positions
+    assert Body("Venus") in result.positions
+    assert eph.calls, "Ephemeris should be invoked"
 
 
 def test_synastry_interaspects_and_grid():

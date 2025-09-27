@@ -68,13 +68,21 @@ class CompositeDavisonRequest(BaseModel):
     objects: List[str]
     dt_a: datetime
     dt_b: datetime
+    lat_a: float = Field(0.0, description="Latitude of event A in degrees")
+    lon_a: float = Field(0.0, description="Longitude of event A in degrees")
+    lat_b: float = Field(0.0, description="Latitude of event B in degrees")
+    lon_b: float = Field(0.0, description="Longitude of event B in degrees")
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "objects": ["Sun", "Venus"],
                 "dt_a": "2025-01-01T00:00:00Z",
+                "lat_a": 40.7128,
+                "lon_a": -74.0060,
                 "dt_b": "2025-01-11T00:00:00Z",
+                "lat_b": 34.0522,
+                "lon_b": -118.2437,
             }
         }
     )
