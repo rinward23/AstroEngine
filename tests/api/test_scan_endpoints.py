@@ -4,6 +4,8 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+
+pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from astroengine.api_server import app
