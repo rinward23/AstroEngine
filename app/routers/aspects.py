@@ -94,6 +94,11 @@ def _resolve_orb_policy(req: AspectSearchRequest) -> Dict[str, Any]:
     "/aspects/search",
     response_model=AspectSearchResponse,
     summary="Search aspects over a time window",
+    description=(
+        "Scans a time range for aspect hits across object pairs with optional harmonics "
+        "and adaptive orb policy."
+    ),
+    operation_id="plus_aspects_search",
 )
 def aspects_search(req: AspectSearchRequest):
     provider = _get_provider()
