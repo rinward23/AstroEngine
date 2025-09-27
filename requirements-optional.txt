@@ -3,7 +3,7 @@
 skyfield>=1.48
 jplephem>=2.21
 astroquery>=0.4
-fastapi>=0.110
+fastapi>=0.117
 uvicorn[standard]>=0.23
 pydantic>=2.11
 jinja2>=3.1

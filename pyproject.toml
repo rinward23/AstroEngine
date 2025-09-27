@@ -65,6 +65,7 @@ cli = [
 ]
 streamlit = [
   "streamlit>=1.35",
+  "fastapi>=0.117",
 ]
 
 # Release bundles

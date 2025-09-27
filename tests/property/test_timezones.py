@@ -21,8 +21,8 @@ COORDS = st.tuples(
     st.floats(min_value=-179.9, max_value=179.9, allow_nan=False, allow_infinity=False),
 )
 INSTANTS = st.datetimes(
-    min_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
-    max_value=datetime(2035, 12, 31, tzinfo=timezone.utc),
+    min_value=datetime(1970, 1, 1),
+    max_value=datetime(2035, 12, 31),
     timezones=st.just(timezone.utc),
 )
 
