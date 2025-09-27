@@ -3,32 +3,14 @@
 from __future__ import annotations
 
 
+from importlib import import_module
+from importlib.metadata import EntryPoint, entry_points
 import importlib
+
 import site
 import sys
 
-from importlib.metadata import entry_points
 
-
-def _prepare_entrypoints(group: str) -> list:
-    """Return entry points for *group* ensuring newly installed dists are importable."""
-
-    eps = list(entry_points(group=group))
-    for ep in eps:
-        dist = getattr(ep, "dist", None)
-        if not dist:
-            continue
-        try:
-            base = dist.locate_file(".")
-        except Exception:  # pragma: no cover - defensive guard around metadata access
-            continue
-        if not base:
-            continue
-        base_str = str(base)
-        if base_str not in sys.path:
-            # Re-run .pth processing so editable installs become visible mid-process.
-            site.addsitedir(base_str)
-    return eps
 
 
 class Registry:
@@ -49,13 +31,38 @@ class Registry:
         self.providers[name] = obj
 
 
+
+def _ensure_entry_point_importable(ep: EntryPoint) -> Callable[..., object]:
+    """Load an entry point, retrying after fixing sys.path for editable installs."""
+
+    try:
+        return ep.load()
+    except ModuleNotFoundError:
+        module_name = getattr(ep, "module", "") or ""
+        dist = getattr(ep, "dist", None)
+        if dist:
+            location = dist.locate_file("")
+            if location:
+                location_str = str(location)
+                if location_str not in sys.path:
+                    sys.path.append(location_str)
+                    importlib.invalidate_caches()
+        if module_name:
+            import_module(module_name)
+        return ep.load()
+
+
+
 def load_plugins(registry: Registry) -> list[str]:
     """Load plugin entry points and allow them to self-register."""
 
     importlib.invalidate_caches()
     names: list[str] = []
-    for ep in _prepare_entrypoints("astroengine.plugins"):
-        fn = ep.load()
+
+    for ep in entry_points(group="astroengine.plugins"):
+
+        fn = _ensure_entry_point_importable(ep)
+
         fn(registry)
         names.append(ep.name)
     return sorted(names)
@@ -66,8 +73,11 @@ def load_providers(registry: Registry) -> list[str]:
 
     importlib.invalidate_caches()
     names: list[str] = []
-    for ep in _prepare_entrypoints("astroengine.providers"):
-        fn = ep.load()
+
+    for ep in entry_points(group="astroengine.providers"):
+
+        fn = _ensure_entry_point_importable(ep)
+
         prov_name, prov_obj = fn()
         registry.register_provider(prov_name, prov_obj)
         names.append(ep.name)

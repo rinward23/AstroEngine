@@ -139,6 +139,7 @@ class APIClient:
         r.raise_for_status()
         return r.json()
 
+
     # ---- Relationship ------------------------------------------------------
     def relationship_synastry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         data = self._post_json("/relationship/synastry", payload, timeout=60)
@@ -157,3 +158,4 @@ class APIClient:
         if not isinstance(data, dict):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /relationship/davison")
         return data
+

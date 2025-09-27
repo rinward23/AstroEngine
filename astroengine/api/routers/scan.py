@@ -7,14 +7,31 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from typing import Any, Iterable, Sequence
-from typing import Literal
+
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+
+from ...core.transit_engine import scan_transits
+from ...detectors.directions import solar_arc_directions
+from ...detectors.progressions import secondary_progressions
+
+from ...detectors.returns import solar_lunar_returns as _solar_lunar_returns
+from ...ephemeris import SwissEphemerisAdapter
+from ...events import DirectionEvent, ProgressionEvent, ReturnEvent
+from ...exporters import write_parquet_canonical, write_sqlite_canonical
+from ...exporters_ics import write_ics_canonical
+from ...detectors_aspects import AspectHit
+
+
+router = APIRouter()
+
 
 
 
 from fastapi import APIRouter, HTTPException
 
-from collections.abc import Mapping
+
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+
 
 from pydantic import AliasChoices, BaseModel, Field, ConfigDict, field_validator, model_validator
 
@@ -60,31 +77,11 @@ class ExportOptions(BaseModel):
 
 
 class TimeWindow(BaseModel):
+    """UTC datetimes with support for legacy alias names."""
 
     """Normalized scan time bounds with legacy payload support."""
 
-    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    natal: datetime = Field(validation_alias=AliasChoices("natal", "natal_ts"))
-    start: datetime = Field(validation_alias=AliasChoices("start", "from"))
-    end: datetime = Field(validation_alias=AliasChoices("end", "to"))
-    natal_inline: dict[str, Any] | None = Field(
-        default=None,
-        validation_alias="natal_inline",
-        exclude=True,
-    )
-
-    @model_validator(mode="before")
-    def _merge_inline(cls, data: Any) -> Any:
-        if isinstance(data, Mapping):
-            payload = dict(data)
-            inline = payload.get("natal_inline")
-            if inline and not payload.get("natal") and not payload.get("natal_ts"):
-                ts = inline.get("ts")
-                if ts:
-                    payload["natal"] = ts
-            return payload
-        return data
 
     @field_validator("natal", "start", "end", mode="before")
 

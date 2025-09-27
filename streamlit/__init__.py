@@ -29,12 +29,18 @@ __all__ = [
     "stop",
     "StreamlitStop",
     "tabs",
-    "text_area",
+
+    "StopExecution",
+
 ]
 
 
 class AppTestUnavailableError(RuntimeError):
     """Raised when the shim is used without an active runtime."""
+
+
+class StopExecution(RuntimeError):
+    """Raised when ``st.stop`` is invoked during a shimmed run."""
 
 
 _RUNTIME: StreamlitRuntime | None = None
@@ -366,6 +372,31 @@ def multiselect(
     return list(value)
 
 
+def _register_text_value(
+    label: str,
+    value: str | None,
+    *,
+    key: str | None,
+    kind: str,
+) -> str:
+    runtime = _require_runtime()
+    resolved = "" if value is None else str(value)
+    if key is not None:
+        resolved = str(runtime.session_state.get(key, resolved))
+        runtime.session_state[key] = resolved
+        widget_key = key
+    else:
+        widget_key = f"{kind}:{label}"
+    runtime.store_value(widget_key, resolved)
+
+    _register_widget(
+        _Widget(runtime=runtime, kind=kind, key=widget_key, label=label)
+    )
+
+    return resolved
+
+
+
 def text_input(
     label: str,
     value: str | None = "",
@@ -373,78 +404,18 @@ def text_input(
     key: str | None = None,
     **_kwargs: Any,
 ) -> str:
-    runtime = _require_runtime()
-    resolved = "" if value is None else str(value)
-    if key is not None:
-        resolved = str(runtime.session_state.get(key, resolved))
-        runtime.session_state[key] = resolved
-        widget_key = key
-    else:
-        widget_key = f"text:{label}"
-    runtime.store_value(widget_key, resolved)
-
-    _register_widget(
-        _Widget(runtime=runtime, kind="text_input", key=widget_key, label=label)
-    )
-
-    return resolved
+    return _register_text_value(label, value, key=key, kind="text_input")
 
 
 def text_area(
     label: str,
     value: str | None = "",
     *,
-    height: int | None = None,
     key: str | None = None,
     **_kwargs: Any,
 ) -> str:
-    runtime = _require_runtime()
-    resolved = "" if value is None else str(value)
-    if key is not None:
-        resolved = str(runtime.session_state.get(key, resolved))
-        runtime.session_state[key] = resolved
-        widget_key = key
-    else:
-        widget_key = f"text_area:{label}"
-    runtime.store_value(widget_key, resolved)
+    return _register_text_value(label, value, key=key, kind="text_area")
 
-    _register_widget(
-        _Widget(runtime=runtime, kind="text_area", key=widget_key, label=label)
-    )
-
-    return resolved
-
-
-def number_input(
-    label: str,
-    min_value: float,
-    max_value: float,
-    value: float | None = None,
-    step: float = 1.0,
-    *,
-    key: str | None = None,
-    **_kwargs: Any,
-) -> float:
-    runtime = _require_runtime()
-    resolved = float(value if value is not None else min_value)
-    if resolved < float(min_value):
-        resolved = float(min_value)
-    if resolved > float(max_value):
-        resolved = float(max_value)
-    if key is not None:
-        stored = float(runtime.session_state.get(key, resolved))
-        runtime.session_state[key] = stored
-        widget_key = key
-        resolved = stored
-    else:
-        widget_key = f"number_input:{label}"
-    runtime.store_value(widget_key, resolved)
-
-    _register_widget(
-        _Widget(runtime=runtime, kind="number_input", key=widget_key, label=label)
-    )
-
-    return float(resolved)
 
 
 def slider(
@@ -544,33 +515,37 @@ def download_button(*_args: Any, **_kwargs: Any) -> bool:
     return False
 
 
-def file_uploader(
-    _label: str,
+
+def radio(
+    label: str,
+    options: Sequence[Any],
     *,
+    index: int = 0,
     key: str | None = None,
-    type: Sequence[str] | None = None,
-    **_kwargs: Any,
+    **kwargs: Any,
 ) -> Any:
-    """Return a previously injected uploaded file placeholder.
+    return selectbox(label, options, index=index, key=key, **kwargs)
 
-    The shim does not handle real uploads; it simply proxies any value stored in
-    ``session_state`` for deterministic tests.
-    """
 
-    runtime = _require_runtime()
-    widget_key = key or "file_uploader"
-    if key is not None and key in runtime.session_state:
-        value = runtime.session_state[key]
-    else:
-        value = None
-        runtime.session_state.setdefault(widget_key, value)
+class _Expander:
+    def __init__(self, label: str, *, expanded: bool = False) -> None:
+        self.label = label
+        self.expanded = expanded
 
-    _register_widget(
-        _Widget(runtime=runtime, kind="file_uploader", key=widget_key, label=_label)
-    )
-    runtime.store_value(widget_key, value)
+    def __enter__(self) -> _Expander:
+        return self
 
-    return value
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+
+def expander(label: str, *, expanded: bool = False) -> _Expander:
+    return _Expander(label, expanded=expanded)
+
+
+def plotly_chart(*_args: Any, **_kwargs: Any) -> None:
+    return None
+
 
 
 class _Progress:
@@ -660,64 +635,11 @@ def columns(
     return tuple(_Column(weight) for weight in weights)
 
 
-def radio(
-    label: str,
-    options: Sequence[Any],
-    *,
-    index: int = 0,
-    key: str | None = None,
-    **_kwargs: Any,
-) -> Any:
-    runtime = _require_runtime()
-    options_list = list(options)
-    if not options_list:
-        value = None
-    else:
-        idx = index if 0 <= index < len(options_list) else 0
-        value = options_list[idx]
-    if key is not None:
-        stored = runtime.session_state.get(key, value)
-        runtime.session_state[key] = stored
-        widget_key = key
-        value = stored
-    else:
-        widget_key = f"radio:{label}"
-    runtime.store_value(widget_key, value)
 
-    _register_widget(
-        _Widget(runtime=runtime, kind="radio", key=widget_key, label=label)
-    )
-
-    return value
-
-
-def datetime_input(
-    label: str,
-    *,
-    value: Any = None,
-    key: str | None = None,
-    **_kwargs: Any,
-) -> Any:
-    runtime = _require_runtime()
-    resolved = value
-    if key is not None:
-        resolved = runtime.session_state.get(key, resolved)
-        runtime.session_state[key] = resolved
-        widget_key = key
-    else:
-        widget_key = f"datetime_input:{label}"
-    runtime.store_value(widget_key, resolved)
-
-    _register_widget(
-        _Widget(runtime=runtime, kind="datetime_input", key=widget_key, label=label)
-    )
-
-    return resolved
-
-
-class StreamlitStop(RuntimeError):
-    """Signal used to emulate ``st.stop`` in tests."""
+def experimental_rerun() -> None:
+    return None
 
 
 def stop() -> None:
-    raise StreamlitStop("Streamlit execution stopped")
+    raise StopExecution()
+

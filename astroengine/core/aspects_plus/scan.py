@@ -5,7 +5,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from itertools import combinations
-from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS, harmonic_angles
 from astroengine.core.aspects_plus.provider_wrappers import PositionProvider
@@ -37,6 +48,7 @@ class AspectSpec:
     name: str
     angle: float
     harmonic: Optional[int] = None
+
 
 
 @dataclass(slots=True)
@@ -89,6 +101,7 @@ def _angle_delta(
     return float(sep) - float(target_angle)
 
 
+
 def _coerce_spec(spec: Any) -> AspectSpec:
     """Normalize arbitrary aspect specifications to :class:`AspectSpec`."""
 
@@ -127,6 +140,7 @@ def _coerce_spec(spec: Any) -> AspectSpec:
     return AspectSpec(name=name, angle=angle, harmonic=None)
 
 
+
 def _resolve_orb_limit(
     orb_policy: Mapping[str, Any] | None,
     spec: AspectSpec,
@@ -135,11 +149,13 @@ def _resolve_orb_limit(
 ) -> float:
     policy = orb_policy or {}
     aspect_limits = policy.get("per_aspect", {}) or {}
+
     key = spec.name.lower()
     limit = aspect_limits.get(key)
     if limit is None:
         limit = aspect_limits.get(str(spec.angle))
     base_default = policy.get("default") if policy else None
+
     try:
         if limit is not None:
             limit_val = float(limit)
@@ -156,6 +172,18 @@ def _resolve_orb_limit(
             limit_val = max(limit_val, float(per_object.get(obj, 0.0)))
         except Exception:
             continue
+
+    if limit_val <= 0.0:
+        default_limit = policy.get("default")
+        if default_limit is None:
+            default_limit = policy.get("default_orb_deg")
+        try:
+            limit_val = float(default_limit)
+        except (TypeError, ValueError):
+            limit_val = 1.0
+        if limit_val <= 0.0:
+            limit_val = 1.0
+
     return max(0.0, limit_val)
 
 
@@ -199,8 +227,6 @@ def _scan_single_spec(
     limit: float,
     step_minutes: int,
 ) -> List[Hit]:
-    if limit <= 0.0:
-        return []
     step = timedelta(minutes=max(1, int(step_minutes)))
     hits: List[Hit] = []
 
@@ -268,17 +294,21 @@ def scan_pair_time_range(
     body_a: str,
     body_b: str,
     window: TimeWindow,
+
     position_provider: PositionProvider,
     aspect_specs: Sequence[AspectSpec | Mapping[str, Any] | float | int | str],
+
     orb_policy: Mapping[str, Any] | None,
     *,
     step_minutes: int = 60,
 ) -> List[Hit]:
     """Scan a pair of bodies for the provided aspects."""
 
+
     specs = [_coerce_spec(spec) for spec in aspect_specs if spec is not None]
     hits: List[Hit] = []
     for spec in specs:
+
         limit = _resolve_orb_limit(orb_policy, spec, body_a, body_b)
         hits.extend(
             _scan_single_spec(body_a, body_b, window, position_provider, spec, limit, step_minutes)

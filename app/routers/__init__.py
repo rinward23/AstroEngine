@@ -12,6 +12,8 @@ __all__ = [
 
     "policies_router",
     "lots_router",
+    "relationship_router",
+    "interpret_router",
     "configure_position_provider",
     "clear_position_provider",
 ]
@@ -22,6 +24,17 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .aspects import router as aspects_router
 
         return aspects_router
+    if name in {"configure_position_provider", "clear_position_provider"}:
+        from .aspects import (
+            clear_position_provider,
+            configure_position_provider,
+        )
+
+        return (
+            configure_position_provider
+            if name == "configure_position_provider"
+            else clear_position_provider
+        )
     if name == "electional_router":
         from .electional import router as electional_router
 
@@ -30,10 +43,18 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .events import router as events_router
 
         return events_router
+    if name == "interpret_router":
+        from .interpret import router as interpret_router
+
+        return interpret_router
     if name == "lots_router":
         from .lots import router as lots_router
 
         return lots_router
+    if name == "relationship_router":
+        from .relationship import router as relationship_router
+
+        return relationship_router
     if name == "policies_router":
         from .policies import router as policies_router
 
@@ -54,6 +75,14 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .transits import router as transits_router
 
         return transits_router
+    if name == "configure_position_provider":
+        from .aspects import configure_position_provider
+
+        return configure_position_provider
+    if name == "clear_position_provider":
+        from .aspects import clear_position_provider
+
+        return clear_position_provider
     raise AttributeError(name)
 
 

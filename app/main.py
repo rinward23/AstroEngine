@@ -9,8 +9,10 @@ from app.routers import (
     aspects_router,
     electional_router,
     events_router,
+    interpret_router,
     lots_router,
     policies_router,
+    relationship_router,
     transits_router,
 )
 from app.routers.aspects import (  # re-exported for convenience
@@ -25,6 +27,8 @@ app.include_router(events_router)
 app.include_router(transits_router)
 app.include_router(policies_router)
 app.include_router(lots_router)
+app.include_router(relationship_router)
+app.include_router(interpret_router)
 
 
 __all__ = ["app", "configure_position_provider", "clear_position_provider"]
