@@ -281,3 +281,8 @@ __all__ = [
     "SeverityProfile",
     "TimestampMixin",
 ]
+
+# Backwards compatible alias retained for legacy imports
+RuleSetVersion = RulesetVersion
+
+__all__.append("RuleSetVersion")

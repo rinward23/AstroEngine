@@ -11,7 +11,10 @@ class RuleSetRepo(BaseRepo[RuleSetVersion]):
     def get_active(self, db: Session, key: str) -> Optional[RuleSetVersion]:
         return (
             db.query(RuleSetVersion)
-            .filter(RuleSetVersion.key == key, RuleSetVersion.is_active == True)  # noqa: E712
+            .filter(
+                RuleSetVersion.ruleset_key == key,
+                RuleSetVersion.is_active.is_(True),
+            )
             .order_by(RuleSetVersion.version.desc())
             .first()
         )
