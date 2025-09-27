@@ -1,4 +1,6 @@
+
 """Event detectors exposed for API compatibility."""
+
 
 from .detectors import (
     CombustCfg,
@@ -6,6 +8,7 @@ from .detectors import (
     detect_combust_cazimi,
     detect_returns,
     detect_voc_moon,
+
 )
 
 __all__ = [
@@ -14,4 +17,5 @@ __all__ = [
     "detect_combust_cazimi",
     "detect_returns",
     "detect_voc_moon",
+
 ]

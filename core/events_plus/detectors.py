@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Iterable, List, Sequence
@@ -263,3 +264,4 @@ __all__ = [
     "detect_combust_cazimi",
     "detect_returns",
 ]
+
