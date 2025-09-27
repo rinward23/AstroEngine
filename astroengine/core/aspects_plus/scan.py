@@ -1,10 +1,24 @@
 
+
 """Aspect scan dataclasses and helpers used by Plus endpoints."""
+
 
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+)
+
 
 from datetime import datetime, timedelta
 from itertools import combinations
@@ -39,6 +53,7 @@ class TimeWindow:
         return self.end - self.start
 
 
+
 @dataclass(slots=True)
 class Hit:
     """Raw aspect hit emitted by scanning routines."""
@@ -63,6 +78,7 @@ class Hit:
         if self.meta:
             base.update(self.meta)
         return base
+
 
 
 def _normalize_angle(angle: float) -> float:
@@ -206,6 +222,7 @@ def scan_pair_time_range(
             previous[angle] = (current, diff)
         current += step
 
+
     hits.sort(key=lambda h: h.exact_time)
     return hits
 
@@ -216,6 +233,7 @@ def scan_time_range(
     window: TimeWindow,
     position_provider: PositionProvider,
     aspects: Iterable[str],
+
     harmonics: Iterable[int] | None = None,
     orb_policy: Mapping[str, Any] | None = None,
     pairs: Sequence[Tuple[str, str]] | None = None,
@@ -244,6 +262,7 @@ def scan_time_range(
                 position_provider,
                 aspect_angles,
                 orb_policy=orb_policy,
+
                 step_minutes=step_minutes,
             )
         )
@@ -252,10 +271,12 @@ def scan_time_range(
     return hits
 
 
+
 __all__ = [
     "TimeWindow",
     "Hit",
     "scan_pair_time_range",
     "scan_time_range",
 ]
+
 
