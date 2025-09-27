@@ -1,3 +1,4 @@
+tionship-api
 """Synastry helpers for combining two position sets."""
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from astroengine.core.aspects_plus.orb_policy import orb_limit
 class SynastryHit:
     """Container for a single synastry hit."""
 
+
     a: str
     b: str
     aspect: str
@@ -22,6 +24,7 @@ class SynastryHit:
     orb: float
     limit: float
     severity: float
+
 
 
 def _pair_weight(
@@ -163,3 +166,4 @@ __all__ = [
     "synastry_score",
     "overlay_positions",
 ]
+

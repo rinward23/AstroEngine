@@ -1744,16 +1744,24 @@ def cmd_synastry(args: argparse.Namespace) -> int:
         if token.strip()
     ) or (0, 60, 90, 120, 180)
 
-    payload_a = {"ts": args.a_ts, "lat": args.a_lat, "lon": args.a_lon}
-    payload_b = {"ts": args.b_ts, "lat": args.b_lat, "lon": args.b_lon}
+    payload_subject = {
+        "ts": args.subject_ts,
+        "lat": args.subject_lat,
+        "lon": args.subject_lon,
+    }
+    payload_partner = {
+        "ts": args.partner_ts,
+        "lat": args.partner_lat,
+        "lon": args.partner_lon,
+    }
 
     hits = compute_synastry(
-        a=payload_a,
-        b=payload_b,
+        subject=payload_subject,
+        partner=payload_partner,
         aspects=aspects,
         orb_deg=args.orb_deg,
-        bodies_a=_parse_body_list(args.bodies_a),
-        bodies_b=_parse_body_list(args.bodies_b),
+        subject_bodies=_parse_body_list(args.subject_bodies),
+        partner_bodies=_parse_body_list(args.partner_bodies),
     )
 
     for hit in hits:
@@ -2383,12 +2391,24 @@ def build_parser() -> argparse.ArgumentParser:
 
 
     synastry = sub.add_parser("synastry", help="Compute natal synastry aspects")
-    synastry.add_argument("--a-ts", required=True, help="Chart A timestamp (ISO-8601 UTC)")
-    synastry.add_argument("--a-lat", type=float, required=True, help="Chart A latitude")
-    synastry.add_argument("--a-lon", type=float, required=True, help="Chart A longitude")
-    synastry.add_argument("--b-ts", required=True, help="Chart B timestamp (ISO-8601 UTC)")
-    synastry.add_argument("--b-lat", type=float, required=True, help="Chart B latitude")
-    synastry.add_argument("--b-lon", type=float, required=True, help="Chart B longitude")
+    synastry.add_argument(
+        "--subject-ts", required=True, help="Subject chart timestamp (ISO-8601 UTC)"
+    )
+    synastry.add_argument(
+        "--subject-lat", type=float, required=True, help="Subject chart latitude"
+    )
+    synastry.add_argument(
+        "--subject-lon", type=float, required=True, help="Subject chart longitude"
+    )
+    synastry.add_argument(
+        "--partner-ts", required=True, help="Partner chart timestamp (ISO-8601 UTC)"
+    )
+    synastry.add_argument(
+        "--partner-lat", type=float, required=True, help="Partner chart latitude"
+    )
+    synastry.add_argument(
+        "--partner-lon", type=float, required=True, help="Partner chart longitude"
+    )
     synastry.add_argument(
         "--aspects",
         default="0,60,90,120,180",
@@ -2402,12 +2422,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Orb allowance in degrees",
     )
     synastry.add_argument(
-        "--bodies-a",
-        help="Optional comma-separated moving bodies for chart A",
+        "--subject-bodies",
+        help="Optional comma-separated moving bodies for the subject chart",
     )
     synastry.add_argument(
-        "--bodies-b",
-        help="Optional comma-separated moving bodies for chart B",
+        "--partner-bodies",
+        help="Optional comma-separated moving bodies for the partner chart",
     )
     synastry.set_defaults(func=cmd_synastry)
 

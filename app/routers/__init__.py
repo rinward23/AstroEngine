@@ -23,6 +23,17 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .aspects import router as aspects_router
 
         return aspects_router
+    if name in {"configure_position_provider", "clear_position_provider"}:
+        from .aspects import (
+            clear_position_provider,
+            configure_position_provider,
+        )
+
+        return (
+            configure_position_provider
+            if name == "configure_position_provider"
+            else clear_position_provider
+        )
     if name == "electional_router":
         from .electional import router as electional_router
 
@@ -51,6 +62,14 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .transits import router as transits_router
 
         return transits_router
+    if name == "configure_position_provider":
+        from .aspects import configure_position_provider
+
+        return configure_position_provider
+    if name == "clear_position_provider":
+        from .aspects import clear_position_provider
+
+        return clear_position_provider
     raise AttributeError(name)
 
 

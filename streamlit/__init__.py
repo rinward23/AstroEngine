@@ -15,16 +15,32 @@ __all__ = [
     "ButtonWidget",
     "MultiSelectWidget",
     "cache_data",
+    "file_uploader",
+    "datetime_input",
     "columns",
+    "expander",
+    "number_input",
+    "plotly_chart",
+    "radio",
+    "spinner",
     "set_runtime",
     "sidebar",
     "session_state",
+    "stop",
+    "StreamlitStop",
     "tabs",
+
+    "StopExecution",
+
 ]
 
 
 class AppTestUnavailableError(RuntimeError):
     """Raised when the shim is used without an active runtime."""
+
+
+class StopExecution(RuntimeError):
+    """Raised when ``st.stop`` is invoked during a shimmed run."""
 
 
 _RUNTIME: StreamlitRuntime | None = None
@@ -288,6 +304,10 @@ def dataframe(*_args: Any, **_kwargs: Any) -> None:
     pass
 
 
+def plotly_chart(*_args: Any, **_kwargs: Any) -> None:
+    pass
+
+
 def selectbox(
     label: str,
     options: Sequence[Any],
@@ -352,12 +372,12 @@ def multiselect(
     return list(value)
 
 
-def text_input(
+def _register_text_value(
     label: str,
-    value: str | None = "",
+    value: str | None,
     *,
-    key: str | None = None,
-    **_kwargs: Any,
+    key: str | None,
+    kind: str,
 ) -> str:
     runtime = _require_runtime()
     resolved = "" if value is None else str(value)
@@ -366,14 +386,36 @@ def text_input(
         runtime.session_state[key] = resolved
         widget_key = key
     else:
-        widget_key = f"text:{label}"
+        widget_key = f"{kind}:{label}"
     runtime.store_value(widget_key, resolved)
 
     _register_widget(
-        _Widget(runtime=runtime, kind="text_input", key=widget_key, label=label)
+        _Widget(runtime=runtime, kind=kind, key=widget_key, label=label)
     )
 
     return resolved
+
+
+
+def text_input(
+    label: str,
+    value: str | None = "",
+    *,
+    key: str | None = None,
+    **_kwargs: Any,
+) -> str:
+    return _register_text_value(label, value, key=key, kind="text_input")
+
+
+def text_area(
+    label: str,
+    value: str | None = "",
+    *,
+    key: str | None = None,
+    **_kwargs: Any,
+) -> str:
+    return _register_text_value(label, value, key=key, kind="text_area")
+
 
 
 def slider(
@@ -430,6 +472,22 @@ def checkbox(
     return value
 
 
+class _Expander:
+    def __init__(self, label: str, *, expanded: bool = False) -> None:
+        self.label = label
+        self.expanded = bool(expanded)
+
+    def __enter__(self) -> _Expander:
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+
+def expander(label: str, *, expanded: bool = False) -> _Expander:
+    return _Expander(label, expanded=expanded)
+
+
 def button(label: str, *, key: str | None = None, **_kwargs: Any) -> bool:
     runtime = _require_runtime()
     widget_key = key or f"button:{label}"
@@ -457,12 +515,60 @@ def download_button(*_args: Any, **_kwargs: Any) -> bool:
     return False
 
 
+
+def radio(
+    label: str,
+    options: Sequence[Any],
+    *,
+    index: int = 0,
+    key: str | None = None,
+    **kwargs: Any,
+) -> Any:
+    return selectbox(label, options, index=index, key=key, **kwargs)
+
+
+class _Expander:
+    def __init__(self, label: str, *, expanded: bool = False) -> None:
+        self.label = label
+        self.expanded = expanded
+
+    def __enter__(self) -> _Expander:
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+
+def expander(label: str, *, expanded: bool = False) -> _Expander:
+    return _Expander(label, expanded=expanded)
+
+
+def plotly_chart(*_args: Any, **_kwargs: Any) -> None:
+    return None
+
+
+
 class _Progress:
     def __init__(self) -> None:
         self.value = 0
 
     def progress(self, value: int, *, text: str | None = None) -> None:
         self.value = int(value)
+
+
+class _Spinner:
+    def __init__(self, text: str | None = None) -> None:
+        self.text = text or ""
+
+    def __enter__(self) -> "_Spinner":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+
+def spinner(text: str | None = None) -> _Spinner:
+    return _Spinner(text)
 
 
 class _Status:
@@ -527,3 +633,13 @@ def columns(
         raise ValueError("columns: at least one column required")
 
     return tuple(_Column(weight) for weight in weights)
+
+
+
+def experimental_rerun() -> None:
+    return None
+
+
+def stop() -> None:
+    raise StopExecution()
+

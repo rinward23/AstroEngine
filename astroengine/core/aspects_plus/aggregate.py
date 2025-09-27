@@ -124,8 +124,8 @@ def paginate(
     """Return a window slice with total count for pagination."""
 
 
-    if limit <= 0:
-        raise ValueError("limit must be positive")
+    if limit < 0:
+        raise ValueError("limit must be non-negative")
     if offset < 0:
         raise ValueError("offset must be non-negative")
 

@@ -4,7 +4,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.aspects import AspectName, TimeWindow, OrbPolicyInline
 
@@ -38,34 +39,32 @@ class ScoreSeriesRequest(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "name": "scan",
-                    "summary": "Scan Mars–Venus sextiles",
+
+                    "summary": "Scan inputs with inline policy overrides",
                     "value": {
                         "scan": {
                             "objects": ["Mars", "Venus"],
-                            "aspects": ["sextile"],
-                            "harmonics": [],
+                            "aspects": ["sextile", "trine"],
+                            "harmonics": [5],
                             "window": {
-                                "start": "2025-01-01T00:00:00Z",
-                                "end": "2025-03-01T00:00:00Z",
+                                "start": "2025-02-01T00:00:00Z",
+                                "end": "2025-02-15T00:00:00Z",
                             },
-                            "step_minutes": 120,
+                            "step_minutes": 60,
                             "orb_policy_inline": {
-                                "per_aspect": {"sextile": 3.0},
-                                "per_object": {},
-                                "adaptive_rules": {},
+                                "per_aspect": {"sextile": 3.0, "trine": 6.0},
                             },
                         }
                     },
                 },
                 {
-                    "name": "hits",
-                    "summary": "Replay precomputed hits",
+                    "summary": "Precomputed hits for scoring",
                     "value": {
                         "hits": [
                             {
-                                "a": "Mars",
-                                "b": "Venus",
+                                "a": "Sun",
+                                "b": "Moon",
+
                                 "aspect": "sextile",
                                 "exact_time": "2025-02-14T08:12:00Z",
                                 "orb": 0.12,
@@ -84,6 +83,46 @@ class ScoreSeriesRequest(BaseModel):
         if (self.scan is None and not self.hits) or (self.scan is not None and self.hits):
             raise ValueError("Provide exactly one of 'scan' or 'hits'")
         return self
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "name": "scan",
+                    "summary": "Scan series example",
+                    "value": {
+                        "scan": {
+                            "objects": ["Mars", "Venus"],
+                            "aspects": ["trine"],
+                            "harmonics": [5],
+                            "window": {
+                                "start": "2025-03-01T00:00:00Z",
+                                "end": "2025-03-15T00:00:00Z",
+                            },
+                            "step_minutes": 120,
+                        }
+                    },
+                },
+                {
+                    "name": "hits",
+                    "summary": "Pre-computed hits example",
+                    "value": {
+                        "hits": [
+                            {
+                                "a": "Sun",
+                                "b": "Moon",
+                                "aspect": "sextile",
+                                "exact_time": "2025-02-14T08:12:00Z",
+                                "orb": 0.12,
+                                "orb_limit": 3.0,
+                                "severity": 0.6,
+                            }
+                        ]
+                    },
+                },
+            ]
+        }
+    )
 
 
 class DailyPoint(BaseModel):
@@ -104,9 +143,16 @@ class ScoreSeriesResponse(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "daily": [{"date": "2025-02-14", "score": 0.62}],
-                "monthly": [{"month": "2025-02", "score": 0.58}],
-                "meta": {"method": "score_series", "scan": "mars_venus"},
+
+                "daily": [
+                    {"date": "2025-02-14", "score": 0.62},
+                    {"date": "2025-02-15", "score": 0.58},
+                ],
+                "monthly": [
+                    {"month": "2025-02", "score": 0.6},
+                ],
+                "meta": {"source": "plus.transits", "module": "plus"},
+
             }
         }
     )
