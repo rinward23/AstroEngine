@@ -1,16 +1,10 @@
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.routers.policies import router as policies_router
+from tests.helpers import build_app
 
 
-def build_app():
-    app = FastAPI()
-    app.include_router(policies_router)
-    return app
-
-
-def test_policy_crud_cycle(tmp_path, monkeypatch):
+def test_policy_crud_cycle(tmp_path):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from app.db.base import Base
@@ -23,8 +17,7 @@ def test_policy_crud_cycle(tmp_path, monkeypatch):
     dbsession.engine = engine
     dbsession.SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
-    app = build_app()
-    client = TestClient(app)
+    client = TestClient(build_app(policies_router))
 
     payload = {
         "name": "classic",

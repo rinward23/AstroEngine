@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Optional
 
 from fastapi import APIRouter, HTTPException
 
@@ -27,20 +27,47 @@ except Exception:  # pragma: no cover
     session_scope = None  # type: ignore
 
 router = APIRouter(prefix="", tags=["Plus"])
+__all__ = ["router", "configure_position_provider", "clear_position_provider"]
 
 # -----------------------------------------------------------------------------
 # Position provider injection
 # -----------------------------------------------------------------------------
-position_provider = None  # type: ignore
+PositionProvider = Callable[[datetime], Dict[str, float]]
+position_provider: Optional[PositionProvider] = None
 _cached: Any = None
 
 
-def _get_provider():
+def configure_position_provider(provider: PositionProvider) -> PositionProvider:
+    """Register a callable that returns ecliptic longitudes for aspect scans.
+
+    The cache wrapper is reset so repeated calls always see fresh configuration,
+    which is important for tests that swap demo providers in and out.
+    """
+
     global position_provider, _cached
+    position_provider = provider
+    _cached = None
+    return provider
+
+
+def clear_position_provider() -> None:
+    """Remove any previously configured provider and reset the memoized wrapper."""
+
+    global position_provider, _cached
+    position_provider = None
+    _cached = None
+
+
+def _get_provider() -> PositionProvider:
+    global position_provider, _cached
+
     if position_provider is None:
-        def _stub(_ts: datetime):
+
+        def _stub(_ts: datetime) -> Dict[str, float]:
             raise RuntimeError("position_provider not configured")
+
         return _stub
+
     if _cached is None:
         res_min = int(os.getenv("ASTRO_CACHE_RES_MIN", "5"))
         ttl_sec = float(os.getenv("ASTRO_CACHE_TTL_SEC", "600"))
