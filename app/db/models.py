@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
@@ -24,6 +26,31 @@ from sqlalchemy.sql import func
 
 
 from .base import Base
+
+
+class ChartKind(str, Enum):
+    """Enumeration of supported chart archetypes."""
+
+    natal = "natal"
+    transit = "transit"
+    synastry = "synastry"
+    composite = "composite"
+
+
+class EventType(str, Enum):
+    """Enumeration of supported event types."""
+
+    transit = "transit"
+    return_ = "return"
+    custom = "custom"
+
+
+class ExportType(str, Enum):
+    """Enumeration of supported export job types."""
+
+    ics = "ics"
+    csv = "csv"
+    json = "json"
 
 
 
@@ -95,6 +122,22 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
 
     events: Mapped[list["Event"]] = relationship(back_populates="severity_profile")
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
+        """Support legacy ``name`` keyword aliasing ``profile_key``."""
+
+        name = kwargs.pop("name", None)
+        super().__init__(*args, **kwargs)
+        if name is not None:
+            self.profile_key = str(name)
+
+    @property
+    def name(self) -> str:
+        return self.profile_key
+
+    @name.setter
+    def name(self, value: str) -> None:
+        self.profile_key = value
+
 
 class Chart(ModuleScopeMixin, TimestampMixin, Base):
     """Natal or derived charts used to contextualize detected events."""
@@ -108,12 +151,49 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     chart_key: Mapped[str] = mapped_column(String(64), nullable=False)
     profile_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    kind: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=ChartKind.natal.value,
+        server_default=text("'natal'"),
+    )
     reference_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    location_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     source: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
-    events: Mapped[list["Event"]] = relationship(back_populates="chart", cascade="all, delete-orphan")
+    events: Mapped[list["Event"]] = relationship(
+        back_populates="chart", cascade="all, delete-orphan"
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
+        """Normalize legacy keyword arguments used throughout tests."""
+
+        dt_utc = kwargs.pop("dt_utc", None)
+        kind = kwargs.pop("kind", None)
+        chart_key = kwargs.pop("chart_key", None)
+        profile_key = kwargs.pop("profile_key", None)
+        super().__init__(*args, **kwargs)
+        if dt_utc is not None:
+            self.reference_time = dt_utc
+        if kind is not None:
+            self.kind = kind.value if isinstance(kind, ChartKind) else str(kind)
+        self.chart_key = str(chart_key) if chart_key is not None else uuid4().hex
+        if profile_key is not None:
+            self.profile_key = str(profile_key)
+        elif not getattr(self, "profile_key", None):
+            self.profile_key = "default"
+
+    @property
+    def dt_utc(self) -> datetime | None:
+        return self.reference_time
+
+    @dt_utc.setter
+    def dt_utc(self, value: datetime | None) -> None:
+        self.reference_time = value
 
 
 class RuleSetVersion(ModuleScopeMixin, TimestampMixin, Base):
@@ -140,6 +220,30 @@ class RuleSetVersion(ModuleScopeMixin, TimestampMixin, Base):
 
     events: Mapped[list["Event"]] = relationship(back_populates="ruleset_version")
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
+        """Allow ``key`` to alias ``ruleset_key`` for backwards compatibility."""
+
+        key = kwargs.pop("key", None)
+        definition_json = kwargs.pop("definition_json", None)
+        checksum = kwargs.pop("checksum", None)
+        super().__init__(*args, **kwargs)
+        if key is not None:
+            self.ruleset_key = str(key)
+        if definition_json is not None:
+            self.definition = definition_json
+        if checksum is not None:
+            self.checksum = str(checksum)
+        elif not getattr(self, "checksum", None):
+            self.checksum = uuid4().hex
+
+    @property
+    def key(self) -> str:
+        return self.ruleset_key
+
+    @key.setter
+    def key(self, value: str) -> None:
+        self.ruleset_key = value
+
 
 class Event(ModuleScopeMixin, TimestampMixin, Base):
     """Detected events ready for downstream export and auditing."""
@@ -155,9 +259,9 @@ class Event(ModuleScopeMixin, TimestampMixin, Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     event_key: Mapped[str] = mapped_column(String(64), nullable=False)
     chart_id: Mapped[int] = mapped_column(ForeignKey("charts.id", ondelete="CASCADE"), nullable=False)
-    ruleset_version_id: Mapped[int] = mapped_column(
+    ruleset_version_id: Mapped[int | None] = mapped_column(
         ForeignKey("ruleset_versions.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
     )
     severity_profile_id: Mapped[int | None] = mapped_column(
         ForeignKey("severity_profiles.id", ondelete="SET NULL"),
@@ -165,7 +269,7 @@ class Event(ModuleScopeMixin, TimestampMixin, Base):
     )
     event_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
-    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(
         String(32),
@@ -176,9 +280,48 @@ class Event(ModuleScopeMixin, TimestampMixin, Base):
     source: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     chart: Mapped[Chart] = relationship(back_populates="events")
-    ruleset_version: Mapped[RuleSetVersion] = relationship(back_populates="events")
+    ruleset_version: Mapped[RuleSetVersion | None] = relationship(back_populates="events")
     severity_profile: Mapped[SeverityProfile | None] = relationship(back_populates="events")
     export_jobs: Mapped[list["ExportJob"]] = relationship(back_populates="event")
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
+        """Normalize legacy keyword arguments used in fixtures and tests."""
+
+        event_key = kwargs.pop("event_key", None)
+        event_type = kwargs.pop("type", None)
+        start_ts = kwargs.pop("start_ts", None)
+        objects = kwargs.pop("objects", None)
+        super().__init__(*args, **kwargs)
+        self.event_key = str(event_key or uuid4().hex)
+        if event_type is not None:
+            self.event_type = (
+                event_type.value if isinstance(event_type, EventType) else str(event_type)
+            )
+        if start_ts is not None:
+            self.event_time = start_ts
+        if objects is not None:
+            payload = dict(self.payload or {})
+            payload.setdefault("objects", objects)
+            self.payload = payload
+
+    @property
+    def type(self) -> EventType | str:
+        try:
+            return EventType(self.event_type)
+        except ValueError:
+            return self.event_type
+
+    @type.setter
+    def type(self, value: EventType | str) -> None:
+        self.event_type = value.value if isinstance(value, EventType) else str(value)
+
+    @property
+    def start_ts(self) -> datetime:
+        return self.event_time
+
+    @start_ts.setter
+    def start_ts(self, value: datetime) -> None:
+        self.event_time = value
 
 
 class AsteroidMeta(ModuleScopeMixin, TimestampMixin, Base):
@@ -197,6 +340,27 @@ class AsteroidMeta(ModuleScopeMixin, TimestampMixin, Base):
     attributes: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     orbit_class: Mapped[str | None] = mapped_column(String(64), nullable=True)
     source_catalog: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
+        """Allow legacy keyword aliases and sensible defaults."""
+
+        name = kwargs.pop("name", None)
+        designation = kwargs.get("designation")
+        asteroid_id = kwargs.pop("asteroid_id", None)
+        attributes = kwargs.pop("attributes", None)
+        super().__init__(*args, **kwargs)
+        if asteroid_id is None and designation is not None:
+            self.asteroid_id = str(designation)
+        elif asteroid_id is not None:
+            self.asteroid_id = str(asteroid_id)
+        if name is not None:
+            self.common_name = str(name)
+        elif not getattr(self, "common_name", None):
+            self.common_name = str(designation) if designation is not None else ""
+        if attributes is None and not getattr(self, "attributes", None):
+            self.attributes = {}
+        elif attributes is not None:
+            self.attributes = dict(attributes)
 
 
 class ExportJob(ModuleScopeMixin, TimestampMixin, Base):
@@ -231,8 +395,24 @@ class ExportJob(ModuleScopeMixin, TimestampMixin, Base):
 
     event: Mapped[Event | None] = relationship(back_populates="export_jobs")
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - SQLAlchemy init shim
+        """Normalize legacy keyword arguments used in repositories."""
+
+        job_type = kwargs.pop("type", None)
+        params = kwargs.pop("params", None)
+        job_key = kwargs.pop("job_key", None)
+        super().__init__(*args, **kwargs)
+        if job_type is not None:
+            self.job_type = job_type.value if isinstance(job_type, ExportType) else str(job_type)
+        if params is not None:
+            self.payload = params
+        self.job_key = str(job_key) if job_key is not None else uuid4().hex
+
 
 __all__ = [
+    "ChartKind",
+    "EventType",
+    "ExportType",
     "AsteroidMeta",
     "Chart",
     "Event",
@@ -242,5 +422,4 @@ __all__ = [
     "RuleSetVersion",
     "SeverityProfile",
     "TimestampMixin",
-
 ]

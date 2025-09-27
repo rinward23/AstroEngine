@@ -25,6 +25,7 @@ dependencies = [
   "python-dateutil>=2.8",
   "pydantic>=2.11",
   "PyYAML>=6.0",
+  "requests>=2.31",
   "SQLAlchemy>=2.0",
   "alembic>=1.13",
   "ics>=0.7",
@@ -65,6 +66,7 @@ cli = [
 ]
 streamlit = [
   "streamlit>=1.35",
+  "plotly>=5.20",
 ]
 
 # Release bundles
@@ -73,6 +75,7 @@ api = [
   "uvicorn>=0.37",
   "pydantic>=2.11",
   "icalendar>=6",
+  "httpx>=0.27",
 ]
 providers = [
   "pyswisseph>=2.10",

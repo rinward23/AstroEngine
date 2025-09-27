@@ -85,10 +85,18 @@ def _normalize_angle(angle: float) -> float:
     return float(angle) % 360.0
 
 
-def _signed_sep(delta: float, target: float) -> float:
-    """Return signed difference between ``delta`` and ``target`` in degrees."""
+def _angular_separation(delta: float) -> float:
+    """Return the smallest angular separation between two positions."""
 
-    return ((_normalize_angle(delta) - target + 180.0) % 360.0) - 180.0
+    normalized = _normalize_angle(delta)
+    return normalized if normalized <= 180.0 else 360.0 - normalized
+
+
+def _signed_sep(delta: float, target: float) -> float:
+    """Return signed offset between the actual separation and ``target`` degrees."""
+
+    separation = _angular_separation(delta)
+    return separation - target
 
 
 def _pair_delta(provider: PositionProvider, ts: datetime, primary: str, secondary: str) -> float:
@@ -195,30 +203,47 @@ def scan_pair_time_range(
         for angle in aspect_angles:
             diff = _signed_sep(delta, angle)
             prev_time, prev_diff = previous[angle]
-            if prev_time is not None and prev_diff is not None:
-                if prev_diff == 0.0 and abs(diff) <= abs(prev_diff):
-                    continue
-                if prev_diff * diff <= 0 or abs(diff) < 1e-2:
-                    hit_time, hit_diff = _refine_hit(
-                        position_provider, primary, secondary, angle, prev_time, current, prev_diff, diff
-                    )
-                    if window.clamp(hit_time):
-                        limit = _orb_limit(angle, orb_policy, primary, secondary)
-                        if abs(hit_diff) <= limit:
-                            key = (primary, secondary, angle, hit_time.replace(second=0, microsecond=0))
-                            if key not in recorded:
-                                hits.append(
-                                    Hit(
-                                        a=primary,
-                                        b=secondary,
-                                        aspect_angle=angle,
-                                        exact_time=hit_time,
-                                        orb=abs(hit_diff),
-                                        orb_limit=limit,
-                                        meta={"pair": (primary, secondary)},
-                                    )
-                                )
-                                recorded.add(key)
+            limit = _orb_limit(angle, orb_policy, primary, secondary)
+            if prev_time is None or prev_diff is None:
+                if abs(diff) <= limit:
+                    key = (primary, secondary, angle, current.replace(second=0, microsecond=0))
+                    if key not in recorded:
+                        hits.append(
+                            Hit(
+                                a=primary,
+                                b=secondary,
+                                aspect_angle=angle,
+                                exact_time=current,
+                                orb=abs(diff),
+                                orb_limit=limit,
+                                meta={"pair": (primary, secondary)},
+                            )
+                        )
+                        recorded.add(key)
+                previous[angle] = (current, diff)
+                continue
+            if prev_diff == 0.0 and abs(diff) <= abs(prev_diff):
+                previous[angle] = (current, diff)
+                continue
+            if prev_diff * diff <= 0 or abs(diff) < 1e-2:
+                hit_time, hit_diff = _refine_hit(
+                    position_provider, primary, secondary, angle, prev_time, current, prev_diff, diff
+                )
+                if window.clamp(hit_time) and abs(hit_diff) <= limit:
+                    key = (primary, secondary, angle, hit_time.replace(second=0, microsecond=0))
+                    if key not in recorded:
+                        hits.append(
+                            Hit(
+                                a=primary,
+                                b=secondary,
+                                aspect_angle=angle,
+                                exact_time=hit_time,
+                                orb=abs(hit_diff),
+                                orb_limit=limit,
+                                meta={"pair": (primary, secondary)},
+                            )
+                        )
+                        recorded.add(key)
             previous[angle] = (current, diff)
         current += step
 
