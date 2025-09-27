@@ -104,3 +104,12 @@ class APIClient:
         r.raise_for_status()
         return r.json()
 
+    # ---- Arabic Lots -------------------------------------------------------
+    def lots_catalog(self) -> Dict[str, Any]:
+        r = requests.get(f"{self.base}/lots/catalog", timeout=30)
+        r.raise_for_status(); return r.json()
+
+    def lots_compute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        r = requests.post(f"{self.base}/lots/compute", json=payload, timeout=60)
+        r.raise_for_status(); return r.json()
+

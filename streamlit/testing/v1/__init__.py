@@ -9,7 +9,7 @@ from typing import Any
 
 import streamlit as st
 
-from ... import set_runtime
+from ... import StopExecution, set_runtime
 from ..._runtime import StreamlitRuntime
 
 
@@ -26,7 +26,10 @@ def _run_app(path: Path) -> None:
         set_runtime(runtime)
     runtime.prepare_for_run()
     _reset_widgets()
-    runpy.run_path(str(path), run_name="__main__")
+    try:
+        runpy.run_path(str(path), run_name="__main__")
+    except StopExecution:
+        pass
 
 
 @dataclass

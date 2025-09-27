@@ -8,7 +8,18 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from itertools import combinations
-from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS, harmonic_angles
 
@@ -101,58 +112,42 @@ def _angle_delta(
     return float(sep) - float(target_angle)
 
 
-def _coerce_spec(spec: Any) -> AspectSpec:
-    """Normalize aspect specifications to :class:`AspectSpec` objects."""
 
-    if isinstance(spec, AspectSpec):
-        return spec
-    if isinstance(spec, Mapping):
-        angle_value = spec.get("angle")
-        if angle_value is None:
-            raise ValueError("aspect specification requires an 'angle'")
-        name_value = spec.get("name") or spec.get("label") or str(angle_value)
-        harmonic_value = spec.get("harmonic")
-        harmonic_int = None
-        if harmonic_value is not None:
-            try:
-                harmonic_int = int(harmonic_value)
-            except Exception:
-                harmonic_int = None
-        return AspectSpec(name=str(name_value).strip().lower(), angle=float(angle_value), harmonic=harmonic_int)
-    try:
-        angle = float(spec)
-    except Exception as exc:
-        raise TypeError(f"Unsupported aspect specification: {spec!r}") from exc
-    if isinstance(spec, str):
-        name = spec.strip().lower() or str(angle)
-    else:
-        name = str(int(angle) if float(angle).is_integer() else angle)
+AspectInput = Union[AspectSpec, float, int, str]
 
 
-def _angular_separation(delta: float) -> float:
-    """Return the smallest angular separation between two positions."""
+def _coerce_spec(value: AspectInput) -> AspectSpec:
+    """Normalize caller-provided aspect specifications."""
 
-    normalized = _normalize_angle(delta)
-    return normalized if normalized <= 180.0 else 360.0 - normalized
+    if isinstance(value, AspectSpec):
+        return value
+    if isinstance(value, (int, float)):
+        angle = float(value)
+        name = _match_base_name(angle) or f"{angle:g}"
+        return AspectSpec(name=name, angle=angle, harmonic=None)
+    if isinstance(value, str):
+        key = value.strip()
+        lower = key.lower()
+        if lower in BASE_ASPECTS:
+            angle = float(BASE_ASPECTS[lower])
+            return AspectSpec(name=lower, angle=angle, harmonic=None)
+        try:
+            angle = float(key)
+        except ValueError as exc:  # pragma: no cover - guarded by tests
+            raise ValueError(f"unsupported aspect spec: {value!r}") from exc
+        name = _match_base_name(angle) or lower
+        return AspectSpec(name=name, angle=angle, harmonic=None)
+    raise TypeError(f"unsupported aspect spec: {value!r}")
 
 
-def _signed_sep(delta: float, target: float) -> float:
-    """Return signed offset between the actual separation and ``target`` degrees."""
+def _match_base_name(angle: float) -> Optional[str]:
+    """Return the canonical aspect name for ``angle`` when available."""
 
-    separation = _angular_separation(delta)
-    return separation - target
+    for name, base_angle in BASE_ASPECTS.items():
+        if abs(float(base_angle) - angle) <= 1e-6:
+            return name
+    return None
 
-
-def _pair_delta(provider: PositionProvider, ts: datetime, primary: str, secondary: str) -> float:
-    positions = provider(ts)
-    if primary not in positions or secondary not in positions:
-        missing = [name for name in (primary, secondary) if name not in positions]
-        raise KeyError(f"position provider missing objects: {missing!r}")
-    return _normalize_angle(positions[primary] - positions[secondary])
-
-
-
-    return AspectSpec(name=name, angle=angle, harmonic=None)
 
 
 def _resolve_orb_limit(
@@ -164,11 +159,18 @@ def _resolve_orb_limit(
     spec_obj = _coerce_spec(spec)
     policy = orb_policy or {}
     aspect_limits = policy.get("per_aspect", {}) or {}
-    key = spec_obj.name.lower()
-    limit = aspect_limits.get(key)
-    if limit is None:
-        limit = aspect_limits.get(str(spec_obj.angle))
-    base_default = policy.get("default") if policy else None
+
+    key_candidates = []
+    if spec.name:
+        key_candidates.append(spec.name.lower())
+    key_candidates.append(f"{spec.angle:g}")
+
+    limit = None
+    for candidate in key_candidates:
+        if candidate in aspect_limits:
+            limit = aspect_limits.get(candidate)
+            break
+
     try:
         if limit is not None:
             limit_val = float(limit)
@@ -200,8 +202,6 @@ def _scan_single_spec(
     limit: float,
     step_minutes: int,
 ) -> List[Hit]:
-    if limit <= 0.0:
-        return []
     step = timedelta(minutes=max(1, int(step_minutes)))
     hits: List[Hit] = []
 
@@ -268,7 +268,9 @@ def scan_pair_time_range(
     body_b: str,
     window: TimeWindow,
     position_provider: Callable[[datetime], Mapping[str, float]],
-    aspect_specs: Sequence[AspectSpec | Mapping[str, Any] | float | int | str],
+
+    aspect_specs: Sequence[AspectInput],
+
     orb_policy: Mapping[str, Any] | None,
     *,
     step_minutes: int = 60,
