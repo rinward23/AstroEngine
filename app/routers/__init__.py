@@ -1,5 +1,6 @@
 """API routers for AstroEngine Plus services."""
 
+
 from __future__ import annotations
 
 from typing import Any
@@ -8,9 +9,10 @@ __all__ = [
     "aspects_router",
     "electional_router",
     "events_router",
+
     "policies_router",
-    "rel_router",
-    "transits_router",
+    "configure_position_provider",
+    "clear_position_provider",
 ]
 
 
