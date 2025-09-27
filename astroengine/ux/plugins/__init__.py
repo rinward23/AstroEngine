@@ -34,11 +34,25 @@ if pluggy is not None:  # pragma: no branch
     _BUILTINS_LOADED = False
     _ENTRYPOINTS_LOADED = False
 
+    def _instantiate_plugin(candidate: object) -> object:
+        """Return a plugin instance, instantiating classes when required."""
+
+        if isinstance(candidate, type):
+            try:
+                return candidate()
+            except TypeError:
+                LOG.exception(
+                    "Plugin %r could not be instantiated without arguments", candidate
+                )
+                raise
+        return candidate
+
     def _register_plugin(plugin: object, *, name: str | None = None) -> None:
-        if type(plugin) in _REGISTERED_TYPES:
+        instance = _instantiate_plugin(plugin)
+        if type(instance) in _REGISTERED_TYPES:
             return
-        _MANAGER.register(plugin, name=name)
-        _REGISTERED_TYPES.add(type(plugin))
+        _MANAGER.register(instance, name=name)
+        _REGISTERED_TYPES.add(type(instance))
 
     def _register_builtin_plugins() -> None:
         global _BUILTINS_LOADED

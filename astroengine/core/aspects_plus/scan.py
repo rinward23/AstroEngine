@@ -128,13 +128,29 @@ def _coerce_spec(spec: Any) -> AspectSpec:
     else:
         name = str(int(angle) if float(angle).is_integer() else angle)
 
-    for base_name, base_angle in BASE_ASPECTS.items():
-        try:
-            if abs(float(base_angle) - angle) <= 1e-6:
-                name = base_name
-                break
-        except Exception:
-            continue
+
+def _angular_separation(delta: float) -> float:
+    """Return the smallest angular separation between two positions."""
+
+    normalized = _normalize_angle(delta)
+    return normalized if normalized <= 180.0 else 360.0 - normalized
+
+
+def _signed_sep(delta: float, target: float) -> float:
+    """Return signed offset between the actual separation and ``target`` degrees."""
+
+    separation = _angular_separation(delta)
+    return separation - target
+
+
+def _pair_delta(provider: PositionProvider, ts: datetime, primary: str, secondary: str) -> float:
+    positions = provider(ts)
+    if primary not in positions or secondary not in positions:
+        missing = [name for name in (primary, secondary) if name not in positions]
+        raise KeyError(f"position provider missing objects: {missing!r}")
+    return _normalize_angle(positions[primary] - positions[secondary])
+
+
 
     return AspectSpec(name=name, angle=angle, harmonic=None)
 
@@ -189,63 +205,60 @@ def _scan_single_spec(
     step = timedelta(minutes=max(1, int(step_minutes)))
     hits: List[Hit] = []
 
-    prev_time = window.start
-    prev_delta_opt = _angle_delta(provider, prev_time, body_a, body_b, spec.angle)
-    if prev_delta_opt is None:
-        return hits
-    last_recorded: Optional[datetime] = None
+    recorded: set[tuple[str, str, float, datetime]] = set()
 
-    while prev_time < window.end:
-        next_time = prev_time + step
-        if next_time > window.end:
-            next_time = window.end
-        next_delta_opt = _angle_delta(provider, next_time, body_a, body_b, spec.angle)
-        if next_delta_opt is None:
-            prev_time = next_time
-            prev_delta_opt = None
-            continue
-
-        candidate: Optional[Tuple[datetime, float]] = None
-
-        if prev_delta_opt == 0.0:
-            candidate = (prev_time, 0.0)
-        elif next_delta_opt == 0.0:
-            candidate = (next_time, 0.0)
-        elif prev_delta_opt * next_delta_opt <= 0:
-            refined = _bisect_refine(
-                provider,
-                body_a,
-                body_b,
-                spec.angle,
-                prev_time,
-                prev_delta_opt,
-                next_time,
-                next_delta_opt,
-                limit,
-            )
-            if refined:
-                candidate = refined
-
-        if candidate:
-            hit_time, orb = candidate
-            hit_time = window.clamp(hit_time)
-            if orb <= limit + 1e-6:
-                if last_recorded is None or abs((hit_time - last_recorded).total_seconds()) > 30:
-                    hits.append(
-                        Hit(
-                            a=body_a,
-                            b=body_b,
-                            aspect_angle=spec.angle,
-                            exact_time=hit_time,
-                            orb=orb,
-                            orb_limit=limit,
-                            meta={"aspect": spec.name, "harmonic": spec.harmonic},
+    current = window.start
+    while current <= window.end:
+        delta = _pair_delta(position_provider, current, primary, secondary)
+        for angle in aspect_angles:
+            diff = _signed_sep(delta, angle)
+            prev_time, prev_diff = previous[angle]
+            limit = _orb_limit(angle, orb_policy, primary, secondary)
+            if prev_time is None or prev_diff is None:
+                if abs(diff) <= limit:
+                    key = (primary, secondary, angle, current.replace(second=0, microsecond=0))
+                    if key not in recorded:
+                        hits.append(
+                            Hit(
+                                a=primary,
+                                b=secondary,
+                                aspect_angle=angle,
+                                exact_time=current,
+                                orb=abs(diff),
+                                orb_limit=limit,
+                                meta={"pair": (primary, secondary)},
+                            )
                         )
-                    )
-                    last_recorded = hit_time
+                        recorded.add(key)
+                previous[angle] = (current, diff)
+                continue
+            if prev_diff == 0.0 and abs(diff) <= abs(prev_diff):
+                previous[angle] = (current, diff)
+                continue
+            if prev_diff * diff <= 0 or abs(diff) < 1e-2:
+                hit_time, hit_diff = _refine_hit(
+                    position_provider, primary, secondary, angle, prev_time, current, prev_diff, diff
+                )
+                if window.clamp(hit_time) and abs(hit_diff) <= limit:
+                    key = (primary, secondary, angle, hit_time.replace(second=0, microsecond=0))
+                    if key not in recorded:
+                        hits.append(
+                            Hit(
+                                a=primary,
+                                b=secondary,
+                                aspect_angle=angle,
+                                exact_time=hit_time,
+                                orb=abs(hit_diff),
+                                orb_limit=limit,
+                                meta={"pair": (primary, secondary)},
+                            )
+                        )
+                        recorded.add(key)
+            previous[angle] = (current, diff)
+        current += step
 
-        prev_time = next_time
-        prev_delta_opt = next_delta_opt
+
+    hits.sort(key=lambda h: h.exact_time)
 
     return hits
 

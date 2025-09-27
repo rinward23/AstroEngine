@@ -35,11 +35,28 @@ class APIClient:
         r.raise_for_status(); return r.json()
 
 
-    # ---- Internal helpers --------------------------------------------------
-    def _post_json(self, path: str, payload: Dict[str, Any], timeout: int = 60) -> Any:
-        """Send a POST request and return the decoded JSON body."""
 
-        url = f"{self.base}{path if path.startswith('/') else '/' + path}"
+        return self._post_json("/aspects/search", payload, timeout=60)
+
+    # ---- Synastry & Composites -------------------------------------------
+    def synastry_compute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._post_json("/synastry/compute", payload, timeout=60)
+
+    def composite_midpoint(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._post_json("/composites/midpoint", payload, timeout=30)
+
+    def composite_davison(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._post_json("/composites/davison", payload, timeout=30)
+
+    # ------------------------------------------------------------------
+    def _post_json(self, path: str, payload: Dict[str, Any], *, timeout: int) -> Dict[str, Any]:
+        """POST ``payload`` to ``path`` and return the parsed JSON response."""
+
+        if not path.startswith("/"):
+            path = f"/{path}"
+
+        url = f"{self.base}{path}"
+
         try:
             response = requests.post(url, json=payload, timeout=timeout)
             response.raise_for_status()

@@ -91,6 +91,28 @@ trying richer recipes.
 
 # >>> AUTO-GEN END: Minimal App Quickstart v1.1
 
+### Streamlit synastry & composite playground
+
+The Streamlit bundle now ships a dedicated **Synastry & Composites** page that
+calls the FastAPI routes introduced in STEP‑A‑027. Launch it with:
+
+```bash
+export API_BASE_URL="http://localhost:8000"  # point to your running FastAPI app
+streamlit run ui/streamlit/pages/05_Synastry_Composite.py
+```
+
+The page offers real datasets for quick regression checks:
+
+- **Synastry tab** – Paste or upload JSON longitude maps (e.g. Solar Fire
+  exports). Choose aspects, optionally override orb policies inline, and view
+  the returned hit table, grid counts, and heatmap.
+- **Composites tab** – Compute midpoint composites from paired position maps or
+  Davison composites from two datetimes. Results include tabular outputs, CSV
+  and JSON downloads, and a polar plot for midpoint longitudes.
+
+Sample longitude presets bundled with the page correspond to historical charts
+captured from published ephemerides so the outputs remain fully data-backed.
+
 ### Next steps
 
 The documentation set now includes step-by-step recipes for three common
@@ -353,6 +375,12 @@ Install the optional `dev` extras and run the test suite:
 ```bash
 pytest
 ```
+
+> The base development container only installs the core runtime so images stay
+> lightweight. API-facing dependencies such as `fastapi`, `uvicorn`,
+> `pydantic`, and `icalendar` therefore are not present until you explicitly
+> install the `api` extra (e.g. `pip install -e .[api,dev]`) or the mirrored
+> bundle in `requirements-optional.txt`.
 
 Schema validation helpers reside in `astroengine/validation` and operate
 on the JSON documents stored in `./schemas`.

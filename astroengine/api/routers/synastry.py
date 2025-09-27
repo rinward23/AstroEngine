@@ -8,32 +8,35 @@ from collections.abc import Mapping
 from typing import Any, Sequence
 
 
-
+from fastapi import APIRouter
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
-
 from ...chart.natal import DEFAULT_BODIES
-from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
+from ...core.aspects_plus.harmonics import BASE_ASPECTS
+from ...synastry.orchestrator import SynHit, compute_synastry
+
 
 
 
 router = APIRouter()
-
 
 def _to_iso(dt: datetime) -> str:
     return dt.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 class NatalPayload(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
 
-    ts: datetime = Field(validation_alias=AliasChoices("ts", "utc"))
-    lat: float | None = None
-    lon: float | None = None
+    """Minimal payload describing a natal chart for synastry scans."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    ts: datetime = Field(validation_alias=AliasChoices("ts", "datetime"))
+    lat: float
+    lon: float
 
     @field_validator("ts", mode="before")
-    @classmethod
-    def _validate_ts(cls, value: Any) -> datetime:
+    def _coerce_timestamp(cls, value: Any) -> datetime:
+
         if isinstance(value, datetime):
             return value.astimezone(UTC)
         if isinstance(value, str):
@@ -46,155 +49,120 @@ class NatalPayload(BaseModel):
                 return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
         raise TypeError("expected ISO-8601 timestamp")
 
-    def positions(
-        self, body_names: Sequence[str] | None, adapter: SwissEphemerisAdapter
-    ) -> dict[str, float]:
-        mapping = _body_map(body_names)
-        if not mapping:
-            return {}
-        jd = adapter.julian_day(self.ts)
-        samples = adapter.body_positions(jd, mapping)
-        return {name: float(pos.longitude % 360.0) for name, pos in samples.items()}
+    @field_validator("lat", "lon", mode="before")
+    def _coerce_float(cls, value: Any) -> float:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+        return float(str(value))
+
+    def as_payload(self) -> dict[str, Any]:
+        return {"ts": _to_iso(self.ts), "lat": float(self.lat), "lon": float(self.lon)}
 
 
 class SynastryRequest(BaseModel):
 
-    subject: NatalPayload = Field(
-        ..., validation_alias=AliasChoices("subject", "a")
-    )
-    partner: NatalPayload = Field(
-        ..., validation_alias=AliasChoices("partner", "b")
-    )
+    """Request model for synastry aspect computations."""
+
+    subject: NatalPayload
+    partner: NatalPayload
 
     bodies: Sequence[str] | None = None
-    aspects: Sequence[int] | None = None
+    aspects: Sequence[Any] | None = None
     orb: float = Field(default=2.0, ge=0.0)
 
-    model_config = ConfigDict(extra="ignore")
+
+    def resolved_aspects(self) -> list[int]:
+        if not self.aspects:
+            return [0, 60, 90, 120, 180]
+        resolved: list[int] = []
+        for entry in self.aspects:
+            if isinstance(entry, (int, float)) and not isinstance(entry, bool):
+                resolved.append(int(round(float(entry))))
+                continue
+            key = str(entry).strip().lower()
+            angle = BASE_ASPECTS.get(key)
+            if angle is not None:
+                resolved.append(int(round(float(angle))))
+        cleaned = sorted({int(value) for value in resolved})
+        return cleaned or [0, 60, 90, 120, 180]
+
+    def resolved_bodies(self) -> list[str] | None:
+        if self.bodies is None:
+            return None
+        lookup = {name.lower(): name for name in DEFAULT_BODIES}
+        resolved: list[str] = []
+        for entry in self.bodies:
+            key = str(entry).strip().lower()
+            canonical = lookup.get(key)
+            if canonical and canonical not in resolved:
+                resolved.append(canonical)
+        return resolved or None
+
+
+class SynastryHitDTO(BaseModel):
+    direction: str
+
+    moving: str
+    target: str
+    aspect: float
+    orb: float
+    score: float | None = None
+    domains: dict[str, float] | None = None
+
+
+class SynastrySummary(BaseModel):
+    method: str = "synastry_aspects"
+    count_by_direction: dict[str, int]
+    orb: float
+    aspects: list[float]
+    bodies: list[str] | None = None
 
 
 class SynastryResponse(BaseModel):
     count: int
-    summary: dict[str, Any]
-    hits: list[Hit]
+    summary: SynastrySummary
+    hits: list[SynastryHitDTO]
 
 
-@dataclass
-class _SynastryAspect:
-    when_iso: str
-    moving: str
-    target: str
-    aspect: int
-    orb: float
-    lon_moving: float
-    lon_target: float
+
+def _convert_hit(hit: SynHit) -> SynastryHitDTO:
+    return SynastryHitDTO(
+        direction=hit.direction,
+        moving=hit.moving,
+        target=hit.target,
+        aspect=float(hit.angle_deg),
+        orb=float(hit.orb_abs),
+        score=float(hit.score) if hit.score is not None else None,
+        domains=hit.domains,
+    )
 
 
-def _scan_synastry(request: SynastryRequest) -> list[_SynastryAspect]:
-    adapter = SwissEphemerisAdapter.get_default_adapter()
-    aspects = request.aspects or [0, 60, 90, 120, 180]
+@router.post("/aspects", response_model=SynastryResponse)
+def api_synastry_aspects(request: SynastryRequest) -> SynastryResponse:
+    aspects = request.resolved_aspects()
     orb = float(request.orb)
+    body_list = request.resolved_bodies()
+    hits = compute_synastry(
+        subject=request.subject.as_payload(),
+        partner=request.partner.as_payload(),
+        aspects=aspects,
+        orb_deg=orb,
+        subject_bodies=body_list,
+        partner_bodies=body_list,
+    )
 
-    hits: list[_SynastryAspect] = []
-    bodies = request.bodies
+    dto_hits = [_convert_hit(hit) for hit in hits]
+    aspect_summary = sorted({float(angle) for angle in aspects})
+    summary = SynastrySummary(
+        count_by_direction={
+            "A->B": sum(1 for h in hits if h.direction == "A->B"),
+            "B->A": sum(1 for h in hits if h.direction == "B->A"),
+        },
+        orb=orb,
+        aspects=aspect_summary,
+        bodies=body_list,
+    )
 
-    subject_positions = request.subject.positions(bodies, adapter)
-    partner_positions = request.partner.positions(bodies, adapter)
-
-    if not subject_positions or not partner_positions:
-        return hits
-
-    if bodies is None:
-        names = [name for name in partner_positions.keys() if name in subject_positions]
-    else:
-        names = [
-            name
-            for name in bodies
-            if name in partner_positions and name in subject_positions
-        ]
-
-    if not names:
-        return hits
-
-    iso = _to_iso(request.partner.ts)
-
-    for name in names:
-        moving = float(partner_positions[name])
-        target = float(subject_positions[name])
-        separation = abs((moving - target) % 360.0)
-        if separation > 180.0:
-            separation = 360.0 - separation
-        for angle in aspects:
-            delta = abs(separation - float(angle))
-            if delta <= orb:
-                hits.append(
-                    _SynastryAspect(
-                        when_iso=iso,
-                        moving=name,
-                        target=f"natal_{name}",
-                        aspect=int(angle),
-                        orb=float(delta),
-                        lon_moving=moving,
-                        lon_target=target,
-                    )
-                )
-                break
-
-    return hits
+    return SynastryResponse(count=len(dto_hits), summary=summary, hits=dto_hits)
 
 
-
-def _normalize_synastry_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
-    data = dict(payload)
-    subject = data.get("subject") or data.get("a")
-    partner = data.get("partner") or data.get("b")
-    if subject is None or partner is None:
-        raise HTTPException(status_code=422, detail="subject and partner payloads are required")
-
-    normalized: dict[str, Any] = {"subject": subject, "partner": partner}
-    for key in ("bodies", "aspects", "orb"):
-        if key in data and data[key] is not None:
-            normalized[key] = data[key]
-    return normalized
-
-
-@router.post("/aspects")
-def api_synastry_aspects(payload: dict[str, Any]) -> dict[str, Any]:
-    request = SynastryRequest(**_normalize_synastry_payload(payload))
-    aspects = _scan_synastry(request)
-    hits: list[dict[str, Any]] = []
-    for item in aspects:
-        hits.append(
-            {
-                "direction": "partner→subject",
-                "moving": item.moving,
-                "target": item.target,
-                "aspect": item.aspect,
-                "orb": item.orb,
-                "lon_moving": item.lon_moving,
-                "lon_target": item.lon_target,
-                "ts": item.when_iso,
-            }
-        )
-
-    summary = {
-        "method": "synastry_aspects",
-        "orb": float(request.orb),
-        "bodies": list(request.bodies) if request.bodies else "default",
-    }
-
-    return {"count": len(hits), "summary": summary, "hits": hits}
-
-
-
-def _body_map(names: Sequence[str] | None) -> dict[str, int]:
-    if not names:
-        return {name: int(code) for name, code in DEFAULT_BODIES.items()}
-    lookup = {name.lower(): (name, int(code)) for name, code in DEFAULT_BODIES.items()}
-    resolved: dict[str, int] = {}
-    for entry in names:
-        key = str(entry).lower()
-        if key in lookup:
-            canonical, code = lookup[key]
-            resolved[canonical] = code
-    return resolved

@@ -1,4 +1,3 @@
-
 """Scan-related API endpoints for AstroEngine."""
 
 from __future__ import annotations
@@ -8,23 +7,24 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from collections.abc import Mapping
-from typing import Any, Iterable, Literal, Sequence
+from typing import Any, Iterable, Sequence
+from typing import Literal
+
 
 
 from fastapi import APIRouter, HTTPException
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from collections.abc import Mapping
 
-from ...core.transit_engine import scan_transits
+from pydantic import AliasChoices, BaseModel, Field, ConfigDict, field_validator, model_validator
 
 from ...detectors.directed_aspects import solar_arc_natal_aspects
 from ...detectors.progressed_aspects import progressed_natal_aspects
 from ...detectors.returns import solar_lunar_returns
+from ...core.transit_engine import scan_transits as transit_aspects
 from ...detectors_aspects import AspectHit
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from ...events import ReturnEvent
-
 from ...exporters import write_parquet_canonical, write_sqlite_canonical
 from ...exporters_ics import write_ics_canonical
 
@@ -32,69 +32,15 @@ from ...exporters_ics import write_ics_canonical
 router = APIRouter()
 
 
-def progressed_natal_aspects(
-
-    natal_iso: str,
-    start_iso: str,
-    end_iso: str,
-    *,
-    bodies: Sequence[str] | None = None,
-    step_days: float = 30.0,
-):
-    return secondary_progressions(
-        natal_iso,
-        start_iso,
-        end_iso,
-
-        bodies=bodies,
-        step_days=step_days,
-    )
-
-
-def solar_arc_natal_aspects(
-
-    natal_iso: str,
-    start_iso: str,
-    end_iso: str,
-    *,
-    bodies: Sequence[str] | None = None,
-):
-    return solar_arc_directions(
-        natal_iso,
-        start_iso,
-        end_iso,
-
-        bodies=bodies,
-    )
-
-
-def solar_lunar_returns(
-    natal_jd: float,
-    start_jd: float,
-    end_jd: float,
-    *,
-    kind: str,
-
-    step_days: float | None = None,
-
-    adapter: SwissEphemerisAdapter | None = None,
-):
-    return _solar_lunar_returns(
-        natal_jd,
-        start_jd,
-        end_jd,
-
-        kind=kind,
-        step_days=step_days,
-
-        adapter=adapter,
-    )
-
-
 
 def _to_iso(dt: datetime) -> str:
     utc = dt.astimezone(UTC)
     return utc.isoformat().replace("+00:00", "Z")
+
+
+def _parse_iso(value: str) -> datetime:
+    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
 class ExportOptions(BaseModel):
@@ -115,23 +61,33 @@ class ExportOptions(BaseModel):
 
 class TimeWindow(BaseModel):
 
-    natal: datetime = Field(
-        ...,
-        validation_alias=AliasChoices("natal", "natal_inline"),
-    )
-    start: datetime = Field(
-        ...,
-        validation_alias=AliasChoices("start", "from"),
-    )
-    end: datetime = Field(
-        ...,
-        validation_alias=AliasChoices("end", "to"),
+    """Normalized scan time bounds with legacy payload support."""
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    natal: datetime = Field(validation_alias=AliasChoices("natal", "natal_ts"))
+    start: datetime = Field(validation_alias=AliasChoices("start", "from"))
+    end: datetime = Field(validation_alias=AliasChoices("end", "to"))
+    natal_inline: dict[str, Any] | None = Field(
+        default=None,
+        validation_alias="natal_inline",
+        exclude=True,
     )
 
-    model_config = ConfigDict(extra="ignore")
+    @model_validator(mode="before")
+    def _merge_inline(cls, data: Any) -> Any:
+        if isinstance(data, Mapping):
+            payload = dict(data)
+            inline = payload.get("natal_inline")
+            if inline and not payload.get("natal") and not payload.get("natal_ts"):
+                ts = inline.get("ts")
+                if ts:
+                    payload["natal"] = ts
+            return payload
+        return data
 
     @field_validator("natal", "start", "end", mode="before")
-    @classmethod
+
     def _coerce_datetime(cls, value: Any) -> datetime:
         if isinstance(value, Mapping):
             value = value.get("ts")
@@ -152,6 +108,7 @@ class TimeWindow(BaseModel):
 
 
 class TransitScanRequest(TimeWindow):
+    method: str | None = Field(default=None, validation_alias="method")
     bodies: Sequence[str] | None = None
     targets: Sequence[str] | None = None
     aspects: Sequence[Any] | None = None
@@ -193,179 +150,70 @@ class ScanResponse(BaseModel):
     export: dict[str, Any] | None = None
 
 
-_ASPECT_NAME_TO_DEGREES: dict[str, float] = {
-    "conjunction": 0.0,
-    "opposition": 180.0,
-    "square": 90.0,
-    "trine": 120.0,
-    "sextile": 60.0,
-    "quincunx": 150.0,
-    "semisquare": 45.0,
-    "sesquisquare": 135.0,
-    "quintile": 72.0,
-    "biquintile": 144.0,
-}
 
-_DEFAULT_ASPECTS = [0.0, 60.0, 90.0, 120.0, 180.0]
+def _value_from_hit(hit: AspectHit | Mapping[str, Any], *names: str) -> Any:
+    for name in names:
+        if isinstance(hit, Mapping) and name in hit and hit[name] is not None:
+            return hit[name]
+        attr = getattr(hit, name, None)
+        if attr is not None:
+            return attr
+    return None
 
 
-def _attr_lookup(source: object, name: str, default: Any = None) -> Any:
-    if isinstance(source, Mapping):
-        return source.get(name, default)
-    return getattr(source, name, default)
+def _hit_from_aspect(hit: AspectHit | Mapping[str, Any]) -> Hit:
+    when_iso = _value_from_hit(hit, "when_iso", "ts")
+    moving = _value_from_hit(hit, "moving")
+    target = _value_from_hit(hit, "target")
+    angle = _value_from_hit(hit, "angle_deg", "aspect")
+    orb = _value_from_hit(hit, "orb_abs", "orb")
+    orb_allow = _value_from_hit(hit, "orb_allow")
+    motion = _value_from_hit(hit, "applying_or_separating")
+    if motion is None:
+        applying_flag = _value_from_hit(hit, "applying")
+        if applying_flag is not None:
+            motion = "applying" if applying_flag else "separating"
+    family = _value_from_hit(hit, "family")
+    lon_moving = _value_from_hit(hit, "lon_moving", "moving_longitude")
+    lon_target = _value_from_hit(hit, "lon_target", "target_longitude")
+    delta = _value_from_hit(hit, "delta_lambda_deg", "delta")
+    offset = _value_from_hit(hit, "offset_deg", "offset")
+    metadata = _value_from_hit(hit, "metadata", "meta")
+    retrograde = _value_from_hit(hit, "retrograde")
 
+    meta_dict: dict[str, Any] | None
+    if isinstance(metadata, Mapping):
+        meta_dict = dict(metadata)
+    elif metadata is None:
+        meta_dict = None
+    else:
+        meta_dict = {"value": metadata}
+    if retrograde is not None:
+        meta_dict = dict(meta_dict or {})
+        meta_dict.setdefault("retrograde", bool(retrograde))
 
-def _coerce_motion(source: object) -> str | None:
-    motion = _attr_lookup(source, "motion")
-    if isinstance(motion, str):
-        return motion
-    applying_flag = _attr_lookup(source, "applying")
-    if applying_flag is True:
-        return "applying"
-    if applying_flag is False:
-        return "separating"
-    return _attr_lookup(source, "applying_or_separating")
+    return Hit(
+        ts=str(when_iso) if when_iso is not None else "",
+        moving=str(moving) if moving is not None else "",
+        target=str(target) if target is not None else "",
+        aspect=int(round(float(angle))) if angle is not None else 0,
+        orb=float(abs(float(orb))) if orb is not None else 0.0,
+        orb_allow=float(orb_allow) if orb_allow is not None else None,
+        motion=str(motion) if motion is not None else None,
+        family=str(family) if family is not None else None,
+        lon_moving=float(lon_moving) if lon_moving is not None else None,
+        lon_target=float(lon_target) if lon_target is not None else None,
+        delta=float(delta) if delta is not None else None,
+        offset=float(offset) if offset is not None else None,
+        metadata=meta_dict,
+    )
 
-
-def _resolve_progression_aspects(values: Sequence[Any] | None) -> list[int]:
-    resolved: set[int] = set()
-    if values is None:
-        return [int(angle) for angle in _DEFAULT_ASPECTS]
-    for entry in values:
-        if isinstance(entry, (int, float)):
-            resolved.add(int(round(float(entry))))
-            continue
-        if isinstance(entry, str):
-            token = entry.strip().lower()
-            if token in _ASPECT_NAME_TO_DEGREES:
-                resolved.add(int(round(_ASPECT_NAME_TO_DEGREES[token])))
-                continue
-            try:
-                resolved.add(int(round(float(token))))
-            except (TypeError, ValueError):
-                continue
-    return sorted(resolved) if resolved else [int(angle) for angle in _DEFAULT_ASPECTS]
-
-
-def _normalize_scan_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
-    if not isinstance(payload, Mapping):  # pragma: no cover - FastAPI guards
-        raise HTTPException(status_code=400, detail="scan payload must be a JSON object")
-
-    data = dict(payload)
-    natal = data.get("natal")
-    if natal is None:
-        inline = data.get("natal_inline")
-        if isinstance(inline, Mapping):
-            natal = inline.get("ts")
-
-    start = data.get("start") or data.get("from")
-    end = data.get("end") or data.get("to")
-    if not natal or not start or not end:
-        raise HTTPException(
-            status_code=422,
-            detail="natal, start, and end timestamps are required",
-        )
 
     normalized: dict[str, Any] = {
         "natal": natal,
         "start": start,
         "end": end,
     }
-
-
-    step_days = data.get("step_days")
-    if step_days is None and "step_minutes" in data:
-        try:
-            step_days = float(data["step_minutes"]) / (24.0 * 60.0)
-        except (TypeError, ValueError):
-            step_days = None
-    if step_days is not None:
-        normalized["step_days"] = step_days
-
-    for key in ("bodies", "targets", "aspects", "orb", "export"):
-        value = data.get(key)
-        if value is not None:
-            normalized[key] = value
-
-    return normalized
-
-
-def _hit_from_aspect(hit: AspectHit | Mapping[str, Any] | object) -> Hit:
-    if isinstance(hit, AspectHit):
-        meta_source = getattr(hit, "metadata", None)
-        return Hit(
-            ts=hit.when_iso,
-            moving=hit.moving,
-            target=hit.target,
-            aspect=int(round(hit.angle_deg)),
-            orb=float(abs(hit.orb_abs)),
-            orb_allow=float(hit.orb_allow) if hit.orb_allow is not None else None,
-            motion=hit.applying_or_separating,
-            family=hit.family,
-            lon_moving=float(hit.lon_moving) if hit.lon_moving is not None else None,
-            lon_target=float(hit.lon_target) if hit.lon_target is not None else None,
-            delta=float(hit.delta_lambda_deg) if hit.delta_lambda_deg is not None else None,
-            offset=float(hit.offset_deg) if hit.offset_deg is not None else None,
-            metadata=dict(meta_source or {}),
-        )
-
-    getter = lambda key, default=None: _attr_lookup(hit, key, default)
-    ts = getter("when_iso") or getter("ts")
-    moving = getter("moving") or getter("a")
-    target = getter("target") or getter("b")
-    aspect_value = getter("aspect") or getter("angle_deg") or getter("angle")
-    try:
-        aspect = int(round(float(aspect_value))) if aspect_value is not None else 0
-    except (TypeError, ValueError):
-        aspect = 0
-    orb_value = getter("orb") or getter("orb_abs") or getter("offset")
-    try:
-        orb = float(abs(orb_value)) if orb_value is not None else 0.0
-    except (TypeError, ValueError):
-        orb = 0.0
-    orb_allow_val = getter("orb_allow") or getter("orb_limit")
-    try:
-        orb_allow = float(orb_allow_val) if orb_allow_val is not None else None
-    except (TypeError, ValueError):
-        orb_allow = None
-    lon_moving = getter("lon_moving")
-    lon_target = getter("lon_target")
-    delta_val = getter("delta") or getter("delta_lambda_deg")
-    try:
-        delta = float(delta_val) if delta_val is not None else None
-    except (TypeError, ValueError):
-        delta = None
-    offset_val = getter("offset") or getter("offset_deg")
-    try:
-        offset = float(offset_val) if offset_val is not None else None
-    except (TypeError, ValueError):
-        offset = None
-
-    meta: dict[str, Any] = {}
-    retrograde = getter("retrograde")
-    if retrograde is not None:
-        meta["retrograde"] = retrograde
-    method = getter("method")
-    if method is not None:
-        meta["method"] = method
-    family = getter("family") or getter("kind")
-
-    return Hit(
-        ts=str(ts) if ts is not None else "",
-        moving=str(moving) if moving is not None else "",
-        target=str(target) if target is not None else "",
-        aspect=aspect,
-        orb=orb,
-        orb_allow=orb_allow,
-        motion=_coerce_motion(hit),
-        family=str(family) if family is not None else None,
-        lon_moving=float(lon_moving) if lon_moving is not None else None,
-        lon_target=float(lon_target) if lon_target is not None else None,
-        delta=delta,
-        offset=offset,
-        metadata=meta or None,
-    )
-
 
 
 def _hit_from_return(event: ReturnEvent) -> Hit:
@@ -441,24 +289,40 @@ def _export_hits(options: ExportOptions, hits: Iterable[Hit], *, method: str) ->
     return {"path": str(path), "format": fmt, "count": len(canonical)}
 
 
+def _normalize_aspects(values: Sequence[Any] | None) -> list[int]:
+    if not values:
+        return [0, 60, 90, 120, 180]
+    resolved: list[int] = []
+    for value in values:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            resolved.append(int(round(float(value))))
+            continue
+        try:
+            resolved.append(int(round(float(str(value)))))
+        except (TypeError, ValueError):
+            continue
+    return resolved or [0, 60, 90, 120, 180]
+
+
 @router.post("/progressions", response_model=ScanResponse)
 def api_scan_progressions(payload: dict[str, Any]) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = TransitScanRequest(**request_data)
     natal, start, end = request.iso_tuple()
 
-    aspects = _resolve_progression_aspects(request.aspects)
-    hits_raw = progressed_natal_aspects(
-        natal_ts=natal,
-        start_ts=start,
-        end_ts=end,
-        aspects=aspects,
-        orb_deg=float(request.orb),
+    hits = [
+        _hit_from_aspect(hit)
+        for hit in progressed_natal_aspects(
+            natal_ts=natal,
+            start_ts=start,
+            end_ts=end,
+            aspects=_normalize_aspects(request.aspects),
+            orb_deg=float(request.orb),
+            bodies=request.bodies,
+            step_days=request.step_days,
+        )
+    ]
 
-        bodies=request.bodies,
-        step_days=float(request.step_days),
-    )
-    hits = [_hit_from_aspect(item) for item in hits_raw]
 
     export_info = (
         _export_hits(request.export, hits, method="progressions")
@@ -474,18 +338,19 @@ def api_scan_directions(payload: dict[str, Any]) -> ScanResponse:
     request = TransitScanRequest(**request_data)
     natal, start, end = request.iso_tuple()
 
-    aspects = _resolve_progression_aspects(request.aspects)
-    hits_raw = solar_arc_natal_aspects(
-        natal_ts=natal,
-        start_ts=start,
-        end_ts=end,
-        aspects=aspects,
-        orb_deg=float(request.orb),
+    hits = [
+        _hit_from_aspect(hit)
+        for hit in solar_arc_natal_aspects(
+            natal_ts=natal,
+            start_ts=start,
+            end_ts=end,
+            aspects=_normalize_aspects(request.aspects),
+            orb_deg=float(request.orb),
+            bodies=request.bodies,
+            step_days=request.step_days,
+        )
+    ]
 
-        bodies=request.bodies,
-        step_days=float(request.step_days),
-    )
-    hits = [_hit_from_aspect(item) for item in hits_raw]
 
     export_info = (
         _export_hits(request.export, hits, method="directions")
@@ -496,67 +361,70 @@ def api_scan_directions(payload: dict[str, Any]) -> ScanResponse:
 
 
 @router.post("/transits", response_model=ScanResponse)
-def api_scan_transits(payload: dict[str, Any]) -> ScanResponse:
-    if payload.get("method") == "transits" and "natal" not in payload:
-        raise HTTPException(status_code=501, detail="Legacy transit payloads are unsupported")
 
-    request_data = _normalize_scan_payload(payload)
-    request = TransitScanRequest(**request_data)
+def api_scan_transits(request: TransitScanRequest) -> ScanResponse:
+    if (request.method or "").strip().lower() == "transits":
+        raise HTTPException(status_code=501, detail="Transit scans are not yet available")
     natal, start, end = request.iso_tuple()
-    if not request.bodies or not request.targets or not request.aspects:
-        raise HTTPException(
-            status_code=501,
-            detail="transit scanning requires bodies, targets, and aspects",
+    hits = [
+        _hit_from_aspect(hit)
+        for hit in transit_aspects(
+            natal_ts=natal,
+            start_ts=start,
+            end_ts=end,
+            aspects=request.aspects,
+            orb_deg=float(request.orb),
+            bodies=request.bodies,
+            targets=request.targets,
+            step_days=request.step_days,
         )
-    aspect_hits = scan_transits(
-        natal,
-        start,
-        end,
-        aspects=request.aspects,
-        orb_deg=request.orb,
-        bodies=request.bodies,
-        targets=request.targets,
-        step_days=request.step_days,
-    )
+    ]
 
-    hits = [_hit_from_aspect(item) for item in aspect_hits]
+
     export_info = (
         _export_hits(request.export, hits, method="transits")
         if request.export
         else None
     )
+
     return ScanResponse(method="transits", hits=hits, count=len(hits), export=export_info)
 
 
 @router.post("/returns", response_model=ScanResponse)
 
-def api_scan_returns(payload: dict[str, Any]) -> ScanResponse:
-    request_data = _normalize_scan_payload(payload)
-    request = ReturnsScanRequest(**request_data)
+def api_scan_returns(request: ReturnsScanRequest) -> ScanResponse:
+    natal_iso, start_iso, end_iso = request.iso_tuple()
     bodies = list(request.bodies or ["Sun"])
 
     adapter = SwissEphemerisAdapter.get_default_adapter()
-    natal_jd = adapter.julian_day(request.natal)
-    start_jd = adapter.julian_day(request.start)
-    end_jd = adapter.julian_day(request.end)
+    natal_jd = adapter.julian_day(_parse_iso(natal_iso))
+    start_jd = adapter.julian_day(_parse_iso(start_iso))
+    end_jd = adapter.julian_day(_parse_iso(end_iso))
 
     hits: list[Hit] = []
     for body in bodies:
-        kind = "solar" if str(body).lower() == "sun" else "lunar"
-        sig = inspect.signature(solar_lunar_returns)
-        params = sig.parameters
-        kwargs: dict[str, Any] = {"kind": kind}
-        if "step_days" in params and request.step_days is not None:
+        kind = "solar" if body.lower() == "sun" else "lunar"
+        kwargs: dict[str, Any] = {}
+        if request.step_days is not None:
             kwargs["step_days"] = request.step_days
-        if "adapter" in params:
-            kwargs["adapter"] = adapter
+        try:
+            events = solar_lunar_returns(
+                natal_jd,
+                start_jd,
+                end_jd,
+                kind=kind,
+                adapter=adapter,
+                **kwargs,
+            )
+        except TypeError:
+            events = solar_lunar_returns(
+                natal_jd,
+                start_jd,
+                end_jd,
+                kind=kind,
+                **kwargs,
+            )
 
-        events = solar_lunar_returns(
-            natal_jd,
-            start_jd,
-            end_jd,
-            **kwargs,
-        )
         hits.extend(_hit_from_return(event) for event in events)
 
     export_info = (
@@ -566,3 +434,11 @@ def api_scan_returns(payload: dict[str, Any]) -> ScanResponse:
     )
     return ScanResponse(method="returns", hits=hits, count=len(hits), export=export_info)
 
+
+__all__ = [
+    "api_scan_progressions",
+    "api_scan_directions",
+    "api_scan_transits",
+    "api_scan_returns",
+    "router",
+]

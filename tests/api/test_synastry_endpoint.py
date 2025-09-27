@@ -19,8 +19,16 @@ pytestmark = pytest.mark.skipif(
 def test_synastry_aspects_endpoint_shape() -> None:
     client = TestClient(app)  # type: ignore[misc]
     payload = {
-        "a": {"ts": "1995-05-15T14:00:00Z", "lat": 37.7749, "lon": -122.4194},
-        "b": {"ts": "1988-11-02T06:45:00Z", "lat": 48.8566, "lon": 2.3522},
+        "subject": {
+            "ts": "1995-05-15T14:00:00Z",
+            "lat": 37.7749,
+            "lon": -122.4194,
+        },
+        "partner": {
+            "ts": "1988-11-02T06:45:00Z",
+            "lat": 48.8566,
+            "lon": 2.3522,
+        },
     }
     response = client.post("/v1/synastry/aspects", json=payload)
     assert response.status_code == 200

@@ -16,12 +16,12 @@ class NatalInline(BaseModel):
 class SynastryRequest(BaseModel):
     """Request payload for synastry aspect computation."""
 
-    a: NatalInline
-    b: NatalInline
+    subject: NatalInline
+    partner: NatalInline
     aspects: list[int] = Field(default_factory=lambda: [0, 60, 90, 120, 180])
     orb_deg: float = 2.0
-    bodies_a: list[str] | None = None
-    bodies_b: list[str] | None = None
+    subject_bodies: list[str] | None = None
+    partner_bodies: list[str] | None = None
 
 
 class SynastryHit(BaseModel):
