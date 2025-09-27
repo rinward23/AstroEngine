@@ -39,3 +39,9 @@ class APIClient:
         if r.status_code not in (200, 204):
             r.raise_for_status()
 
+    def electional_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Invoke the electional search endpoint."""
+        r = requests.post(f"{self.base}/electional/search", json=payload, timeout=90)
+        r.raise_for_status()
+        return r.json()
+

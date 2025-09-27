@@ -100,22 +100,67 @@ def _angle_delta(
     return float(sep) - float(target_angle)
 
 
+def _coerce_spec(spec: Any) -> AspectSpec:
+    """Normalize aspect specifications to :class:`AspectSpec` objects."""
+
+    if isinstance(spec, AspectSpec):
+        return spec
+    if isinstance(spec, Mapping):
+        angle_value = spec.get("angle")
+        if angle_value is None:
+            raise ValueError("aspect specification requires an 'angle'")
+        name_value = spec.get("name") or spec.get("label") or str(angle_value)
+        harmonic_value = spec.get("harmonic")
+        harmonic_int = None
+        if harmonic_value is not None:
+            try:
+                harmonic_int = int(harmonic_value)
+            except Exception:
+                harmonic_int = None
+        return AspectSpec(name=str(name_value).strip().lower(), angle=float(angle_value), harmonic=harmonic_int)
+    try:
+        angle = float(spec)
+    except Exception as exc:
+        raise TypeError(f"Unsupported aspect specification: {spec!r}") from exc
+    if isinstance(spec, str):
+        name = spec.strip().lower() or str(angle)
+    else:
+        name = str(int(angle) if float(angle).is_integer() else angle)
+
+    for base_name, base_angle in BASE_ASPECTS.items():
+        try:
+            if abs(float(base_angle) - angle) <= 1e-6:
+                name = base_name
+                break
+        except Exception:
+            continue
+
+    return AspectSpec(name=name, angle=angle, harmonic=None)
+
+
 def _resolve_orb_limit(
     orb_policy: Mapping[str, Any] | None,
-    spec: AspectSpec,
+    spec: AspectSpec | Mapping[str, Any] | float | int | str,
     body_a: str,
     body_b: str,
 ) -> float:
+    spec_obj = _coerce_spec(spec)
     policy = orb_policy or {}
     aspect_limits = policy.get("per_aspect", {}) or {}
-    key = spec.name.lower()
+    key = spec_obj.name.lower()
     limit = aspect_limits.get(key)
     if limit is None:
-        limit = aspect_limits.get(str(spec.angle))
+        limit = aspect_limits.get(str(spec_obj.angle))
+    base_default = policy.get("default") if policy else None
     try:
-        limit_val = float(limit) if limit is not None else 0.0
+        if limit is not None:
+            limit_val = float(limit)
+        elif base_default is not None:
+            limit_val = float(base_default)
+        else:
+            limit_val = 1.0
     except Exception:
-        limit_val = 0.0
+        limit_val = 1.0
 
     per_object = policy.get("per_object", {}) or {}
     for obj in (body_a, body_b):
@@ -241,7 +286,7 @@ def scan_pair_time_range(
     body_b: str,
     window: TimeWindow,
     position_provider: Callable[[datetime], Mapping[str, float]],
-    aspect_specs: Sequence[AspectSpec],
+    aspect_specs: Sequence[AspectSpec | Mapping[str, Any] | float | int | str],
     orb_policy: Mapping[str, Any] | None,
     *,
     step_minutes: int = 60,
@@ -249,7 +294,8 @@ def scan_pair_time_range(
     """Scan a pair of bodies for the provided aspects."""
 
     hits: List[Hit] = []
-    for spec in aspect_specs:
+    for raw_spec in aspect_specs:
+        spec = _coerce_spec(raw_spec)
         limit = _resolve_orb_limit(orb_policy, spec, body_a, body_b)
         hits.extend(
             _scan_single_spec(body_a, body_b, window, position_provider, spec, limit, step_minutes)

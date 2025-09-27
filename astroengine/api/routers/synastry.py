@@ -9,7 +9,7 @@ from typing import Any, Sequence
 
 from fastapi import APIRouter
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from ...chart.natal import DEFAULT_BODIES
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
