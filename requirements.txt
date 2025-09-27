@@ -13,10 +13,14 @@ tzdata>=2024.1
 PyYAML>=6.0
 requests>=2.31
 pluggy>=1.5
+fastapi>=0.117,<0.118
+pydantic>=2.9,<3
+httpx>=0.28,<0.29
 jinja2>=3.1
 click>=8.1
 rich>=13.7
 ics>=0.7
+
 # Visualization / UI helpers
 plotly>=5.20
 streamlit>=1.35
@@ -27,8 +31,10 @@ fastapi>=0.117
 # API server runtime
 uvicorn>=0.37
 icalendar>=6
+
 # Required for FastAPI TestClient
 httpx>=0.27
+
 # uvicorn[standard]>=0.30
 # matplotlib>=3.8
 # pyproj>=3.6

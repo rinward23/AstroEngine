@@ -2,7 +2,31 @@
 
 from __future__ import annotations
 
+
+import importlib
+
 from importlib.metadata import entry_points
+
+
+def _prepare_entrypoints(group: str) -> list:
+    """Return entry points for *group* ensuring newly installed dists are importable."""
+
+    eps = list(entry_points(group=group))
+    for ep in eps:
+        dist = getattr(ep, "dist", None)
+        if not dist:
+            continue
+        try:
+            base = dist.locate_file(".")
+        except Exception:  # pragma: no cover - defensive guard around metadata access
+            continue
+        if not base:
+            continue
+        base_str = str(base)
+        if base_str not in sys.path:
+            # Re-run .pth processing so editable installs become visible mid-process.
+            site.addsitedir(base_str)
+    return eps
 
 
 class Registry:
@@ -26,8 +50,9 @@ class Registry:
 def load_plugins(registry: Registry) -> list[str]:
     """Load plugin entry points and allow them to self-register."""
 
+    importlib.invalidate_caches()
     names: list[str] = []
-    for ep in entry_points(group="astroengine.plugins"):
+    for ep in _prepare_entrypoints("astroengine.plugins"):
         fn = ep.load()
         fn(registry)
         names.append(ep.name)
@@ -37,8 +62,9 @@ def load_plugins(registry: Registry) -> list[str]:
 def load_providers(registry: Registry) -> list[str]:
     """Load provider entry points and register them with the runtime."""
 
+    importlib.invalidate_caches()
     names: list[str] = []
-    for ep in entry_points(group="astroengine.providers"):
+    for ep in _prepare_entrypoints("astroengine.providers"):
         fn = ep.load()
         prov_name, prov_obj = fn()
         registry.register_provider(prov_name, prov_obj)

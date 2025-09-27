@@ -1,56 +1,46 @@
 
-
-"""Aspect scan dataclasses and helpers used by Plus endpoints."""
-
+"""Aspect scanning utilities for AstroEngine Plus."""
 
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Sequence,
-)
 
-
-from datetime import datetime, timedelta
 from itertools import combinations
 from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
 
-from .harmonics import BASE_ASPECTS, combined_angles
+from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS, harmonic_angles
 
 
-PositionProvider = Callable[[datetime], Mapping[str, float]]
 
-
-@dataclass(frozen=True)
+@dataclass(slots=True)
 class TimeWindow:
-    """Closed interval used to scan for aspect hits."""
+
+    """Inclusive start/exclusive end window used for scans."""
 
     start: datetime
     end: datetime
 
-    def __post_init__(self) -> None:  # pragma: no cover - pydantic already enforces in API
+    def __post_init__(self) -> None:
         if self.end <= self.start:
             raise ValueError("end must be after start")
 
-    def clamp(self, ts: datetime) -> bool:
-        """Return ``True`` if ``ts`` lies inside the window (inclusive)."""
+    def clamp(self, ts: datetime) -> datetime:
+        if ts < self.start:
+            return self.start
+        if ts > self.end:
+            return self.end
+        return ts
 
-        return self.start <= ts <= self.end
 
-    @property
-    def span(self) -> timedelta:
-        """Duration of the window."""
+@dataclass(frozen=True)
+class AspectSpec:
+    """Normalized definition of an aspect angle to scan for."""
 
-        return self.end - self.start
+    name: str
+    angle: float
+    harmonic: Optional[int] = None
 
 
 
@@ -81,8 +71,62 @@ class Hit:
 
 
 
-def _normalize_angle(angle: float) -> float:
-    return float(angle) % 360.0
+
+def _separation(
+    provider: Callable[[datetime], Mapping[str, float]],
+    ts: datetime,
+    a: str,
+    b: str,
+) -> Optional[float]:
+    try:
+        positions = provider(ts)
+        lon_a = float(positions[a])
+        lon_b = float(positions[b])
+    except Exception:
+        return None
+    diff = (lon_a - lon_b + 180.0) % 360.0 - 180.0
+    return abs(diff)
+
+
+def _angle_delta(
+    provider: Callable[[datetime], Mapping[str, float]],
+    ts: datetime,
+    a: str,
+    b: str,
+    target_angle: float,
+) -> Optional[float]:
+    sep = _separation(provider, ts, a, b)
+    if sep is None:
+        return None
+    return float(sep) - float(target_angle)
+
+
+def _coerce_spec(spec: Any) -> AspectSpec:
+    """Normalize aspect specifications to :class:`AspectSpec` objects."""
+
+    if isinstance(spec, AspectSpec):
+        return spec
+    if isinstance(spec, Mapping):
+        angle_value = spec.get("angle")
+        if angle_value is None:
+            raise ValueError("aspect specification requires an 'angle'")
+        name_value = spec.get("name") or spec.get("label") or str(angle_value)
+        harmonic_value = spec.get("harmonic")
+        harmonic_int = None
+        if harmonic_value is not None:
+            try:
+                harmonic_int = int(harmonic_value)
+            except Exception:
+                harmonic_int = None
+        return AspectSpec(name=str(name_value).strip().lower(), angle=float(angle_value), harmonic=harmonic_int)
+    try:
+        angle = float(spec)
+    except Exception as exc:
+        raise TypeError(f"Unsupported aspect specification: {spec!r}") from exc
+    if isinstance(spec, str):
+        name = spec.strip().lower() or str(angle)
+    else:
+        name = str(int(angle) if float(angle).is_integer() else angle)
 
 
 def _angular_separation(delta: float) -> float:
@@ -107,94 +151,60 @@ def _pair_delta(provider: PositionProvider, ts: datetime, primary: str, secondar
     return _normalize_angle(positions[primary] - positions[secondary])
 
 
-def _aspect_name_for_angle(angle: float) -> Optional[str]:
-    for name, base_angle in BASE_ASPECTS.items():
-        if abs(base_angle - angle) <= 1e-6:
-            return name
-    return None
+
+    return AspectSpec(name=name, angle=angle, harmonic=None)
 
 
-def _orb_limit(
-    angle: float,
+def _resolve_orb_limit(
     orb_policy: Mapping[str, Any] | None,
-    primary: str,
-    secondary: str,
+    spec: AspectSpec | Mapping[str, Any] | float | int | str,
+    body_a: str,
+    body_b: str,
 ) -> float:
-    if orb_policy is None:
-        return 3.0
-    limit: Optional[float] = None
-    per_aspect = orb_policy.get("per_aspect") if isinstance(orb_policy, Mapping) else None
-    name = _aspect_name_for_angle(angle)
-    if isinstance(per_aspect, Mapping) and name and name in per_aspect:
-        try:
-            limit = float(per_aspect[name])
-        except (TypeError, ValueError):  # pragma: no cover - defensive
-            limit = None
+    spec_obj = _coerce_spec(spec)
+    policy = orb_policy or {}
+    aspect_limits = policy.get("per_aspect", {}) or {}
+    key = spec_obj.name.lower()
+    limit = aspect_limits.get(key)
     if limit is None:
-        per_object = orb_policy.get("per_object") if isinstance(orb_policy, Mapping) else None
-        object_limits: List[float] = []
-        if isinstance(per_object, Mapping):
-            for key in (primary, secondary):
-                if key in per_object:
-                    try:
-                        object_limits.append(float(per_object[key]))
-                    except (TypeError, ValueError):
-                        continue
-        if object_limits:
-            limit = max(object_limits)
-    return float(limit if limit is not None else 3.0)
-
-
-def _refine_hit(
-    provider: PositionProvider,
-    primary: str,
-    secondary: str,
-    angle: float,
-    t0: datetime,
-    t1: datetime,
-    d0: float,
-    d1: float,
-) -> Tuple[datetime, float]:
-    a, b = t0, t1
-    fa, fb = d0, d1
-    for _ in range(24):
-        mid = a + (b - a) / 2
-        fm = _signed_sep(_pair_delta(provider, mid, primary, secondary), angle)
-        if abs(fm) <= 1e-5 or (b - a).total_seconds() <= 30:
-            return mid, fm
-        if fa == 0.0:
-            return a, fa
-        if fb == 0.0:
-            return b, fb
-        if fa * fm <= 0:
-            b, fb = mid, fm
+        limit = aspect_limits.get(str(spec_obj.angle))
+    base_default = policy.get("default") if policy else None
+    try:
+        if limit is not None:
+            limit_val = float(limit)
+        elif base_default is not None:
+            limit_val = float(base_default)
         else:
-            a, fa = mid, fm
-    return mid, fm
+            limit_val = 1.0
+    except Exception:
+        limit_val = 1.0
+
+    per_object = policy.get("per_object", {}) or {}
+    for obj in (body_a, body_b):
+        try:
+            limit_val = max(limit_val, float(per_object.get(obj, 0.0)))
+        except Exception:
+            continue
+    return max(0.0, limit_val)
 
 
-def scan_pair_time_range(
-    primary: str,
-    secondary: str,
+
+
+
+def _scan_single_spec(
+    body_a: str,
+    body_b: str,
     window: TimeWindow,
-    position_provider: PositionProvider,
-    aspect_angles: Sequence[float],
-    orb_policy: Mapping[str, Any] | None = None,
-    step_minutes: int = 60,
+    provider: Callable[[datetime], Mapping[str, float]],
+    spec: AspectSpec,
+    limit: float,
+    step_minutes: int,
 ) -> List[Hit]:
-    """Scan ``primary``/``secondary`` pair for aspect hits within ``window``."""
-
-    if window.end <= window.start:
+    if limit <= 0.0:
         return []
-    if not aspect_angles:
-        return []
-
     step = timedelta(minutes=max(1, int(step_minutes)))
-    aspect_angles = sorted({round(float(a), 6) for a in aspect_angles})
-    previous: dict[float, tuple[Optional[datetime], Optional[float]]] = {
-        angle: (None, None) for angle in aspect_angles
-    }
     hits: List[Hit] = []
+
     recorded: set[tuple[str, str, float, datetime]] = set()
 
     current = window.start
@@ -249,59 +259,118 @@ def scan_pair_time_range(
 
 
     hits.sort(key=lambda h: h.exact_time)
+
     return hits
+
+
+def scan_pair_time_range(
+    body_a: str,
+    body_b: str,
+    window: TimeWindow,
+    position_provider: Callable[[datetime], Mapping[str, float]],
+    aspect_specs: Sequence[AspectSpec | Mapping[str, Any] | float | int | str],
+    orb_policy: Mapping[str, Any] | None,
+    *,
+    step_minutes: int = 60,
+) -> List[Hit]:
+    """Scan a pair of bodies for the provided aspects."""
+
+    hits: List[Hit] = []
+
+    for raw_spec in aspect_specs:
+        spec = _coerce_spec(raw_spec)
+        limit = _resolve_orb_limit(orb_policy, spec, body_a, body_b)
+        hits.extend(
+            _scan_single_spec(body_a, body_b, window, position_provider, spec, limit, step_minutes)
+        )
+    hits.sort(key=lambda h: (h.exact_time, h.orb))
+
+    return hits
+
+
+def _pair_iter(objects: Sequence[str], pairs: Optional[Iterable[Tuple[str, str]]]) -> Iterable[Tuple[str, str]]:
+    if pairs:
+        for p in pairs:
+            if not p or len(p) < 2:
+                continue
+            yield p[0], p[1]
+    else:
+        yield from combinations(objects, 2)
+
+
+def _build_specs(aspects: Sequence[str], harmonics: Sequence[int]) -> List[AspectSpec]:
+    specs: List[AspectSpec] = []
+    seen: set[Tuple[str, float, Optional[int]]] = set()
+
+    for name in aspects:
+        key = (name or "").strip().lower()
+        if key not in BASE_ASPECTS:
+            continue
+        angle = float(BASE_ASPECTS[key])
+        signature = (key, angle, None)
+        if signature in seen:
+            continue
+        seen.add(signature)
+        specs.append(AspectSpec(name=key, angle=angle, harmonic=None))
+
+    for order in harmonics:
+        try:
+            order_int = int(order)
+        except Exception:
+            continue
+        if order_int <= 1:
+            continue
+        for angle in harmonic_angles(order_int):
+            signature = (f"harmonic_{order_int}", float(angle), order_int)
+            if signature in seen:
+                continue
+            seen.add(signature)
+            specs.append(AspectSpec(name=f"harmonic_{order_int}", angle=float(angle), harmonic=order_int))
+
+    return specs
+
 
 
 def scan_time_range(
     *,
     objects: Sequence[str],
     window: TimeWindow,
-    position_provider: PositionProvider,
-    aspects: Iterable[str],
 
-    harmonics: Iterable[int] | None = None,
-    orb_policy: Mapping[str, Any] | None = None,
-    pairs: Sequence[Tuple[str, str]] | None = None,
+    position_provider: Callable[[datetime], Mapping[str, float]],
+    aspects: Sequence[str],
+    harmonics: Sequence[int],
+    orb_policy: Mapping[str, Any] | None,
+    pairs: Optional[Iterable[Tuple[str, str]]] = None,
     step_minutes: int = 60,
 ) -> List[Hit]:
-    """Scan all requested pairs for aspect hits within ``window``."""
+    """Scan a set of objects for matching aspect hits."""
 
-    if not objects:
+    specs = _build_specs(aspects, harmonics)
+    if not specs:
         return []
-    aspect_angles = combined_angles(aspects, harmonics or [])
-    if not aspect_angles:
-        return []
-
-    if pairs:
-        pair_list = [(a, b) for a, b in pairs]
-    else:
-        pair_list = list(combinations(objects, 2))
 
     hits: List[Hit] = []
-    for primary, secondary in pair_list:
+    for a, b in _pair_iter(objects, pairs):
         hits.extend(
             scan_pair_time_range(
-                primary,
-                secondary,
+                a,
+                b,
                 window,
                 position_provider,
-                aspect_angles,
-                orb_policy=orb_policy,
-
+                specs,
+                orb_policy,
                 step_minutes=step_minutes,
             )
         )
-
-    hits.sort(key=lambda h: h.exact_time)
+    hits.sort(key=lambda h: (h.exact_time, h.orb))
     return hits
 
 
-
 __all__ = [
-    "TimeWindow",
+    "AspectSpec",
     "Hit",
+    "TimeWindow",
     "scan_pair_time_range",
     "scan_time_range",
 ]
-
 

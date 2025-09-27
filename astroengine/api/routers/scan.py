@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+
 from typing import Any, Iterable, Sequence
 from typing import Literal
 
+
+
 from fastapi import APIRouter, HTTPException
+
 from collections.abc import Mapping
 
 from pydantic import AliasChoices, BaseModel, Field, ConfigDict, field_validator, model_validator
@@ -23,7 +28,9 @@ from ...events import ReturnEvent
 from ...exporters import write_parquet_canonical, write_sqlite_canonical
 from ...exporters_ics import write_ics_canonical
 
+
 router = APIRouter()
+
 
 
 def _to_iso(dt: datetime) -> str:
@@ -53,6 +60,7 @@ class ExportOptions(BaseModel):
 
 
 class TimeWindow(BaseModel):
+
     """Normalized scan time bounds with legacy payload support."""
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
@@ -79,12 +87,20 @@ class TimeWindow(BaseModel):
         return data
 
     @field_validator("natal", "start", "end", mode="before")
+
     def _coerce_datetime(cls, value: Any) -> datetime:
+        if isinstance(value, Mapping):
+            value = value.get("ts")
         if isinstance(value, datetime):
             return value.astimezone(UTC)
         if isinstance(value, str):
             dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
             return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
+        if isinstance(value, dict):
+            ts = value.get("ts")
+            if ts:
+                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
         raise TypeError("expected ISO-8601 timestamp")
 
     def iso_tuple(self) -> tuple[str, str, str]:
@@ -100,11 +116,15 @@ class TransitScanRequest(TimeWindow):
     step_days: float = Field(default=1.0, gt=0.0)
     export: ExportOptions | None = None
 
+    model_config = ConfigDict(extra="ignore")
+
 
 class ReturnsScanRequest(TimeWindow):
     bodies: Sequence[str] | None = None
     step_days: float | None = None
     export: ExportOptions | None = None
+
+    model_config = ConfigDict(extra="ignore")
 
 
 class Hit(BaseModel):
@@ -128,6 +148,7 @@ class ScanResponse(BaseModel):
     hits: list[Hit]
     count: int
     export: dict[str, Any] | None = None
+
 
 
 def _value_from_hit(hit: AspectHit | Mapping[str, Any], *names: str) -> Any:
@@ -188,14 +209,35 @@ def _hit_from_aspect(hit: AspectHit | Mapping[str, Any]) -> Hit:
     )
 
 
+    normalized: dict[str, Any] = {
+        "natal": natal,
+        "start": start,
+        "end": end,
+    }
+
+
 def _hit_from_return(event: ReturnEvent) -> Hit:
+    if hasattr(event, "body"):
+        return Hit(
+            ts=event.ts,
+            moving=event.body,
+            target="Return",
+            aspect=0,
+            orb=0.0,
+            metadata={"kind": event.method, "longitude": float(event.longitude)},
+        )
+
+    data = event if isinstance(event, Mapping) else event.__dict__
     return Hit(
-        ts=event.ts,
-        moving=event.body,
+        ts=str(data.get("ts", "")),
+        moving=str(data.get("body", "")),
         target="Return",
         aspect=0,
         orb=0.0,
-        metadata={"kind": event.method, "longitude": float(event.longitude)},
+        metadata={
+            "kind": str(data.get("method", "")),
+            "longitude": float(data.get("longitude", 0.0) or 0.0),
+        },
     )
 
 
@@ -263,8 +305,11 @@ def _normalize_aspects(values: Sequence[Any] | None) -> list[int]:
 
 
 @router.post("/progressions", response_model=ScanResponse)
-def api_scan_progressions(request: TransitScanRequest) -> ScanResponse:
+def api_scan_progressions(payload: dict[str, Any]) -> ScanResponse:
+    request_data = _normalize_scan_payload(payload)
+    request = TransitScanRequest(**request_data)
     natal, start, end = request.iso_tuple()
+
     hits = [
         _hit_from_aspect(hit)
         for hit in progressed_natal_aspects(
@@ -278,6 +323,7 @@ def api_scan_progressions(request: TransitScanRequest) -> ScanResponse:
         )
     ]
 
+
     export_info = (
         _export_hits(request.export, hits, method="progressions")
         if request.export
@@ -287,8 +333,11 @@ def api_scan_progressions(request: TransitScanRequest) -> ScanResponse:
 
 
 @router.post("/directions", response_model=ScanResponse)
-def api_scan_directions(request: TransitScanRequest) -> ScanResponse:
+def api_scan_directions(payload: dict[str, Any]) -> ScanResponse:
+    request_data = _normalize_scan_payload(payload)
+    request = TransitScanRequest(**request_data)
     natal, start, end = request.iso_tuple()
+
     hits = [
         _hit_from_aspect(hit)
         for hit in solar_arc_natal_aspects(
@@ -302,6 +351,7 @@ def api_scan_directions(request: TransitScanRequest) -> ScanResponse:
         )
     ]
 
+
     export_info = (
         _export_hits(request.export, hits, method="directions")
         if request.export
@@ -311,6 +361,7 @@ def api_scan_directions(request: TransitScanRequest) -> ScanResponse:
 
 
 @router.post("/transits", response_model=ScanResponse)
+
 def api_scan_transits(request: TransitScanRequest) -> ScanResponse:
     if (request.method or "").strip().lower() == "transits":
         raise HTTPException(status_code=501, detail="Transit scans are not yet available")
@@ -329,6 +380,7 @@ def api_scan_transits(request: TransitScanRequest) -> ScanResponse:
         )
     ]
 
+
     export_info = (
         _export_hits(request.export, hits, method="transits")
         if request.export
@@ -339,6 +391,7 @@ def api_scan_transits(request: TransitScanRequest) -> ScanResponse:
 
 
 @router.post("/returns", response_model=ScanResponse)
+
 def api_scan_returns(request: ReturnsScanRequest) -> ScanResponse:
     natal_iso, start_iso, end_iso = request.iso_tuple()
     bodies = list(request.bodies or ["Sun"])
@@ -371,6 +424,7 @@ def api_scan_returns(request: ReturnsScanRequest) -> ScanResponse:
                 kind=kind,
                 **kwargs,
             )
+
         hits.extend(_hit_from_return(event) for event in events)
 
     export_info = (

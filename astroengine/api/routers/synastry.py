@@ -1,11 +1,12 @@
-
 """Synastry-related API endpoints."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from collections.abc import Mapping
 from typing import Any, Sequence
+
 
 from fastapi import APIRouter
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
@@ -15,14 +16,16 @@ from ...core.aspects_plus.harmonics import BASE_ASPECTS
 from ...synastry.orchestrator import SynHit, compute_synastry
 
 
-router = APIRouter()
 
+
+router = APIRouter()
 
 def _to_iso(dt: datetime) -> str:
     return dt.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 class NatalPayload(BaseModel):
+
     """Minimal payload describing a natal chart for synastry scans."""
 
     model_config = ConfigDict(extra="ignore")
@@ -33,11 +36,17 @@ class NatalPayload(BaseModel):
 
     @field_validator("ts", mode="before")
     def _coerce_timestamp(cls, value: Any) -> datetime:
+
         if isinstance(value, datetime):
             return value.astimezone(UTC)
         if isinstance(value, str):
             dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
             return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
+        if isinstance(value, dict):
+            ts = value.get("ts") or value.get("utc")
+            if ts:
+                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
         raise TypeError("expected ISO-8601 timestamp")
 
     @field_validator("lat", "lon", mode="before")
@@ -51,13 +60,16 @@ class NatalPayload(BaseModel):
 
 
 class SynastryRequest(BaseModel):
+
     """Request model for synastry aspect computations."""
 
     subject: NatalPayload
     partner: NatalPayload
+
     bodies: Sequence[str] | None = None
     aspects: Sequence[Any] | None = None
     orb: float = Field(default=2.0, ge=0.0)
+
 
     def resolved_aspects(self) -> list[int]:
         if not self.aspects:
@@ -89,6 +101,7 @@ class SynastryRequest(BaseModel):
 
 class SynastryHitDTO(BaseModel):
     direction: str
+
     moving: str
     target: str
     aspect: float
@@ -109,6 +122,7 @@ class SynastryResponse(BaseModel):
     count: int
     summary: SynastrySummary
     hits: list[SynastryHitDTO]
+
 
 
 def _convert_hit(hit: SynHit) -> SynastryHitDTO:
@@ -150,4 +164,5 @@ def api_synastry_aspects(request: SynastryRequest) -> SynastryResponse:
     )
 
     return SynastryResponse(count=len(dto_hits), summary=summary, hits=dto_hits)
+
 
