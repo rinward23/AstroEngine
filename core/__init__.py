@@ -1,3 +1,3 @@
 """AstroEngine Plus compatibility shims for lightweight API services."""
 
-__all__ = ["rel_plus"]
+__all__ = ["events_plus", "rel_plus"]
