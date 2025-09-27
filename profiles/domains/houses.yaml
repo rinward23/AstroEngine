@@ -1,0 +1,17 @@
+# Sum ~= 1.0 per house; adjust freely. Angular boost is configurable.
+1:  {Mind: 0.20, Body: 0.60, Spirit: 0.20}
+2:  {Mind: 0.30, Body: 0.50, Spirit: 0.20}
+3:  {Mind: 0.60, Body: 0.20, Spirit: 0.20}
+4:  {Mind: 0.20, Body: 0.30, Spirit: 0.50}
+5:  {Mind: 0.30, Body: 0.20, Spirit: 0.50}
+6:  {Mind: 0.40, Body: 0.50, Spirit: 0.10}
+7:  {Mind: 0.40, Body: 0.20, Spirit: 0.40}
+8:  {Mind: 0.20, Body: 0.20, Spirit: 0.60}
+9:  {Mind: 0.30, Body: 0.10, Spirit: 0.60}
+10: {Mind: 0.50, Body: 0.30, Spirit: 0.20}
+11: {Mind: 0.40, Body: 0.20, Spirit: 0.40}
+12: {Mind: 0.20, Body: 0.10, Spirit: 0.70}
+angular_boost: {houses: [1,4,7,10], factor: 1.2}
+succedent_boost: {houses: [2,5,8,11], factor: 1.0}
+cadent_boost:   {houses: [3,6,9,12], factor: 0.9}
+blend: {natal_vs_transit: [0.5, 0.5]}  # (natal house weights, transiting house weights)

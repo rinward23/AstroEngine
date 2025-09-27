@@ -13,7 +13,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from itertools import tee
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from ..chart.config import ChartConfig
 from ..core.bodies import canonical_name
@@ -29,7 +29,6 @@ from ..ephemeris.support import filter_supported
 
 from ..exporters import LegacyTransitEvent
 from ..plugins import DetectorContext, get_plugin_manager
-from ..scheduling.gating import choose_step
 from ..providers import get_provider
 from ..scoring import ScoreInputs, compute_score
 from ..scheduling.gating import choose_step
@@ -75,6 +74,11 @@ __all__ = [
     "TargetFrameResolver",
     "build_scan_profile_context",
 ]
+
+
+# NOTE: Imported lazily for type checking to avoid eager pyswisseph requirements.
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from ..chart.natal import NatalChart
 
 
 # >>> AUTO-GEN BEGIN: engine-feature-flags v1.0
@@ -323,6 +327,13 @@ def _event_from_decl(
         metadata["corridor_width_deg"] = float(hit.corridor_width_deg)
     if hit.corridor_profile:
         metadata["corridor_profile"] = hit.corridor_profile
+    weights = getattr(hit, "domain_weights", None)
+    if weights is not None:
+        metadata["domain_weights"] = {
+            "mind": float(weights.Mind),
+            "body": float(weights.Body),
+            "spirit": float(weights.Spirit),
+        }
     return LegacyTransitEvent(
         kind=hit.kind,
         timestamp=hit.when_iso,
@@ -369,6 +380,13 @@ def _event_from_aspect(
         metadata["corridor_width_deg"] = float(hit.corridor_width_deg)
     if hit.corridor_profile:
         metadata["corridor_profile"] = hit.corridor_profile
+    weights = getattr(hit, "domain_weights", None)
+    if weights is not None:
+        metadata["domain_weights"] = {
+            "mind": float(weights.Mind),
+            "body": float(weights.Body),
+            "spirit": float(weights.Spirit),
+        }
     return LegacyTransitEvent(
         kind=hit.kind,
         timestamp=hit.when_iso,
@@ -469,6 +487,8 @@ def _aspect_events(
     policy_path: str | None,
     toggles: ScanFeatureToggles,
     scoring: _ScoringContext,
+    natal_chart: "NatalChart" | None = None,
+    house_system: str | None = None,
 ) -> Iterable[LegacyTransitEvent]:
     if not toggles.do_aspects:
         return
@@ -479,6 +499,8 @@ def _aspect_events(
         moving,
         target,
         policy_path=policy_path,
+        natal_chart=natal_chart,
+        house_system=house_system,
     ):
         yield _event_from_aspect(
             aspect_hit,
@@ -696,6 +718,11 @@ def scan_contacts(
     ):
         _append_event(event)
 
+    natal_chart_for_domains = resolver.natal_chart if resolver is not None else None
+    house_system_for_domains = None
+    if chart_config is not None:
+        house_system_for_domains = chart_config.house_system
+
     for event in _aspect_events(
         cached_provider,
         aspect_ticks,
@@ -704,6 +731,8 @@ def scan_contacts(
         policy_path=aspects_policy_path,
         toggles=toggles,
         scoring=scoring_ctx,
+        natal_chart=natal_chart_for_domains,
+        house_system=house_system_for_domains,
     ):
         _append_event(event)
 

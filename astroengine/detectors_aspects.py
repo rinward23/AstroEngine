@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,6 +11,13 @@ from .core.bodies import body_class
 from .infrastructure.paths import profiles_dir
 from .refine import adaptive_corridor_width
 from .utils.io import load_json_document
+from .vca.houses import (
+    HouseSystem,
+    DomainW,
+    blend as blend_domains,
+    load_house_profile,
+    weights_for_body,
+)
 
 __all__ = ["AspectHit", "detect_aspects"]
 
@@ -37,6 +44,7 @@ class AspectHit:
     corridor_profile: str | None = None
     speed_deg_per_day: float | None = None
     retrograde: bool | None = None
+    domain_weights: DomainW | None = None
 
 
 _DEF_PATH = profiles_dir() / "aspects_policy.json"
@@ -200,6 +208,8 @@ def detect_aspects(
     target: str,
     *,
     policy_path: str | None = None,
+    natal_chart=None,
+    house_system: str | None = None,
 ) -> list[AspectHit]:
     policy = _load_policy(policy_path)
     angles_map = _resolve_enabled(policy)
@@ -217,6 +227,36 @@ def detect_aspects(
     out: list[AspectHit] = []
     cls_m = body_class(moving)
     cls_t = body_class(target)
+
+    domain_profile: dict[int, DomainW] | None = None
+    domain_meta: dict[str, dict] = {}
+    domain_target: DomainW | None = None
+    domain_system = house_system
+    domain_location = None
+    domain_alphas: Sequence[float] | None = None
+
+    if natal_chart is not None:
+        domain_profile, domain_meta = load_house_profile()
+        houses = getattr(natal_chart, "houses", None)
+        if domain_system is None and houses is not None:
+            domain_system = getattr(houses, "system", None)
+        if domain_system is None:
+            domain_system = HouseSystem.PLACIDUS
+        domain_system = str(domain_system).lower()
+        try:
+            domain_target = weights_for_body(
+                natal_chart, target, domain_system, profile=domain_profile
+            )
+        except Exception:
+            domain_target = None
+        domain_location = getattr(natal_chart, "location", None)
+        blend_spec = domain_meta.get("blend", {})
+        alphas = blend_spec.get("natal_vs_transit")
+        if isinstance(alphas, Sequence) and alphas:
+            try:
+                domain_alphas = tuple(float(value) for value in alphas)
+            except (TypeError, ValueError):
+                domain_alphas = None
 
     for iso in iso_ticks:
         positions = provider.positions_ecliptic(iso, [moving, target])
@@ -248,6 +288,39 @@ def detect_aspects(
                     retrograde=retrograde,
                     minimum_orb_deg=corridor_minimum,
                 )
+                domain_weights = None
+                if domain_profile is not None and domain_target is not None:
+                    weights_to_blend: list[DomainW] = [domain_target]
+                    moving_pos = positions.get(moving)
+                    if domain_location is not None and moving_pos is not None:
+                        lat = getattr(domain_location, "latitude", None)
+                        lon = getattr(domain_location, "longitude", None)
+                        if lat is not None and lon is not None:
+                            transit_chart = {
+                                "ts": iso,
+                                "lat": float(lat),
+                                "lon": float(lon),
+                                "positions": {moving: moving_pos},
+                            }
+                            try:
+                                transit_weights = weights_for_body(
+                                    transit_chart,
+                                    moving,
+                                    domain_system or HouseSystem.PLACIDUS,
+                                    profile=domain_profile,
+                                )
+                            except Exception:
+                                transit_weights = None
+                            if transit_weights is not None:
+                                weights_to_blend.append(transit_weights)
+                    if len(weights_to_blend) == 1:
+                        domain_weights = weights_to_blend[0]
+                    else:
+                        domain_weights = blend_domains(
+                            weights_to_blend,
+                            alphas=domain_alphas,
+                        )
+
                 out.append(
                     AspectHit(
                         kind=f"aspect_{aspect_name}",
@@ -268,6 +341,7 @@ def detect_aspects(
                         corridor_profile=corridor_profile,
                         speed_deg_per_day=float(motion.relative_speed_deg_per_day),
                         retrograde=retrograde,
+                        domain_weights=domain_weights,
                     )
                 )
     return out
