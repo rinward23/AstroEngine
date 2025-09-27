@@ -41,6 +41,14 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .transits import router as transits_router
 
         return transits_router
+    if name == "configure_position_provider":
+        from .aspects import configure_position_provider
+
+        return configure_position_provider
+    if name == "clear_position_provider":
+        from .aspects import clear_position_provider
+
+        return clear_position_provider
     raise AttributeError(name)
 
 

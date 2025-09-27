@@ -39,3 +39,12 @@ class APIClient:
         if r.status_code not in (200, 204):
             r.raise_for_status()
 
+    # ---- Arabic Lots -------------------------------------------------------
+    def lots_catalog(self) -> Dict[str, Any]:
+        r = requests.get(f"{self.base}/lots/catalog", timeout=30)
+        r.raise_for_status(); return r.json()
+
+    def lots_compute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        r = requests.post(f"{self.base}/lots/compute", json=payload, timeout=60)
+        r.raise_for_status(); return r.json()
+

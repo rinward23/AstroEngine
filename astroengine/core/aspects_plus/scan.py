@@ -8,7 +8,18 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from itertools import combinations
-from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS, harmonic_angles
 
@@ -100,6 +111,42 @@ def _angle_delta(
     return float(sep) - float(target_angle)
 
 
+AspectInput = Union[AspectSpec, float, int, str]
+
+
+def _coerce_spec(value: AspectInput) -> AspectSpec:
+    """Normalize caller-provided aspect specifications."""
+
+    if isinstance(value, AspectSpec):
+        return value
+    if isinstance(value, (int, float)):
+        angle = float(value)
+        name = _match_base_name(angle) or f"{angle:g}"
+        return AspectSpec(name=name, angle=angle, harmonic=None)
+    if isinstance(value, str):
+        key = value.strip()
+        lower = key.lower()
+        if lower in BASE_ASPECTS:
+            angle = float(BASE_ASPECTS[lower])
+            return AspectSpec(name=lower, angle=angle, harmonic=None)
+        try:
+            angle = float(key)
+        except ValueError as exc:  # pragma: no cover - guarded by tests
+            raise ValueError(f"unsupported aspect spec: {value!r}") from exc
+        name = _match_base_name(angle) or lower
+        return AspectSpec(name=name, angle=angle, harmonic=None)
+    raise TypeError(f"unsupported aspect spec: {value!r}")
+
+
+def _match_base_name(angle: float) -> Optional[str]:
+    """Return the canonical aspect name for ``angle`` when available."""
+
+    for name, base_angle in BASE_ASPECTS.items():
+        if abs(float(base_angle) - angle) <= 1e-6:
+            return name
+    return None
+
+
 def _resolve_orb_limit(
     orb_policy: Mapping[str, Any] | None,
     spec: AspectSpec,
@@ -108,10 +155,16 @@ def _resolve_orb_limit(
 ) -> float:
     policy = orb_policy or {}
     aspect_limits = policy.get("per_aspect", {}) or {}
-    key = spec.name.lower()
-    limit = aspect_limits.get(key)
-    if limit is None:
-        limit = aspect_limits.get(str(spec.angle))
+    key_candidates = []
+    if spec.name:
+        key_candidates.append(spec.name.lower())
+    key_candidates.append(f"{spec.angle:g}")
+
+    limit = None
+    for candidate in key_candidates:
+        if candidate in aspect_limits:
+            limit = aspect_limits.get(candidate)
+            break
     try:
         limit_val = float(limit) if limit is not None else 0.0
     except Exception:
@@ -170,8 +223,6 @@ def _scan_single_spec(
     limit: float,
     step_minutes: int,
 ) -> List[Hit]:
-    if limit <= 0.0:
-        return []
     step = timedelta(minutes=max(1, int(step_minutes)))
     hits: List[Hit] = []
 
@@ -241,7 +292,7 @@ def scan_pair_time_range(
     body_b: str,
     window: TimeWindow,
     position_provider: Callable[[datetime], Mapping[str, float]],
-    aspect_specs: Sequence[AspectSpec],
+    aspect_specs: Sequence[AspectInput],
     orb_policy: Mapping[str, Any] | None,
     *,
     step_minutes: int = 60,
@@ -249,7 +300,8 @@ def scan_pair_time_range(
     """Scan a pair of bodies for the provided aspects."""
 
     hits: List[Hit] = []
-    for spec in aspect_specs:
+    for raw_spec in aspect_specs:
+        spec = _coerce_spec(raw_spec)
         limit = _resolve_orb_limit(orb_policy, spec, body_a, body_b)
         hits.extend(
             _scan_single_spec(body_a, body_b, window, position_provider, spec, limit, step_minutes)

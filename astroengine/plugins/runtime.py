@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from importlib.metadata import entry_points
+import sys
+from importlib.metadata import EntryPoint, entry_points
 
 
 class Registry:
@@ -23,11 +24,24 @@ class Registry:
         self.providers[name] = obj
 
 
+def _ensure_dist_path(ep: EntryPoint) -> None:
+    """Guarantee the distribution backing ``ep`` can be imported."""
+
+    try:
+        location = ep.dist.locate_file("")
+    except Exception:
+        return
+    path = str(location)
+    if path and path not in sys.path:
+        sys.path.insert(0, path)
+
+
 def load_plugins(registry: Registry) -> list[str]:
     """Load plugin entry points and allow them to self-register."""
 
     names: list[str] = []
     for ep in entry_points(group="astroengine.plugins"):
+        _ensure_dist_path(ep)
         fn = ep.load()
         fn(registry)
         names.append(ep.name)
@@ -39,6 +53,7 @@ def load_providers(registry: Registry) -> list[str]:
 
     names: list[str] = []
     for ep in entry_points(group="astroengine.providers"):
+        _ensure_dist_path(ep)
         fn = ep.load()
         prov_name, prov_obj = fn()
         registry.register_provider(prov_name, prov_obj)
