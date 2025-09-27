@@ -8,14 +8,17 @@ from fastapi import FastAPI
 
 from app.routers import (
     aspects_router,
-    clear_position_provider,
-    configure_position_provider,
+
+    electional_router,
+    events_router,
+
     policies_router,
 
 )
 
 app = FastAPI(title="AstroEngine Plus API")
 app.include_router(aspects_router)
+app.include_router(electional_router)
 app.include_router(transits_router)
 app.include_router(policies_router)
 
