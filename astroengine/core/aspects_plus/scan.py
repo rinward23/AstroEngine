@@ -1,10 +1,57 @@
 
-"""Aspect scan dataclasses for search/ranking pipelines."""
+
+"""Aspect scan dataclasses and helpers used by Plus endpoints."""
+
 
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+)
+
+
+from datetime import datetime, timedelta
+from itertools import combinations
+from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
+
+from .harmonics import BASE_ASPECTS, combined_angles
+
+
+PositionProvider = Callable[[datetime], Mapping[str, float]]
+
+
+@dataclass(frozen=True)
+class TimeWindow:
+    """Closed interval used to scan for aspect hits."""
+
+    start: datetime
+    end: datetime
+
+    def __post_init__(self) -> None:  # pragma: no cover - pydantic already enforces in API
+        if self.end <= self.start:
+            raise ValueError("end must be after start")
+
+    def clamp(self, ts: datetime) -> bool:
+        """Return ``True`` if ``ts`` lies inside the window (inclusive)."""
+
+        return self.start <= ts <= self.end
+
+    @property
+    def span(self) -> timedelta:
+        """Duration of the window."""
+
+        return self.end - self.start
+
 
 from datetime import datetime, timedelta
 from itertools import combinations
@@ -29,19 +76,10 @@ class TimeWindow:
         return dt
 
 
+
 @dataclass(slots=True)
 class Hit:
-    """Raw aspect hit emitted by scanning routines.
-
-    Attributes:
-        a: Primary actor identifier (planet/body name).
-        b: Secondary actor identifier.
-        aspect_angle: Exact aspect angle in degrees.
-        exact_time: Timestamp of the aspect hit (timezone-aware preferred).
-        orb: Absolute orb distance in degrees.
-        orb_limit: Maximum orb allowed for this aspect pairing.
-        meta: Optional mutable mapping for downstream annotations.
-    """
+    """Raw aspect hit emitted by scanning routines."""
 
     a: str
     b: str
@@ -52,8 +90,6 @@ class Hit:
     meta: Optional[MutableMapping[str, Any]] = None
 
     def as_mapping(self) -> Mapping[str, Any]:
-        """Return a shallow mapping representation of this hit."""
-
         base = {
             "a": self.a,
             "b": self.b,
@@ -65,6 +101,7 @@ class Hit:
         if self.meta:
             base.update(self.meta)
         return base
+
 
 
 def _circular_delta(a: float, b: float) -> float:
@@ -234,10 +271,12 @@ def scan_pair_time_range(
     return results
 
 
+
 def scan_time_range(
     *,
     objects: Sequence[str],
     window: TimeWindow,
+
     position_provider,
     aspects: Sequence[str],
     harmonics: Sequence[int],
@@ -253,10 +292,12 @@ def scan_time_range(
 
     if pairs:
         pair_list = [tuple(p) for p in pairs]
+
     else:
         pair_list = list(combinations(objects, 2))
 
     hits: List[Hit] = []
+
     for a, b in pair_list:
         hits.extend(
             scan_pair_time_range(
@@ -266,6 +307,7 @@ def scan_time_range(
                 position_provider,
                 angles,
                 orb_policy,
+
                 step_minutes=step_minutes,
             )
         )
@@ -274,5 +316,7 @@ def scan_time_range(
     return hits
 
 
+
 __all__ = ["Hit", "TimeWindow", "scan_pair_time_range", "scan_time_range"]
+
 

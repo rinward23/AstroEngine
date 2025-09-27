@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict
 
@@ -15,6 +16,7 @@ from app.schemas.aspects import (
     Paging,
 )
 from astroengine.core.aspects_plus.aggregate import day_bins, paginate, rank_hits
+from astroengine.core.aspects_plus.provider_wrappers import cached_position_provider
 from astroengine.core.aspects_plus.scan import TimeWindow, scan_time_range
 
 try:  # Optional repositories for policy lookup
@@ -30,15 +32,24 @@ router = APIRouter(prefix="", tags=["Plus"])
 # Position provider injection
 # -----------------------------------------------------------------------------
 position_provider = None  # type: ignore
+_cached: Any = None
 
 
 def _get_provider():
-    global position_provider
+    global position_provider, _cached
     if position_provider is None:
         def _stub(_ts: datetime):
             raise RuntimeError("position_provider not configured")
         return _stub
-    return position_provider
+    if _cached is None:
+        res_min = int(os.getenv("ASTRO_CACHE_RES_MIN", "5"))
+        ttl_sec = float(os.getenv("ASTRO_CACHE_TTL_SEC", "600"))
+        _cached = cached_position_provider(
+            position_provider,
+            resolution_minutes=res_min,
+            ttl_seconds=ttl_sec,
+        )
+    return _cached
 
 
 # -----------------------------------------------------------------------------
@@ -94,6 +105,11 @@ def _resolve_orb_policy(req: AspectSearchRequest) -> Dict[str, Any]:
     "/aspects/search",
     response_model=AspectSearchResponse,
     summary="Search aspects over a time window",
+    description=(
+        "Scans a time range for aspect hits across object pairs with optional harmonics "
+        "and adaptive orb policy."
+    ),
+    operation_id="plus_aspects_search",
 )
 def aspects_search(req: AspectSearchRequest):
     provider = _get_provider()

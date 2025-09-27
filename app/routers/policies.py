@@ -6,11 +6,17 @@ from app.schemas.orb_policy import (
     OrbPolicyCreate, OrbPolicyUpdate, OrbPolicyOut, OrbPolicyListOut, Paging
 )
 
-router = APIRouter(prefix="", tags=["Plus"])
+router = APIRouter(prefix="", tags=["Plus"], responses={404: {"description": "Not found"}})
 repo = OrbPolicyRepo()
 
 
-@router.get("/policies", response_model=OrbPolicyListOut)
+@router.get(
+    "/policies",
+    response_model=OrbPolicyListOut,
+    summary="List orb policies",
+    description="Return paginated orb policy definitions for Plus modules.",
+    operation_id="plus_list_policies",
+)
 def list_policies(limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0)):
     with session_scope() as db:
         items = [
@@ -28,7 +34,13 @@ def list_policies(limit: int = Query(50, ge=1, le=500), offset: int = Query(0, g
     return OrbPolicyListOut(items=items, paging=Paging(limit=limit, offset=offset, total=total))
 
 
-@router.get("/policies/{policy_id}", response_model=OrbPolicyOut)
+@router.get(
+    "/policies/{policy_id}",
+    response_model=OrbPolicyOut,
+    summary="Get orb policy",
+    description="Fetch a single orb policy by identifier.",
+    operation_id="plus_get_policy",
+)
 def get_policy(policy_id: int):
     with session_scope() as db:
         p = repo.get(db, policy_id)
@@ -40,7 +52,14 @@ def get_policy(policy_id: int):
         )
 
 
-@router.post("/policies", response_model=OrbPolicyOut, status_code=201)
+@router.post(
+    "/policies",
+    response_model=OrbPolicyOut,
+    status_code=201,
+    summary="Create orb policy",
+    description="Persist a new orb policy definition for Plus modules.",
+    operation_id="plus_create_policy",
+)
 def create_policy(payload: OrbPolicyCreate):
     with session_scope() as db:
         p = repo.create(db, **payload.model_dump())
@@ -50,7 +69,13 @@ def create_policy(payload: OrbPolicyCreate):
         )
 
 
-@router.put("/policies/{policy_id}", response_model=OrbPolicyOut)
+@router.put(
+    "/policies/{policy_id}",
+    response_model=OrbPolicyOut,
+    summary="Update orb policy",
+    description="Replace mutable fields of an existing orb policy.",
+    operation_id="plus_update_policy",
+)
 def update_policy(policy_id: int, payload: OrbPolicyUpdate):
     with session_scope() as db:
         p = repo.get(db, policy_id)
@@ -64,7 +89,13 @@ def update_policy(policy_id: int, payload: OrbPolicyUpdate):
         )
 
 
-@router.delete("/policies/{policy_id}", status_code=204)
+@router.delete(
+    "/policies/{policy_id}",
+    status_code=204,
+    summary="Delete orb policy",
+    description="Remove an orb policy. No content is returned on success.",
+    operation_id="plus_delete_policy",
+)
 def delete_policy(policy_id: int):
     with session_scope() as db:
         p = repo.get(db, policy_id)

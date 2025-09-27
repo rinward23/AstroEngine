@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -123,10 +124,12 @@ def score_series(req: ScoreSeriesRequest):
     hits = scan_time_range(
         objects=scan.objects,
         window=window,
+
         position_provider=provider,
         aspects=scan.aspects,
         harmonics=scan.harmonics or [],
         orb_policy=policy,
+
         pairs=None,
         step_minutes=scan.step_minutes,
     )
@@ -147,3 +150,4 @@ def score_series(req: ScoreSeriesRequest):
             "window": {"start": start.isoformat(), "end": end.isoformat()},
         },
     )
+
