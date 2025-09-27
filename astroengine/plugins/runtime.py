@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+
 from importlib import import_module
 from importlib.metadata import EntryPoint, entry_points
 import importlib
 import sys
 from typing import Callable
+
 
 
 class Registry:
@@ -25,6 +27,7 @@ class Registry:
         """Record an external provider implementation."""
 
         self.providers[name] = obj
+
 
 
 def _ensure_entry_point_importable(ep: EntryPoint) -> Callable[..., object]:
@@ -47,12 +50,17 @@ def _ensure_entry_point_importable(ep: EntryPoint) -> Callable[..., object]:
         return ep.load()
 
 
+
 def load_plugins(registry: Registry) -> list[str]:
     """Load plugin entry points and allow them to self-register."""
 
+    importlib.invalidate_caches()
     names: list[str] = []
+
     for ep in entry_points(group="astroengine.plugins"):
+
         fn = _ensure_entry_point_importable(ep)
+
         fn(registry)
         names.append(ep.name)
     return sorted(names)
@@ -61,9 +69,13 @@ def load_plugins(registry: Registry) -> list[str]:
 def load_providers(registry: Registry) -> list[str]:
     """Load provider entry points and register them with the runtime."""
 
+    importlib.invalidate_caches()
     names: list[str] = []
+
     for ep in entry_points(group="astroengine.providers"):
+
         fn = _ensure_entry_point_importable(ep)
+
         prov_name, prov_obj = fn()
         registry.register_provider(prov_name, prov_obj)
         names.append(ep.name)

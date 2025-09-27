@@ -60,6 +60,7 @@ def next_sign_ingress(
     provider: PositionProvider,
     *,
     step_minutes: int = 60,
+
     max_days: float = 45.0,
 ) -> datetime | None:
     """Return the timestamp when ``body`` enters the next zodiac sign.
@@ -67,10 +68,12 @@ def next_sign_ingress(
     The detector samples the supplied ``provider`` on a regular cadence and
     linearly interpolates the crossing moment once the sign index advances.
     ``None`` is returned when no ingress occurs within ``max_days``.
+
     """
 
     if step_minutes <= 0:
         raise ValueError("step_minutes must be positive")
+
 
     positions = provider(start)
     lon = positions.get(body)
@@ -117,6 +120,7 @@ def next_sign_ingress(
         prev_ts = ts
         prev_lon_unwrapped = curr_unwrapped
 
+
     return None
 
 
@@ -139,32 +143,97 @@ def _sample_range(window_start: datetime, window_end: datetime, step_minutes: in
     return samples
 
 
+def next_sign_ingress(
+    body: str,
+    start: datetime,
+    provider: PositionProvider,
+    *,
+    step_minutes: int = 60,
+    max_days: float = 45.0,
+) -> datetime | None:
+    """Return the next UTC instant when ``body`` enters a new zodiac sign."""
+
+    window_end = start + timedelta(days=max_days)
+    samples = _sample_range(start, window_end, step_minutes)
+
+    if not samples:
+        return None
+
+    prev_ts = samples[0]
+    prev_lon = provider(prev_ts).get(body)
+    if prev_lon is None:
+        raise KeyError(f"{body} position missing from provider output")
+    prev_norm = _norm360(prev_lon)
+    prev_sign = int(prev_norm // 30.0)
+
+    for ts in samples[1:]:
+        curr_lon = provider(ts).get(body)
+        if curr_lon is None:
+            raise KeyError(f"{body} position missing from provider output")
+        curr_norm = _norm360(curr_lon)
+        curr_sign = int(curr_norm // 30.0)
+
+        if curr_sign != prev_sign:
+            boundary_sign = (prev_sign + 1) % 12
+            boundary_deg = boundary_sign * 30.0
+
+            adj_prev = prev_norm
+            adj_curr = curr_norm
+            if boundary_deg < adj_prev:
+                boundary_deg += 360.0
+            if adj_curr < adj_prev:
+                adj_curr += 360.0
+
+            span_seconds = (ts - prev_ts).total_seconds()
+            if span_seconds <= 0 or adj_curr == adj_prev:
+                return ts
+
+            alpha = (boundary_deg - adj_prev) / (adj_curr - adj_prev)
+            alpha = max(0.0, min(1.0, alpha))
+            return prev_ts + timedelta(seconds=alpha * span_seconds)
+
+        prev_ts = ts
+        prev_norm = curr_norm
+        prev_sign = curr_sign
+
+    return None
+
+
 def detect_voc_moon(
     window: Any,
     provider: PositionProvider,
     aspects: Iterable[str],
+
     policy: Dict[str, Any] | None = None,
     other_objects: Iterable[str] = (),
+
     *,
     step_minutes: int = 60,
+    policy: Dict[str, Any] | None = None,
 ) -> List[EventInterval]:
     """Detect intervals where the Moon forms no aspects to the selected objects."""
 
     start = window.start
+    ingress_limit = next_sign_ingress("Moon", start, provider, step_minutes=step_minutes)
     end = window.end
+    if ingress_limit is not None and ingress_limit < end:
+        end = ingress_limit
     samples = _sample_range(start, end, step_minutes)
+
 
     orb_policy = policy or {}
     per_aspect = orb_policy.get("per_aspect", {}) if orb_policy else {}
     default_orb = float(orb_policy.get("default", 3.0)) if orb_policy else 3.0
+
     aspect_list = [name for name in aspects if name in _ASPECT_ANGLES]
+    other_targets = list(other_objects or [])
 
     def _is_void(ts: datetime) -> bool:
         positions = provider(ts)
         moon_lon = positions.get("Moon")
         if moon_lon is None:
             raise KeyError("Moon position missing from provider output")
-        for obj in other_objects:
+        for obj in other_targets:
             other_lon = positions.get(obj)
             if other_lon is None:
                 continue
@@ -194,12 +263,14 @@ def detect_voc_moon(
                 max_days=remaining_days + 2.0,
             )
         if (not state or idx == len(samples) - 1) and current_start is not None:
+
             if not state:
                 end_ts = ts
             else:
                 end_ts = samples[-1]
                 if current_ingress is not None and current_ingress <= end_ts:
                     end_ts = current_ingress
+
             intervals.append(
                 EventInterval(
                     kind="voc_moon",
