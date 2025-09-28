@@ -24,6 +24,7 @@ dependencies = [
   "pandas>=2.0",
   "python-dateutil>=2.8",
   "pydantic>=2.11",
+  "jsonschema>=4.20",
   "PyYAML>=6.0",
   "requests>=2.31",
   "SQLAlchemy>=2.0",
