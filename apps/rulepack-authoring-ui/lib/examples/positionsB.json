@@ -1,0 +1,17 @@
+{
+  "name": "Jordan",
+  "date": "1992-11-21T08:05:00Z",
+  "location": {
+    "lat": 51.5072,
+    "lon": -0.1276
+  },
+  "bodies": {
+    "Sun": 238.88,
+    "Moon": 15.42,
+    "Mercury": 219.74,
+    "Venus": 215.33,
+    "Mars": 182.66,
+    "Jupiter": 152.29,
+    "Saturn": 312.91
+  }
+}

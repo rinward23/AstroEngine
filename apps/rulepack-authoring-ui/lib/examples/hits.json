@@ -1,0 +1,15 @@
+{
+  "scope": "synastry",
+  "pairs": [
+    {
+      "bodies": ["Sun", "Moon"],
+      "aspect": 120,
+      "score": 0.74
+    },
+    {
+      "bodies": ["Venus", "Saturn"],
+      "aspect": 90,
+      "score": 0.42
+    }
+  ]
+}
