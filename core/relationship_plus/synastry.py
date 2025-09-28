@@ -1,4 +1,3 @@
-tionship-api
 """Synastry helpers for combining two position sets."""
 
 from __future__ import annotations
