@@ -9,6 +9,10 @@ import plotly.express as px
 import streamlit as st
 
 from core.viz_plus.wheel_svg import WheelOptions, render_chart_wheel
+from core.viz_plus.synastry_wheel_svg import (
+    SynastryWheelOptions,
+    render_synastry_wheel_svg,
+)
 from ui.streamlit.api import APIClient
 
 st.set_page_config(page_title="Relationship Lab", page_icon="💞", layout="wide")
@@ -118,6 +122,8 @@ with TAB_SYN:
             st.error(f"API error: {exc}")
             st.stop()
 
+        hits = resp.get("hits", [])
+
         # Wheels side by side
         c1, c2 = st.columns(2)
         with c1:
@@ -129,8 +135,70 @@ with TAB_SYN:
             svgB = render_chart_wheel(posB, options=WheelOptions(size=600, show_aspects=False))
             st.components.v1.html(svgB, height=640, scrolling=False)
 
+        # Dual-ring synastry wheel (Spec B-009)
+        st.subheader("Synastry Dual Wheel")
+        families = st.multiselect(
+            "Aspect families",
+            ["harmonious", "challenging", "neutral"],
+            default=["harmonious", "challenging", "neutral"],
+        )
+        col_maj_min, col_labels, col_k = st.columns(3)
+        with col_maj_min:
+            show_majors = st.checkbox("Show majors", value=True)
+            show_minors = st.checkbox("Show minors", value=True)
+        with col_labels:
+            show_labels = st.checkbox("Show glyph labels", value=True)
+            show_aspect_labels = st.checkbox("Label top aspects", value=True)
+            show_degree_ticks = st.checkbox("Show degree ticks", value=True)
+        with col_k:
+            limit_top_k = st.checkbox("Limit by severity", value=False)
+            top_k = st.number_input("Top-k aspects", min_value=1, max_value=300, value=60)
+            label_top_k = st.slider("Label count", 0, 60, 12)
+
+        with st.expander("Midpoint axes (bodyA:bodyB, comma separated)", expanded=False):
+            midpoint_raw = st.text_input("Pairs", value="")
+        midpoint_pairs: list[tuple[str, str]] = []
+        if midpoint_raw.strip():
+            for token in midpoint_raw.split(","):
+                if ":" in token:
+                    left, right = token.split(":", 1)
+                    midpoint_pairs.append((left.strip(), right.strip()))
+
+        tuple_hits = [
+            {
+                "a": item.get("a"),
+                "b": item.get("b"),
+                "aspect": item.get("aspect"),
+                "severity": item.get("severity", 0.0),
+                "delta": item.get("delta"),
+                "angle": item.get("angle"),
+            }
+            for item in hits
+            if isinstance(item, dict)
+        ]
+
+        options = SynastryWheelOptions(
+            size=640,
+            families=families,
+            show_majors=show_majors,
+            show_minors=show_minors,
+            show_labels=show_labels,
+            show_aspect_labels=show_aspect_labels,
+            show_degree_ticks=show_degree_ticks,
+            top_k=int(top_k) if limit_top_k else None,
+            label_top_k=int(label_top_k),
+            midpoint_pairs=tuple(midpoint_pairs),
+        )
+        svg_syn = render_synastry_wheel_svg(posA, posB, tuple_hits, options)
+        st.components.v1.html(svg_syn, height=700, scrolling=False)
+        st.download_button(
+            "Download synastry wheel SVG",
+            svg_syn.encode("utf-8"),
+            file_name="synastry_dual_wheel.svg",
+            mime="image/svg+xml",
+        )
+
         # Hits table
-        hits = resp.get("hits", [])
         st.subheader("Aspect Hits")
         if hits:
             df = pd.DataFrame(hits)
