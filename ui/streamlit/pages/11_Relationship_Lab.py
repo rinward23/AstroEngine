@@ -9,6 +9,16 @@ import plotly.express as px
 import streamlit as st
 
 from core.viz_plus.wheel_svg import WheelOptions, render_chart_wheel
+
+
+HOUSE_SYSTEMS = {
+    "Placidus": "P",
+    "Koch": "K",
+    "Porphyry": "O",
+    "Regiomontanus": "R",
+    "Whole Sign": "W",
+}
+
 from ui.streamlit.api import APIClient
 
 st.set_page_config(page_title="Relationship Lab", page_icon="💞", layout="wide")
@@ -118,6 +128,8 @@ with TAB_SYN:
             st.error(f"API error: {exc}")
             st.stop()
 
+        hits = resp.get("hits", [])
+
         # Wheels side by side
         c1, c2 = st.columns(2)
         with c1:
@@ -129,8 +141,70 @@ with TAB_SYN:
             svgB = render_chart_wheel(posB, options=WheelOptions(size=600, show_aspects=False))
             st.components.v1.html(svgB, height=640, scrolling=False)
 
+        # Dual-ring synastry wheel (Spec B-009)
+        st.subheader("Synastry Dual Wheel")
+        families = st.multiselect(
+            "Aspect families",
+            ["harmonious", "challenging", "neutral"],
+            default=["harmonious", "challenging", "neutral"],
+        )
+        col_maj_min, col_labels, col_k = st.columns(3)
+        with col_maj_min:
+            show_majors = st.checkbox("Show majors", value=True)
+            show_minors = st.checkbox("Show minors", value=True)
+        with col_labels:
+            show_labels = st.checkbox("Show glyph labels", value=True)
+            show_aspect_labels = st.checkbox("Label top aspects", value=True)
+            show_degree_ticks = st.checkbox("Show degree ticks", value=True)
+        with col_k:
+            limit_top_k = st.checkbox("Limit by severity", value=False)
+            top_k = st.number_input("Top-k aspects", min_value=1, max_value=300, value=60)
+            label_top_k = st.slider("Label count", 0, 60, 12)
+
+        with st.expander("Midpoint axes (bodyA:bodyB, comma separated)", expanded=False):
+            midpoint_raw = st.text_input("Pairs", value="")
+        midpoint_pairs: list[tuple[str, str]] = []
+        if midpoint_raw.strip():
+            for token in midpoint_raw.split(","):
+                if ":" in token:
+                    left, right = token.split(":", 1)
+                    midpoint_pairs.append((left.strip(), right.strip()))
+
+        tuple_hits = [
+            {
+                "a": item.get("a"),
+                "b": item.get("b"),
+                "aspect": item.get("aspect"),
+                "severity": item.get("severity", 0.0),
+                "delta": item.get("delta"),
+                "angle": item.get("angle"),
+            }
+            for item in hits
+            if isinstance(item, dict)
+        ]
+
+        options = SynastryWheelOptions(
+            size=640,
+            families=families,
+            show_majors=show_majors,
+            show_minors=show_minors,
+            show_labels=show_labels,
+            show_aspect_labels=show_aspect_labels,
+            show_degree_ticks=show_degree_ticks,
+            top_k=int(top_k) if limit_top_k else None,
+            label_top_k=int(label_top_k),
+            midpoint_pairs=tuple(midpoint_pairs),
+        )
+        svg_syn = render_synastry_wheel_svg(posA, posB, tuple_hits, options)
+        st.components.v1.html(svg_syn, height=700, scrolling=False)
+        st.download_button(
+            "Download synastry wheel SVG",
+            svg_syn.encode("utf-8"),
+            file_name="synastry_dual_wheel.svg",
+            mime="image/svg+xml",
+        )
+
         # Hits table
-        hits = resp.get("hits", [])
         st.subheader("Aspect Hits")
         if hits:
             df = pd.DataFrame(hits)
@@ -183,6 +257,8 @@ with TAB_SYN:
 # ------------------------------- Composite ---------------------------------
 with TAB_COMP:
     st.subheader("Composite — midpoint positions")
+    house_label = st.selectbox("House system", list(HOUSE_SYSTEMS.keys()), index=0)
+    system_code = HOUSE_SYSTEMS[house_label]
     colL, colR = st.columns(2)
     with colL:
         posA_txt = st.text_area(
@@ -199,6 +275,16 @@ with TAB_COMP:
             key="compB",
         )
 
+    c1, c2 = st.columns(2)
+    with c1:
+        eventA_dt = st.datetime_input("A — Date/Time (UTC)", value=datetime(1990, 1, 1, 12, tzinfo=timezone.utc))
+        eventA_lat = st.number_input("A — Latitude (°)", -90.0, 90.0, 40.0, 0.1)
+        eventA_lon = st.number_input("A — Longitude East (°)", -180.0, 180.0, -74.0, 0.1)
+    with c2:
+        eventB_dt = st.datetime_input("B — Date/Time (UTC)", value=datetime(1992, 6, 10, 6, tzinfo=timezone.utc))
+        eventB_lat = st.number_input("B — Latitude (°)", -90.0, 90.0, 34.0, 0.1)
+        eventB_lon = st.number_input("B — Longitude East (°)", -180.0, 180.0, -118.0, 0.1)
+
     if st.button("Compute Composite"):
         try:
             posA = _as_json(posA_txt)
@@ -206,26 +292,53 @@ with TAB_COMP:
         except Exception as exc:  # pragma: no cover - streamlit UI only
             st.error(f"Invalid JSON: {exc}")
             st.stop()
-        payload = {"posA": posA, "posB": posB}
+        payload = {
+            "posA": posA,
+            "posB": posB,
+            "eventA": {
+                "when": eventA_dt.isoformat(),
+                "lat_deg": float(eventA_lat),
+                "lon_deg_east": float(eventA_lon),
+            },
+            "eventB": {
+                "when": eventB_dt.isoformat(),
+                "lat_deg": float(eventB_lat),
+                "lon_deg_east": float(eventB_lon),
+            },
+        }
         try:
-            resp = api.relationship_composite(payload)
+            resp = api.relationship_composite(payload, houses=True, hsys=system_code)
         except Exception as exc:  # pragma: no cover - streamlit UI only
             st.error(f"API error: {exc}")
             st.stop()
         comps = resp.get("positions", {})
+        houses = resp.get("houses")
         if comps:
             df = pd.DataFrame(
                 {"body": list(comps.keys()), "longitude": [comps[k] for k in comps.keys()]}
             )
             st.dataframe(df, use_container_width=True, hide_index=True)
             _download_buttons(df, basename="composite_positions")
+            if houses:
+                st.caption(
+                    f"Houses computed using {houses['house_system_used']} (requested {houses['house_system_requested']})"
+                )
+                if houses.get("fallback_reason"):
+                    st.info(f"Fallback applied: {houses['fallback_reason']}")
             st.markdown("**Composite Wheel**")
-            svg = render_chart_wheel(comps, options=WheelOptions(size=600, show_aspects=False))
+            svg = render_chart_wheel(
+                comps,
+                houses=houses.get("cusps") if houses else None,
+                angles={"asc": houses.get("ascendant"), "mc": houses.get("midheaven")} if houses else None,
+                options=WheelOptions(size=600, show_aspects=False),
+            )
             st.components.v1.html(svg, height=640, scrolling=False)
 
 # ------------------------------- Davison -----------------------------------
 with TAB_DAV:
     st.subheader("Davison — positions at time midpoint (MVP)")
+    davison_house_label = st.selectbox("Davison house system", list(HOUSE_SYSTEMS.keys()), index=0, key="dav_hsys")
+    davison_hsys = HOUSE_SYSTEMS[davison_house_label]
     now = datetime.now(timezone.utc)
     dtA = st.datetime_input("A — Date/Time (UTC)", value=now - timedelta(days=5))
     dtB = st.datetime_input("B — Date/Time (UTC)", value=now + timedelta(days=5))
@@ -252,12 +365,13 @@ with TAB_DAV:
             "bodies": bodies or None,
         }
         try:
-            resp = api.relationship_davison(payload)
+            resp = api.relationship_davison(payload, houses=True, hsys=davison_hsys)
         except Exception as exc:  # pragma: no cover - streamlit UI only
             st.error(f"API error: {exc}")
             st.stop()
         pos = resp.get("positions", {})
         mid_dt = resp.get("midpoint_time_utc")
+        houses = resp.get("houses")
         if mid_dt:
             st.caption(f"Midpoint time (UTC): {mid_dt}")
         if pos:
@@ -266,6 +380,17 @@ with TAB_DAV:
             )
             st.dataframe(df, use_container_width=True, hide_index=True)
             _download_buttons(df, basename="davison_positions")
+            if houses:
+                st.caption(
+                    f"Houses computed using {houses['house_system_used']} (requested {houses['house_system_requested']})"
+                )
+                if houses.get("fallback_reason"):
+                    st.info(f"Fallback applied: {houses['fallback_reason']}")
             st.markdown("**Davison Wheel**")
-            svg = render_chart_wheel(pos, options=WheelOptions(size=600, show_aspects=False))
+            svg = render_chart_wheel(
+                pos,
+                houses=houses.get("cusps") if houses else None,
+                angles={"asc": houses.get("ascendant"), "mc": houses.get("midheaven")} if houses else None,
+                options=WheelOptions(size=600, show_aspects=False),
+            )
             st.components.v1.html(svg, height=640, scrolling=False)

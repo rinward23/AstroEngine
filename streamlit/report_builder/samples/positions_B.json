@@ -1,0 +1,12 @@
+{
+  "name": "Charles Babbage",
+  "datetime": "1791-12-26T08:30:00Z",
+  "location": {"lat": 51.7520, "lon": -1.2577},
+  "bodies": {
+    "sun": {"lon": 274.9},
+    "moon": {"lon": 15.4},
+    "mercury": {"lon": 250.8},
+    "venus": {"lon": 268.5},
+    "mars": {"lon": 118.9}
+  }
+}

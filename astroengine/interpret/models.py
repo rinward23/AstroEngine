@@ -1,0 +1,260 @@
+
+"""Pydantic models for interpretation API and rulepacks."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from typing import Any, Iterable, Literal
+
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
+
+
+Body = Literal[
+    "Sun",
+    "Moon",
+    "Mercury",
+    "Venus",
+    "Mars",
+    "Jupiter",
+    "Saturn",
+    "Uranus",
+    "Neptune",
+    "Pluto",
+    "Chiron",
+    "Node",
+]
+
+
+Aspect = Literal[0, 30, 45, 60, 72, 90, 120, 135, 144, 150, 180]
+Scope = Literal["synastry", "composite", "davison"]
+
+
+class RulepackMeta(BaseModel):
+    """Metadata describing a stored rulepack version."""
+
+    id: str
+    name: str
+    version: int
+    title: str
+    description: str | None = None
+    created_at: AwareDatetime
+    mutable: bool = False
+    available_versions: list[int] = Field(default_factory=list)
+
+
+class FindingsFilters(BaseModel):
+    """Filtering controls for interpretation results."""
+
+    profile: str = "balanced"
+    top_k: int | None = Field(default=50, ge=1)
+    min_score: float = Field(default=0.0, ge=0.0, le=100.0)
+    include_tags: list[str] | None = None
+    exclude_tags: list[str] | None = None
+
+
+class SynastryHitsInput(BaseModel):
+    """Direct synastry hits payload."""
+
+    hits: list[dict[str, Any]]
+
+
+class SynastryPositionsInput(BaseModel):
+    """Synastry positions payload used to compute hits in-process."""
+
+    positionsA: dict[str, float]
+    positionsB: dict[str, float]
+    aspects: tuple[Aspect, ...] | None = None
+    policy: dict[str, Any] | None = None
+
+    @field_validator("positionsA", "positionsB", mode="before")
+    @classmethod
+    def _normalize_positions(cls, value: Any) -> dict[str, float]:
+        if isinstance(value, dict):
+            return {str(k): float(v) for k, v in value.items()}
+        raise TypeError("positions must be mappings")
+
+
+class CompositePositionsInput(BaseModel):
+    positions: dict[str, float]
+
+    @field_validator("positions", mode="before")
+    @classmethod
+    def _normalize_positions(cls, value: Any) -> dict[str, float]:
+        if isinstance(value, dict):
+            return {str(k): float(v) for k, v in value.items()}
+        raise TypeError("positions must be mappings")
+
+
+class DavisonPositionsInput(BaseModel):
+    positions: dict[str, float]
+
+    @field_validator("positions", mode="before")
+    @classmethod
+    def _normalize_positions(cls, value: Any) -> dict[str, float]:
+        if isinstance(value, dict):
+            return {str(k): float(v) for k, v in value.items()}
+        raise TypeError("positions must be mappings")
+
+
+class InterpretRequest(BaseModel):
+    """Request payload for `/relationship` evaluations."""
+
+    rulepack_id: str
+    scope: Scope = "synastry"
+    filters: FindingsFilters = Field(default_factory=FindingsFilters)
+    synastry: SynastryHitsInput | SynastryPositionsInput | None = None
+    composite: CompositePositionsInput | None = None
+    davison: DavisonPositionsInput | None = None
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class Finding(BaseModel):
+    """Single interpretation finding returned to clients."""
+
+    id: str
+    title: str
+    tags: list[str]
+    score: float
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
+class InterpretResponse(BaseModel):
+    """Response payload describing evaluated findings."""
+
+    findings: list[Finding]
+    totals: dict[str, Any]
+    rulepack: RulepackMeta
+
+
+class ProfileDefinition(BaseModel):
+    """Profile weighting configuration for a rulepack."""
+
+    base_multiplier: float = 1.0
+    tag_weights: dict[str, float] = Field(default_factory=dict)
+    rule_weights: dict[str, float] = Field(default_factory=dict)
+
+    @field_validator("tag_weights", "rule_weights", mode="before")
+    @classmethod
+    def _coerce_mapping(cls, value: Any) -> dict[str, float]:
+        if value is None:
+            return {}
+        if isinstance(value, dict):
+            return {str(k): float(v) for k, v in value.items()}
+        raise TypeError("weights must be mappings")
+
+
+class RuleCondition(BaseModel):
+    """Condition block inside a rule definition."""
+
+    bodies: tuple[str, ...] | None = None
+    aspect_in: tuple[str, ...] | None = None
+    min_severity: float | None = Field(default=None, ge=0.0)
+    longitude_ranges: tuple[tuple[float, float], ...] | None = None
+
+    @field_validator("bodies", "aspect_in", mode="before")
+    @classmethod
+    def _normalize_sequence(cls, value: Any) -> tuple[str, ...] | None:
+        if value is None:
+            return None
+        if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
+            return tuple(str(item) for item in value)
+        return (str(value),)
+
+    @field_validator("longitude_ranges", mode="before")
+    @classmethod
+    def _normalize_ranges(cls, value: Any) -> tuple[tuple[float, float], ...] | None:
+        if value is None:
+            return None
+        ranges: list[tuple[float, float]] = []
+        for entry in value:
+            lo, hi = entry
+            ranges.append((float(lo), float(hi)))
+        return tuple(ranges)
+
+
+class RuleDefinition(BaseModel):
+    """Single interpretation rule."""
+
+    id: str
+    scope: Scope
+    title: str
+    text: str
+    score: float = 1.0
+    description: str | None = None
+    tags: tuple[str, ...] = Field(default_factory=tuple)
+    when: RuleCondition = Field(default_factory=RuleCondition)
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _normalize_tags(cls, value: Any) -> tuple[str, ...]:
+        if value is None:
+            return tuple()
+        if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
+            return tuple(str(item) for item in value)
+        return (str(value),)
+
+
+class RulepackHeader(BaseModel):
+    """Metadata embedded within a rulepack document."""
+
+    id: str
+    name: str
+    title: str
+    description: str | None = None
+    version: int | None = None
+    mutable: bool = False
+
+
+class RulepackDocument(BaseModel):
+    """Fully parsed rulepack document."""
+
+    meta: RulepackHeader
+    profiles: dict[str, ProfileDefinition] = Field(default_factory=dict)
+    rules: list[RuleDefinition]
+
+    @field_validator("profiles", mode="before")
+    @classmethod
+    def _normalize_profiles(cls, value: Any) -> dict[str, dict[str, Any]]:
+        if value is None:
+            return {}
+        if isinstance(value, dict):
+            return {str(k): v for k, v in value.items()}
+        raise TypeError("profiles must be mappings")
+
+    @field_validator("rules", mode="before")
+    @classmethod
+    def _normalize_rules(cls, value: Any) -> list[dict[str, Any]]:
+        if not isinstance(value, list):
+            raise TypeError("rules must be an array")
+        return value
+
+
+class RulepackVersionPayload(BaseModel):
+    """Envelope returned when fetching a rulepack."""
+
+    meta: RulepackMeta
+    profiles: dict[str, ProfileDefinition]
+    rules: list[RuleDefinition]
+    version: int
+    etag: str
+    content: dict[str, Any]
+    mutable: bool
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class RulepackLintResult(BaseModel):
+    """Lint outcome for a rulepack upload attempt."""
+
+    ok: bool
+    errors: list[dict[str, Any]] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    meta: dict[str, Any] = Field(default_factory=dict)
+
+
+def now_utc() -> datetime:
+    """Utility returning timezone-aware UTC now for metadata stamping."""
+
+    return datetime.now(tz=UTC)
+

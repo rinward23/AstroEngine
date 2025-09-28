@@ -46,15 +46,34 @@ class SynastryResponse(BaseModel):
 
 
 # --------------------------- Composite -------------------------------------
+class CompositeEventIn(BaseModel):
+    when: datetime
+    lat_deg: float
+    lon_deg_east: float
+
+
 class CompositeRequest(BaseModel):
     posA: Dict[str, float]
     posB: Dict[str, float]
     bodies: Optional[List[str]] = None
+    eventA: Optional[CompositeEventIn] = None
+    eventB: Optional[CompositeEventIn] = None
+
+
+class HouseOut(BaseModel):
+    ascendant: float
+    midheaven: float
+    cusps: List[float]
+    house_system_requested: str
+    house_system_used: str
+    fallback_reason: Optional[str] = None
+    metadata: Dict[str, Any] | None = None
 
 
 class CompositeResponse(BaseModel):
     positions: Dict[str, float]
     meta: Dict[str, Any] = Field(default_factory=dict)
+    houses: Optional[HouseOut] = None
 
 
 # --------------------------- Davison ---------------------------------------
@@ -76,3 +95,4 @@ class DavisonResponse(BaseModel):
     midpoint_time_utc: datetime
     midpoint_geo: GeoIn
     meta: Dict[str, Any] = Field(default_factory=dict)
+    houses: Optional[HouseOut] = None

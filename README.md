@@ -113,6 +113,26 @@ The page offers real datasets for quick regression checks:
 Sample longitude presets bundled with the page correspond to historical charts
 captured from published ephemerides so the outputs remain fully data-backed.
 
+### Relationship API (v1)
+
+The new FastAPI-powered relationship service exposes deterministic REST
+endpoints at the `/v1` base path. Launch it via Uvicorn with
+
+```bash
+uvicorn app.relationship_api:create_app --factory --host 0.0.0.0 --port 8000
+```
+
+Key routes:
+
+- `POST /v1/relationship/synastry` → synastry hits, grids, overlays, scores
+- `POST /v1/relationship/composite` → midpoint composites for selected bodies
+- `POST /v1/relationship/davison` → Davison mid-time/space positions via Swiss/Skyfield
+- `GET /v1/healthz` → service health probe
+
+All requests accept strict JSON payloads using Pydantic v2 models and return
+`{code, message, details}` error envelopes on failure. ETags, request IDs, and
+rate limiting headers are emitted automatically for production observability.
+
 ### Next steps
 
 The documentation set now includes step-by-step recipes for three common
