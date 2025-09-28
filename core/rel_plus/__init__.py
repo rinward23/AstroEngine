@@ -23,6 +23,13 @@ from .composite import (  # noqa: F401
     midpoint_time,
     wrap_degrees,
 )
+from .houses import (  # noqa: F401
+    FALLBACK_ORDER,
+    HouseError,
+    HouseResult,
+    composite_houses,
+    davison_houses,
+)
 from .synastry import synastry_interaspects, synastry_grid
 
 __all__ = [
@@ -46,6 +53,11 @@ __all__ = [
     "davison_positions",
     "geodesic_midpoint",
     "midpoint_time",
+    "composite_houses",
+    "davison_houses",
+    "HouseResult",
+    "HouseError",
+    "FALLBACK_ORDER",
     "synastry_interaspects",
     "synastry_grid",
     "wrap_degrees",

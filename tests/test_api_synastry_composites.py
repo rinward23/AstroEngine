@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -92,3 +94,60 @@ def test_composites_midpoint_and_davison():
     dv = r.json()
     assert abs(dv["positions"]["Sun"] - 5.0) < 1e-6
     assert abs(dv["positions"]["Venus"] - 26.0) < 1e-6
+
+
+def test_composite_midpoint_houses():
+    pytest.importorskip("swisseph")
+    app = build_app()
+    client = TestClient(app)
+    payload = {
+        "pos_a": {"Sun": 10.0, "Moon": 200.0},
+        "pos_b": {"Sun": 50.0, "Moon": 220.0},
+        "objects": ["Sun", "Moon"],
+        "event_a": {
+            "when": datetime(1990, 1, 1, 12, tzinfo=timezone.utc).isoformat(),
+            "lat": 40.0,
+            "lon": -74.0,
+        },
+        "event_b": {
+            "when": datetime(1992, 6, 10, 6, tzinfo=timezone.utc).isoformat(),
+            "lat": 34.0,
+            "lon": -118.0,
+        },
+    }
+    resp = client.post("/composites/midpoint?houses=true&hsys=O", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["houses"]["house_system_used"] in {"O", "P", "K", "R", "W"}
+    assert len(data["houses"]["cusps"]) == 12
+
+
+def test_davison_houses_payload():
+    pytest.importorskip("swisseph")
+    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    eph = LinearEphemeris(t0, base={"Sun": 0.0}, rates={"Sun": 1.0})
+    app = build_app(eph)
+    client = TestClient(app)
+    payload = {
+        "objects": ["Sun"],
+        "dt_a": t0.isoformat(),
+        "dt_b": (t0 + timedelta(days=2)).isoformat(),
+        "lat_a": 40.0,
+        "lon_a": -75.0,
+        "lat_b": 41.0,
+        "lon_b": -73.0,
+    }
+    resp = client.post("/composites/davison?houses=true", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "houses" in data
+    assert data["houses"]["house_system_used"] in {"P", "K", "O", "R", "W"}
+
+
+def test_composite_houses_missing_events_error():
+    pytest.importorskip("swisseph")
+    app = build_app()
+    client = TestClient(app)
+    payload = {"pos_a": {"Sun": 0.0}, "pos_b": {"Sun": 10.0}, "objects": ["Sun"]}
+    resp = client.post("/composites/midpoint?houses=true", json=payload)
+    assert resp.status_code == 400

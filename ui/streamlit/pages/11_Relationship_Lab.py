@@ -9,10 +9,16 @@ import plotly.express as px
 import streamlit as st
 
 from core.viz_plus.wheel_svg import WheelOptions, render_chart_wheel
-from core.viz_plus.synastry_wheel_svg import (
-    SynastryWheelOptions,
-    render_synastry_wheel_svg,
-)
+
+
+HOUSE_SYSTEMS = {
+    "Placidus": "P",
+    "Koch": "K",
+    "Porphyry": "O",
+    "Regiomontanus": "R",
+    "Whole Sign": "W",
+}
+
 from ui.streamlit.api import APIClient
 
 st.set_page_config(page_title="Relationship Lab", page_icon="💞", layout="wide")
@@ -251,6 +257,8 @@ with TAB_SYN:
 # ------------------------------- Composite ---------------------------------
 with TAB_COMP:
     st.subheader("Composite — midpoint positions")
+    house_label = st.selectbox("House system", list(HOUSE_SYSTEMS.keys()), index=0)
+    system_code = HOUSE_SYSTEMS[house_label]
     colL, colR = st.columns(2)
     with colL:
         posA_txt = st.text_area(
@@ -267,6 +275,16 @@ with TAB_COMP:
             key="compB",
         )
 
+    c1, c2 = st.columns(2)
+    with c1:
+        eventA_dt = st.datetime_input("A — Date/Time (UTC)", value=datetime(1990, 1, 1, 12, tzinfo=timezone.utc))
+        eventA_lat = st.number_input("A — Latitude (°)", -90.0, 90.0, 40.0, 0.1)
+        eventA_lon = st.number_input("A — Longitude East (°)", -180.0, 180.0, -74.0, 0.1)
+    with c2:
+        eventB_dt = st.datetime_input("B — Date/Time (UTC)", value=datetime(1992, 6, 10, 6, tzinfo=timezone.utc))
+        eventB_lat = st.number_input("B — Latitude (°)", -90.0, 90.0, 34.0, 0.1)
+        eventB_lon = st.number_input("B — Longitude East (°)", -180.0, 180.0, -118.0, 0.1)
+
     if st.button("Compute Composite"):
         try:
             posA = _as_json(posA_txt)
@@ -274,26 +292,53 @@ with TAB_COMP:
         except Exception as exc:  # pragma: no cover - streamlit UI only
             st.error(f"Invalid JSON: {exc}")
             st.stop()
-        payload = {"posA": posA, "posB": posB}
+        payload = {
+            "posA": posA,
+            "posB": posB,
+            "eventA": {
+                "when": eventA_dt.isoformat(),
+                "lat_deg": float(eventA_lat),
+                "lon_deg_east": float(eventA_lon),
+            },
+            "eventB": {
+                "when": eventB_dt.isoformat(),
+                "lat_deg": float(eventB_lat),
+                "lon_deg_east": float(eventB_lon),
+            },
+        }
         try:
-            resp = api.relationship_composite(payload)
+            resp = api.relationship_composite(payload, houses=True, hsys=system_code)
         except Exception as exc:  # pragma: no cover - streamlit UI only
             st.error(f"API error: {exc}")
             st.stop()
         comps = resp.get("positions", {})
+        houses = resp.get("houses")
         if comps:
             df = pd.DataFrame(
                 {"body": list(comps.keys()), "longitude": [comps[k] for k in comps.keys()]}
             )
             st.dataframe(df, use_container_width=True, hide_index=True)
             _download_buttons(df, basename="composite_positions")
+            if houses:
+                st.caption(
+                    f"Houses computed using {houses['house_system_used']} (requested {houses['house_system_requested']})"
+                )
+                if houses.get("fallback_reason"):
+                    st.info(f"Fallback applied: {houses['fallback_reason']}")
             st.markdown("**Composite Wheel**")
-            svg = render_chart_wheel(comps, options=WheelOptions(size=600, show_aspects=False))
+            svg = render_chart_wheel(
+                comps,
+                houses=houses.get("cusps") if houses else None,
+                angles={"asc": houses.get("ascendant"), "mc": houses.get("midheaven")} if houses else None,
+                options=WheelOptions(size=600, show_aspects=False),
+            )
             st.components.v1.html(svg, height=640, scrolling=False)
 
 # ------------------------------- Davison -----------------------------------
 with TAB_DAV:
     st.subheader("Davison — positions at time midpoint (MVP)")
+    davison_house_label = st.selectbox("Davison house system", list(HOUSE_SYSTEMS.keys()), index=0, key="dav_hsys")
+    davison_hsys = HOUSE_SYSTEMS[davison_house_label]
     now = datetime.now(timezone.utc)
     dtA = st.datetime_input("A — Date/Time (UTC)", value=now - timedelta(days=5))
     dtB = st.datetime_input("B — Date/Time (UTC)", value=now + timedelta(days=5))
@@ -320,12 +365,13 @@ with TAB_DAV:
             "bodies": bodies or None,
         }
         try:
-            resp = api.relationship_davison(payload)
+            resp = api.relationship_davison(payload, houses=True, hsys=davison_hsys)
         except Exception as exc:  # pragma: no cover - streamlit UI only
             st.error(f"API error: {exc}")
             st.stop()
         pos = resp.get("positions", {})
         mid_dt = resp.get("midpoint_time_utc")
+        houses = resp.get("houses")
         if mid_dt:
             st.caption(f"Midpoint time (UTC): {mid_dt}")
         if pos:
@@ -334,6 +380,17 @@ with TAB_DAV:
             )
             st.dataframe(df, use_container_width=True, hide_index=True)
             _download_buttons(df, basename="davison_positions")
+            if houses:
+                st.caption(
+                    f"Houses computed using {houses['house_system_used']} (requested {houses['house_system_requested']})"
+                )
+                if houses.get("fallback_reason"):
+                    st.info(f"Fallback applied: {houses['fallback_reason']}")
             st.markdown("**Davison Wheel**")
-            svg = render_chart_wheel(pos, options=WheelOptions(size=600, show_aspects=False))
+            svg = render_chart_wheel(
+                pos,
+                houses=houses.get("cusps") if houses else None,
+                angles={"asc": houses.get("ascendant"), "mc": houses.get("midheaven")} if houses else None,
+                options=WheelOptions(size=600, show_aspects=False),
+            )
             st.components.v1.html(svg, height=640, scrolling=False)

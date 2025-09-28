@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -70,6 +72,31 @@ def test_composite_endpoint():
     assert abs(data["positions"]["Sun"] - 0.0) < 1e-9
 
 
+def test_composite_houses_response():
+    pytest.importorskip("swisseph")
+    app = build_app()
+    client = TestClient(app)
+    payload = {
+        "posA": POS_A,
+        "posB": POS_B,
+        "eventA": {
+            "when": datetime(1990, 1, 1, 12, tzinfo=timezone.utc).isoformat(),
+            "lat_deg": 40.0,
+            "lon_deg_east": -74.0,
+        },
+        "eventB": {
+            "when": datetime(1992, 6, 10, 6, tzinfo=timezone.utc).isoformat(),
+            "lat_deg": 34.0,
+            "lon_deg_east": -118.0,
+        },
+    }
+    resp = client.post("/relationship/composite?houses=true&hsys=O", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["houses"]["house_system_used"] in {"O", "P", "K", "R", "W"}
+    assert len(data["houses"]["cusps"]) == 12
+
+
 def test_davison_endpoint_mid_time_positions():
     t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
     eph = LinearEphemeris(t0, base={"Sun": 10.0, "Venus": 40.0}, rates={"Sun": 1.0, "Venus": 1.2})
@@ -89,3 +116,32 @@ def test_davison_endpoint_mid_time_positions():
     assert abs(data["positions"]["Sun"] - 15.0) < 1e-9
     assert abs(data["positions"]["Venus"] - 46.0) < 1e-9
     assert data["midpoint_time_utc"].startswith((t0 + timedelta(days=5)).isoformat()[:16])
+
+
+def test_davison_houses_response():
+    pytest.importorskip("swisseph")
+    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    eph = LinearEphemeris(t0, base={"Sun": 10.0}, rates={"Sun": 1.0})
+    app = build_app(eph)
+    client = TestClient(app)
+    payload = {
+        "dtA": t0.isoformat(),
+        "dtB": (t0 + timedelta(days=10)).isoformat(),
+        "locA": {"lat_deg": 10.0, "lon_deg_east": 20.0},
+        "locB": {"lat_deg": -10.0, "lon_deg_east": 40.0},
+        "bodies": ["Sun"],
+    }
+    resp = client.post("/relationship/davison?houses=true", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "houses" in data
+    assert data["houses"]["house_system_used"] in {"P", "K", "O", "R", "W"}
+
+
+def test_composite_houses_missing_events_error():
+    pytest.importorskip("swisseph")
+    app = build_app()
+    client = TestClient(app)
+    payload = {"posA": POS_A, "posB": POS_B}
+    resp = client.post("/relationship/composite?houses=true", json=payload)
+    assert resp.status_code == 400
