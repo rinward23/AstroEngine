@@ -4,44 +4,23 @@ from __future__ import annotations
 
 import inspect
 import json
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, Iterable, Literal
 
-
+from fastapi import APIRouter, HTTPException
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from ...core.transit_engine import scan_transits
+from ...detectors.directed_aspects import solar_arc_natal_aspects
 from ...detectors.directions import solar_arc_directions
+from ...detectors.progressed_aspects import progressed_natal_aspects
 from ...detectors.progressions import secondary_progressions
-
-from ...detectors.returns import solar_lunar_returns as _solar_lunar_returns
+from ...detectors.returns import solar_lunar_returns
+from ...detectors_aspects import AspectHit
 from ...ephemeris import SwissEphemerisAdapter
 from ...events import DirectionEvent, ProgressionEvent, ReturnEvent
-from ...exporters import write_parquet_canonical, write_sqlite_canonical
-from ...exporters_ics import write_ics_canonical
-from ...detectors_aspects import AspectHit
-
-
-router = APIRouter()
-
-
-
-
-from fastapi import APIRouter, HTTPException
-
-
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
-
-
-from pydantic import AliasChoices, BaseModel, Field, ConfigDict, field_validator, model_validator
-
-from ...detectors.directed_aspects import solar_arc_natal_aspects
-from ...detectors.progressed_aspects import progressed_natal_aspects
-from ...detectors.returns import solar_lunar_returns
-from ...core.transit_engine import scan_transits as transit_aspects
-from ...detectors_aspects import AspectHit
-from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
-from ...events import ReturnEvent
 from ...exporters import write_parquet_canonical, write_sqlite_canonical
 from ...exporters_ics import write_ics_canonical
 
@@ -77,11 +56,13 @@ class ExportOptions(BaseModel):
 
 
 class TimeWindow(BaseModel):
-    """UTC datetimes with support for legacy alias names."""
-
     """Normalized scan time bounds with legacy payload support."""
 
+    model_config = ConfigDict(extra="ignore")
 
+    natal: datetime = Field(validation_alias=AliasChoices("natal", "natal_ts"))
+    start: datetime = Field(validation_alias=AliasChoices("start", "start_ts", "from"))
+    end: datetime = Field(validation_alias=AliasChoices("end", "end_ts", "to"))
 
     @field_validator("natal", "start", "end", mode="before")
 
@@ -375,14 +356,16 @@ def api_scan_directions(payload: dict[str, Any]) -> ScanResponse:
 
 
 @router.post("/transits", response_model=ScanResponse)
+def api_scan_transits(payload: dict[str, Any]) -> ScanResponse:
+    request_data = _normalize_scan_payload(payload)
+    request = TransitScanRequest(**request_data)
 
-def api_scan_transits(request: TransitScanRequest) -> ScanResponse:
     if (request.method or "").strip().lower() == "transits":
         raise HTTPException(status_code=501, detail="Transit scans are not yet available")
     natal, start, end = request.iso_tuple()
     hits = [
         _hit_from_aspect(hit)
-        for hit in transit_aspects(
+        for hit in scan_transits(
             natal_ts=natal,
             start_ts=start,
             end_ts=end,
@@ -405,8 +388,10 @@ def api_scan_transits(request: TransitScanRequest) -> ScanResponse:
 
 
 @router.post("/returns", response_model=ScanResponse)
+def api_scan_returns(payload: dict[str, Any]) -> ScanResponse:
+    request_data = _normalize_scan_payload(payload)
+    request = ReturnsScanRequest(**request_data)
 
-def api_scan_returns(request: ReturnsScanRequest) -> ScanResponse:
     natal_iso, start_iso, end_iso = request.iso_tuple()
     bodies = list(request.bodies or ["Sun"])
 

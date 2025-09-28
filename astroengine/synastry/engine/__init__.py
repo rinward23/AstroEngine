@@ -1,8 +1,9 @@
-"""Synastry orchestration utilities."""
+"""Synastry engine module exposing matrix computations."""
 
 from __future__ import annotations
 
-from .engine import (
+from . import core
+from .core import (
     ASPECT_FAMILY_MAP,
     CHALLENGING_ASPECTS,
     ChartPositions,
@@ -24,11 +25,9 @@ from .engine import (
     detect_hits,
     make_overlay,
 )
-from .orchestrator import SynHit, compute_synastry
 
 __all__ = [
-    "SynHit",
-    "compute_synastry",
+    "core",
     "ChartPositions",
     "EclipticPosition",
     "Hit",
@@ -50,3 +49,4 @@ __all__ = [
     "make_overlay",
     "compute_scores",
 ]
+

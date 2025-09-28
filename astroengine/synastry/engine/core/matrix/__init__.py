@@ -1,34 +1,25 @@
-"""Synastry orchestration utilities."""
+"""Synastry matrix core exports."""
 
 from __future__ import annotations
 
-from .engine import (
+from .detector import detect_hits
+from .grid import build_grid
+from .models import ChartPositions, EclipticPosition, GridCell, Hit, Overlay, OverlayLine, Scores
+from .overlay import make_overlay
+from .policy import (
     ASPECT_FAMILY_MAP,
     CHALLENGING_ASPECTS,
-    ChartPositions,
     DEFAULT_ASPECT_SET,
     DEFAULT_ORB_POLICY,
     DEFAULT_WEIGHTS,
-    EclipticPosition,
-    GridCell,
     HARMONIOUS_ASPECTS,
-    Hit,
     NEUTRAL_ASPECTS,
     OrbPolicy,
-    Overlay,
-    OverlayLine,
-    Scores,
     Weights,
-    build_grid,
-    compute_scores,
-    detect_hits,
-    make_overlay,
 )
-from .orchestrator import SynHit, compute_synastry
+from .scoring import compute_scores
 
 __all__ = [
-    "SynHit",
-    "compute_synastry",
     "ChartPositions",
     "EclipticPosition",
     "Hit",
@@ -50,3 +41,4 @@ __all__ = [
     "make_overlay",
     "compute_scores",
 ]
+
