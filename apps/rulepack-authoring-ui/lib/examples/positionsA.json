@@ -1,0 +1,17 @@
+{
+  "name": "Alex",
+  "date": "1990-07-12T16:32:00Z",
+  "location": {
+    "lat": 37.7749,
+    "lon": -122.4194
+  },
+  "bodies": {
+    "Sun": 110.23,
+    "Moon": 250.11,
+    "Mercury": 95.48,
+    "Venus": 132.04,
+    "Mars": 45.01,
+    "Jupiter": 78.56,
+    "Saturn": 287.44
+  }
+}

@@ -203,13 +203,10 @@ def detect_voc_moon(
     window: Any,
     provider: PositionProvider,
     aspects: Iterable[str],
-
     policy: Dict[str, Any] | None = None,
     other_objects: Iterable[str] = (),
-
     *,
     step_minutes: int = 60,
-    policy: Dict[str, Any] | None = None,
 ) -> List[EventInterval]:
     """Detect intervals where the Moon forms no aspects to the selected objects."""
 

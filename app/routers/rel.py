@@ -2,7 +2,7 @@ from __future__ import annotations
 from importlib import util
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas.rel import (
     SynastryRequest,
@@ -14,14 +14,25 @@ from app.schemas.rel import (
     CompositeResponse,
 )
 from core.rel_plus.synastry import synastry_interaspects, synastry_grid
-from core.rel_plus.composite import (
+from core.rel_plus import (
+    BirthEvent,
+    DavisonResult,
+    composite_houses,
     composite_midpoint_positions,
+    davison_houses,
     davison_positions,
     geodesic_midpoint,
     midpoint_time,
 )
 
-if util.find_spec("app.repo.orb_policies") and util.find_spec("app.db.session"):
+try:
+    repo_spec = util.find_spec("app.repo.orb_policies")
+    session_spec = util.find_spec("app.db.session")
+except Exception:  # pragma: no cover - optional dependency path
+    repo_spec = None
+    session_spec = None
+
+if repo_spec and session_spec:
     from app.repo.orb_policies import OrbPolicyRepo  # type: ignore
     from app.db.session import session_scope  # type: ignore
 else:  # pragma: no cover - optional dependency path
@@ -97,9 +108,20 @@ def synastry_compute(req: SynastryRequest):
     summary="Midpoint Composite positions",
     description="Circular midpoints of longitudes for the requested objects.",
 )
-def composites_midpoint(req: CompositeMidpointRequest):
+def composites_midpoint(
+    req: CompositeMidpointRequest,
+    houses: bool = Query(False, description="Include composite houses in the response"),
+    hsys: str = Query("P", description="Requested house system code"),
+):
     pos = composite_midpoint_positions(req.pos_a, req.pos_b, req.objects)
-    return CompositeResponse(positions=pos, meta={"method": "midpoint"})
+    houses_payload = None
+    if houses:
+        if req.event_a is None or req.event_b is None:
+            raise HTTPException(status_code=400, detail="event_a and event_b are required when houses=true")
+        event_a = BirthEvent(when=req.event_a.when, lat=req.event_a.lat, lon=req.event_a.lon)
+        event_b = BirthEvent(when=req.event_b.when, lat=req.event_b.lat, lon=req.event_b.lon)
+        houses_payload = composite_houses(event_a, event_b, hsys).to_payload()
+    return CompositeResponse(positions=pos, meta={"method": "midpoint"}, houses=houses_payload)
 
 
 @router.post(
@@ -110,7 +132,11 @@ def composites_midpoint(req: CompositeMidpointRequest):
         "Computes body longitudes at the UTC time midpoint between two datetimes using the configured ephemeris provider."
     ),
 )
-def composites_davison(req: CompositeDavisonRequest):
+def composites_davison(
+    req: CompositeDavisonRequest,
+    houses: bool = Query(False, description="Include Davison houses in the response"),
+    hsys: str = Query("P", description="Requested house system code"),
+):
     provider = aspects_module._get_provider()
     pos = davison_positions(
         req.objects,
@@ -124,6 +150,10 @@ def composites_davison(req: CompositeDavisonRequest):
     )
     midpoint = midpoint_time(req.dt_a, req.dt_b)
     mid_lat, mid_lon = geodesic_midpoint(req.lat_a, req.lon_a, req.lat_b, req.lon_b)
+    houses_payload = None
+    if houses:
+        davison_result = DavisonResult(mid_when=midpoint, mid_lat=mid_lat, mid_lon=mid_lon, positions={})
+        houses_payload = davison_houses(davison_result, hsys).to_payload()
     return CompositeResponse(
         positions=pos,
         meta={
@@ -131,4 +161,5 @@ def composites_davison(req: CompositeDavisonRequest):
             "midpoint_time": midpoint.isoformat(),
             "midpoint_location": {"lat": mid_lat, "lon": mid_lon},
         },
+        houses=houses_payload,
     )

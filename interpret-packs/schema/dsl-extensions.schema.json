@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Interpretation DSL Extensions",
+  "type": "object",
+  "properties": {
+    "rulepack": {"type": "string"},
+    "version": {"type": ["string", "number"]},
+    "tag_map": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "bucket": {"type": "string"},
+          "weight": {"type": "number"}
+        },
+        "required": ["bucket"]
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "object",
+            "additionalProperties": {"type": "number"}
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/rule"}
+    }
+  },
+  "required": ["rulepack", "version", "rules"],
+  "definitions": {
+    "rule": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "scope": {"enum": ["synastry", "composite", "davison"]},
+        "when": {"$ref": "#/definitions/when"},
+        "then": {"$ref": "#/definitions/then"}
+      },
+      "required": ["id", "scope", "when"]
+    },
+    "when": {
+      "type": "object",
+      "properties": {
+        "bodies": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "bodiesA": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "bodiesB": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "aspects": {
+          "type": "array",
+          "items": {"type": ["string", "number"]}
+        },
+        "family": {
+          "type": "array",
+          "items": {"enum": ["harmonious", "challenging", "neutral"]}
+        },
+        "min_severity": {"type": "number"},
+        "group": {"$ref": "#/definitions/group"},
+        "house": {"$ref": "#/definitions/house"}
+      }
+    },
+    "group": {
+      "type": "object",
+      "properties": {
+        "any": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/when"}
+        },
+        "all": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/when"}
+        },
+        "count": {"type": "integer", "minimum": 1},
+        "count_at_least": {"type": "integer", "minimum": 1}
+      }
+    },
+    "house": {
+      "type": "object",
+      "properties": {
+        "scope": {"enum": ["composite", "davison"]},
+        "target": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "in": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "angles_any": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "orb": {"type": "number", "minimum": 0}
+      },
+      "required": ["target"]
+    },
+    "then": {
+      "type": "object",
+      "properties": {
+        "title": {"type": "string"},
+        "text": {"type": "string"},
+        "tags": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "base_score": {"type": "number"},
+        "score_fn": {"type": "string"},
+        "boost": {
+          "type": "object",
+          "properties": {
+            "by": {"type": "number"},
+            "cap": {"type": "number"}
+          }
+        },
+        "limit": {
+          "type": "object",
+          "properties": {
+            "per_pair": {"type": "boolean"},
+            "max": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
+    }
+  }
+}

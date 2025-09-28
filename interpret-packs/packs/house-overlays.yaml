@@ -1,0 +1,328 @@
+rulepack: house-overlays
+version: 1
+description: >-
+  Composite and Davison overlays emphasising angular house placements and nodal
+  alignments for relationship charts.
+tag_map:
+  chemistry: {bucket: chemistry, weight: 1.05}
+  stability: {bucket: stability, weight: 1.1}
+  growth: {bucket: growth, weight: 1.05}
+  friction: {bucket: friction, weight: 1.0}
+  libido: {bucket: chemistry, weight: 1.15}
+  spark: {bucket: chemistry, weight: 1.1}
+  devotion: {bucket: stability, weight: 1.1}
+  partnership: {bucket: stability, weight: 1.1}
+  destiny: {bucket: growth, weight: 1.15}
+  alignment: {bucket: growth, weight: 1.05}
+  hearth: {bucket: stability, weight: 1.1}
+  public_path: {bucket: growth, weight: 1.08}
+  vitality: {bucket: chemistry, weight: 1.05}
+  initiative: {bucket: growth, weight: 1.05}
+  grounding: {bucket: stability, weight: 1.08}
+  momentum: {bucket: growth, weight: 1.07}
+  magnetism: {bucket: chemistry, weight: 1.1}
+  ritual: {bucket: stability, weight: 1.05}
+  nurture: {bucket: chemistry, weight: 1.05}
+profiles:
+  default:
+    tags: {chemistry: 1.0, stability: 1.0, growth: 1.0, friction: 1.0}
+  chemistry_plus:
+    tags: {chemistry: 1.2, stability: 1.0, growth: 1.05, friction: 0.95}
+  stability_plus:
+    tags: {chemistry: 0.95, stability: 1.2, growth: 1.0, friction: 0.95}
+meta:
+  domain: overlays
+rules:
+  - id: composite_venus_house7
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Venus]
+        in: ["VII"]
+    then:
+      title: Composite Venus in 7th — Partnership Magnet
+      tags: [chemistry, partnership, devotion]
+      base_score: 0.76
+      score_fn: "linear"
+      text: "Composite Venus in the 7th keeps the relationship oriented toward loyalty."
+  - id: composite_venus_house5
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Venus]
+        in: ["V"]
+    then:
+      title: Composite Venus in 5th — Playful Romance
+      tags: [spark, chemistry, ritual]
+      base_score: 0.73
+      score_fn: "linear"
+      text: "5th-house Venus encourages creative dates and joyful courtship."
+  - id: composite_venus_house8
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Venus]
+        in: ["VIII"]
+    then:
+      title: Composite Venus in 8th — Depth Bonding
+      tags: [chemistry, devotion, grounding]
+      base_score: 0.74
+      score_fn: "linear"
+      text: "8th-house Venus leans into resource sharing and intimate trust."
+  - id: composite_mars_house1
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Mars]
+        in: ["I"]
+        angles_any: [Asc]
+    then:
+      title: Composite Mars Rising — Active Pair
+      tags: [libido, initiative, momentum]
+      base_score: 0.75
+      score_fn: "linear"
+      text: "Composite Mars on the Ascendant keeps momentum front and centre."
+  - id: composite_mars_house5
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Mars]
+        in: ["V"]
+    then:
+      title: Composite Mars in 5th — Creative Drive
+      tags: [spark, libido, vitality]
+      base_score: 0.72
+      score_fn: "linear"
+      text: "5th-house Mars favours playful competition and passionate expression."
+  - id: composite_mars_house7
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Mars]
+        in: ["VII"]
+    then:
+      title: Composite Mars in 7th — Dynamic Duo
+      tags: [libido, momentum, partnership]
+      base_score: 0.73
+      score_fn: "linear"
+      text: "7th-house Mars keeps the relationship active through shared missions."
+  - id: composite_sun_house10
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Sun]
+        in: ["X"]
+        angles_any: [MC]
+    then:
+      title: Composite Sun on MC — Shared Spotlight
+      tags: [public_path, growth, alignment]
+      base_score: 0.75
+      score_fn: "linear"
+      text: "Sun near the composite MC draws the partnership into visible roles."
+  - id: composite_sun_house4
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Sun]
+        in: ["IV"]
+    then:
+      title: Composite Sun in 4th — Hearth Focus
+      tags: [hearth, stability, devotion]
+      base_score: 0.72
+      score_fn: "linear"
+      text: "4th-house Sun brightens home projects and family integration."
+  - id: composite_moon_house4
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Moon]
+        in: ["IV"]
+    then:
+      title: Composite Moon in 4th — Emotional Base
+      tags: [hearth, grounding, nurture]
+      base_score: 0.74
+      score_fn: "linear"
+      text: "Moon in the 4th creates a safe space for vulnerability."
+  - id: composite_moon_house11
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Moon]
+        in: ["XI"]
+    then:
+      title: Composite Moon in 11th — Community Bond
+      tags: [growth, ritual, alignment]
+      base_score: 0.71
+      score_fn: "linear"
+      text: "11th-house Moon builds friendships and shared vision boards."
+  - id: composite_node_angle
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [North Node]
+        angles_any: [Asc, MC]
+        in: ["I", "X"]
+    then:
+      title: Composite Node on Angles — Destiny Pulse
+      tags: [destiny, alignment, growth]
+      base_score: 0.76
+      score_fn: "linear"
+      text: "Nodal contact with Asc/MC fast-tracks the purpose of the union."
+  - id: composite_pluto_house7
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Pluto]
+        in: ["VII"]
+    then:
+      title: Composite Pluto in 7th — Transformational Partnership
+      tags: [growth, magnetism, partnership]
+      base_score: 0.74
+      score_fn: "linear"
+      text: "Pluto in the 7th keeps the bond evolving through shared intensity."
+  - id: composite_jupiter_house9
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Jupiter]
+        in: ["IX"]
+    then:
+      title: Composite Jupiter in 9th — Shared Horizons
+      tags: [growth, alignment, momentum]
+      base_score: 0.72
+      score_fn: "linear"
+      text: "9th-house Jupiter supports travel, study, and mutual expansion."
+  - id: davison_venus_house7
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [Venus]
+        in: ["VII"]
+    then:
+      title: Davison Venus in 7th — Relationship Timeline of Love
+      tags: [chemistry, partnership, devotion]
+      base_score: 0.75
+      score_fn: "linear"
+      text: "Davison Venus in the 7th marks recurring phases of recommitment."
+  - id: davison_venus_house5
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [Venus]
+        in: ["V"]
+    then:
+      title: Davison Venus in 5th — Date Night Milestones
+      tags: [spark, ritual, chemistry]
+      base_score: 0.72
+      score_fn: "linear"
+      text: "5th-house Venus refreshes romance cycles along the timeline."
+  - id: davison_mars_house1
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [Mars]
+        in: ["I"]
+        angles_any: [Asc]
+    then:
+      title: Davison Mars on Ascendant — Timed Action
+      tags: [libido, momentum, initiative]
+      base_score: 0.74
+      score_fn: "linear"
+      text: "Mars near the Davison Ascendant marks energetic turning points."
+  - id: davison_mars_house7
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [Mars]
+        in: ["VII"]
+    then:
+      title: Davison Mars in 7th — Cooperative Drive
+      tags: [libido, partnership, alignment]
+      base_score: 0.72
+      score_fn: "linear"
+      text: "7th-house Mars frames shared challenges that sharpen teamwork."
+  - id: davison_sun_house10
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [Sun]
+        in: ["X"]
+        angles_any: [MC]
+    then:
+      title: Davison Sun on MC — Purpose Markers
+      tags: [public_path, destiny, growth]
+      base_score: 0.75
+      score_fn: "linear"
+      text: "Sun at the Davison MC highlights pivotal achievements together."
+  - id: davison_moon_house4
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [Moon]
+        in: ["IV"]
+    then:
+      title: Davison Moon in 4th — Emotional Timeline
+      tags: [hearth, grounding, ritual]
+      base_score: 0.73
+      score_fn: "linear"
+      text: "Davison Moon in the 4th tracks cycles of nesting and emotional repair."
+  - id: davison_node_mc
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [North Node]
+        in: ["X"]
+        angles_any: [MC]
+    then:
+      title: Davison Node on MC — Destiny Appointments
+      tags: [destiny, alignment, public_path]
+      base_score: 0.76
+      score_fn: "linear"
+      text: "Node near the Davison MC emphasises timed opportunities for visibility."
+  - id: composite_venus_mars_angular
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Venus, Mars]
+        in: ["I", "VII", "X"]
+    then:
+      title: Composite Venus & Mars Angular
+      tags: [magnetism, libido, spark]
+      base_score: 0.78
+      score_fn: "linear"
+      text: "Angular Venus/Mars combinations intensify attraction and shared drive."
+  - id: composite_moon_node_alignment
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Moon]
+        in: ["I"]
+        angles_any: [Asc]
+    then:
+      title: Composite Moon Rising with Node Support
+      tags: [destiny, nurture, stability]
+      base_score: 0.74
+      score_fn: "linear"
+      text: "Moon rising with nodal emphasis sets emotional tone as a guiding star."

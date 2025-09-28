@@ -1,0 +1,30 @@
+version: 1
+metadata:
+  title: Sample Synastry Rulepack
+  description: Minimal pack demonstrating schema + lint.
+profiles:
+  - id: core
+    title: Core Compatibility
+    description: Baseline resonance factors.
+rules:
+  - id: synastry.sun_trine_moon
+    scope: synastry
+    if:
+      bodies: [Sun, Moon]
+      aspect: 120
+      tags: [major]
+    then:
+      summary: Shared purpose and emotional rapport harmonise gracefully.
+      severity: 0.7
+      tags: [growth, compatibility]
+  - id: synastry.venus_square_saturn
+    scope: synastry
+    min_severity: 0.3
+    if:
+      bodies: [Venus, Saturn]
+      aspect: 90
+      tags: [binding]
+    then:
+      summary: Saturn asks for patience; enduring bonds follow honest effort.
+      severity: 0.4
+      tags: [challenge]

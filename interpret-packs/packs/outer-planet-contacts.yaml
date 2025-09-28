@@ -1,0 +1,345 @@
+rulepack: outer-planet-contacts
+version: 1
+description: >-
+  Outer-planet synastry signatures that amplify freedom quests, dreamwork, and
+  transformational pressure.
+tag_map:
+  freedom: {bucket: chemistry, weight: 1.15}
+  disruption: {bucket: friction, weight: 1.2}
+  spark: {bucket: chemistry, weight: 1.1}
+  innovation: {bucket: growth, weight: 1.1}
+  awakening: {bucket: growth, weight: 1.08}
+  turbulence: {bucket: friction, weight: 1.15}
+  ideals: {bucket: growth, weight: 1.15}
+  dreams: {bucket: chemistry, weight: 1.12}
+  empathy: {bucket: chemistry, weight: 1.05}
+  fog: {bucket: friction, weight: 1.05}
+  devotion: {bucket: stability, weight: 1.05}
+  inspiration: {bucket: growth, weight: 1.1}
+  transcendence: {bucket: growth, weight: 1.12}
+  transformation: {bucket: growth, weight: 1.2}
+  intensity: {bucket: chemistry, weight: 1.1}
+  catharsis: {bucket: growth, weight: 1.12}
+  power: {bucket: stability, weight: 1.05}
+  obsession: {bucket: friction, weight: 1.1}
+  liberation: {bucket: chemistry, weight: 1.12}
+  destiny: {bucket: growth, weight: 1.08}
+profiles:
+  default:
+    tags: {chemistry: 1.0, stability: 1.0, growth: 1.0, friction: 1.0}
+  chemistry_plus:
+    tags: {chemistry: 1.25, stability: 0.95, growth: 1.05, friction: 1.0}
+  growth_plus:
+    tags: {chemistry: 1.05, stability: 0.95, growth: 1.25, friction: 0.95}
+meta:
+  domain: synastry
+rules:
+  - id: uranus_conj_venus
+    scope: synastry
+    when:
+      bodiesA: [Uranus]
+      bodiesB: [Venus]
+      aspects: [0]
+      min_severity: 0.5
+    then:
+      title: Uranus conjunct Venus — Electric Spark
+      tags: [freedom, spark, disruption]
+      base_score: 0.8
+      score_fn: "cosine^1.15"
+      text: "{a} {aspect_symbol} {b} keeps the connection unpredictable and bright."
+      limit: {per_pair: true, max: 1}
+  - id: uranus_trine_venus
+    scope: synastry
+    when:
+      bodiesA: [Uranus]
+      bodiesB: [Venus]
+      aspects: [120]
+      min_severity: 0.5
+    then:
+      title: Uranus trine Venus — Creative Liberation
+      tags: [freedom, innovation, spark]
+      base_score: 0.76
+      score_fn: "cosine^1.05"
+      text: "{a_arch} harmonising {b_arch} encourages experimentation and mutual space."
+  - id: uranus_square_venus
+    scope: synastry
+    when:
+      bodiesA: [Uranus]
+      bodiesB: [Venus]
+      aspects: [90]
+      min_severity: 0.5
+    then:
+      title: Uranus square Venus — Disruptive Attraction
+      tags: [disruption, turbulence, spark]
+      base_score: 0.74
+      score_fn: "power^1.1"
+      text: "Square aspect jolts affection patterns and requires flexible boundaries."
+  - id: uranus_opposition_sun
+    scope: synastry
+    when:
+      bodiesA: [Uranus]
+      bodiesB: [Sun]
+      aspects: [180]
+      min_severity: 0.5
+    then:
+      title: Uranus opposing Sun — Freedom Axis
+      tags: [freedom, disruption, awakening]
+      base_score: 0.75
+      score_fn: "cosine^1.05"
+      text: "{a_arch} opposing {b_arch} insists on autonomy and evolving identity."
+  - id: uranus_trine_sun
+    scope: synastry
+    when:
+      bodiesA: [Uranus]
+      bodiesB: [Sun]
+      aspects: [120]
+      min_severity: 0.5
+    then:
+      title: Uranus trine Sun — Inventive Confidence
+      tags: [innovation, freedom, growth]
+      base_score: 0.72
+      score_fn: "cosine^1.05"
+      text: "Trine uplifts the couple with inventive goals and fresh rhythm."
+  - id: uranus_conj_mars
+    scope: synastry
+    when:
+      bodiesA: [Uranus]
+      bodiesB: [Mars]
+      aspects: [0]
+      min_severity: 0.5
+    then:
+      title: Uranus conjunct Mars — Adrenaline Bond
+      tags: [spark, disruption, freedom]
+      base_score: 0.79
+      score_fn: "cosine^1.1"
+      text: "{a} fused with {b} drives spontaneous adventures and hot pursuits."
+  - id: uranus_square_mars
+    scope: synastry
+    when:
+      bodiesA: [Uranus]
+      bodiesB: [Mars]
+      aspects: [90]
+      min_severity: 0.5
+    then:
+      title: Uranus square Mars — Volatile Impulse
+      tags: [disruption, turbulence, freedom]
+      base_score: 0.73
+      score_fn: "power^1.1"
+      text: "Square accentuates erratic action; channel energy into novelty instead of fights."
+  - id: neptune_conj_moon
+    scope: synastry
+    when:
+      bodiesA: [Neptune]
+      bodiesB: [Moon]
+      aspects: [0]
+      min_severity: 0.55
+    then:
+      title: Neptune conjunct Moon — Dream Weaving
+      tags: [dreams, ideals, empathy]
+      base_score: 0.78
+      score_fn: "cosine^1.1"
+      text: "{a_arch} merging {b_arch} floods the bond with imagination and empathy."
+      limit: {per_pair: true, max: 1}
+  - id: neptune_trine_moon
+    scope: synastry
+    when:
+      bodiesA: [Neptune]
+      bodiesB: [Moon]
+      aspects: [120]
+      min_severity: 0.55
+    then:
+      title: Neptune trine Moon — Mystic Flow
+      tags: [dreams, inspiration, empathy]
+      base_score: 0.74
+      score_fn: "cosine^1.05"
+      text: "Trine softens moods and attunes partners to poetic cues."
+  - id: neptune_square_moon
+    scope: synastry
+    when:
+      bodiesA: [Neptune]
+      bodiesB: [Moon]
+      aspects: [90]
+      min_severity: 0.55
+    then:
+      title: Neptune square Moon — Emotional Mirage
+      tags: [dreams, fog, disruption]
+      base_score: 0.7
+      score_fn: "power^1.15"
+      text: "Square can blur boundaries; align on rituals that keep both grounded."
+  - id: neptune_conj_sun
+    scope: synastry
+    when:
+      bodiesA: [Neptune]
+      bodiesB: [Sun]
+      aspects: [0]
+      min_severity: 0.55
+    then:
+      title: Neptune conjunct Sun — Idealised Vision
+      tags: [ideals, dreams, transcendence]
+      base_score: 0.77
+      score_fn: "cosine^1.1"
+      text: "{a} {aspect_symbol} {b} infuses purpose with compassionate artistry."
+      limit: {per_pair: true, max: 1}
+  - id: neptune_square_sun
+    scope: synastry
+    when:
+      bodiesA: [Neptune]
+      bodiesB: [Sun]
+      aspects: [90]
+      min_severity: 0.55
+    then:
+      title: Neptune square Sun — Vision vs Reality
+      tags: [fog, dreams, disruption]
+      base_score: 0.69
+      score_fn: "power^1.1"
+      text: "Square challenges clarity; schedule regular check-ins on plans."
+  - id: neptune_node_alignment
+    scope: synastry
+    when:
+      bodiesA: [Neptune]
+      bodiesB: [North Node]
+      aspects: [0, 120, 60]
+      min_severity: 0.5
+    then:
+      title: Neptune with North Node — Shared Dream Path
+      tags: [destiny, ideals, inspiration]
+      base_score: 0.72
+      score_fn: "cosine^1.05"
+      text: "{a_arch} touching the Node invites joint spiritual missions."
+  - id: pluto_conj_venus
+    scope: synastry
+    when:
+      bodiesA: [Pluto]
+      bodiesB: [Venus]
+      aspects: [0]
+      min_severity: 0.55
+    then:
+      title: Pluto conjunct Venus — Magnetism of Depth
+      tags: [transformation, intensity, devotion]
+      base_score: 0.82
+      score_fn: "cosine^1.2"
+      text: "{a_arch} fused with {b_arch} seeks soul-level merging and shadow work."
+      limit: {per_pair: true, max: 1}
+  - id: pluto_square_venus
+    scope: synastry
+    when:
+      bodiesA: [Pluto]
+      bodiesB: [Venus]
+      aspects: [90]
+      min_severity: 0.55
+    then:
+      title: Pluto square Venus — Intense Reform
+      tags: [transformation, obsession, disruption]
+      base_score: 0.77
+      score_fn: "power^1.15"
+      text: "Square compels honesty about attachments and power exchange."
+  - id: pluto_conj_mars
+    scope: synastry
+    when:
+      bodiesA: [Pluto]
+      bodiesB: [Mars]
+      aspects: [0]
+      min_severity: 0.55
+    then:
+      title: Pluto conjunct Mars — Combustive Drive
+      tags: [intensity, transformation, spark]
+      base_score: 0.81
+      score_fn: "cosine^1.15"
+      text: "{a} {aspect_symbol} {b} unleashes powerful initiatives and raw desire."
+      limit: {per_pair: true, max: 1}
+  - id: pluto_square_mars
+    scope: synastry
+    when:
+      bodiesA: [Pluto]
+      bodiesB: [Mars]
+      aspects: [90]
+      min_severity: 0.55
+    then:
+      title: Pluto square Mars — Power Calibration
+      tags: [intensity, disruption, catharsis]
+      base_score: 0.76
+      score_fn: "power^1.1"
+      text: "Square demands conscious handling of competitive urges."
+  - id: pluto_trine_sun
+    scope: synastry
+    when:
+      bodiesA: [Pluto]
+      bodiesB: [Sun]
+      aspects: [120]
+      min_severity: 0.55
+    then:
+      title: Pluto trine Sun — Regenerative Purpose
+      tags: [transformation, power, growth]
+      base_score: 0.78
+      score_fn: "cosine^1.05"
+      text: "Trine empowers shared reinvention and mutual courage."
+  - id: outer_venus_synergy
+    scope: synastry
+    when:
+      group:
+        all:
+          - {bodiesA: [Uranus], bodiesB: [Venus], aspects: [0, 120, 60, 90], min_severity: 0.5}
+          - {bodiesA: [Neptune], bodiesB: [Venus], aspects: [0, 120, 60, 90], min_severity: 0.5}
+        count_at_least: 2
+    then:
+      title: Uranus & Neptune Venus Chorus
+      tags: [inspiration, freedom, dreams]
+      base_score: 0.7
+      score_fn: "linear"
+      boost: {by: 1.18, cap: 0.97}
+      text: "Venus touched by Uranus and Neptune opens magical, free-form affection."
+  - id: outer_multiple_neptune_hits
+    scope: synastry
+    when:
+      group:
+        any:
+          - {bodiesA: [Neptune], bodiesB: ['*'], aspects: [0, 90, 120, 60], min_severity: 0.45}
+          - {bodiesA: ['*'], bodiesB: [Neptune], aspects: [0, 90, 120, 60], min_severity: 0.45}
+        count_at_least: 3
+    then:
+      title: Neptune Saturation — Check the Facts
+      tags: [dreams, fog, destiny]
+      base_score: 0.64
+      score_fn: "linear"
+      boost: {by: 1.1, cap: 0.92}
+      text: "{count} Neptune contacts soften reality; verify logistics to stay grounded."
+  - id: outer_uranus_node
+    scope: synastry
+    when:
+      bodiesA: [Uranus]
+      bodiesB: [South Node]
+      aspects: [0, 180]
+      min_severity: 0.5
+    then:
+      title: Uranus with South Node — Past-Life Wake-Up
+      tags: [liberation, disruption, destiny]
+      base_score: 0.7
+      score_fn: "cosine^1.05"
+      text: "Node contact shocks old patterns loose, urging growth beyond habit."
+  - id: outer_pluto_house_composite
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Pluto]
+        in: ["I", "VII"]
+    then:
+      title: Composite Pluto Angular — Transformational Axis
+      tags: [transformation, intensity, catharsis]
+      base_score: 0.75
+      score_fn: "linear"
+      text: "Angular Pluto keeps the relationship in continual rebirth."
+  - id: outer_neptune_house_davison
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [Neptune]
+        in: ["X"]
+        angles_any: [MC]
+    then:
+      title: Davison Neptune on MC — Shared Vision Quest
+      tags: [ideals, dreams, inspiration]
+      base_score: 0.73
+      score_fn: "linear"
+      text: "Neptune elevated in the Davison chart dedicates the timeline to a shared calling."

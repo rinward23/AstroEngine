@@ -1,0 +1,31 @@
+rulepack: relationship-essentials
+version: 1
+description: Core composite of Saturn, luminary, outer-planet, and overlay packs.
+includes:
+  - id: saturn-binding-growth
+    path: ../packs/saturn-binding-growth.yaml
+    weight: 1.0
+  - id: outer-planet-contacts
+    path: ../packs/outer-planet-contacts.yaml
+    weight: 0.95
+  - id: luminary-emphasis
+    path: ../packs/luminary-emphasis.yaml
+    weight: 1.05
+  - id: house-overlays
+    path: ../packs/house-overlays.yaml
+    weight: 1.0
+profiles:
+  default:
+    tags: {chemistry: 1.0, stability: 1.0, growth: 1.0, friction: 1.0}
+  chemistry_plus:
+    tags: {chemistry: 1.15, stability: 0.98, growth: 1.05, friction: 0.95}
+  stability_plus:
+    tags: {chemistry: 0.98, stability: 1.18, growth: 1.05, friction: 0.95}
+  growth_plus:
+    tags: {chemistry: 1.02, stability: 1.0, growth: 1.2, friction: 0.95}
+tag_map:
+  commitment: {bucket: stability, weight: 1.2}
+  spark: {bucket: chemistry, weight: 1.1}
+  destiny: {bucket: growth, weight: 1.1}
+  transformation: {bucket: growth, weight: 1.1}
+  nurture: {bucket: chemistry, weight: 1.05}

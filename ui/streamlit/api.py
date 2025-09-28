@@ -39,7 +39,14 @@ class APIClient:
         self.base = (base_url or API_BASE_URL).rstrip("/")
 
     # ---- Low-level helpers -------------------------------------------------
-    def _post_json(self, path: str, payload: Dict[str, Any], *, timeout: int) -> Dict[str, Any] | list[Any]:
+    def _post_json(
+        self,
+        path: str,
+        payload: Dict[str, Any],
+        *,
+        timeout: int,
+        params: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any] | list[Any]:
         """POST ``payload`` to ``path`` and return the parsed JSON response."""
 
         if not path.startswith("/"):
@@ -47,7 +54,7 @@ class APIClient:
 
         url = f"{self.base}{path}"
         try:
-            response = requests.post(url, json=payload, timeout=timeout)
+            response = requests.post(url, json=payload, params=params, timeout=timeout)
             response.raise_for_status()
         except requests.HTTPError as exc:  # pragma: no cover - streamlit UI only
             message = _extract_error_message(exc.response) or str(exc)
@@ -147,14 +154,28 @@ class APIClient:
             raise RuntimeError("Unexpected response payload from /relationship/synastry")
         return data
 
-    def relationship_composite(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        data = self._post_json("/relationship/composite", payload, timeout=30)
+    def relationship_composite(
+        self,
+        payload: Dict[str, Any],
+        *,
+        houses: bool = False,
+        hsys: str = "P",
+    ) -> Dict[str, Any]:
+        params = {"houses": str(bool(houses)).lower(), "hsys": hsys}
+        data = self._post_json("/relationship/composite", payload, timeout=30, params=params)
         if not isinstance(data, dict):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /relationship/composite")
         return data
 
-    def relationship_davison(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        data = self._post_json("/relationship/davison", payload, timeout=60)
+    def relationship_davison(
+        self,
+        payload: Dict[str, Any],
+        *,
+        houses: bool = False,
+        hsys: str = "P",
+    ) -> Dict[str, Any]:
+        params = {"houses": str(bool(houses)).lower(), "hsys": hsys}
+        data = self._post_json("/relationship/davison", payload, timeout=60, params=params)
         if not isinstance(data, dict):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /relationship/davison")
         return data

@@ -1,0 +1,64 @@
+rulepack: "relationship-basic"
+version: 1
+meta:
+  title: "Basic Relationship Interpretations"
+  author: "Core Team"
+  description: "Majors+minors, luminary emphasis, Saturn dynamics"
+profiles:
+  balanced:
+    tags:
+      chemistry: 1.0
+      stability: 1.0
+      growth: 1.0
+      friction: 1.0
+  chemistry_plus:
+    tags:
+      chemistry: 1.3
+      stability: 1.0
+      growth: 1.0
+      friction: 0.9
+archetypes:
+  saturn_binding:
+    - "Saturn↔Sun"
+    - "Saturn↔Moon"
+    - "Saturn↔Venus"
+rules:
+  - id: r.sun_moon_trine
+    scope: synastry
+    when:
+      bodiesA: [Sun]
+      bodiesB: [Moon]
+      aspects: [120]
+      min_severity: 0.6
+    then:
+      title: "Sun–Moon Trine (A→B)"
+      tags: [chemistry, stability]
+      base_score: 0.8
+      score_fn: "cosine^1"
+      markdown_template: |
+        **Sun (A)** trines **Moon (B)** (offset {{ offset | round(2) }}°).
+        Warmth and ease support day-to-day flow.
+  - id: r.saturn_conj_venus
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Venus]
+      aspects: [0]
+      min_severity: 0.5
+    then:
+      title: "Saturn–Venus Conjunction"
+      tags: [stability, friction]
+      base_score: 0.7
+      score_fn: "cosine^1.2"
+  - id: r.mars_square_mars
+    scope: synastry
+    when:
+      bodiesA: [Mars]
+      bodiesB: [Mars]
+      aspects: [90]
+      min_severity: 0.5
+    then:
+      title: "Mars–Mars Square"
+      tags: [friction, growth]
+      base_score: 0.65
+      score_fn: "cosine^1.0"

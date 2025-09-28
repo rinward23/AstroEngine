@@ -1,0 +1,233 @@
+{
+  "saturn": [
+    {
+      "id": "saturn_conj_moon_binding",
+      "score": 0.847,
+      "tags": [
+        "commitment",
+        "resilience",
+        "nurture"
+      ],
+      "source": "saturn-binding-growth"
+    },
+    {
+      "id": "saturn_two_contact_synergy",
+      "score": 0.7097,
+      "tags": [
+        "commitment",
+        "resilience"
+      ],
+      "source": "saturn-binding-growth"
+    },
+    {
+      "id": "saturn_trine_sun_growth",
+      "score": 0.7063,
+      "tags": [
+        "mastery",
+        "structure",
+        "growth"
+      ],
+      "source": "saturn-binding-growth"
+    },
+    {
+      "id": "saturn_three_contact_synergy",
+      "score": 0.7035,
+      "tags": [
+        "commitment",
+        "structure",
+        "discipline"
+      ],
+      "source": "saturn-binding-growth"
+    },
+    {
+      "id": "saturn_square_venus_binding",
+      "score": 0.5058,
+      "tags": [
+        "endurance",
+        "friction",
+        "sober_realism"
+      ],
+      "source": "saturn-binding-growth"
+    }
+  ],
+  "outer": [
+    {
+      "id": "uranus_conj_venus",
+      "score": 0.8495,
+      "tags": [
+        "freedom",
+        "spark",
+        "disruption"
+      ],
+      "source": "outer-planet-contacts"
+    },
+    {
+      "id": "pluto_conj_venus",
+      "score": 0.8006,
+      "tags": [
+        "transformation",
+        "intensity",
+        "devotion"
+      ],
+      "source": "outer-planet-contacts"
+    },
+    {
+      "id": "neptune_trine_moon",
+      "score": 0.7637,
+      "tags": [
+        "dreams",
+        "inspiration",
+        "empathy"
+      ],
+      "source": "outer-planet-contacts"
+    },
+    {
+      "id": "uranus_opposition_sun",
+      "score": 0.7171,
+      "tags": [
+        "freedom",
+        "disruption",
+        "awakening"
+      ],
+      "source": "outer-planet-contacts"
+    },
+    {
+      "id": "outer_uranus_node",
+      "score": 0.6442,
+      "tags": [
+        "liberation",
+        "disruption",
+        "destiny"
+      ],
+      "source": "outer-planet-contacts"
+    }
+  ],
+  "luminary": [
+    {
+      "id": "sun_moon_trine",
+      "score": 0.8223,
+      "tags": [
+        "nurture",
+        "harmony",
+        "warmth"
+      ],
+      "source": "luminary-emphasis"
+    },
+    {
+      "id": "moon_conj_moon",
+      "score": 0.7857,
+      "tags": [
+        "nurture",
+        "lunar_memory",
+        "empathy"
+      ],
+      "source": "luminary-emphasis"
+    },
+    {
+      "id": "moon_trine_moon",
+      "score": 0.7779,
+      "tags": [
+        "nurture",
+        "empathy",
+        "harmony"
+      ],
+      "source": "luminary-emphasis"
+    },
+    {
+      "id": "sun_moon_double_whammy",
+      "score": 0.716,
+      "tags": [
+        "heart_sync",
+        "nurture",
+        "resonance"
+      ],
+      "source": "luminary-emphasis"
+    },
+    {
+      "id": "sun_trine_sun",
+      "score": 0.6356,
+      "tags": [
+        "harmony",
+        "resonance",
+        "radiance"
+      ],
+      "source": "luminary-emphasis"
+    }
+  ],
+  "house_composite": [
+    {
+      "id": "composite_venus_mars_angular",
+      "score": 0.871,
+      "tags": [
+        "magnetism",
+        "libido",
+        "spark"
+      ]
+    },
+    {
+      "id": "composite_venus_mars_angular",
+      "score": 0.871,
+      "tags": [
+        "magnetism",
+        "libido",
+        "spark"
+      ]
+    },
+    {
+      "id": "composite_node_angle",
+      "score": 0.8233,
+      "tags": [
+        "destiny",
+        "alignment",
+        "growth"
+      ]
+    },
+    {
+      "id": "composite_pluto_house7",
+      "score": 0.8017,
+      "tags": [
+        "growth",
+        "magnetism",
+        "partnership"
+      ]
+    },
+    {
+      "id": "composite_moon_house4",
+      "score": 0.7967,
+      "tags": [
+        "hearth",
+        "grounding",
+        "nurture"
+      ]
+    }
+  ],
+  "house_davison": [
+    {
+      "id": "davison_sun_house10",
+      "score": 0.82,
+      "tags": [
+        "public_path",
+        "destiny",
+        "growth"
+      ]
+    },
+    {
+      "id": "davison_venus_house7",
+      "score": 0.8125,
+      "tags": [
+        "chemistry",
+        "partnership",
+        "devotion"
+      ]
+    },
+    {
+      "id": "davison_moon_house4",
+      "score": 0.786,
+      "tags": [
+        "hearth",
+        "grounding",
+        "ritual"
+      ]
+    }
+  ]
+}
