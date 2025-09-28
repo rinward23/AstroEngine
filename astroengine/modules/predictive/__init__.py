@@ -134,6 +134,12 @@ def register_predictive_module(registry: AstroRegistry) -> None:
             "description": "Transit scans referencing composite chart positions."
         },
     )
+    composite.register_subchannel(
+        "timeline",
+        metadata={
+            "description": "Timeline overlays combining returns and composite transits."
+        },
+    )
     synastry = relationships.register_channel(
         "synastry",
         metadata={"description": "Biwheel targeting between two natal charts."},
