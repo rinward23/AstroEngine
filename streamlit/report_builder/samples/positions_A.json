@@ -1,0 +1,12 @@
+{
+  "name": "Ada Lovelace",
+  "datetime": "1815-12-10T12:00:00Z",
+  "location": {"lat": 51.5074, "lon": -0.1278},
+  "bodies": {
+    "sun": {"lon": 257.3},
+    "moon": {"lon": 132.1},
+    "mercury": {"lon": 245.6},
+    "venus": {"lon": 210.4},
+    "mars": {"lon": 190.2}
+  }
+}
