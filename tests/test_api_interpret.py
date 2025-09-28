@@ -1,63 +1,115 @@
+from __future__ import annotations
+
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.routers.interpret import router as interpret_router
-
-APP = FastAPI()
-APP.include_router(interpret_router)
-CLIENT = TestClient(APP)
-
-SYN_HITS = [
-    {"a": "Sun", "b": "Moon", "aspect": "trine", "severity": 0.6},
-    {"a": "Venus", "b": "Mars", "aspect": "conjunction", "severity": 0.5},
-    {"a": "Saturn", "b": "Venus", "aspect": "square", "severity": 0.4},
-]
+from astroengine.api.routers.interpret import router as interpret_router
+from astroengine.interpret.store import get_rulepack_store
 
 
-def test_rulepacks_list():
-    response = CLIENT.get("/interpret/rulepacks")
+@pytest.fixture()
+def api_client(tmp_path, monkeypatch) -> TestClient:
+    monkeypatch.setenv("AE_RULEPACK_DIR", str(tmp_path / "rulepacks"))
+    monkeypatch.delenv("AE_RULEPACK_ALLOW_MUTATIONS", raising=False)
+    get_rulepack_store.cache_clear()
+    app = FastAPI()
+    app.include_router(interpret_router)
+    return TestClient(app)
+
+
+def test_rulepacks_list(api_client: TestClient) -> None:
+    response = api_client.get("/v1/interpret/rulepacks")
     assert response.status_code == 200
-    data = response.json()
-    assert data["meta"]["count"] >= 1
+    payload = response.json()
+    assert any(item["id"] == "relationship_basic" for item in payload)
 
 
-def test_relationship_findings_with_default_rulepack():
-    payload = {"scope": "synastry", "hits": SYN_HITS, "top_k": 2}
-    response = CLIENT.post("/interpret/relationship", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data["findings"]) <= 2
-
-
-def test_inline_rules_override():
-    rules_inline = [
-        {
-            "id": "only_venus_mars",
-            "scope": "synastry",
-            "when": {
-                "bodies": ["Venus", "Mars"],
-                "aspect_in": ["conjunction"],
-                "min_severity": 0.2,
-            },
-            "score": 2.0,
-            "text": "chemistry",
-        }
-    ]
-    payload = {"scope": "synastry", "hits": SYN_HITS, "rules_inline": rules_inline}
-    response = CLIENT.post("/interpret/relationship", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data["findings"]) == 1
-    assert data["findings"][0]["text"] == "chemistry"
-
-
-def test_composite_positions_rulepack():
-    payload = {
-        "scope": "composite",
-        "positions": {"Venus": 5.0},
+def test_relationship_findings_with_default_rulepack(api_client: TestClient) -> None:
+    request = {
         "rulepack_id": "relationship_basic",
+        "scope": "synastry",
+        "synastry": {
+            "hits": [
+                {"a": "Sun", "b": "Moon", "aspect": "trine", "severity": 0.6},
+                {"a": "Venus", "b": "Mars", "aspect": "conjunction", "severity": 0.5},
+            ]
+        },
     }
-    response = CLIENT.post("/interpret/relationship", json=payload)
+    response = api_client.post("/v1/interpret/relationship", json=request)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["rulepack"]["id"] == "relationship_basic"
+    assert body["totals"]["count"] >= 1
+
+
+def test_relationship_synastry_from_positions(api_client: TestClient) -> None:
+    request = {
+        "rulepack_id": "relationship_basic",
+        "scope": "synastry",
+        "synastry": {
+            "positionsA": {"Sun": 10.0, "Moon": 120.0, "Venus": 200.0},
+            "positionsB": {"Sun": 20.0, "Moon": 300.0, "Mars": 200.0},
+            "aspects": [0, 60, 90, 120, 180],
+        },
+    }
+    response = api_client.post("/v1/interpret/relationship", json=request)
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data["findings"], list)
+    assert data["totals"]["count"] >= 1
+
+
+def test_rulepack_upload_and_fetch(api_client: TestClient) -> None:
+    rulepack = {
+        "meta": {
+            "id": "custom_pack",
+            "name": "Custom Pack",
+            "title": "Custom Relationship Insights",
+            "description": "Test rulepack",
+        },
+        "rules": [
+            {
+                "id": "syn_custom",
+                "scope": "synastry",
+                "title": "Custom",
+                "text": "custom",
+                "score": 1.0,
+                "when": {"bodies": ["Sun", "Moon"], "aspect_in": ["trine"], "min_severity": 0.1},
+            }
+        ],
+    }
+    response = api_client.post("/v1/interpret/rulepacks", json={"content": rulepack})
+    assert response.status_code == 201
+    meta = response.json()
+    assert meta["id"] == "custom_pack"
+    assert meta["version"] == 1
+
+    response = api_client.get("/v1/interpret/rulepacks/custom_pack")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["id"] == "custom_pack"
+    assert "ETag" in response.headers
+
+
+def test_rulepack_lint(api_client: TestClient) -> None:
+    lint_payload = {
+        "meta": {"id": "lint_pack", "name": "Lint", "title": "Lint"},
+        "rules": [
+            {
+                "id": "syn_lint",
+                "scope": "synastry",
+                "title": "Lint",
+                "text": "lint",
+                "when": {"bodies": ["Sun"], "aspect_in": ["trine"]},
+            }
+        ],
+    }
+    response = api_client.post("/v1/interpret/rulepacks/lint", json={"content": lint_payload})
+    assert response.status_code == 200
+    result = response.json()
+    assert result["ok"] is True
+
+
+def test_delete_rulepack_guarded(api_client: TestClient) -> None:
+    response = api_client.delete("/v1/interpret/rulepacks/relationship_basic")
+    assert response.status_code == 403

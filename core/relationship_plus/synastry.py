@@ -55,7 +55,7 @@ def _best_aspect(
             continue
         limit = float(orb_limit(a_name, b_name, key, policy))
         orb = abs(delta - float(angle))
-        if best is None or orb < best[1]:
+        if orb <= limit or best is None:
             best = (key, orb, limit)
     return best
 
@@ -83,8 +83,10 @@ def synastry_hits(
             if best is None:
                 continue
             aspect, orb, limit = best
-            base = 0.0 if limit <= 0.0 else max(0.0, 1.0 - orb / limit)
             w_aspect = 1.0 if per_aspect_weight is None else float(per_aspect_weight.get(aspect, 1.0))
+            boost = 1.0 + max(0.0, w_aspect - 1.0) * 4.0
+            adj_limit = limit * boost
+            base = 0.0 if adj_limit <= 0.0 else max(0.0, 1.0 - orb / adj_limit)
             w_pair = _pair_weight(per_pair_weight, name_a, name_b)
             severity = base * w_aspect * w_pair
             hits.append(
@@ -130,6 +132,10 @@ def overlay_positions(pos_a: Mapping[str, float], pos_b: Mapping[str, float]) ->
             entry["B"] = float(pos_b[name])
         if "A" in entry and "B" in entry:
             entry["delta"] = angular_sep_deg(entry["A"], entry["B"])
+        if "A" in entry:
+            entry.setdefault("ring", "A")
+        elif "B" in entry:
+            entry.setdefault("ring", "B")
         overlay[name] = entry
     return overlay
 
@@ -155,6 +161,9 @@ def synastry_score(hits: Iterable[SynastryHit]) -> Dict[str, Any]:
         "per_aspect": per_aspect,
         "per_pair": per_pair,
         "count": count,
+        "overall": total,
+        "by_aspect": per_aspect,
+        "by_pair": per_pair,
     }
 
 

@@ -2,23 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from collections.abc import Mapping
-from typing import Any, Sequence
+from typing import Any
 
-
-
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
-
-
+from fastapi import APIRouter
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from ...chart.natal import DEFAULT_BODIES
 from ...core.aspects_plus.harmonics import BASE_ASPECTS
 from ...synastry.orchestrator import SynHit, compute_synastry
-
-
 
 
 router = APIRouter()
