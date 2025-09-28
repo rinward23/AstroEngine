@@ -1,14 +1,30 @@
-"""Relationship interpretation engine (B-005)."""
 
-from .engine import EvaluationResult, evaluate
-from .loader import load_rulepack, load_rulepack_from_data
-from .models import Rule, Rulepack
+"""Relationship interpretation runtime components."""
+
+from .models import (
+    Body,
+    Aspect,
+    Scope,
+    RulepackMeta,
+    FindingsFilters,
+    InterpretRequest,
+    InterpretResponse,
+    Finding,
+)
+from .service import evaluate_relationship
+from .store import RulepackStore, get_rulepack_store
 
 __all__ = [
-    "EvaluationResult",
-    "Rule",
-    "Rulepack",
-    "evaluate",
-    "load_rulepack",
-    "load_rulepack_from_data",
+    "Body",
+    "Aspect",
+    "Scope",
+    "RulepackMeta",
+    "FindingsFilters",
+    "InterpretRequest",
+    "InterpretResponse",
+    "Finding",
+    "evaluate_relationship",
+    "RulepackStore",
+    "get_rulepack_store",
+
 ]

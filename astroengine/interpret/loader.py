@@ -1,71 +1,93 @@
-"""Utilities for loading interpretation rulepacks."""
+
+"""Rulepack loading and validation helpers."""
 
 from __future__ import annotations
 
+import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import jsonschema
 import yaml
+from jsonschema import Draft202012Validator
+from pydantic import ValidationError as PydanticValidationError
 
-from .models import Rulepack
-from .schema import RULEPACK_SCHEMA
-
-
-class RulepackValidationError(ValueError):
-    """Raised when a rulepack fails schema or model validation."""
+from .models import RulepackDocument, RulepackLintResult
 
 
-class RulepackNotFoundError(FileNotFoundError):
-    """Raised when a rulepack path does not exist."""
+class RulepackValidationError(Exception):
+    """Raised when a rulepack fails schema or semantic validation."""
+
+    def __init__(self, message: str, *, errors: list[dict[str, Any]] | None = None):
+        super().__init__(message)
+        self.errors = errors or []
 
 
-def _load_file(path: Path) -> Any:
-    if not path.exists():
-        raise RulepackNotFoundError(f"Rulepack not found: {path}")
+@dataclass(frozen=True)
+class LoadedRulepack:
+    """Parsed rulepack document alongside its raw content."""
 
-    text = path.read_text(encoding="utf-8")
-    if path.suffix.lower() in {".yaml", ".yml"}:
-        return yaml.safe_load(text) or {}
-    if path.suffix.lower() == ".json":
-        import json
-
-        return json.loads(text)
-    raise RulepackNotFoundError(f"Unsupported rulepack format: {path.suffix}")
+    document: RulepackDocument
+    content: dict[str, Any]
 
 
-def load_rulepack(path: str | Path) -> Rulepack:
-    """Load and validate a rulepack from *path*."""
-
-    data = _load_file(Path(path))
-    return load_rulepack_from_data(data)
+_SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schemas" / "interpret_rulepack.schema.json"
+_VALIDATOR = Draft202012Validator(json.loads(_SCHEMA_PATH.read_text(encoding="utf-8")))
 
 
-def load_rulepack_from_data(data: Any) -> Rulepack:
-    """Validate *data* against the schema and return a :class:`Rulepack`."""
+def _parse_raw(content: str, *, source: str | None = None) -> dict[str, Any]:
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        try:
+            parsed = yaml.safe_load(content)
+        except yaml.YAMLError as exc:  # pragma: no cover - PyYAML parses broad cases
+            raise RulepackValidationError(
+                f"failed to parse rulepack {source or ''}: {exc}"
+            ) from exc
+        if not isinstance(parsed, dict):
+            raise RulepackValidationError("rulepack must be a JSON/YAML object")
+        return parsed
+
+
+def load_rulepack(raw: str | bytes, *, source: str | None = None) -> LoadedRulepack:
+    """Parse and validate a rulepack document."""
+
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8")
+    content = _parse_raw(raw, source=source)
+    errors: list[dict[str, Any]] = []
+    for err in _VALIDATOR.iter_errors(content):
+        errors.append(
+            {
+                "path": list(err.path),
+                "message": err.message,
+                "validator": err.validator,
+            }
+        )
+    if errors:
+        raise RulepackValidationError("rulepack failed schema validation", errors=errors)
 
     try:
-        jsonschema.validate(instance=data, schema=RULEPACK_SCHEMA)
-    except jsonschema.ValidationError as exc:  # pragma: no cover - error path message
-        raise RulepackValidationError(str(exc)) from exc
+        document = RulepackDocument.model_validate(content)
+    except PydanticValidationError as exc:
+        raise RulepackValidationError("rulepack failed model validation", errors=exc.errors()) from exc
+
+    return LoadedRulepack(document=document, content=content)
+
+
+def lint_rulepack(raw: str | bytes, *, source: str | None = None) -> RulepackLintResult:
+    """Return lint diagnostics for a rulepack payload without persisting it."""
 
     try:
-        return Rulepack.model_validate(data)
-    except Exception as exc:  # pragma: no cover - Pydantic detail
-        raise RulepackValidationError(str(exc)) from exc
+        loaded = load_rulepack(raw, source=source)
+    except RulepackValidationError as exc:
+        return RulepackLintResult(ok=False, errors=exc.errors, warnings=[], meta={"source": source})
 
+    return RulepackLintResult(
+        ok=True,
+        errors=[],
+        warnings=[],
+        meta={"id": loaded.document.meta.id, "rule_count": len(loaded.document.rules)},
+    )
 
-def iter_rulepack_rules(rulepack: Rulepack):
-    """Yield rules from *rulepack* preserving author order."""
-
-    yield from rulepack.rules
-
-
-__all__ = [
-    "Rulepack",
-    "RulepackNotFoundError",
-    "RulepackValidationError",
-    "iter_rulepack_rules",
-    "load_rulepack",
-    "load_rulepack_from_data",
-]

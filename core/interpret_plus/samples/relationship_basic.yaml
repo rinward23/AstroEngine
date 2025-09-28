@@ -1,52 +1,71 @@
-- id: syn_sun_moon_harmony
-  scope: synastry
-  title: Sun–Moon harmony
-  when:
-    bodies: [Sun, Moon]
-    aspect_in: [trine, sextile]
-    min_severity: 0.3
-  score: 1.2
-  tags: [warmth, emotional_flow]
-  text: "{a} ({a_arch}) {aspect_symbol} {b} ({b_arch}) — easy emotional rapport and daily rhythm alignment."
+meta:
+  id: relationship_basic
+  name: Relationship Basic
+  title: Relationship Core Rulepack
+  description: Foundational synastry, composite, and davison interpretations shipped with AstroEngine.
+  version: 1
+  mutable: false
 
-- id: syn_venus_mars_chemistry
-  scope: synastry
-  title: Venus–Mars chemistry
-  when:
-    bodies: [Venus, Mars]
-    aspect_in: [conjunction, trine, sextile]
-    min_severity: 0.25
-  score: 1.4
-  tags: [attraction, chemistry]
-  text: "{a}–{b} {aspect} highlights magnetism and desire; chemistry tends to feel mutual."
+profiles:
+  balanced:
+    base_multiplier: 1.0
+  spark:
+    base_multiplier: 1.0
+    tag_weights:
+      attraction: 1.2
+      spark: 1.15
+      warmth: 1.1
 
-- id: syn_saturn_binding_hard
-  scope: synastry
-  title: Saturn binding (hard aspect)
-  when:
-    bodies: [Saturn]
-    aspect_in: [conjunction, square, opposition]
-    min_severity: 0.2
-  score: 1.6
-  tags: [commitment, tests]
-  text: "Saturn contact adds weight and lessons; structures form through effort."
+rules:
+  - id: syn_sun_moon_harmony
+    scope: synastry
+    title: Sun–Moon harmony
+    when:
+      bodies: [Sun, Moon]
+      aspect_in: [trine, sextile]
+      min_severity: 0.3
+    score: 1.2
+    tags: [warmth, emotional_flow]
+    text: "{a} ({a_arch}) {aspect_symbol} {b} ({b_arch}) — easy emotional rapport and daily rhythm alignment."
 
-- id: comp_venus_angular_aries_like
-  scope: composite
-  title: Venus in early fire
-  when:
-    bodies: [Venus]
-    longitude_ranges: [[0, 30]]
-  score: 0.8
-  tags: [spark]
-  text: "Composite {body} ({arch}) at early degrees favors spontaneity and simple pleasures."
+  - id: syn_venus_mars_chemistry
+    scope: synastry
+    title: Venus–Mars chemistry
+    when:
+      bodies: [Venus, Mars]
+      aspect_in: [conjunction, trine, sextile]
+      min_severity: 0.25
+    score: 1.4
+    tags: [attraction, chemistry]
+    text: "{a}–{b} {aspect} highlights magnetism and desire; chemistry tends to feel mutual."
 
-- id: dav_sun_early_degree
-  scope: davison
-  title: Davison Sun early degree
-  when:
-    bodies: [Sun]
-    longitude_ranges: [[0, 15]]
-  score: 0.7
-  tags: [fresh_start]
-  text: "Davison {body} at early degrees signals a fresh, initiating quality in the relationship’s timeline."
+  - id: syn_saturn_binding_hard
+    scope: synastry
+    title: Saturn binding (hard aspect)
+    when:
+      bodies: [Saturn]
+      aspect_in: [conjunction, square, opposition]
+      min_severity: 0.2
+    score: 1.6
+    tags: [commitment, tests]
+    text: "Saturn contact adds weight and lessons; structures form through effort."
+
+  - id: comp_venus_angular_aries_like
+    scope: composite
+    title: Venus in early fire
+    when:
+      bodies: [Venus]
+      longitude_ranges: [[0, 30]]
+    score: 0.8
+    tags: [spark]
+    text: "Composite {body} ({arch}) at early degrees favors spontaneity and simple pleasures."
+
+  - id: dav_sun_early_degree
+    scope: davison
+    title: Davison Sun early degree
+    when:
+      bodies: [Sun]
+      longitude_ranges: [[0, 15]]
+    score: 0.7
+    tags: [fresh_start]
+    text: "Davison {body} at early degrees signals a fresh, initiating quality in the relationship’s timeline."
