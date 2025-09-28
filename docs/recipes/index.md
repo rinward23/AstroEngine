@@ -17,6 +17,8 @@ modules involved.
 5. [Locational maps and outer-cycle timelines](locational_timelines.md) —
    emit astrocartography linework, local space vectors, and outer planet
    windows for dashboards.
+6. [Relationship report export](relationship_report_export.md) — convert
+   findings and figures into themed PDF or DOCX reports.
 
 Every script uses Swiss Ephemeris data (or the documented PyMeeus
 fallback) and references profiles stored in this repository. No synthetic
