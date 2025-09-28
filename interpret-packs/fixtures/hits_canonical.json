@@ -1,0 +1,15 @@
+[
+  {"a": "Sun", "b": "Moon", "aspect": "trine", "severity": 0.62},
+  {"a": "Moon", "b": "Sun", "aspect": "sextile", "severity": 0.58},
+  {"a": "Saturn", "b": "Venus", "aspect": "square", "severity": 0.6},
+  {"a": "Saturn", "b": "Sun", "aspect": "trine", "severity": 0.57},
+  {"a": "Saturn", "b": "Moon", "aspect": "conjunction", "severity": 0.59},
+  {"a": "Uranus", "b": "Venus", "aspect": "conjunction", "severity": 0.61},
+  {"a": "Uranus", "b": "Sun", "aspect": "opposition", "severity": 0.56},
+  {"a": "Neptune", "b": "Moon", "aspect": "trine", "severity": 0.6},
+  {"a": "Neptune", "b": "Sun", "aspect": "square", "severity": 0.57},
+  {"a": "Neptune", "b": "North Node", "aspect": "trine", "severity": 0.55},
+  {"a": "Pluto", "b": "Venus", "aspect": "conjunction", "severity": 0.63},
+  {"a": "Pluto", "b": "Mars", "aspect": "square", "severity": 0.58},
+  {"a": "Uranus", "b": "South Node", "aspect": "conjunction", "severity": 0.54}
+]

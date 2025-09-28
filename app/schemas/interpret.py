@@ -18,14 +18,17 @@ class FindingsRequest(BaseModel):
     # One of these, depending on scope
     hits: Optional[List[Dict[str, Any]]] = None
     positions: Optional[Dict[str, float]] = None
+    houses: Optional[Dict[str, Any]] = None
+    angles: Optional[Dict[str, float]] = None
 
     # Rules source
     rulepack_id: Optional[str] = None
-    rules_inline: Optional[List[Dict[str, Any]]] = None
+    rules_inline: Optional[Any] = None
 
     # Filters
     top_k: Optional[int] = Field(default=None, ge=1)
     min_score: Optional[float] = Field(default=None, ge=0.0)
+    profile: Optional[str] = None
 
 
 class FindingOut(BaseModel):

@@ -1,0 +1,382 @@
+rulepack: saturn-binding-growth
+version: 1
+description: >-
+  Saturn contacts that distinguish binding chemistry from collaborative growth,
+  tuned for synastry and composite overlays.
+tag_map:
+  commitment: {bucket: stability, weight: 1.25}
+  endurance: {bucket: stability, weight: 1.15}
+  responsibility: {bucket: stability, weight: 1.1}
+  friction: {bucket: friction, weight: 1.05}
+  mastery: {bucket: growth, weight: 1.1}
+  structure: {bucket: stability, weight: 1.05}
+  resilience: {bucket: stability, weight: 1.1}
+  trust: {bucket: stability, weight: 1.1}
+  maturity: {bucket: growth, weight: 1.05}
+  discipline: {bucket: stability, weight: 1.05}
+  stewardship: {bucket: growth, weight: 1.05}
+  anchor: {bucket: stability, weight: 1.1}
+  mentorship: {bucket: growth, weight: 1.05}
+  milestone: {bucket: growth, weight: 1.05}
+  nurture: {bucket: chemistry, weight: 1.05}
+  caution: {bucket: friction, weight: 1.0}
+  sober_realism: {bucket: stability, weight: 1.0}
+  accountability: {bucket: stability, weight: 1.1}
+  boundaries: {bucket: stability, weight: 1.05}
+  growth: {bucket: growth, weight: 1.0}
+  stability: {bucket: stability, weight: 1.0}
+profiles:
+  default:
+    tags: {chemistry: 1.0, stability: 1.0, growth: 1.0, friction: 1.0}
+  stability_plus:
+    tags: {chemistry: 0.9, stability: 1.3, growth: 1.05, friction: 0.95}
+  growth_plus:
+    tags: {chemistry: 0.95, stability: 1.05, growth: 1.25, friction: 0.9}
+meta:
+  domain: synastry
+rules:
+  - id: saturn_conj_sun_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Sun]
+      aspects: [0]
+      min_severity: 0.55
+    then:
+      title: Saturn conjunct Sun — Binding Focus
+      tags: [commitment, responsibility, friction]
+      base_score: 0.82
+      score_fn: "cosine^1.2"
+      text: "{a} {aspect_symbol} {b} sets shared ambitions and long-term vows."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_opposition_sun_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Sun]
+      aspects: [180]
+      min_severity: 0.55
+    then:
+      title: Saturn opposing Sun — Accountability Axis
+      tags: [commitment, accountability, friction]
+      base_score: 0.78
+      score_fn: "cosine^1.1"
+      text: "{a} opposing {b} insists on clarity of purpose and steady pacing."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_square_sun_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Sun]
+      aspects: [90]
+      min_severity: 0.55
+    then:
+      title: Saturn square Sun — Trial by Structure
+      tags: [endurance, friction, discipline]
+      base_score: 0.76
+      score_fn: "power^1.1"
+      text: "Square between {a_arch} and {b_arch} sets pacing tests that require patience."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_conj_moon_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Moon]
+      aspects: [0]
+      min_severity: 0.55
+    then:
+      title: Saturn conjunct Moon — Emotional Anchor
+      tags: [commitment, resilience, nurture]
+      base_score: 0.84
+      score_fn: "cosine^1.25"
+      text: "{a} {aspect_symbol} {b} steadies moods with patient reassurance."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_opposition_moon_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Moon]
+      aspects: [180]
+      min_severity: 0.55
+    then:
+      title: Saturn opposing Moon — Guarded Feelings
+      tags: [endurance, caution, friction]
+      base_score: 0.75
+      score_fn: "cosine^1.1"
+      text: "{a_arch} opposing {b_arch} heightens emotional prudence and pacing talks."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_square_moon_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Moon]
+      aspects: [90]
+      min_severity: 0.55
+    then:
+      title: Saturn square Moon — Emotional Resilience Lesson
+      tags: [resilience, friction, boundaries]
+      base_score: 0.74
+      score_fn: "power^1.05"
+      text: "Tension between {a} and {b} requires rituals that build trust daily."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_conj_venus_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Venus]
+      aspects: [0]
+      min_severity: 0.55
+    then:
+      title: Saturn conjunct Venus — Loyal Contract
+      tags: [commitment, trust, stability]
+      base_score: 0.83
+      score_fn: "cosine^1.2"
+      text: "{a} binding {b} formalises affection into reliable gestures."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_square_venus_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Venus]
+      aspects: [90]
+      min_severity: 0.55
+    then:
+      title: Saturn square Venus — Slow-Build Affection
+      tags: [endurance, friction, sober_realism]
+      base_score: 0.72
+      score_fn: "power^1.15"
+      text: "Square aspect signals romance that matures through consistent effort."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_opposition_venus_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Venus]
+      aspects: [180]
+      min_severity: 0.55
+    then:
+      title: Saturn opposing Venus — Investment Dialogue
+      tags: [commitment, boundaries, friction]
+      base_score: 0.73
+      score_fn: "cosine^1.1"
+      text: "Opposition between {a_arch} and {b_arch} demands transparent agreements about desire and duty."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_conj_mars_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Mars]
+      aspects: [0]
+      min_severity: 0.55
+    then:
+      title: Saturn conjunct Mars — Purpose Alignment
+      tags: [discipline, commitment, friction]
+      base_score: 0.8
+      score_fn: "cosine^1.15"
+      text: "{a} {aspect_symbol} {b} channels drive into shared goals and patient momentum."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_square_mars_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Mars]
+      aspects: [90]
+      min_severity: 0.55
+    then:
+      title: Saturn square Mars — Heat with Tests
+      tags: [friction, endurance, discipline]
+      base_score: 0.71
+      score_fn: "power^1.1"
+      text: "Square between {a_arch} and {b_arch} channels passion through respect for timing."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_opposition_mars_binding
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Mars]
+      aspects: [180]
+      min_severity: 0.55
+    then:
+      title: Saturn opposing Mars — Productive Friction
+      tags: [discipline, friction, accountability]
+      base_score: 0.7
+      score_fn: "power^1.05"
+      text: "Opposition emphasises negotiated pace before launching initiatives."
+      limit: {per_pair: true, max: 1}
+  - id: saturn_trine_sun_growth
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Sun]
+      aspects: [120]
+      min_severity: 0.55
+    then:
+      title: Saturn trine Sun — Shared Mastery
+      tags: [mastery, structure, growth]
+      base_score: 0.77
+      score_fn: "cosine^1.05"
+      text: "{a_arch} supporting {b_arch} affirms confident stewardship of plans."
+  - id: saturn_sextile_sun_growth
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Sun]
+      aspects: [60]
+      min_severity: 0.55
+    then:
+      title: Saturn sextile Sun — Reliable Strategy
+      tags: [structure, mentorship, growth]
+      base_score: 0.74
+      score_fn: "cosine^1.05"
+      text: "Sextile fosters gentle accountability check-ins that keep the dream moving."
+  - id: saturn_trine_mercury_growth
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Mercury]
+      aspects: [120]
+      min_severity: 0.55
+    then:
+      title: Saturn trine Mercury — Thoughtful Planning
+      tags: [mastery, structure, growth]
+      base_score: 0.72
+      score_fn: "cosine^1.05"
+      text: "{a_arch} harmonising {b_arch} supports strategic conversations and careful documentation."
+  - id: saturn_trine_jupiter_growth
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Jupiter]
+      aspects: [120]
+      min_severity: 0.55
+    then:
+      title: Saturn trine Jupiter — Expansion with Backbone
+      tags: [stewardship, maturity, growth]
+      base_score: 0.79
+      score_fn: "cosine^1.05"
+      text: "{a} {aspect_symbol} {b} refines optimism with effective scaffolding."
+  - id: saturn_jupiter_synergy_two_hits
+    scope: synastry
+    when:
+      group:
+        any:
+          - {bodiesA: [Saturn], bodiesB: [Jupiter], aspects: [0, 120, 60], min_severity: 0.5}
+          - {bodiesA: [Jupiter], bodiesB: [Saturn], aspects: [0, 120, 60], min_severity: 0.5}
+        count_at_least: 2
+    then:
+      title: Saturn & Jupiter Resonance
+      tags: [growth, mastery, milestone]
+      base_score: 0.68
+      score_fn: "linear"
+      boost: {by: 1.15, cap: 0.96}
+      text: "{count} Saturn⇄Jupiter exchanges consolidate lessons into tangible expansion."
+  - id: saturn_two_contact_synergy
+    scope: synastry
+    when:
+      group:
+        any:
+          - {bodiesA: [Saturn], bodiesB: ['*'], aspects: [0, 60, 90, 120, 180], min_severity: 0.5}
+          - {bodiesA: ['*'], bodiesB: [Saturn], aspects: [0, 60, 90, 120, 180], min_severity: 0.5}
+        count_at_least: 2
+    then:
+      title: Saturn Theme Strong
+      tags: [commitment, resilience]
+      base_score: 0.66
+      score_fn: "linear"
+      boost: {by: 1.2, cap: 0.98}
+      text: "{count} significant Saturn links set an unmistakable tone of structure."
+  - id: saturn_three_contact_synergy
+    scope: synastry
+    when:
+      group:
+        any:
+          - {bodiesA: [Saturn], bodiesB: ['*'], aspects: [0, 60, 90, 120, 180], min_severity: 0.45}
+          - {bodiesA: ['*'], bodiesB: [Saturn], aspects: [0, 60, 90, 120, 180], min_severity: 0.45}
+        count_at_least: 3
+    then:
+      title: Saturn Overstory Activated
+      tags: [commitment, structure, discipline]
+      base_score: 0.7
+      score_fn: "linear"
+      boost: {by: 1.18, cap: 0.99}
+      text: "{count} Saturn exchanges produce a defining curriculum of patience."
+  - id: composite_saturn_house7
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Saturn]
+        in: ["VII"]
+    then:
+      title: Composite Saturn in the 7th — Partnership Contract
+      tags: [commitment, responsibility, stability]
+      base_score: 0.73
+      score_fn: "linear"
+      text: "Composite Saturn anchored in the 7th underscores vows and accountability."
+  - id: composite_saturn_house10
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Saturn]
+        in: ["X"]
+        angles_any: [MC]
+    then:
+      title: Composite Saturn on the Midheaven
+      tags: [structure, milestone, responsibility]
+      base_score: 0.74
+      score_fn: "linear"
+      text: "Saturn elevated toward the MC aligns the relationship around visible achievements."
+  - id: composite_saturn_house1
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Saturn]
+        in: ["I"]
+        angles_any: [Asc]
+    then:
+      title: Composite Saturn Rising
+      tags: [discipline, boundaries, stability]
+      base_score: 0.71
+      score_fn: "linear"
+      text: "Saturn near the composite Ascendant makes mutual structure immediately felt."
+  - id: davison_saturn_house7
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [Saturn]
+        in: ["VII"]
+    then:
+      title: Davison Saturn in 7th — Timed Promises
+      tags: [commitment, maturity, responsibility]
+      base_score: 0.72
+      score_fn: "linear"
+      text: "Davison Saturn in the partnership sector defines milestones of shared duty."
+  - id: davison_saturn_house10
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [Saturn]
+        in: ["X"]
+    then:
+      title: Davison Saturn in 10th — Legacy Work
+      tags: [stewardship, mastery, structure]
+      base_score: 0.73
+      score_fn: "linear"
+      text: "Davison Saturn in the 10th frames the timeline around public contribution."
+  - id: saturn_progress_checkpoint
+    scope: synastry
+    when:
+      bodiesA: [Saturn]
+      bodiesB: [Mercury]
+      aspects: [60]
+      min_severity: 0.55
+    then:
+      title: Saturn sextile Mercury — Planning Cadence
+      tags: [discipline, growth, structure]
+      base_score: 0.7
+      score_fn: "cosine^1.05"
+      text: "Sextile coordinates calendars and weekly accountability touch points."
