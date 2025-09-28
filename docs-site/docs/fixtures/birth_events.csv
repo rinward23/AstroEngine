@@ -1,0 +1,3 @@
+id,name,ts,lat,lon,tz,place
+subject,Alex,1990-07-11T08:00:00Z,40.7128,-74.006,America/New_York,"New York, NY"
+partner,Riley,1992-03-15T20:15:00Z,34.0522,-118.2437,America/Los_Angeles,"Los Angeles, CA"

@@ -1,0 +1,33 @@
+@startuml
+!theme blueprint
+skinparam shadowing false
+skinparam linetype ortho
+
+package "Clients" {
+  actor Analyst
+  actor Developer
+}
+
+package "Relationship Stack" {
+  [API Layer] as API
+  [Rulepack Registry] as Rules
+  [Cookbook Examples] as Notebooks
+  [UI Applications] as UI
+}
+
+package "Data Services" {
+  database "Ephemeris" as Ephemeris
+  collections "Rulepacks" as Rulepacks
+  collections "Golden Outputs" as Golden
+}
+
+Analyst --> UI : review findings
+Developer --> API : deploy & monitor
+UI --> API : capture interactions
+API --> Rules : load schema
+API --> Ephemeris : compute charts
+Notebooks --> Golden : verify checksums
+Rules --> Rulepacks
+Golden --> API : regression alarms
+
+@enduml

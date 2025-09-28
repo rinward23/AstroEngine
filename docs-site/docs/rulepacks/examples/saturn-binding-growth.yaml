@@ -1,0 +1,21 @@
+# Focused Saturn growth themes for synastry findings.
+- id: saturn_growth_binding
+  scope: synastry
+  score: 1.1
+  tags: [growth, saturn]
+  when:
+    bodies: [Saturn, Jupiter]
+    aspect_in: [sextile, trine]
+    min_severity: 0.35
+  title: Saturn • Jupiter Growth Contract
+  text: "{a_arch} meeting {b_arch} in a {aspect_symbol} sets a disciplined plan for expansion."
+- id: saturn_boundary_lessons
+  scope: synastry
+  score: 0.9
+  tags: [lesson]
+  when:
+    bodies: [Saturn, Mars]
+    aspect_in: [square, opposition]
+    min_severity: 0.25
+  title: Boundaries Workshop
+  text: "{a_arch} tests {b_arch}; ritual check-ins keep the friction productive."

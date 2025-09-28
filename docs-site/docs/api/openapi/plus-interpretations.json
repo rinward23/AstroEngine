@@ -1,0 +1,687 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AstroEngine Relationship Plus API",
+    "version": "0.1.0"
+  },
+  "servers": [],
+  "components": {
+    "schemas": {
+      "CompositeRequest": {
+        "properties": {
+          "posA": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Posa"
+          },
+          "posB": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Posb"
+          },
+          "bodies": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bodies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "posA",
+          "posB"
+        ],
+        "title": "CompositeRequest"
+      },
+      "CompositeResponse": {
+        "properties": {
+          "positions": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Positions"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "positions"
+        ],
+        "title": "CompositeResponse"
+      },
+      "DavisonRequest": {
+        "properties": {
+          "dtA": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Dta"
+          },
+          "dtB": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Dtb"
+          },
+          "locA": {
+            "$ref": "#/components/schemas/GeoIn"
+          },
+          "locB": {
+            "$ref": "#/components/schemas/GeoIn"
+          },
+          "bodies": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bodies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dtA",
+          "dtB",
+          "locA",
+          "locB"
+        ],
+        "title": "DavisonRequest"
+      },
+      "DavisonResponse": {
+        "properties": {
+          "positions": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Positions"
+          },
+          "midpoint_time_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Midpoint Time Utc"
+          },
+          "midpoint_geo": {
+            "$ref": "#/components/schemas/GeoIn"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "positions",
+          "midpoint_time_utc",
+          "midpoint_geo"
+        ],
+        "title": "DavisonResponse"
+      },
+      "FindingOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "synastry",
+              "composite",
+              "davison"
+            ],
+            "title": "Scope"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "scope",
+          "title",
+          "text",
+          "score"
+        ],
+        "title": "FindingOut"
+      },
+      "FindingsRequest": {
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "synastry",
+              "composite",
+              "davison"
+            ],
+            "title": "Scope"
+          },
+          "hits": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hits"
+          },
+          "positions": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positions"
+          },
+          "rulepack_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rulepack Id"
+          },
+          "rules_inline": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rules Inline"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top K"
+          },
+          "min_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope"
+        ],
+        "title": "FindingsRequest"
+      },
+      "FindingsResponse": {
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "findings"
+        ],
+        "title": "FindingsResponse"
+      },
+      "GeoIn": {
+        "properties": {
+          "lat_deg": {
+            "type": "number",
+            "title": "Lat Deg"
+          },
+          "lon_deg_east": {
+            "type": "number",
+            "title": "Lon Deg East"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat_deg",
+          "lon_deg_east"
+        ],
+        "title": "GeoIn"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "OrbPolicyInline": {
+        "properties": {
+          "per_object": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "propertyNames": {
+              "minLength": 1
+            },
+            "type": "object",
+            "title": "Per Object"
+          },
+          "per_aspect": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "propertyNames": {
+              "minLength": 1
+            },
+            "type": "object",
+            "title": "Per Aspect"
+          },
+          "adaptive_rules": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Adaptive Rules"
+          }
+        },
+        "type": "object",
+        "title": "OrbPolicyInline"
+      },
+      "RulepackInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "path"
+        ],
+        "title": "RulepackInfo"
+      },
+      "RulepacksResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RulepackInfo"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "RulepacksResponse"
+      },
+      "SynastryHitOut": {
+        "properties": {
+          "a": {
+            "type": "string",
+            "title": "A"
+          },
+          "b": {
+            "type": "string",
+            "title": "B"
+          },
+          "aspect": {
+            "type": "string",
+            "title": "Aspect"
+          },
+          "angle": {
+            "type": "number",
+            "title": "Angle"
+          },
+          "delta": {
+            "type": "number",
+            "title": "Delta"
+          },
+          "orb": {
+            "type": "number",
+            "title": "Orb"
+          },
+          "limit": {
+            "type": "number",
+            "title": "Limit"
+          },
+          "severity": {
+            "type": "number",
+            "title": "Severity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a",
+          "b",
+          "aspect",
+          "angle",
+          "delta",
+          "orb",
+          "limit",
+          "severity"
+        ],
+        "title": "SynastryHitOut"
+      },
+      "SynastryRequest": {
+        "properties": {
+          "posA": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Posa",
+            "description": "Chart A: body \u2192 longitude (deg)"
+          },
+          "posB": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Posb",
+            "description": "Chart B: body \u2192 longitude (deg)"
+          },
+          "aspects": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Aspects"
+          },
+          "orb_policy_inline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrbPolicyInline"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "per_aspect_weight": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Aspect Weight"
+          },
+          "per_pair_weight": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Pair Weight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "posA",
+          "posB"
+        ],
+        "title": "SynastryRequest"
+      },
+      "SynastryResponse": {
+        "properties": {
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/SynastryHitOut"
+            },
+            "type": "array",
+            "title": "Hits"
+          },
+          "grid": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Grid"
+          },
+          "overlay": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Overlay"
+          },
+          "scores": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Scores"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hits",
+          "grid",
+          "overlay",
+          "scores"
+        ],
+        "title": "SynastryResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "paths": {
+    "/interpret/rulepacks": {
+      "get": {
+        "tags": [
+          "Interpretations"
+        ],
+        "summary": "List available rulepacks",
+        "operationId": "list_rulepacks_interpret_rulepacks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RulepacksResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/interpret/relationship": {
+      "post": {
+        "tags": [
+          "Interpretations"
+        ],
+        "summary": "Run relationship interpretations",
+        "operationId": "relationship_findings_interpret_relationship_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,230 @@
+[
+  {
+    "angle_deg": 120.0,
+    "direction": "A->B",
+    "domains": {
+      "BODY": 0.25,
+      "MIND": 0.14285714285714288,
+      "SPIRIT": 0.6071428571428572
+    },
+    "moving": "Jupiter",
+    "orb_abs": 1.2266583829778597,
+    "score": 0.38667080851107016,
+    "target": "Pluto"
+  },
+  {
+    "angle_deg": 90.0,
+    "direction": "A->B",
+    "domains": {
+      "MIND": 0.5,
+      "SPIRIT": 0.5
+    },
+    "moving": "Neptune",
+    "orb_abs": 1.8183528766861627,
+    "score": 0.09082356165691863,
+    "target": "Mercury"
+  },
+  {
+    "angle_deg": 90.0,
+    "direction": "A->B",
+    "domains": {
+      "BODY": 0.6415094339622641,
+      "MIND": 0.09433962264150944,
+      "SPIRIT": 0.2641509433962264
+    },
+    "moving": "Pluto",
+    "orb_abs": 0.17946823723556804,
+    "score": 0.910265881382216,
+    "target": "Moon"
+  },
+  {
+    "angle_deg": 90.0,
+    "direction": "A->B",
+    "domains": {
+      "BODY": 0.5384615384615385,
+      "MIND": 0.19230769230769235,
+      "SPIRIT": 0.2692307692307693
+    },
+    "moving": "Pluto",
+    "orb_abs": 0.5984121852976045,
+    "score": 0.7007939073511977,
+    "target": "Saturn"
+  },
+  {
+    "angle_deg": 60.0,
+    "direction": "A->B",
+    "domains": {
+      "BODY": 0.5384615384615385,
+      "MIND": 0.19230769230769235,
+      "SPIRIT": 0.2692307692307693
+    },
+    "moving": "Saturn",
+    "orb_abs": 0.569152868100133,
+    "score": 0.7154235659499335,
+    "target": "Pluto"
+  },
+  {
+    "angle_deg": 180.0,
+    "direction": "A->B",
+    "domains": {
+      "BODY": 0.1,
+      "MIND": 0.1,
+      "SPIRIT": 0.8
+    },
+    "moving": "Sun",
+    "orb_abs": 0.16180681266916963,
+    "score": 0.9190965936654152,
+    "target": "Neptune"
+  },
+  {
+    "angle_deg": 180.0,
+    "direction": "A->B",
+    "domains": {
+      "BODY": 0.08928571428571429,
+      "MIND": 0.4107142857142857,
+      "SPIRIT": 0.5
+    },
+    "moving": "Sun",
+    "orb_abs": 1.3340669786626904,
+    "score": 0.3329665106686548,
+    "target": "Uranus"
+  },
+  {
+    "angle_deg": 120.0,
+    "direction": "A->B",
+    "domains": {
+      "MIND": 0.48148148148148145,
+      "SPIRIT": 0.5185185185185185
+    },
+    "moving": "Uranus",
+    "orb_abs": 0.5369716283443324,
+    "score": 0.7315141858278338,
+    "target": "Jupiter"
+  },
+  {
+    "angle_deg": 120.0,
+    "direction": "A->B",
+    "domains": {
+      "BODY": 0.6956521739130436,
+      "SPIRIT": 0.30434782608695654
+    },
+    "moving": "Venus",
+    "orb_abs": 1.0968549488860617,
+    "score": 0.45157252555696914,
+    "target": "Mars"
+  },
+  {
+    "angle_deg": 120.0,
+    "direction": "B->A",
+    "domains": {
+      "MIND": 0.48148148148148145,
+      "SPIRIT": 0.5185185185185185
+    },
+    "moving": "Jupiter",
+    "orb_abs": 0.536971628344304,
+    "score": 0.731514185827848,
+    "target": "Uranus"
+  },
+  {
+    "angle_deg": 120.0,
+    "direction": "B->A",
+    "domains": {
+      "BODY": 0.6956521739130436,
+      "SPIRIT": 0.30434782608695654
+    },
+    "moving": "Mars",
+    "orb_abs": 1.0968549488860617,
+    "score": 0.45157252555696914,
+    "target": "Venus"
+  },
+  {
+    "angle_deg": 90.0,
+    "direction": "B->A",
+    "domains": {
+      "MIND": 0.5,
+      "SPIRIT": 0.5
+    },
+    "moving": "Mercury",
+    "orb_abs": 1.8183528766861627,
+    "score": 0.09082356165691863,
+    "target": "Neptune"
+  },
+  {
+    "angle_deg": 90.0,
+    "direction": "B->A",
+    "domains": {
+      "BODY": 0.6415094339622641,
+      "MIND": 0.09433962264150944,
+      "SPIRIT": 0.2641509433962264
+    },
+    "moving": "Moon",
+    "orb_abs": 0.17946823723559646,
+    "score": 0.9102658813822018,
+    "target": "Pluto"
+  },
+  {
+    "angle_deg": 180.0,
+    "direction": "B->A",
+    "domains": {
+      "BODY": 0.1,
+      "MIND": 0.1,
+      "SPIRIT": 0.8
+    },
+    "moving": "Neptune",
+    "orb_abs": 0.16180681266916963,
+    "score": 0.9190965936654152,
+    "target": "Sun"
+  },
+  {
+    "angle_deg": 120.0,
+    "direction": "B->A",
+    "domains": {
+      "BODY": 0.25,
+      "MIND": 0.14285714285714288,
+      "SPIRIT": 0.6071428571428572
+    },
+    "moving": "Pluto",
+    "orb_abs": 1.2266583829778455,
+    "score": 0.38667080851107727,
+    "target": "Jupiter"
+  },
+  {
+    "angle_deg": 60.0,
+    "direction": "B->A",
+    "domains": {
+      "BODY": 0.5384615384615385,
+      "MIND": 0.19230769230769235,
+      "SPIRIT": 0.2692307692307693
+    },
+    "moving": "Pluto",
+    "orb_abs": 0.569152868100133,
+    "score": 0.7154235659499335,
+    "target": "Saturn"
+  },
+  {
+    "angle_deg": 90.0,
+    "direction": "B->A",
+    "domains": {
+      "BODY": 0.5384615384615385,
+      "MIND": 0.19230769230769235,
+      "SPIRIT": 0.2692307692307693
+    },
+    "moving": "Saturn",
+    "orb_abs": 0.5984121852976045,
+    "score": 0.7007939073511977,
+    "target": "Pluto"
+  },
+  {
+    "angle_deg": 180.0,
+    "direction": "B->A",
+    "domains": {
+      "BODY": 0.08928571428571429,
+      "MIND": 0.4107142857142857,
+      "SPIRIT": 0.5
+    },
+    "moving": "Uranus",
+    "orb_abs": 1.3340669786626904,
+    "score": 0.3329665106686548,
+    "target": "Sun"
+  }
+]

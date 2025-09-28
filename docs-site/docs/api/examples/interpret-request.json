@@ -1,0 +1,19 @@
+{
+  "scope": "synastry",
+  "rulepack_id": "relationship_basic",
+  "hits": [
+    {
+      "a": "Sun",
+      "b": "Moon",
+      "aspect": "conjunction",
+      "severity": 0.85
+    },
+    {
+      "a": "Venus",
+      "b": "Saturn",
+      "aspect": "trine",
+      "severity": 0.72
+    }
+  ],
+  "top_k": 5
+}

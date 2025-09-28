@@ -1,0 +1,23 @@
+{
+  "natal_inline": {
+    "ts": "1990-07-11T08:00:00Z",
+    "lat": 40.7128,
+    "lon": -74.006
+  },
+  "start": "2024-01-01T00:00:00Z",
+  "end": "2024-06-01T00:00:00Z",
+  "bodies": [
+    "Mars",
+    "Jupiter"
+  ],
+  "targets": [
+    "Sun",
+    "Saturn"
+  ],
+  "aspects": [
+    "conjunction",
+    "opposition"
+  ],
+  "orb": 1.5,
+  "step_days": 3
+}
