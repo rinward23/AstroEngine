@@ -1,3 +1,4 @@
+
 """Rulepack loading and validation helpers."""
 
 from __future__ import annotations
@@ -89,3 +90,4 @@ def lint_rulepack(raw: str | bytes, *, source: str | None = None) -> RulepackLin
         warnings=[],
         meta={"id": loaded.document.meta.id, "rule_count": len(loaded.document.rules)},
     )
+

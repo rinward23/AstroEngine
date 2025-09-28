@@ -1,3 +1,4 @@
+
 """Pydantic models for interpretation API and rulepacks."""
 
 from __future__ import annotations
@@ -6,6 +7,7 @@ from datetime import UTC, datetime
 from typing import Any, Iterable, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
+
 
 Body = Literal[
     "Sun",
@@ -21,6 +23,7 @@ Body = Literal[
     "Chiron",
     "Node",
 ]
+
 
 Aspect = Literal[0, 30, 45, 60, 72, 90, 120, 135, 144, 150, 180]
 Scope = Literal["synastry", "composite", "davison"]
@@ -254,3 +257,4 @@ def now_utc() -> datetime:
     """Utility returning timezone-aware UTC now for metadata stamping."""
 
     return datetime.now(tz=UTC)
+
