@@ -1,0 +1,5 @@
+[
+  {"bodyA": "Sun", "bodyB": "Moon", "aspect": 120, "severity": 0.78, "offset": 1.2},
+  {"bodyA": "Saturn", "bodyB": "Venus", "aspect": 0, "severity": 0.68, "offset": 0.3},
+  {"bodyA": "Mars", "bodyB": "Mars", "aspect": 90, "severity": 0.55, "offset": 3.5}
+]
