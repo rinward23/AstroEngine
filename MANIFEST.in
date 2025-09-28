@@ -2,6 +2,7 @@
 recursive-include astroengine/registry *.yaml *.yml *.csv
 recursive-include astroengine/profiles *.yaml *.yml *.json
 recursive-include astroengine/datasets *.csv *.json
+recursive-include interpret-packs *.yaml *.yml *.json *.md
 # >>> AUTO-GEN END: astroengine manifest data v1.0
 
 recursive-include streamlit/report_builder/templates *.md.j2

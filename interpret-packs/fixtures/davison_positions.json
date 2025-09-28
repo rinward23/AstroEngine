@@ -1,0 +1,19 @@
+{
+  "positions": {
+    "Saturn": 198.0,
+    "Venus": 147.0,
+    "Mars": 5.0,
+    "Sun": 102.0,
+    "Moon": 12.0,
+    "North Node": 290.0
+  },
+  "houses": {
+    "Saturn": "X",
+    "Venus": "VII",
+    "Mars": {"house": "I", "longitude": 5.0},
+    "Sun": {"house": "X", "longitude": 102.0},
+    "Moon": {"house": "IV", "longitude": 12.0},
+    "North Node": {"house": "X", "longitude": 290.0}
+  },
+  "angles": {"Asc": 0.0, "MC": 100.0}
+}

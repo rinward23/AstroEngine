@@ -1,85 +1,96 @@
 from core.interpret_plus.engine import interpret
 
 
-HITS = [
-    {"a": "Sun", "b": "Moon", "aspect": "trine", "severity": 0.6},
-    {"a": "Venus", "b": "Mars", "aspect": "conjunction", "severity": 0.5},
-    {"a": "Saturn", "b": "Venus", "aspect": "square", "severity": 0.4},
-]
-
-
-RULES = [
-    {
-        "id": "syn_sun_moon_harmony",
-        "scope": "synastry",
-        "when": {
-            "bodies": ["Sun", "Moon"],
-            "aspect_in": ["trine", "sextile"],
-            "min_severity": 0.3,
-        },
-        "score": 1.2,
-        "text": "{a} {aspect} {b}",
+PACK = {
+    "rulepack": "test-pack",
+    "version": "1",
+    "tag_map": {
+        "chemistry": {"bucket": "chemistry", "weight": 1.0},
+        "stability": {"bucket": "stability", "weight": 1.0},
+        "spark": {"bucket": "chemistry", "weight": 1.1},
     },
-    {
-        "id": "syn_venus_mars_chem",
-        "scope": "synastry",
-        "when": {
-            "bodies": ["Venus", "Mars"],
-            "aspect_in": ["conjunction"],
-            "min_severity": 0.2,
-        },
-        "score": 1.4,
-        "text": "{a}-{b} {aspect} wow",
+    "profiles": {
+        "default": {"tags": {}},
+        "chemistry_plus": {"tags": {"chemistry": 1.2, "stability": 0.9}},
     },
-    {
-        "id": "syn_saturn_hard",
-        "scope": "synastry",
-        "when": {
-            "bodies": ["Saturn"],
-            "aspect_in": ["conjunction", "square", "opposition"],
-            "min_severity": 0.2,
-        },
-        "score": 1.6,
-        "text": "Saturn binding",
-    },
-]
-
-
-def test_synastry_findings_sorted_and_formatted():
-    req = {"scope": "synastry", "hits": HITS}
-    out = interpret(req, RULES)
-    assert len(out) == 3
-    assert out[0].id in {"syn_venus_mars_chem", "syn_sun_moon_harmony", "syn_saturn_hard"}
-    assert any(token in out[1].text for token in {"trine", "wow", "Saturn"})
-
-
-def test_composite_longitude_rule():
-    rules = [
+    "rules": [
         {
-            "id": "comp_venus_early",
+            "id": "syn_sun_moon_harmony",
+            "scope": "synastry",
+            "when": {
+                "bodiesA": ["Sun"],
+                "bodiesB": ["Moon"],
+                "family": ["harmonious"],
+                "min_severity": 0.4,
+            },
+            "then": {
+                "title": "Sun–Moon Harmony",
+                "tags": ["chemistry", "stability"],
+                "base_score": 0.8,
+                "text": "{a} {aspect_symbol} {b}",
+            },
+        },
+        {
+            "id": "syn_group_saturn",
+            "scope": "synastry",
+            "when": {
+                "group": {
+                    "any": [
+                        {"bodiesA": ["Saturn"], "bodiesB": ["*"], "aspects": [0, 90, 180], "min_severity": 0.3},
+                        {"bodiesA": ["*"], "bodiesB": ["Saturn"], "aspects": [0, 90, 180], "min_severity": 0.3},
+                    ],
+                    "count_at_least": 2,
+                }
+            },
+            "then": {
+                "title": "Saturn Theme Strong",
+                "tags": ["stability"],
+                "base_score": 0.7,
+                "boost": {"by": 1.1, "cap": 0.95},
+                "text": "{count} Saturn links anchor the relationship",
+                "limit": {"per_pair": True, "max": 1},
+            },
+        },
+        {
+            "id": "comp_venus_house7",
             "scope": "composite",
-            "when": {"bodies": ["Venus"], "longitude_ranges": [[0, 30]]},
-            "score": 0.8,
-            "text": "Composite {body} ok",
-        }
-    ]
-    req = {"scope": "composite", "positions": {"Venus": 5.0}}
-    out = interpret(req, rules)
-    assert len(out) == 1
-    assert out[0].text.startswith("Composite Venus")
+            "when": {
+                "house": {
+                    "scope": "composite",
+                    "target": ["Venus"],
+                    "in": ["VII"],
+                }
+            },
+            "then": {
+                "title": "Composite Venus in 7th",
+                "tags": ["spark"],
+                "base_score": 0.6,
+                "text": "Composite Venus emphasises partnership duties",
+            },
+        },
+    ],
+}
 
 
-def test_davison_longitude_rule():
-    rules = [
-        {
-            "id": "dav_sun_early",
-            "scope": "davison",
-            "when": {"bodies": ["Sun"], "longitude_ranges": [[0, 15]]},
-            "score": 0.7,
-            "text": "Davison {body} early",
-        }
+def test_synastry_rule_and_profile_weights():
+    hits = [
+        {"a": "Sun", "b": "Moon", "aspect": "trine", "severity": 0.7},
+        {"a": "Saturn", "b": "Venus", "aspect": "square", "severity": 0.6},
+        {"a": "Saturn", "b": "Moon", "aspect": "opposition", "severity": 0.55},
     ]
-    req = {"scope": "davison", "positions": {"Sun": 10.0}}
-    out = interpret(req, rules)
+    req = {"scope": "synastry", "hits": hits, "profile": "chemistry_plus"}
+    out = interpret(req, PACK)
+    assert [finding.id for finding in out] == ["syn_sun_moon_harmony", "syn_group_saturn"]
+    assert out[0].score > out[1].score
+    assert "Sun" in out[0].text
+
+
+def test_composite_house_overlay():
+    req = {
+        "scope": "composite",
+        "positions": {"Venus": 210.0},
+        "houses": {"Venus": "VII"},
+    }
+    out = interpret(req, PACK)
     assert len(out) == 1
-    assert out[0].id == "dav_sun_early"
+    assert out[0].id == "comp_venus_house7"

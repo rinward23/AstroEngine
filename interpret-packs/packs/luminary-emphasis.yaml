@@ -1,0 +1,313 @@
+rulepack: luminary-emphasis
+version: 1
+description: >-
+  Luminary-driven relationship cues prioritising Sun, Moon, and nodal emphasis
+  across synastry and composite overlays.
+tag_map:
+  chemistry: {bucket: chemistry, weight: 1.0}
+  nurture: {bucket: chemistry, weight: 1.1}
+  vitality: {bucket: chemistry, weight: 1.05}
+  resonance: {bucket: stability, weight: 1.05}
+  illumination: {bucket: growth, weight: 1.05}
+  cadence: {bucket: stability, weight: 1.05}
+  empathy: {bucket: chemistry, weight: 1.05}
+  lunar_memory: {bucket: stability, weight: 1.08}
+  heart_sync: {bucket: chemistry, weight: 1.12}
+  lunar_security: {bucket: stability, weight: 1.1}
+  warmth: {bucket: chemistry, weight: 1.1}
+  harmony: {bucket: stability, weight: 1.05}
+  radiance: {bucket: growth, weight: 1.1}
+  destiny: {bucket: growth, weight: 1.1}
+  pathfinding: {bucket: growth, weight: 1.08}
+  steady_glow: {bucket: stability, weight: 1.05}
+  dreamscape: {bucket: chemistry, weight: 1.05}
+  reflection: {bucket: stability, weight: 1.05}
+  roots: {bucket: stability, weight: 1.08}
+profiles:
+  default:
+    tags: {chemistry: 1.0, stability: 1.0, growth: 1.0, friction: 1.0}
+  chemistry_plus:
+    tags: {chemistry: 1.25, stability: 1.0, growth: 1.05, friction: 0.95}
+  stability_plus:
+    tags: {chemistry: 1.05, stability: 1.2, growth: 1.0, friction: 0.95}
+meta:
+  domain: synastry
+rules:
+  - id: sun_conj_sun
+    scope: synastry
+    when:
+      bodies: [Sun]
+      aspects: [0]
+      min_severity: 0.4
+    then:
+      title: Sun conjunct Sun — Shared Radiance
+      tags: [vitality, radiance, harmony]
+      base_score: 0.78
+      score_fn: "cosine^1.05"
+      text: "Sun {aspect_symbol} Sun aligns life purpose and outward style."
+  - id: sun_trine_sun
+    scope: synastry
+    when:
+      bodies: [Sun]
+      aspects: [120]
+      min_severity: 0.4
+    then:
+      title: Sun trine Sun — Easy Alignment
+      tags: [harmony, resonance, radiance]
+      base_score: 0.76
+      score_fn: "cosine^1.05"
+      text: "Trine fosters mutual encouragement and effortless scheduling."
+  - id: sun_opposition_sun
+    scope: synastry
+    when:
+      bodies: [Sun]
+      aspects: [180]
+      min_severity: 0.4
+    then:
+      title: Sun opposition Sun — Complementary Spotlight
+      tags: [resonance, illumination, harmony]
+      base_score: 0.74
+      score_fn: "cosine^1.05"
+      text: "Opposition balances focus through alternating leadership."
+  - id: moon_conj_moon
+    scope: synastry
+    when:
+      bodies: [Moon]
+      aspects: [0]
+      min_severity: 0.45
+    then:
+      title: Moon conjunct Moon — Shared Lunar Memory
+      tags: [nurture, lunar_memory, empathy]
+      base_score: 0.8
+      score_fn: "cosine^1.1"
+      text: "Moon {aspect_symbol} Moon syncs emotional rhythms and rituals."
+  - id: moon_trine_moon
+    scope: synastry
+    when:
+      bodies: [Moon]
+      aspects: [120]
+      min_severity: 0.45
+    then:
+      title: Moon trine Moon — Emotional Flow
+      tags: [nurture, empathy, harmony]
+      base_score: 0.78
+      score_fn: "cosine^1.05"
+      text: "Trine offers intuitive understanding without many words."
+  - id: moon_square_moon
+    scope: synastry
+    when:
+      bodies: [Moon]
+      aspects: [90]
+      min_severity: 0.45
+    then:
+      title: Moon square Moon — Habit Adjustments
+      tags: [nurture, cadence, reflection]
+      base_score: 0.7
+      score_fn: "power^1.05"
+      text: "Square invites conscious co-creation of supportive routines."
+  - id: sun_moon_conjunction
+    scope: synastry
+    when:
+      bodiesA: [Sun]
+      bodiesB: [Moon]
+      aspects: [0]
+      min_severity: 0.45
+    then:
+      title: Sun conjunct Moon — Heartbeat Sync
+      tags: [heart_sync, nurture, warmth]
+      base_score: 0.83
+      score_fn: "cosine^1.15"
+      text: "{a_arch} {aspect_symbol} {b_arch} marries will and feeling."
+      limit: {per_pair: true, max: 1}
+  - id: sun_moon_trine
+    scope: synastry
+    when:
+      bodiesA: [Sun]
+      bodiesB: [Moon]
+      aspects: [120]
+      min_severity: 0.45
+    then:
+      title: Sun trine Moon — Daily Harmony
+      tags: [nurture, harmony, warmth]
+      base_score: 0.8
+      score_fn: "cosine^1.1"
+      text: "Trine between {a} and {b} brings easy emotional attunement."
+  - id: sun_moon_square
+    scope: synastry
+    when:
+      bodiesA: [Sun]
+      bodiesB: [Moon]
+      aspects: [90]
+      min_severity: 0.45
+    then:
+      title: Sun square Moon — Growth Tension
+      tags: [cadence, illumination, nurture]
+      base_score: 0.72
+      score_fn: "power^1.05"
+      text: "Square requires transparent feedback about needs vs. goals."
+  - id: sun_moon_double_whammy
+    scope: synastry
+    when:
+      group:
+        any:
+          - {bodiesA: [Sun], bodiesB: [Moon], aspects: [0, 60, 90, 120, 180], min_severity: 0.4}
+          - {bodiesA: [Moon], bodiesB: [Sun], aspects: [0, 60, 90, 120, 180], min_severity: 0.4}
+        count_at_least: 2
+    then:
+      title: Sun–Moon Double Emphasis
+      tags: [heart_sync, nurture, resonance]
+      base_score: 0.78
+      score_fn: "linear"
+      boost: {by: 1.2, cap: 0.99}
+      text: "{count} Sun↔Moon links magnify mutual care."
+  - id: moon_node_conj
+    scope: synastry
+    when:
+      bodiesA: [Moon]
+      bodiesB: [North Node]
+      aspects: [0]
+      min_severity: 0.45
+    then:
+      title: Moon conjunct North Node — Destined Comfort
+      tags: [destiny, nurture, roots]
+      base_score: 0.77
+      score_fn: "cosine^1.1"
+      text: "{a_arch} embracing the Node nurtures a future-building path."
+  - id: sun_node_conj
+    scope: synastry
+    when:
+      bodiesA: [Sun]
+      bodiesB: [North Node]
+      aspects: [0]
+      min_severity: 0.45
+    then:
+      title: Sun conjunct North Node — Spotlighted Path
+      tags: [destiny, radiance, pathfinding]
+      base_score: 0.76
+      score_fn: "cosine^1.05"
+      text: "{a_arch} {aspect_symbol} Node lights up shared direction."
+  - id: luminary_node_opposition
+    scope: synastry
+    when:
+      bodiesA: [Sun, Moon]
+      bodiesB: [North Node, South Node]
+      aspects: [180]
+      min_severity: 0.4
+    then:
+      title: Luminary-Node Opposition — Axis Activation
+      tags: [destiny, illumination, resonance]
+      base_score: 0.72
+      score_fn: "cosine^1.05"
+      text: "Opposition across the nodal axis binds purpose and karmic memory."
+  - id: sun_moon_progression_count
+    scope: synastry
+    when:
+      group:
+        any:
+          - {bodiesA: [Sun], bodiesB: [Moon], aspects: [0, 60, 90, 120, 180], min_severity: 0.4}
+          - {bodiesA: [Moon], bodiesB: [Sun], aspects: [0, 60, 90, 120, 180], min_severity: 0.4}
+        count_at_least: 3
+    then:
+      title: Sun–Moon Story Arc
+      tags: [cadence, nurture, reflection]
+      base_score: 0.74
+      score_fn: "linear"
+      boost: {by: 1.15, cap: 0.98}
+      text: "{count} luminary exchanges weave a life rhythm narrative."
+  - id: composite_sun_moon_midpoint
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Sun, Moon]
+        in: ["I"]
+        angles_any: [Asc]
+    then:
+      title: Composite Luminary Midpoint Rising
+      tags: [chemistry, heart_sync, radiance]
+      base_score: 0.75
+      score_fn: "linear"
+      text: "Composite luminary midpoint rising spotlights mutual magnetism."
+  - id: composite_sun_moon_house7
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Sun, Moon]
+        in: ["VII"]
+    then:
+      title: Composite Luminaries in 7th
+      tags: [nurture, resonance, steady_glow]
+      base_score: 0.74
+      score_fn: "linear"
+      text: "Luminaries seated in the 7th anchor partnership priorities."
+  - id: composite_sun_moon_house10
+    scope: composite
+    when:
+      house:
+        scope: composite
+        target: [Sun, Moon]
+        in: ["X"]
+        angles_any: [MC]
+    then:
+      title: Composite Luminaries on MC
+      tags: [illumination, radiance, destiny]
+      base_score: 0.73
+      score_fn: "linear"
+      text: "Midheaven emphasis invites shared visibility."
+  - id: davison_sun_moon_house4
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [Sun, Moon]
+        in: ["IV"]
+    then:
+      title: Davison Luminaries in 4th — Rooted Timeline
+      tags: [roots, nurture, cadence]
+      base_score: 0.73
+      score_fn: "linear"
+      text: "Davison luminaries in the 4th prioritise home creation and shared ancestry."
+  - id: davison_sun_moon_midpoint_angle
+    scope: davison
+    when:
+      house:
+        scope: davison
+        target: [Sun, Moon]
+        in: ["I"]
+        angles_any: [Asc]
+    then:
+      title: Davison Luminary Midpoint on Ascendant
+      tags: [chemistry, radiance, harmony]
+      base_score: 0.74
+      score_fn: "linear"
+      text: "Ascendant contact keeps the timeline aligned with heartfelt purpose."
+  - id: moon_moon_double_whammy
+    scope: synastry
+    when:
+      group:
+        any:
+          - {bodiesA: [Moon], bodiesB: [Moon], aspects: [0, 60, 90, 120, 180], min_severity: 0.45}
+        count_at_least: 2
+    then:
+      title: Moon–Moon Double Pulse
+      tags: [nurture, lunar_security, empathy]
+      base_score: 0.76
+      score_fn: "linear"
+      boost: {by: 1.12, cap: 0.96}
+      text: "Multiple Moon links intensify emotional attunement."
+  - id: sun_progression_cluster
+    scope: synastry
+    when:
+      group:
+        any:
+          - {bodiesA: [Sun], bodiesB: ['*'], aspects: [0, 60, 120], min_severity: 0.4}
+          - {bodiesA: ['*'], bodiesB: [Sun], aspects: [0, 60, 120], min_severity: 0.4}
+        count_at_least: 3
+    then:
+      title: Solar Emphasis Theme
+      tags: [illumination, radiance, vitality]
+      base_score: 0.7
+      score_fn: "linear"
+      boost: {by: 1.1, cap: 0.95}
+      text: "{count} solar contacts uplift the relationship's visibility and purpose."
