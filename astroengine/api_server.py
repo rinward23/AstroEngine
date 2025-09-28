@@ -11,9 +11,11 @@ else:
 
 if app:
     from .api.routers.plus import router as plus_router
+    from .api.routers.interpret import router as interpret_router
     from .api.routers.synastry import router as syn_router
 
     app.include_router(plus_router)
+    app.include_router(interpret_router)
     app.include_router(syn_router, prefix="/v1/synastry", tags=["synastry"])
 
 # >>> AUTO-GEN BEGIN: api-natals v1.0
