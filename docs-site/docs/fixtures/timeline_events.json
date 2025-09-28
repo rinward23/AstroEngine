@@ -1,0 +1,11 @@
+[
+  {
+    "angle_deg": 0.0,
+    "family": "major",
+    "kind": "aspect_conjunction",
+    "moving": "Mars",
+    "orb_abs": 8.171664376277477e-07,
+    "target": "Saturn",
+    "ts": "2024-02-03T03:52:17.050013Z"
+  }
+]

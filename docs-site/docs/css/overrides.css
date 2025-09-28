@@ -1,0 +1,10 @@
+/* Minimal theming overrides for Relationship Docs. */
+.version-pill {
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-weight: 600;
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  display: inline-block;
+  margin-left: 0.5rem;
+}

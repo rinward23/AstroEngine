@@ -1,0 +1,723 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AstroEngine API",
+    "version": "0.1.0"
+  },
+  "servers": [],
+  "components": {
+    "schemas": {
+      "ExportOptions": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path",
+            "description": "Filesystem destination for exported events"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "json",
+              "ics",
+              "parquet",
+              "sqlite"
+            ],
+            "title": "Format"
+          },
+          "calendar_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Name",
+            "description": "Optional calendar name used for ICS exports."
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "format"
+        ],
+        "title": "ExportOptions"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Hit": {
+        "properties": {
+          "ts": {
+            "type": "string",
+            "title": "Ts"
+          },
+          "moving": {
+            "type": "string",
+            "title": "Moving"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "aspect": {
+            "type": "integer",
+            "title": "Aspect"
+          },
+          "orb": {
+            "type": "number",
+            "title": "Orb"
+          },
+          "orb_allow": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orb Allow"
+          },
+          "motion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motion"
+          },
+          "family": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family"
+          },
+          "lon_moving": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon Moving"
+          },
+          "lon_target": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon Target"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "offset": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offset"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ts",
+          "moving",
+          "target",
+          "aspect",
+          "orb"
+        ],
+        "title": "Hit"
+      },
+      "NatalPayload": {
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ts",
+          "lat",
+          "lon"
+        ],
+        "title": "NatalPayload",
+        "description": "Minimal payload describing a natal chart for synastry scans."
+      },
+      "ReturnsScanRequest": {
+        "properties": {
+          "natal": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Natal"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "bodies": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bodies"
+          },
+          "step_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Days"
+          },
+          "export": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "natal",
+          "start",
+          "end"
+        ],
+        "title": "ReturnsScanRequest"
+      },
+      "ScanResponse": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/Hit"
+            },
+            "type": "array",
+            "title": "Hits"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "export": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Export"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "hits",
+          "count"
+        ],
+        "title": "ScanResponse"
+      },
+      "SynastryHitDTO": {
+        "properties": {
+          "direction": {
+            "type": "string",
+            "title": "Direction"
+          },
+          "moving": {
+            "type": "string",
+            "title": "Moving"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "aspect": {
+            "type": "number",
+            "title": "Aspect"
+          },
+          "orb": {
+            "type": "number",
+            "title": "Orb"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "domains": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domains"
+          }
+        },
+        "type": "object",
+        "required": [
+          "direction",
+          "moving",
+          "target",
+          "aspect",
+          "orb"
+        ],
+        "title": "SynastryHitDTO"
+      },
+      "SynastryRequest": {
+        "properties": {
+          "subject": {
+            "$ref": "#/components/schemas/NatalPayload"
+          },
+          "partner": {
+            "$ref": "#/components/schemas/NatalPayload"
+          },
+          "bodies": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bodies"
+          },
+          "aspects": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aspects"
+          },
+          "orb": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Orb",
+            "default": 2.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "partner"
+        ],
+        "title": "SynastryRequest",
+        "description": "Request model for synastry aspect computations."
+      },
+      "SynastryResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/SynastrySummary"
+          },
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/SynastryHitDTO"
+            },
+            "type": "array",
+            "title": "Hits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "summary",
+          "hits"
+        ],
+        "title": "SynastryResponse"
+      },
+      "SynastrySummary": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "title": "Method",
+            "default": "synastry_aspects"
+          },
+          "count_by_direction": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Count By Direction"
+          },
+          "orb": {
+            "type": "number",
+            "title": "Orb"
+          },
+          "aspects": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Aspects"
+          },
+          "bodies": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bodies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count_by_direction",
+          "orb",
+          "aspects"
+        ],
+        "title": "SynastrySummary"
+      },
+      "TransitScanRequest": {
+        "properties": {
+          "natal": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Natal"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "bodies": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bodies"
+          },
+          "targets": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targets"
+          },
+          "aspects": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aspects"
+          },
+          "orb": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Orb",
+            "description": "Maximum aspect orb in degrees",
+            "default": 1.0
+          },
+          "step_days": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Step Days",
+            "default": 1.0
+          },
+          "export": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "natal",
+          "start",
+          "end"
+        ],
+        "title": "TransitScanRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "paths": {
+    "/natals": {
+      "get": {
+        "summary": "Api Natals List",
+        "operationId": "api_natals_list_natals_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/natals/{natal_id}": {
+      "get": {
+        "summary": "Api Natals Get",
+        "operationId": "api_natals_get_natals__natal_id__get",
+        "parameters": [
+          {
+            "name": "natal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Natal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Api Natals Put",
+        "operationId": "api_natals_put_natals__natal_id__post",
+        "parameters": [
+          {
+            "name": "natal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Natal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

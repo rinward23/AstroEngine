@@ -1,0 +1,116 @@
+site_name: Relationship Docs
+site_description: Developer and analyst portal for the AstroEngine relationship stack.
+site_author: AstroEngine Team
+docs_dir: docs
+site_dir: site
+repo_url: https://github.com/example/astroengine
+repo_name: AstroEngine
+copyright: "© 2024 AstroEngine"
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Architecture: architecture.md
+  - Cookbook:
+      - Positions: cookbook/01_positions.ipynb
+      - Composite & Davison: cookbook/02_composite_davison.ipynb
+      - Synastry: cookbook/03_synastry.ipynb
+      - Midpoints & Hotspots: cookbook/04_midpoints_hotspots.ipynb
+      - Interpretations: cookbook/05_interpretations.ipynb
+      - Report Markdown: cookbook/06_report_markdown.ipynb
+      - PDF Export: cookbook/07_pdf_export.ipynb
+      - Timeline: cookbook/08_timeline.ipynb
+      - Caching & Perf: cookbook/09_caching_perf.ipynb
+  - API:
+      - Relationship API: api/relationship.md
+      - Interpretations API: api/interpret.md
+      - Report Export: api/report.md
+      - Timeline: api/timeline.md
+  - Rulepacks:
+      - Schema: rulepacks/schema.md
+      - Examples:
+          - Basic: rulepacks/examples/basic.yaml
+          - Saturn Binding Growth: rulepacks/examples/saturn-binding-growth.yaml
+          - Outer Planet Contacts: rulepacks/examples/outer-planet-contacts.yaml
+          - Luminary Emphasis: rulepacks/examples/luminary-emphasis.yaml
+          - House Overlays: rulepacks/examples/house-overlays.yaml
+  - Fixtures: fixtures/index.md
+  - UI Guides:
+      - Lab: ui/lab.md
+      - Report Builder: ui/report_builder.md
+      - Authoring: ui/rulepack_author.md
+      - Synastry Wheel: ui/synastry_wheel.md
+  - Ops:
+      - Deploy: ops/deploy.md
+      - Caching: ops/caching.md
+      - Licensing: ops/licensing.md
+      - Changelog: ops/changelog.md
+extra:
+  version:
+    provider: mike
+    default: latest
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/example/astroengine
+    - icon: material/earth
+      link: https://astroengine.dev
+extra_css:
+  - css/overrides.css
+extra_javascript:
+  - js/version-pill.js
+  - js/openapi-tabs.js
+theme:
+  name: material
+  icon:
+    repo: fontawesome/brands/github
+  logo: assets/figures/astroengine-logo.svg
+  favicon: assets/figures/astroengine-favicon.svg
+  features:
+    - navigation.tabs
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+markdown_extensions:
+  - admonition
+  - attr_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - ../src
+          options:
+            docstring_style: sphinx
+            show_source: true
+  - mike:
+      deploy_prefix: ''
+      alias_type: symlink
+  - redirects
+  - mkdocs-jupyter:
+      execute: false
+      include_source: true
+      kernel_name: python3

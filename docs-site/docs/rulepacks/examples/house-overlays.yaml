@@ -1,0 +1,21 @@
+# House overlay interpretations for synastry hotspots.
+- id: venus_in_fourth_house
+  scope: synastry
+  score: 0.75
+  tags: [home]
+  when:
+    bodies: [Venus]
+    aspect_in: [conjunction]
+    min_severity: 0.0
+  title: Venus in Partner's Fourth House
+  text: "{a_arch} in the fourth house invites shared sanctuary building."
+- id: mars_in_tenth_house
+  scope: synastry
+  score: 0.65
+  tags: [career]
+  when:
+    bodies: [Mars]
+    aspect_in: [conjunction]
+    min_severity: 0.0
+  title: Mars in Partner's Tenth House
+  text: "{a_arch} energises public goals for {b_arch}; align on ambition pace."

@@ -1,0 +1,14 @@
+{
+  "birth_events.csv": "0354039064cc1e11ee54de6be9b50330fdea8f898a5a055c71e155e7d3653149",
+  "caching_metrics.json": "6743380e5fe8372782bd89b663c9d651a391edb17e6b75838a93de402bd981ea",
+  "checksums.json": "69165422c4e661f1c149f0d681c950e7d6165a42223751859e652064f9a4e6cd",
+  "composite_midpoints.json": "40b07eac981afa58094387af91b444844a967d67f658e9bfcd5e37f6e80e8d5c",
+  "davison_positions.json": "34ba1f978bb12019917eb43a2fe00e4669075ecb3219c657385fd8f726fc3c6c",
+  "interpretations.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "positions_partner.json": "450b6f77c8bd07256d48667c052151a3ee7c22dca3e4bc4e0932901e90fdf83d",
+  "positions_subject.json": "3673f99a953b76ab946d27d2a64d9105d1c3d17c5dff9ef7157a388c781745e7",
+  "report_bundle.pdf": "93633641c049ad4d2ecdf6505991441a18d015b8d944e3c20fbaaa2cab468684",
+  "report_markdown.txt": "697ce94f7f7dab892133344b370825d384d170f1cb8059c3aa3797a84c7d0fb2",
+  "synastry_hits.json": "3223a02ff71202e961531f3b19360659c822bbea6f68b2105827c56acf47884c",
+  "timeline_events.json": "734ea6c054374e0d086df334c7b75d7f3cd15af8da2b03713da5d499b413a65f"
+}

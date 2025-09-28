@@ -1,0 +1,122 @@
+{
+  "info": {
+    "name": "AstroEngine Relationship APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Requests derived from the FastAPI OpenAPI document."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Synastry Aspects",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/synastry/aspects",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "v1",
+            "synastry",
+            "aspects"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subject\": {\n    \"ts\": \"1990-07-11T08:00:00Z\",\n    \"lat\": 40.7128,\n    \"lon\": -74.006\n  },\n  \"partner\": {\n    \"ts\": \"1992-03-15T20:15:00Z\",\n    \"lat\": 34.0522,\n    \"lon\": -118.2437\n  },\n  \"aspects\": [\n    0,\n    60,\n    90,\n    120,\n    180\n  ],\n  \"orb\": 2.0\n}"
+        }
+      }
+    },
+    {
+      "name": "Transit Scan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/scan/transits",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "v1",
+            "scan",
+            "transits"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"natal_inline\": {\n    \"ts\": \"1990-07-11T08:00:00Z\",\n    \"lat\": 40.7128,\n    \"lon\": -74.006\n  },\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-06-01T00:00:00Z\",\n  \"bodies\": [\n    \"Mars\",\n    \"Jupiter\"\n  ],\n  \"targets\": [\n    \"Sun\",\n    \"Saturn\"\n  ],\n  \"aspects\": [\n    \"conjunction\",\n    \"opposition\"\n  ],\n  \"orb\": 1.5,\n  \"step_days\": 3\n}"
+        }
+      }
+    },
+    {
+      "name": "Returns Scan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/scan/returns",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "v1",
+            "scan",
+            "returns"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"natal_inline\": {\n    \"ts\": \"1990-07-11T08:00:00Z\",\n    \"lat\": 40.7128,\n    \"lon\": -74.006\n  },\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-12-31T00:00:00Z\",\n  \"bodies\": [\n    \"Sun\",\n    \"Moon\"\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "Natal Upsert",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/natals/sample",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "natals",
+            "sample"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sample Chart\",\n  \"utc\": \"1990-07-11T08:00:00Z\",\n  \"lat\": 40.7128,\n  \"lon\": -74.006,\n  \"tz\": \"America/New_York\",\n  \"place\": \"New York, NY\"\n}"
+        }
+      }
+    }
+  ]
+}

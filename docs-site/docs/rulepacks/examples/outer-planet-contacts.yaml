@@ -1,0 +1,31 @@
+# Outer-planet overlays to flag lasting themes.
+- id: uranus_awakenings
+  scope: synastry
+  score: 0.7
+  tags: [innovation]
+  when:
+    bodies: [Uranus]
+    aspect_in: [conjunction, opposition]
+    min_severity: 0.2
+  title: Uranus Sparks
+  text: "{a_arch} electrifies {b_arch}; plan for experiments and surprises."
+- id: neptune_dissolve
+  scope: synastry
+  score: 0.6
+  tags: [empathy]
+  when:
+    bodies: [Neptune]
+    aspect_in: [trine, sextile]
+    min_severity: 0.25
+  title: Neptune Soft Focus
+  text: "{a_arch} blurs lines with {b_arch}; reaffirm shared dreams regularly."
+- id: pluto_transformation
+  scope: synastry
+  score: 1.3
+  tags: [transformation]
+  when:
+    bodies: [Pluto]
+    aspect_in: [conjunction, square]
+    min_severity: 0.45
+  title: Pluto Catalyst
+  text: "{a_arch} with {b_arch} invites depth work; build consent rituals."

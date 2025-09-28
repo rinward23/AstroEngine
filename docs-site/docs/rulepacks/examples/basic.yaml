@@ -1,0 +1,31 @@
+# Sample rulepack used in cookbook Notebook 05.
+# Scope covers synastry and composite findings with deterministic scoring.
+- id: luminary_rapport
+  scope: synastry
+  score: 1.0
+  tags: [connection, luminary]
+  when:
+    bodies: [Sun, Moon]
+    aspect_in: [conjunction, trine]
+    min_severity: 0.4
+  title: Luminary Rapport
+  text: "{a_arch} and {b_arch} in a {aspect_symbol} share a vivid emotional circuit."
+- id: saturn_commitment
+  scope: synastry
+  score: 0.8
+  tags: [structure]
+  when:
+    bodies: [Saturn]
+    aspect_in: [trine, sextile]
+    min_severity: 0.3
+  title: Structured Support
+  text: "{a_arch} stabilises the partnership when touching {b_arch}."
+- id: venus_midpoint
+  scope: composite
+  score: 1.2
+  when:
+    bodies: [Venus]
+    longitude_ranges:
+      - [150, 210]
+  title: Venus in Communal Houses
+  text: "Composite {body} between 150° and 210° leans toward shared rituals."

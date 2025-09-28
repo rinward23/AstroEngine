@@ -1,0 +1,23 @@
+# Composite placements focused on luminary emphasis.
+- id: composite_sun_angular
+  scope: composite
+  score: 1.0
+  tags: [visibility]
+  when:
+    bodies: [Sun]
+    longitude_ranges:
+      - [0, 30]
+      - [180, 210]
+  title: Sun on the Angles
+  text: "Composite Sun on an angle wants public expression and shared leadership."
+- id: composite_moon_water
+  scope: composite
+  score: 0.9
+  tags: [emotional]
+  when:
+    bodies: [Moon]
+    longitude_ranges:
+      - [90, 150]
+      - [210, 270]
+  title: Moon in Water Zones
+  text: "Composite Moon in water degrees amplifies shared rituals of care."
