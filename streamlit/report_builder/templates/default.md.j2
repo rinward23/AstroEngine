@@ -1,0 +1,42 @@
+---
+title: "Relationship Report — {{ pair.nameA }} × {{ pair.nameB }}"
+date: "{{ generated_at }}"
+rulepack: "{{ rulepack.title }} (v{{ rulepack.version }})"
+profile: "{{ filters.profile }}"
+---
+
+# Highlights
+{% if highlights %}
+{% for f in highlights %}- **{{ f.title }}** — score {{ '%.2f'|format(f.score) }} — _tags: {{ f.tags|join(', ') }}_
+{% endfor %}
+{% else %}
+_No highlight findings match the current filters._
+{% endif %}
+
+# Scores Overview
+- Overall: **{{ '%.2f'|format(scores.overall) }}**
+- By tag:
+{% if scores.by_tag %}
+{% for tag, val in scores.by_tag.items() %}  - {{ tag }}: {{ '%.2f'|format(val) }}
+{% endfor %}
+{% else %}  - n/a
+{% endif %}
+
+# Detailed Findings
+{% for group in grouped_findings %}
+## {{ group.tag | title }}
+{% for f in group.items %}- **{{ f.title }}** ({{ '%.2f'|format(f.score) }}){% if f.snippet %} — {{ f.snippet }}{% endif %}
+{% endfor %}
+{% else %}
+_No findings matched the selected filters._
+{% endfor %}
+
+# Appendix
+- Inputs: {{ appendix.inputs_link or 'embedded' }}
+- Findings included: {{ appendix.hits_count }} total
+- Generated: {{ generated_at }}
+- Filters: `{{ filters | tojson(indent=2) | safe }}`
+
+```json
+{{ appendix.payload | safe }}
+```
