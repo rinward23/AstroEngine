@@ -21,8 +21,10 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     JSON,
+    Enum as SAEnum,
     String,
     Text,
     UniqueConstraint,
@@ -37,7 +39,7 @@ from .base import Base
 def _table_args(*constraints: Any) -> tuple[Any, ...]:
     """Return ``__table_args__`` with SQLite autoincrement enabled."""
 
-    return (*constraints, {"sqlite_autoincrement": True})
+    return (*constraints, {"sqlite_autoincrement": True, "extend_existing": True})
 
 
 def _coerce_version_value(value: Any) -> str:
@@ -55,6 +57,12 @@ def _ensure_utc(dt: datetime | None) -> datetime | None:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+def _uuid_hex() -> str:
+    """Return a random UUID4 hex string."""
+
+    return uuid4().hex
 
 
 class ChartKind(str, enum.Enum):
@@ -185,6 +193,7 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
     """Store severity weights used during scoring routines."""
 
     __tablename__ = "severity_profiles"
+    __table_args__ = _table_args()
 
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -204,6 +213,7 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
     def __init__(self, **kwargs: Any) -> None:
         profile_key = kwargs.pop("profile_key", None)
         weights = kwargs.pop("weights", None)
+        modifiers = kwargs.pop("modifiers", None)
         if profile_key is not None:
 
             kwargs.setdefault("name", str(profile_key))
@@ -551,5 +561,5 @@ __all__ = [
 
 
 # Backwards compatible alias retained for legacy imports
-RulesetVersion = RuleSetVersion
+RuleSetVersion = RulesetVersion
 

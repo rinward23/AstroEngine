@@ -74,9 +74,31 @@ def build_aspect_hits(positions: Dict[str, float], aspects: Iterable[str], polic
 
 # --------------------------- SVG wheel -------------------------------------
 
+ROMAN_NUMERALS = [
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V",
+    "VI",
+    "VII",
+    "VIII",
+    "IX",
+    "X",
+    "XI",
+    "XII",
+]
+
+
+def _midpoint_angle(a: float, b: float) -> float:
+    delta = (b - a + 540.0) % 360.0 - 180.0
+    return _norm360(a + 0.5 * delta)
+
+
 def render_chart_wheel(
     positions: Dict[str, float],
     houses: Optional[List[float]] = None,
+    angles: Optional[Dict[str, float]] = None,
     options: Optional[WheelOptions] = None,
     aspects_hits: Optional[List[Dict]] = None,
 ) -> str:
@@ -125,11 +147,34 @@ def render_chart_wheel(
 
     # House lines (if provided)
     if opt.show_house_lines and houses and len(houses) >= 12:
-        for lon in houses[:12]:
+        for idx, lon in enumerate(houses[:12]):
             ang = _lon_to_angle_svg(lon)
             x1, y1 = _pol2cart(ang, inner_r, cx, cy)
             x2, y2 = _pol2cart(ang, 0.05 * size, cx, cy)
             add(f"<line x1='{x1:.2f}' y1='{y1:.2f}' x2='{x2:.2f}' y2='{y2:.2f}' stroke='gray' stroke-width='1' opacity='0.6' />")
+            lx, ly = _pol2cart(ang, inner_r - 18, cx, cy)
+            label = ROMAN_NUMERALS[idx % 12]
+            add(f"<text x='{lx:.2f}' y='{ly:.2f}' text-anchor='middle' fill='#333'>{label}</text>")
+
+    if angles and "asc" in angles and "mc" in angles:
+        asc = float(angles["asc"]) % 360.0
+        mc = float(angles["mc"]) % 360.0
+        desc = (asc + 180.0) % 360.0
+        ic = (mc + 180.0) % 360.0
+        for ang, label in ((asc, "ASC"), (mc, "MC")):
+            svg_ang = _lon_to_angle_svg(ang)
+            x1, y1 = _pol2cart(svg_ang, 0.05 * size, cx, cy)
+            x2, y2 = _pol2cart(svg_ang, outer_r, cx, cy)
+            add(f"<line x1='{x1:.2f}' y1='{y1:.2f}' x2='{x2:.2f}' y2='{y2:.2f}' stroke='black' stroke-width='2' opacity='0.8' />")
+            tx, ty = _pol2cart(svg_ang, outer_r + 24, cx, cy)
+            add(f"<text x='{tx:.2f}' y='{ty:.2f}' text-anchor='middle' font-weight='bold'>{label}</text>")
+        for ang, label in ((desc, "DES"), (ic, "IC")):
+            svg_ang = _lon_to_angle_svg(ang)
+            x1, y1 = _pol2cart(svg_ang, 0.05 * size, cx, cy)
+            x2, y2 = _pol2cart(svg_ang, outer_r, cx, cy)
+            add(f"<line x1='{x1:.2f}' y1='{y1:.2f}' x2='{x2:.2f}' y2='{y2:.2f}' stroke='black' stroke-width='1' opacity='0.5' stroke-dasharray='4 4' />")
+            tx, ty = _pol2cart(svg_ang, outer_r + 24, cx, cy)
+            add(f"<text x='{tx:.2f}' y='{ty:.2f}' text-anchor='middle' fill='#555'>{label}</text>")
 
     # Aspect lines (optional)
     if opt.show_aspects:
@@ -158,6 +203,15 @@ def render_chart_wheel(
         ang = _lon_to_angle_svg(float(lon))
         tx, ty = _pol2cart(ang, outer_r + 6, cx, cy)
         add(f"<text x='{tx:.2f}' y='{ty:.2f}' text-anchor='middle'>{name}</text>")
+
+    names_lower = {name.lower(): name for name in positions.keys()}
+    if "sun" in names_lower and "moon" in names_lower:
+        sun_lon = positions[names_lower["sun"]]
+        moon_lon = positions[names_lower["moon"]]
+        sm_mid = _midpoint_angle(float(sun_lon), float(moon_lon))
+        ang = _lon_to_angle_svg(sm_mid)
+        tx, ty = _pol2cart(ang, outer_r - 20, cx, cy)
+        add(f"<text x='{tx:.2f}' y='{ty:.2f}' text-anchor='middle' fill='#aa5500'>☀︎/☾ midpoint</text>")
 
     add("</svg>")
     return "".join(svg)

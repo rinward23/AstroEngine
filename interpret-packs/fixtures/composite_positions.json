@@ -1,0 +1,23 @@
+{
+  "positions": {
+    "Saturn": 210.0,
+    "Venus": 223.0,
+    "Mars": 15.0,
+    "Sun": 280.0,
+    "Moon": 45.0,
+    "North Node": 12.0,
+    "Pluto": 182.0,
+    "Jupiter": 195.0
+  },
+  "houses": {
+    "Saturn": {"house": "VII", "longitude": 210.0},
+    "Venus": "VII",
+    "Mars": {"house": "I", "longitude": 15.0},
+    "Sun": {"house": "X", "longitude": 280.0},
+    "Moon": {"house": "IV", "longitude": 45.0},
+    "North Node": {"house": "I", "longitude": 12.0},
+    "Pluto": "VII",
+    "Jupiter": "IX"
+  },
+  "angles": {"Asc": 10.0, "MC": 280.0}
+}

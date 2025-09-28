@@ -20,6 +20,17 @@ def test_svg_wheel_basic_and_labels():
     assert "Sun" in svg and "Moon" in svg and "Mars" in svg
     # check sign tick for 0° label exists
     assert ">0°<" in svg
+    assert "☀︎/☾ midpoint" in svg
+
+
+def test_svg_houses_and_angles():
+    pos = {"Sun": 10.0, "Moon": 190.0}
+    houses = [i * 30.0 for i in range(12)]
+    angles = {"asc": 100.0, "mc": 10.0}
+    svg = render_chart_wheel(pos, houses=houses, angles=angles, options=WheelOptions(show_aspects=False))
+    assert "ASC" in svg and "MC" in svg
+    for numeral in ["I", "VI", "XII"]:
+        assert numeral in svg
 
 
 def test_aspect_detection_square():

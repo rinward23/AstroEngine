@@ -48,10 +48,18 @@ class SynastryResponse(BaseModel):
     grid: SynastryGrid
 
 
+class CompositeEvent(BaseModel):
+    when: datetime
+    lat: float
+    lon: float
+
+
 class CompositeMidpointRequest(BaseModel):
     pos_a: Dict[str, float]
     pos_b: Dict[str, float]
     objects: List[str]
+    event_a: Optional[CompositeEvent] = None
+    event_b: Optional[CompositeEvent] = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -88,6 +96,17 @@ class CompositeDavisonRequest(BaseModel):
     )
 
 
+class HouseOutput(BaseModel):
+    ascendant: float
+    midheaven: float
+    cusps: List[float]
+    house_system_requested: str
+    house_system_used: str
+    fallback_reason: Optional[str] = None
+    metadata: Dict[str, Any] | None = None
+
+
 class CompositeResponse(BaseModel):
     positions: Dict[str, float]
     meta: Dict[str, Any] = Field(default_factory=dict)
+    houses: Optional[HouseOutput] = None

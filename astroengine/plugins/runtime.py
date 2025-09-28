@@ -1,16 +1,13 @@
-"""Entry point discovery utilities for AstroEngine plugins and providers."""
+"""Runtime helpers for loading AstroEngine plugin entry points."""
 
 from __future__ import annotations
 
-
-from importlib import import_module
-from importlib.metadata import EntryPoint, entry_points
 import importlib
-
 import site
 import sys
-
-
+from collections.abc import Callable
+from importlib import import_module
+from importlib.metadata import EntryPoint, entry_points
 
 
 class Registry:
@@ -45,7 +42,7 @@ def _ensure_entry_point_importable(ep: EntryPoint) -> Callable[..., object]:
             if location:
                 location_str = str(location)
                 if location_str not in sys.path:
-                    sys.path.append(location_str)
+                    site.addsitedir(location_str)
                     importlib.invalidate_caches()
         if module_name:
             import_module(module_name)

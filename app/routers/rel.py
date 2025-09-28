@@ -4,10 +4,12 @@ import os
 import time
 from typing import Any, Callable, Dict, Tuple
 
+
 import orjson
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from prometheus_client import Histogram
+
 
 from app.schemas.rel import (
     SynastryRequest,
@@ -19,8 +21,12 @@ from app.schemas.rel import (
     CompositeResponse,
 )
 from core.rel_plus.synastry import synastry_interaspects, synastry_grid
-from core.rel_plus.composite import (
+from core.rel_plus import (
+    BirthEvent,
+    DavisonResult,
+    composite_houses,
     composite_midpoint_positions,
+    davison_houses,
     davison_positions,
     geodesic_midpoint,
     midpoint_time,
@@ -33,7 +39,9 @@ from astroengine.cache.relationship import (
 )
 from astroengine.cache.relationship.layer import CacheEntry
 
+
 try:  # pragma: no cover - optional dependency path
+
     from app.repo.orb_policies import OrbPolicyRepo  # type: ignore
     from app.db.session import session_scope  # type: ignore
 except Exception:  # pragma: no cover - fall back to inline policies only
@@ -269,6 +277,7 @@ def synastry_compute(req: SynastryRequest, request: Request, response: Response)
     summary="Midpoint Composite positions",
     description="Circular midpoints of longitudes for the requested objects.",
 )
+
 def composites_midpoint(req: CompositeMidpointRequest, request: Request, response: Response):
     canonical = canonicalize_composite_payload(req.pos_a, req.pos_b, req.objects)
 
@@ -290,6 +299,7 @@ def composites_midpoint(req: CompositeMidpointRequest, request: Request, respons
     )
 
 
+
 @router.post(
     "/composites/davison",
     response_model=CompositeResponse,
@@ -298,8 +308,10 @@ def composites_midpoint(req: CompositeMidpointRequest, request: Request, respons
         "Computes body longitudes at the UTC time midpoint between two datetimes using the configured ephemeris provider."
     ),
 )
+
 def composites_davison(req: CompositeDavisonRequest, request: Request, response: Response):
     canonical = canonicalize_davison_payload(
+
         req.objects,
         req.dt_a,
         req.dt_b,
@@ -308,6 +320,7 @@ def composites_davison(req: CompositeDavisonRequest, request: Request, response:
         lat_b=req.lat_b,
         lon_b=req.lon_b,
     )
+
 
     def _compute() -> Tuple[Any, int, Dict[str, str]]:
         provider = aspects_module._get_provider()
@@ -341,4 +354,5 @@ def composites_davison(req: CompositeDavisonRequest, request: Request, response:
         endpoint="davison",
         latency_metric=_LATENCY["davison"],
         compute_fn=_compute,
+
     )

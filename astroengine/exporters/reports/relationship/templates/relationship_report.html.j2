@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ meta.title }}</title>
+    <style>
+{{ options.theme.css | safe }}
+
+@page {
+  size: {{ options.paper }};
+  margin: {{ options.margins.top }} {{ options.margins.right }} {{ options.margins.bottom }} {{ options.margins.left }};
+  {% if options.show_header %}@top-center { content: element(report-header); }{% else %}@top-center { content: none; }{% endif %}
+  {% if options.show_footer %}@bottom-center { content: element(report-footer); }{% else %}@bottom-center { content: none; }{% endif %}
+}
+
+@page:first {
+  @top-center { content: none; }
+  @bottom-center { content: none; }
+}
+
+    </style>
+  </head>
+  <body>
+    {% if options.watermark_text %}
+    <div class="watermark">{{ options.watermark_text }}</div>
+    {% endif %}
+    {% if options.show_header %}
+    <div class="header">{{ options.header_label or meta.title }}</div>
+    {% endif %}
+    {% if options.show_footer %}
+    <div class="footer"></div>
+    {% endif %}
+    <section class="cover">
+      <div class="title">{{ meta.title }}</div>
+      {% set pair_label = describe_pair(meta) %}
+      {% if pair_label %}
+      <div class="pair">{{ pair_label }}</div>
+      {% endif %}
+      <div class="meta">
+        {% if meta.authors %}
+        <div>Prepared by {{ meta.authors | join(', ') }}</div>
+        {% endif %}
+        <div>Generated {{ meta.generated_at.isoformat() }}</div>
+        {% if meta.subject %}
+        <div>{{ meta.subject }}</div>
+        {% endif %}
+      </div>
+      {% if meta.keywords %}
+      <ul class="meta-list">
+        {% for keyword in meta.keywords %}
+        <li>{{ keyword }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+    {% if options.include_toc and toc_entries %}
+    <section class="toc">
+      <h2>Table of Contents</h2>
+      <ol>
+        {% for entry in toc_entries %}
+        <li class="level-{{ entry.level }}">
+          <a href="#{{ entry.slug }}">{{ entry.title }}</a>
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+    {% endif %}
+    <main>
+      <article class="body">
+        {{ body_html | safe }}
+      </article>
+      {% if options.include_appendix and (appendix_tables or figures.images) %}
+      <section class="appendix" id="appendix">
+        <h2>Appendix</h2>
+        {% for table in appendix_tables %}
+        <div class="table-wrapper" id="{{ table.id }}">
+          <h3>{{ table.title }}</h3>
+          <table>
+            <thead>
+              <tr>
+                {% for header in table.headers %}
+                <th>{{ header }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in table.rows %}
+              <tr>
+                {% for cell in row %}
+                <td>{{ cell }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endfor %}
+        {% for fig in figures.images %}
+        <figure id="{{ fig.id }}">
+          {% if 'svg' in fig.media_type %}
+          <img src="{{ fig.data }}" alt="{{ fig.title }}" />
+          {% else %}
+          <img src="{{ fig.data }}" alt="{{ fig.title }}" />
+          {% endif %}
+          <figcaption>{{ fig.title }}{% if fig.caption %} — {{ fig.caption }}{% endif %}</figcaption>
+        </figure>
+        {% endfor %}
+      </section>
+      {% endif %}
+    </main>
+  </body>
+</html>

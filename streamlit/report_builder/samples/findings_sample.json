@@ -1,0 +1,30 @@
+{
+  "pair": {"nameA": "Ada", "nameB": "Charles"},
+  "rulepack": {"id": "synastry-basic", "title": "Synastry Essentials", "version": "1.0"},
+  "filters": {"profile": "balanced", "min_score": 0.3, "top_k": 50},
+  "totals": {"overall": 0.76, "by_tag": {"chemistry": 0.82, "growth": 0.64, "friction": 0.31}},
+  "findings": [
+    {
+      "id": "sun-moon-trine",
+      "title": "Sun Trine Moon",
+      "score": 0.91,
+      "tags": ["chemistry", "support"],
+      "snippet": "Natural warmth and support energise this pairing."
+    },
+    {
+      "id": "venus-mars-square",
+      "title": "Venus Square Mars",
+      "score": 0.62,
+      "tags": ["chemistry", "friction"],
+      "context": {"bodyA": "Venus", "bodyB": "Mars", "aspect": "square", "severity": 0.62},
+      "markdown_template": "{{ bodyA }} {{ aspect }} {{ bodyB }} stirs passion that needs a healthy outlet."
+    },
+    {
+      "id": "saturn-sun-conjunction",
+      "title": "Saturn Conjunct Sun",
+      "score": 0.58,
+      "tags": ["growth", "stability"],
+      "rendered_markdown": "Long-term planning comes into focus when Saturn aligns with the Sun."
+    }
+  ]
+}

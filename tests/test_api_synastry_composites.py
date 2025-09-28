@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -99,6 +101,7 @@ def test_composites_midpoint_and_davison():
     assert abs(dv["positions"]["Venus"] - 26.0) < 1e-6
 
 
+
 def test_synastry_etag_and_cache_headers():
     app = build_app()
     client = TestClient(app)
@@ -122,3 +125,4 @@ def test_synastry_etag_and_cache_headers():
     third = client.post("/synastry/compute", json=payload)
     assert third.status_code == 200
     assert third.headers.get("X-Cache-Status") in {"lru", "redis"}
+
