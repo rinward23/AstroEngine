@@ -57,6 +57,7 @@ from .core import TransitEvent  # ENSURE-LINE
 from .core import TransitScanConfig  # ENSURE-LINE
 from .core import (
     DOMAINS,
+    ELEMENT_DOMAIN_BRIDGE,
     ELEMENTS,
     AngleTracker,
     DomainResolution,
@@ -227,6 +228,7 @@ __all__ = [
     "compute_solar_arc_chart",
     "DomainResolver",
     "DomainResolution",
+    "ELEMENT_DOMAIN_BRIDGE",
     "ELEMENTS",
     "DOMAINS",
     "ZODIAC_ELEMENT_MAP",

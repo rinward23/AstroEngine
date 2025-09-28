@@ -96,6 +96,26 @@ def _channel_weights_for(body: str, mapping: Mapping[str, Any]) -> dict[str, flo
     }
 
 
+def _element_weights_for(event: object, mapping: Mapping[str, Any]) -> dict[str, float]:
+    channels = mapping.get("element_channels", {})
+    if not channels:
+        return {}
+    element_domains = _event_attr(event, "element_domains") or {}
+    if element_domains:
+        entries = element_domains.items()
+    else:
+        elements = _event_attr(event, "elements") or []
+        entries = ((str(element).upper(), 1.0) for element in elements)
+    result: dict[str, float] = {}
+    for element, weight in entries:
+        channel_map = channels.get(str(element).upper())
+        if not isinstance(channel_map, Mapping):
+            continue
+        for key, value in channel_map.items():
+            result[key] = result.get(key, 0.0) + float(weight) * float(value)
+    return result
+
+
 def _event_attr(event: object, key: str) -> Any:
     if isinstance(event, Mapping):
         return event.get(key)
@@ -141,11 +161,14 @@ def rollup_domain_scores(
             for key, value in _channel_weights_for(str(body), mapping).items():
                 base_weights[key] = base_weights.get(key, 0.0) + float(value)
 
-        if not base_weights:
-            continue
-
         valence = _aspect_valence(event, mapping)
         weight_multiplier = float(_event_attr(event, "score") or 1.0)
+
+        for key, value in _element_weights_for(event, mapping).items():
+            base_weights[key] = base_weights.get(key, 0.0) + float(value)
+
+        if not base_weights:
+            continue
 
         for channel_key, weight in base_weights.items():
             try:

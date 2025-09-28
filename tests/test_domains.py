@@ -1,3 +1,5 @@
+import pytest
+
 from astroengine.domains import ZODIAC_ELEMENT_MAP, DomainResolver
 
 
@@ -17,3 +19,5 @@ def test_domain_resolver_merges_and_normalizes():
     assert resolution.domains
     top = max(resolution.domains, key=resolution.domains.get)
     assert top == "MIND"
+    assert resolution.element_domains
+    assert pytest.approx(resolution.element_domains.get("AIR", 0.0), rel=1e-3) == 1.0
