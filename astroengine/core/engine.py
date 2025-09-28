@@ -35,6 +35,7 @@ def _attach_domain_fields(
     )
     event_obj.elements = resolution.elements
     event_obj.domains = resolution.domains
+    event_obj.element_domains = resolution.element_domains
     event_obj.domain_profile = profile_key
 
     profile = VCA_DOMAIN_PROFILES.get(profile_key)

@@ -39,7 +39,7 @@ def test_aspect_detector_finds_trine():
     assert any(k.startswith("aspect_trine") for k in kinds)
 
 
-def test_domain_rollup_has_three_domains():
+def test_domain_rollup_includes_elements():
     # Minimal glue: emulate engine.scan_contacts output with handcrafted events.
     events = [
         # Minimal event set to exercise rollup
@@ -54,6 +54,8 @@ def test_domain_rollup_has_three_domains():
                 "orb_abs": 0.5,
                 "applying_or_separating": "applying",
                 "score": 0.8,
+                "elements": ["FIRE"],
+                "element_domains": {"FIRE": 1.0},
             },
         )(),
         type(
@@ -67,11 +69,17 @@ def test_domain_rollup_has_three_domains():
                 "orb_abs": 0.5,
                 "applying_or_separating": "separating",
                 "score": 0.6,
+                "elements": ["EARTH"],
+                "element_domains": {"EARTH": 1.0},
             },
         )(),
     ]
     report = rollup_domain_scores(events)
-    assert set(report.keys()) >= {"mind", "body", "spirit"}
+    assert set(report.keys()) >= {"mind", "body", "spirit", "elements"}
+    fire = report["elements"].channels["fire"].sub["positive"].score
+    earth = report["elements"].channels["earth"].sub["negative"].score
+    assert fire > 0.0
+    assert earth > 0.0
 
 
 # >>> AUTO-GEN END: AE Aspects & Domains Tests v1.0

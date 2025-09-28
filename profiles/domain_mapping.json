@@ -23,6 +23,12 @@
     "neptune": {"spirit:growth": 0.6, "mind:relationships": 0.4},
     "pluto": {"spirit:transformation": 1.0}
   },
+  "element_channels": {
+    "FIRE": {"elements:fire": 1.0},
+    "EARTH": {"elements:earth": 1.0},
+    "AIR": {"elements:air": 1.0},
+    "WATER": {"elements:water": 1.0}
+  },
   "conjunction_valence_overrides": {
     "venus": "positive",
     "jupiter": "positive",

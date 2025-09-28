@@ -4,7 +4,10 @@ This module centralises the mapping logic for Mind/Body/Spirit
 weighting along with the classical element association for zodiac
 signs.  The implementation intentionally keeps the defaults easily
 inspectable so that downstream profile files can override them without
-risking silent regressions.
+risking silent regressions.  It also exposes a lightweight bridge that
+projects the Mind/Body/Spirit emphasis of a placement onto the four
+classical elements so that downstream scoring can surface elemental
+themes without duplicating plumbing code.
 """
 
 from __future__ import annotations
@@ -16,6 +19,18 @@ from typing import Any
 # Canonical element labels (uppercase; stable public API)
 ELEMENTS: tuple[str, str, str, str] = ("FIRE", "EARTH", "AIR", "WATER")
 DOMAINS: tuple[str, str, str] = ("MIND", "BODY", "SPIRIT")
+
+# Element → domain emphasis. Values do not need to sum to 1.0; they are
+# normalised when producing element domain weights.  The defaults lean
+# on common correspondences (Air ↔ Mind, Earth ↔ Body, Fire/Water ↔
+# Spirit) while allowing gentler contributions from the remaining
+# domains so elements and domains remain linked rather than siloed.
+ELEMENT_DOMAIN_BRIDGE: Mapping[str, Mapping[str, float]] = {
+    "FIRE": {"SPIRIT": 1.0, "BODY": 0.4, "MIND": 0.2},
+    "EARTH": {"BODY": 1.0, "MIND": 0.5, "SPIRIT": 0.2},
+    "AIR": {"MIND": 1.0, "SPIRIT": 0.4, "BODY": 0.2},
+    "WATER": {"SPIRIT": 0.9, "BODY": 0.3, "MIND": 0.3},
+}
 
 # Zodiac (0=Aries ... 11=Pisces) → Element
 ZODIAC_ELEMENT_MAP: tuple[str, ...] = (
@@ -32,6 +47,45 @@ ZODIAC_ELEMENT_MAP: tuple[str, ...] = (
     "AIR",  # 10 Aquarius
     "WATER",  # 11 Pisces
 )
+
+
+def _normalize_domains(domains: Mapping[str, float]) -> dict[str, float]:
+    """Return a probability distribution over ``domains``."""
+
+    positive = {key: max(float(value), 0.0) for key, value in domains.items()}
+    total = sum(positive.values())
+    if total <= 0.0:
+        return {}
+    return {key: value / total for key, value in positive.items()}
+
+
+def _compute_element_domains(
+    elements: list[str], domains: Mapping[str, float]
+) -> dict[str, float]:
+    """Project domain weights onto the elemental bridge mapping."""
+
+    if not elements:
+        return {}
+    normalised_domains = _normalize_domains(domains)
+    result: dict[str, float] = {}
+    for element in elements:
+        bridge = ELEMENT_DOMAIN_BRIDGE.get(element, {})
+        if not bridge:
+            continue
+        score = 0.0
+        for domain_key, bias in bridge.items():
+            score += normalised_domains.get(domain_key, 0.0) * float(bias)
+        if score <= 0.0 and not normalised_domains:
+            # When no domain emphasis is available fall back to a neutral weight.
+            score = 1.0
+        if score > 0.0:
+            result[element] = result.get(element, 0.0) + score
+    if not result:
+        # Fallback: treat present elements as evenly weighted if the
+        # bridge did not yield numbers (e.g., no domain info yet).
+        return {element: round(1.0 / len(elements), 6) for element in elements}
+    total = sum(result.values()) or 1.0
+    return {key: round(value / total, 6) for key, value in result.items()}
 
 # Planet → default Domain weights (VCA-ish sensible defaults; overridable by profiles)
 # Keys use engine’s canonical planet ids: sun, moon, mercury, venus, mars, jupiter,
@@ -73,6 +127,7 @@ DEFAULT_HOUSE_DOMAIN_WEIGHTS: Mapping[int, Mapping[str, float]] = {
 class DomainResolution:
     elements: list[str]  # e.g., ["FIRE"] (sign-derived)
     domains: dict[str, float]  # merged weights {"MIND": w, ...}
+    element_domains: dict[str, float]  # bridge weights {"FIRE": w, ...}
 
 
 class DomainResolver:
@@ -121,7 +176,12 @@ class DomainResolver:
         if merged:
             max_value = max(merged.values()) or 1.0
             merged = {key: round(value / max_value, 6) for key, value in merged.items()}
-        return DomainResolution(elements=elements, domains=merged)
+        bridge = _compute_element_domains(elements, merged)
+        return DomainResolution(
+            elements=elements,
+            domains=merged,
+            element_domains=bridge,
+        )
 
 
 def natal_domain_factor(
@@ -158,6 +218,7 @@ def natal_domain_factor(
 __all__ = [
     "ELEMENTS",
     "DOMAINS",
+    "ELEMENT_DOMAIN_BRIDGE",
     "ZODIAC_ELEMENT_MAP",
     "DEFAULT_PLANET_DOMAIN_WEIGHTS",
     "DEFAULT_HOUSE_DOMAIN_WEIGHTS",

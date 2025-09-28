@@ -34,6 +34,24 @@
         {"id": "positive", "name": "Renewal", "valence": "positive"},
         {"id": "negative", "name": "Upheaval", "valence": "negative"}
       ]}
+    ]},
+    {"id": "elements", "name": "Elements", "channels": [
+      {"id": "fire", "name": "Fire", "subchannels": [
+        {"id": "positive", "name": "Inspiration", "valence": "positive"},
+        {"id": "negative", "name": "Overheating", "valence": "negative"}
+      ]},
+      {"id": "earth", "name": "Earth", "subchannels": [
+        {"id": "positive", "name": "Grounding", "valence": "positive"},
+        {"id": "negative", "name": "Stagnation", "valence": "negative"}
+      ]},
+      {"id": "air", "name": "Air", "subchannels": [
+        {"id": "positive", "name": "Clarity", "valence": "positive"},
+        {"id": "negative", "name": "Dispersal", "valence": "negative"}
+      ]},
+      {"id": "water", "name": "Water", "subchannels": [
+        {"id": "positive", "name": "Attunement", "valence": "positive"},
+        {"id": "negative", "name": "Flood", "valence": "negative"}
+      ]}
     ]}
   ]
 }

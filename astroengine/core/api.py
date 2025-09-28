@@ -30,6 +30,8 @@ class TransitEvent:
         relative speed calculations.
     elements:
         Optional elemental tags derived from domain scoring.
+    element_domains:
+        Mapping of element name → weight reflecting the Mind/Body/Spirit bridge.
     domains:
         Mapping of domain name → weight (each weight in ``[0, 1]``).
     domain_profile:
@@ -48,6 +50,7 @@ class TransitEvent:
     orb: float | None = None
     motion: str | None = None
     elements: list[str] = field(default_factory=list)
+    element_domains: dict[str, float] = field(default_factory=dict)
     domains: dict[str, float] = field(default_factory=dict)
     domain_profile: str | None = None
     severity: float | None = None
