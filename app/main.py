@@ -12,6 +12,7 @@ from app.routers import (
     interpret_router,
     lots_router,
     policies_router,
+    reports_router,
     relationship_router,
     transits_router,
 )
@@ -29,6 +30,7 @@ app.include_router(policies_router)
 app.include_router(lots_router)
 app.include_router(relationship_router)
 app.include_router(interpret_router)
+app.include_router(reports_router)
 
 
 __all__ = ["app", "configure_position_provider", "clear_position_provider"]
