@@ -37,6 +37,11 @@ dependencies = [
   "fastapi>=0.117,<0.118",
   "pydantic>=2.9,<3",
   "httpx>=0.28,<0.29",
+  "orjson>=3.10",
+  "redis>=5.0",
+  "cachetools>=5.3",
+  "zstandard>=0.22",
+  "prometheus-client>=0.20",
 ]
 
 [project.optional-dependencies]
@@ -93,6 +98,7 @@ dev = [
   "hypothesis",
   "ruff",
   "mypy",
+  "pytest-benchmark>=4.0",
 ]
 
 all = [

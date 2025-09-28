@@ -3,6 +3,11 @@ from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from datetime import datetime, timedelta, timezone
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 from app.routers.rel import router as rel_router
 from app.routers import aspects as aspects_module
 
@@ -92,3 +97,28 @@ def test_composites_midpoint_and_davison():
     dv = r.json()
     assert abs(dv["positions"]["Sun"] - 5.0) < 1e-6
     assert abs(dv["positions"]["Venus"] - 26.0) < 1e-6
+
+
+def test_synastry_etag_and_cache_headers():
+    app = build_app()
+    client = TestClient(app)
+
+    payload = {
+        "pos_a": {"Sun": 12.0, "Mercury": 45.0},
+        "pos_b": {"Moon": 210.0, "Venus": 124.0},
+        "aspects": ["trine", "square", "conjunction"],
+    }
+
+    first = client.post("/synastry/compute", json=payload)
+    assert first.status_code == 200
+    etag = first.headers.get("etag")
+    assert etag
+    assert first.headers.get("X-Cache-Status") in {"compute", "fallback"}
+
+    second = client.post("/synastry/compute", json=payload, headers={"If-None-Match": etag})
+    assert second.status_code == 304
+    assert second.headers.get("X-Cache-Status") == "etag"
+
+    third = client.post("/synastry/compute", json=payload)
+    assert third.status_code == 200
+    assert third.headers.get("X-Cache-Status") in {"lru", "redis"}
