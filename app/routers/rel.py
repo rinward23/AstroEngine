@@ -1,8 +1,15 @@
 from __future__ import annotations
-from importlib import util
-from typing import Any, Dict
+import logging
+import os
+import time
+from typing import Any, Callable, Dict, Tuple
 
-from fastapi import APIRouter, HTTPException, Query
+
+import orjson
+from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
+from prometheus_client import Histogram
+
 
 from app.schemas.rel import (
     SynastryRequest,
@@ -24,24 +31,162 @@ from core.rel_plus import (
     geodesic_midpoint,
     midpoint_time,
 )
+from astroengine.cache.relationship import (
+    canonicalize_composite_payload,
+    canonicalize_davison_payload,
+    canonicalize_synastry_payload,
+    build_default_relationship_cache,
+)
+from astroengine.cache.relationship.layer import CacheEntry
 
-try:
-    repo_spec = util.find_spec("app.repo.orb_policies")
-    session_spec = util.find_spec("app.db.session")
-except Exception:  # pragma: no cover - optional dependency path
-    repo_spec = None
-    session_spec = None
 
-if repo_spec and session_spec:
+try:  # pragma: no cover - optional dependency path
+
     from app.repo.orb_policies import OrbPolicyRepo  # type: ignore
     from app.db.session import session_scope  # type: ignore
-else:  # pragma: no cover - optional dependency path
+except Exception:  # pragma: no cover - fall back to inline policies only
     OrbPolicyRepo = None  # type: ignore
     session_scope = None  # type: ignore
 
 from app.routers import aspects as aspects_module
 
 router = APIRouter(prefix="", tags=["Plus"])
+_LOGGER = logging.getLogger(__name__)
+
+_SYN_CACHE = build_default_relationship_cache(
+    "syn",
+    int(os.getenv("CACHE_TTL_SYN", str(24 * 60 * 60))),
+)
+_COMP_CACHE = build_default_relationship_cache(
+    "comp",
+    int(os.getenv("CACHE_TTL_COMP", str(7 * 24 * 60 * 60))),
+)
+_DAV_CACHE = build_default_relationship_cache(
+    "dav",
+    int(os.getenv("CACHE_TTL_DAV", str(7 * 24 * 60 * 60))),
+)
+
+_LATENCY = {
+    "synastry": Histogram(
+        "synastry_latency_ms",
+        "Latency for synastry computations (ms)",
+        buckets=(5, 10, 20, 40, 60, 80, 100, 150, 200, 300, 500),
+    ),
+    "composite": Histogram(
+        "composite_latency_ms",
+        "Latency for composite midpoint computations (ms)",
+        buckets=(5, 10, 20, 40, 80, 160, 320, 640),
+    ),
+    "davison": Histogram(
+        "davison_latency_ms",
+        "Latency for Davison computations (ms)",
+        buckets=(10, 20, 40, 80, 160, 320, 640, 1280),
+    ),
+}
+
+_PAYLOAD_BYTES = Histogram(
+    "relationship_payload_bytes",
+    "Serialized payload size for relationship endpoints",
+    buckets=(128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768),
+    labelnames=("endpoint",),
+)
+
+
+def _json_payload_size(body: Any) -> int:
+    return len(orjson.dumps(body))
+
+
+def _etag_matches(request: Request, etag: str) -> bool:
+    if_none_match = request.headers.get("if-none-match")
+    if not if_none_match:
+        return False
+    tags = {tag.strip('"') for tag in if_none_match.split(",") if tag.strip()}
+    return etag in tags
+
+
+def _respond_from_entry(
+    entry: CacheEntry,
+    *,
+    etag: str,
+    response: Response,
+    endpoint: str,
+    cache_status: str,
+) -> JSONResponse:
+    headers = dict(entry.headers)
+    headers.setdefault("Content-Type", "application/json")
+    headers["ETag"] = etag
+    headers["X-Cache-Status"] = cache_status
+    for key, value in headers.items():
+        response.headers[key] = value
+    payload_bytes = _json_payload_size(entry.body)
+    _PAYLOAD_BYTES.labels(endpoint=endpoint).observe(payload_bytes)
+    return JSONResponse(content=entry.body, status_code=entry.status_code, headers=response.headers)
+
+
+def _log_cache(endpoint: str, status: str, key: str) -> None:
+    _LOGGER.info(
+        "relationship_request",
+        extra={
+            "cache_status": status,
+            "cache_key_prefix": key.split(":")[0],
+            "endpoint": endpoint,
+        },
+    )
+
+
+def _serve_cached_response(
+    *,
+    cache,
+    key: str,
+    request: Request,
+    response: Response,
+    endpoint: str,
+    latency_metric: Histogram,
+    compute_fn: Callable[[], Tuple[Any, int, Dict[str, str]]],
+):
+    start = time.perf_counter()
+    outcome = cache.get(key)
+    response.headers["ETag"] = outcome.etag
+    if outcome.entry and _etag_matches(request, outcome.etag):
+        latency_metric.observe((time.perf_counter() - start) * 1000.0)
+        response.status_code = 304
+        response.headers["X-Cache-Status"] = "etag"
+        _log_cache(endpoint, "etag", key)
+        return Response(status_code=304, headers=dict(response.headers))
+    if outcome.entry:
+        latency_metric.observe((time.perf_counter() - start) * 1000.0)
+        _log_cache(endpoint, outcome.source, key)
+        return _respond_from_entry(
+            outcome.entry,
+            etag=outcome.etag,
+            response=response,
+            endpoint=endpoint,
+            cache_status=outcome.source,
+        )
+
+    def _compute_entry() -> CacheEntry:
+        body, status_code, headers = compute_fn()
+        hdrs = dict(headers or {})
+        hdrs.setdefault("Content-Type", "application/json")
+        return CacheEntry(
+            body=body,
+            status_code=status_code,
+            headers=hdrs,
+            created_at=time.time(),
+        )
+
+    outcome = cache.with_singleflight(key, _compute_entry)
+    latency_metric.observe((time.perf_counter() - start) * 1000.0)
+    _log_cache(endpoint, outcome.source, key)
+    if not outcome.entry:
+        raise RuntimeError("Cache compute returned no entry")
+    return _respond_from_entry(
+        outcome.entry,
+        etag=outcome.etag,
+        response=response,
+        endpoint=endpoint,
+        cache_status=outcome.source,
+    )
 
 DEFAULT_POLICY: Dict[str, Any] = {
     "per_object": {},
@@ -94,12 +239,36 @@ def _resolve_orb_policy(req: SynastryRequest) -> Dict[str, Any]:
         "Returns best aspect per A×B pair with orb & limits, plus a pair grid of counts."
     ),
 )
-def synastry_compute(req: SynastryRequest):
+def synastry_compute(req: SynastryRequest, request: Request, response: Response):
     policy = _resolve_orb_policy(req)
-    hits_list = synastry_interaspects(req.pos_a, req.pos_b, req.aspects, policy)
-    hits = [SynastryHit(**h) for h in hits_list]
-    grid = SynastryGrid(counts=synastry_grid(hits_list))
-    return SynastryResponse(hits=hits, grid=grid)
+    canonical = canonicalize_synastry_payload(
+        req.pos_a,
+        req.pos_b,
+        req.aspects,
+        policy,
+    )
+
+    def _compute() -> Tuple[Any, int, Dict[str, str]]:
+        hits_list = synastry_interaspects(
+            req.pos_a,
+            req.pos_b,
+            req.aspects,
+            policy,
+        )
+        hits = [SynastryHit(**h) for h in hits_list]
+        grid = SynastryGrid(counts=synastry_grid(hits_list))
+        payload = SynastryResponse(hits=hits, grid=grid).model_dump(mode="json")
+        return payload, 200, {}
+
+    return _serve_cached_response(
+        cache=_SYN_CACHE,
+        key=canonical.digest,
+        request=request,
+        response=response,
+        endpoint="synastry",
+        latency_metric=_LATENCY["synastry"],
+        compute_fn=_compute,
+    )
 
 
 @router.post(
@@ -108,20 +277,27 @@ def synastry_compute(req: SynastryRequest):
     summary="Midpoint Composite positions",
     description="Circular midpoints of longitudes for the requested objects.",
 )
-def composites_midpoint(
-    req: CompositeMidpointRequest,
-    houses: bool = Query(False, description="Include composite houses in the response"),
-    hsys: str = Query("P", description="Requested house system code"),
-):
-    pos = composite_midpoint_positions(req.pos_a, req.pos_b, req.objects)
-    houses_payload = None
-    if houses:
-        if req.event_a is None or req.event_b is None:
-            raise HTTPException(status_code=400, detail="event_a and event_b are required when houses=true")
-        event_a = BirthEvent(when=req.event_a.when, lat=req.event_a.lat, lon=req.event_a.lon)
-        event_b = BirthEvent(when=req.event_b.when, lat=req.event_b.lat, lon=req.event_b.lon)
-        houses_payload = composite_houses(event_a, event_b, hsys).to_payload()
-    return CompositeResponse(positions=pos, meta={"method": "midpoint"}, houses=houses_payload)
+
+def composites_midpoint(req: CompositeMidpointRequest, request: Request, response: Response):
+    canonical = canonicalize_composite_payload(req.pos_a, req.pos_b, req.objects)
+
+    def _compute() -> Tuple[Any, int, Dict[str, str]]:
+        pos = composite_midpoint_positions(req.pos_a, req.pos_b, req.objects)
+        payload = CompositeResponse(positions=pos, meta={"method": "midpoint"}).model_dump(
+            mode="json"
+        )
+        return payload, 200, {}
+
+    return _serve_cached_response(
+        cache=_COMP_CACHE,
+        key=canonical.digest,
+        request=request,
+        response=response,
+        endpoint="composite",
+        latency_metric=_LATENCY["composite"],
+        compute_fn=_compute,
+    )
+
 
 
 @router.post(
@@ -132,34 +308,51 @@ def composites_midpoint(
         "Computes body longitudes at the UTC time midpoint between two datetimes using the configured ephemeris provider."
     ),
 )
-def composites_davison(
-    req: CompositeDavisonRequest,
-    houses: bool = Query(False, description="Include Davison houses in the response"),
-    hsys: str = Query("P", description="Requested house system code"),
-):
-    provider = aspects_module._get_provider()
-    pos = davison_positions(
+
+def composites_davison(req: CompositeDavisonRequest, request: Request, response: Response):
+    canonical = canonicalize_davison_payload(
+
         req.objects,
         req.dt_a,
         req.dt_b,
-        provider,
         lat_a=req.lat_a,
         lon_a=req.lon_a,
         lat_b=req.lat_b,
         lon_b=req.lon_b,
     )
-    midpoint = midpoint_time(req.dt_a, req.dt_b)
-    mid_lat, mid_lon = geodesic_midpoint(req.lat_a, req.lon_a, req.lat_b, req.lon_b)
-    houses_payload = None
-    if houses:
-        davison_result = DavisonResult(mid_when=midpoint, mid_lat=mid_lat, mid_lon=mid_lon, positions={})
-        houses_payload = davison_houses(davison_result, hsys).to_payload()
-    return CompositeResponse(
-        positions=pos,
-        meta={
-            "method": "davison",
-            "midpoint_time": midpoint.isoformat(),
-            "midpoint_location": {"lat": mid_lat, "lon": mid_lon},
-        },
-        houses=houses_payload,
+
+
+    def _compute() -> Tuple[Any, int, Dict[str, str]]:
+        provider = aspects_module._get_provider()
+        pos = davison_positions(
+            req.objects,
+            req.dt_a,
+            req.dt_b,
+            provider,
+            lat_a=req.lat_a,
+            lon_a=req.lon_a,
+            lat_b=req.lat_b,
+            lon_b=req.lon_b,
+        )
+        midpoint = midpoint_time(req.dt_a, req.dt_b)
+        mid_lat, mid_lon = geodesic_midpoint(req.lat_a, req.lon_a, req.lat_b, req.lon_b)
+        payload = CompositeResponse(
+            positions=pos,
+            meta={
+                "method": "davison",
+                "midpoint_time": midpoint.isoformat(),
+                "midpoint_location": {"lat": mid_lat, "lon": mid_lon},
+            },
+        ).model_dump(mode="json")
+        return payload, 200, {}
+
+    return _serve_cached_response(
+        cache=_DAV_CACHE,
+        key=canonical.digest,
+        request=request,
+        response=response,
+        endpoint="davison",
+        latency_metric=_LATENCY["davison"],
+        compute_fn=_compute,
+
     )
