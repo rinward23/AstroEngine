@@ -12,11 +12,13 @@ def create_app() -> FastAPI:
     from .routers import plus as plus_router
     from .routers import scan as scan_router
     from .routers import synastry as synastry_router
+    from .routers import traditional as traditional_router
 
     app = FastAPI(title="AstroEngine API")
     app.include_router(plus_router.router)
     app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])
     app.include_router(synastry_router.router, prefix="/v1/synastry", tags=["synastry"])
+    app.include_router(traditional_router.router)
     return app
 
 
