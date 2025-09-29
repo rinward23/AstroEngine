@@ -63,6 +63,10 @@ class NatalChart:
     positions: Mapping[str, BodyPosition]
     houses: HousePositions
     aspects: Sequence[AspectHit]
+    zodiac: str = "tropical"
+    ayanamsa: str | None = None
+    ayanamsa_degrees: float | None = None
+    metadata: Mapping[str, object] | None = None
 
 
 def _circular_delta(a: float, b: float) -> float:
@@ -127,6 +131,24 @@ def compute_natal_chart(
     houses = adapter.houses(jd_ut, location.latitude, location.longitude)
     aspects = _compute_aspects(positions, list(angles), orb_calculator, orb_profile)
 
+    zodiac = chart_config.zodiac
+    ayanamsa_name = chart_config.ayanamsha if zodiac == "sidereal" else None
+    ayanamsa_degrees = swe.get_ayanamsa_ut(jd_ut) if ayanamsa_name else None
+    provenance: dict[str, object] = {"zodiac": zodiac, "house_system": chart_config.house_system}
+    if ayanamsa_name:
+        provenance.update(
+            {
+                "ayanamsa": ayanamsa_name,
+                "ayanamsa_degrees": ayanamsa_degrees,
+                "ayanamsa_source": "swisseph",
+            }
+        )
+        provenance["nodes_variant"] = chart_config.nodes_variant
+        provenance["lilith_variant"] = chart_config.lilith_variant
+    else:
+        provenance["nodes_variant"] = chart_config.nodes_variant
+        provenance["lilith_variant"] = chart_config.lilith_variant
+
     return NatalChart(
         moment=moment,
         location=location,
@@ -134,4 +156,8 @@ def compute_natal_chart(
         positions=positions,
         houses=houses,
         aspects=tuple(aspects),
+        zodiac=zodiac,
+        ayanamsa=ayanamsa_name,
+        ayanamsa_degrees=ayanamsa_degrees,
+        metadata=provenance,
     )
