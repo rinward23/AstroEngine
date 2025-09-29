@@ -1,0 +1,6 @@
+apiVersion: v2
+name: astroengine-ingress
+version: 0.1.0
+description: NGINX ingress controller with WAF and rate limiting for AstroEngine.
+type: application
+appVersion: "1.0.0"

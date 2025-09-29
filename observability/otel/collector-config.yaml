@@ -1,0 +1,38 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+processors:
+  batch: {}
+  memory_limiter:
+    limit_mib: 1024
+    spike_limit_mib: 256
+  attributes:
+    actions:
+      - key: deployment.environment
+        value: ${ENVIRONMENT}
+        action: upsert
+exporters:
+  logging:
+    loglevel: warn
+  prometheus:
+    endpoint: 0.0.0.0:9464
+  otlphttp:
+    endpoint: ${REMOTE_OTLP_ENDPOINT}
+    headers:
+      x-astroengine-tenant: ${TENANT_ID}
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, attributes]
+      exporters: [otlphttp]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, attributes]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, attributes]
+      exporters: [logging]
