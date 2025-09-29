@@ -10,6 +10,9 @@ SUPPORTED_AYANAMSHAS: Final[set[str]] = {
     "krishnamurti",
     "raman",
     "deluce",
+    "yukteshwar",
+    "galactic_center_0_sag",
+    "sassanian",
 }
 DEFAULT_SIDEREAL_AYANAMSHA: Final[str] = "lahiri"
 

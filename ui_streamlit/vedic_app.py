@@ -1,0 +1,224 @@
+"""Streamlit viewer for AstroEngine's Vedic toolkit."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from typing import Any
+
+import json
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+
+from astroengine.detectors.ingresses import ZODIAC_SIGNS, sign_index
+from astroengine.engine.vedic import (
+    VimshottariOptions,
+    build_context,
+    build_vimshottari,
+    build_yogini,
+    compute_varga,
+    nakshatra_info,
+    nakshatra_of,
+    position_for,
+)
+from astroengine.engine.vedic.dasha_yogini import YoginiOptions
+
+
+def _serialize_period(period) -> dict[str, Any]:
+    return {
+        "system": period.system,
+        "level": period.level,
+        "ruler": period.ruler,
+        "start": _iso(period.start),
+        "end": _iso(period.end),
+        "metadata": period.metadata,
+    }
+
+st.set_page_config(page_title="AstroEngine Vedic Viewer", layout="wide")
+
+AYANAMSA_CHOICES = [
+    "lahiri",
+    "krishnamurti",
+    "raman",
+    "fagan_bradley",
+    "yukteshwar",
+    "galactic_center_0_sag",
+    "sassanian",
+    "deluce",
+]
+
+
+def _to_utc(value: datetime) -> datetime:
+    if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def _iso(value: datetime) -> str:
+    return _to_utc(value).isoformat().replace("+00:00", "Z")
+
+
+def _nakshatra_payload(name: str, longitude: float) -> dict[str, Any]:
+    idx = nakshatra_of(longitude)
+    info = nakshatra_info(idx)
+    pos = position_for(longitude)
+    sign_idx = sign_index(longitude)
+    return {
+        "Body": name,
+        "Longitude": round(longitude % 360.0, 4),
+        "Sign": ZODIAC_SIGNS[sign_idx],
+        "Nakshatra": info.name,
+        "Pada": pos.pada,
+        "Lord": info.lord,
+        "Deg in Pada": round(pos.degree_in_pada, 4),
+    }
+
+
+def _build_wheel(data: list[dict[str, Any]], title: str) -> go.Figure:
+    fig = go.Figure()
+    for idx in range(12):
+        start = idx * 30
+        end = start + 30
+        fig.add_trace(
+            go.Scatterpolar(
+                r=[1, 1],
+                theta=[360 - start, 360 - end],
+                mode="lines",
+                line=dict(color="#888", width=0.6),
+                showlegend=False,
+            )
+        )
+    for row in data:
+        theta = (360.0 - row["Longitude"]) % 360.0
+        fig.add_trace(
+            go.Scatterpolar(
+                r=[1.02],
+                theta=[theta],
+                mode="markers+text",
+                marker=dict(size=10),
+                text=[row["Body"]],
+                textposition="top center",
+                name=row["Body"],
+            )
+        )
+    fig.update_layout(
+        title=title,
+        polar=dict(
+            radialaxis=dict(visible=False),
+            angularaxis=dict(direction="clockwise", rotation=90, tickmode="array", tickvals=[i * 30 for i in range(12)], ticktext=ZODIAC_SIGNS),
+        ),
+        showlegend=False,
+        margin=dict(l=40, r=40, t=60, b=20),
+    )
+    return fig
+
+
+def _dasha_dataframe(periods) -> pd.DataFrame:
+    rows = []
+    for period in periods:
+        rows.append(
+            {
+                "Level": period.level,
+                "Ruler": period.ruler,
+                "Start": _iso(period.start),
+                "End": _iso(period.end),
+                "Span (days)": round((period.end - period.start).total_seconds() / 86400.0, 3),
+                "Metadata": period.metadata,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+st.title("Vedic Astrology Dashboard")
+
+with st.sidebar:
+    st.header("Inputs")
+    date_value = st.date_input("Date", datetime(1990, 5, 4).date())
+    time_value = st.time_input("Time (UTC)", datetime(1990, 5, 4, 12, 30).time())
+    lat = st.number_input("Latitude", value=40.7128, format="%.4f")
+    lon = st.number_input("Longitude", value=-74.0060, format="%.4f")
+    ayanamsa = st.selectbox("Ayanamsa", AYANAMSA_CHOICES, index=0)
+    house_system = st.selectbox("House system", ["whole_sign", "placidus", "koch"], index=0)
+    level_choice = st.slider("Vimśottarī levels", min_value=1, max_value=3, value=3)
+
+moment = datetime.combine(date_value, time_value).replace(tzinfo=UTC)
+context = build_context(moment, lat, lon, ayanamsa=ayanamsa, house_system=house_system)
+chart = context.chart
+
+positions = [_nakshatra_payload(name, pos.longitude) for name, pos in chart.positions.items()]
+if chart.houses:
+    positions.append(_nakshatra_payload("Ascendant", chart.houses.ascendant))
+
+vim_periods = build_vimshottari(context, levels=level_choice, options=VimshottariOptions())
+yogini_periods = build_yogini(context, levels=2, options=YoginiOptions())
+navamsa = compute_varga(chart.positions, "D9", ascendant=chart.houses.ascendant if chart.houses else None)
+dasamsa = compute_varga(chart.positions, "D10", ascendant=chart.houses.ascendant if chart.houses else None)
+
+chart_tab, nak_tab, dasha_tab, varga_tab, export_tab = st.tabs(
+    ["Chart", "Nakshatras", "Dashas", "Vargas", "Export"]
+)
+
+with chart_tab:
+    st.subheader("Sidereal Chart Overview")
+    meta_cols = st.columns(4)
+    meta_cols[0].metric("Ayanamsa", chart.ayanamsa or "-")
+    meta_cols[1].metric("Ayanamsa °", f"{chart.ayanamsa_degrees:.6f}" if chart.ayanamsa_degrees is not None else "-")
+    meta_cols[2].metric("House System", chart.metadata.get("house_system") if chart.metadata else house_system)
+    meta_cols[3].metric("Moment", _iso(chart.moment))
+    st.plotly_chart(_build_wheel(positions, "Sidereal Wheel"), use_container_width=True)
+    st.dataframe(pd.DataFrame(positions), use_container_width=True)
+
+with nak_tab:
+    st.subheader("Nakshatra Highlights")
+    moon_row = next((row for row in positions if row["Body"] == "Moon"), None)
+    asc_row = next((row for row in positions if row["Body"] == "Ascendant"), None)
+    cols = st.columns(2)
+    if moon_row:
+        cols[0].write("**Moon**")
+        cols[0].json(moon_row)
+    if asc_row:
+        cols[1].write("**Ascendant**")
+        cols[1].json(asc_row)
+    st.write("All placements")
+    st.dataframe(pd.DataFrame(positions), use_container_width=True)
+
+with dasha_tab:
+    st.subheader("Vimśottarī")
+    st.dataframe(_dasha_dataframe(vim_periods), use_container_width=True)
+    st.subheader("Yoginī")
+    st.dataframe(_dasha_dataframe(yogini_periods), use_container_width=True)
+
+with varga_tab:
+    st.subheader("Navāṁśa (D9)")
+    st.dataframe(pd.DataFrame.from_dict(navamsa, orient="index"), use_container_width=True)
+    st.plotly_chart(
+        _build_wheel([
+            {"Body": name, "Longitude": payload["longitude"]}
+            for name, payload in navamsa.items()
+        ], "Navāṁśa Wheel"),
+        use_container_width=True,
+    )
+    st.subheader("Daśāṁśa (D10)")
+    st.dataframe(pd.DataFrame.from_dict(dasamsa, orient="index"), use_container_width=True)
+
+with export_tab:
+    st.subheader("Export JSON")
+    payload = {
+        "metadata": {
+            "moment": _iso(chart.moment),
+            "ayanamsa": chart.ayanamsa,
+            "ayanamsa_degrees": chart.ayanamsa_degrees,
+            "location": {"lat": lat, "lon": lon},
+        },
+        "positions": positions,
+        "vimshottari": [_serialize_period(period) for period in vim_periods],
+        "yogini": [_serialize_period(period) for period in yogini_periods],
+        "navamsa": navamsa,
+        "dasamsa": dasamsa,
+    }
+    st.download_button(
+        "Download JSON",
+        data=json.dumps(payload, indent=2, default=str),
+        file_name="vedic_chart.json",
+        mime="application/json",
+    )
