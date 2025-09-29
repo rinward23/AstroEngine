@@ -1,0 +1,36 @@
+{
+  "title": "Return Finder Performance",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Return Finder Latency",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(astroengine_return_finder_seconds_bucket[5m])) by (le))",
+          "legendFormat": "P95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Error Rate",
+      "targets": [
+        {
+          "expr": "rate(astroengine_return_finder_errors_total[5m])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        }
+      }
+    }
+  ]
+}

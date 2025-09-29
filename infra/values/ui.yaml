@@ -1,0 +1,4 @@
+replicasByEnv:
+  dev: 1
+  staging: 1
+  prod: 2

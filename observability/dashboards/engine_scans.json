@@ -1,0 +1,37 @@
+{
+  "title": "Engine Scan Throughput",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Scans per Second",
+      "targets": [
+        {
+          "expr": "rate(astroengine_engine_scans_total[5m])",
+          "legendFormat": "{{tenant}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cache Hit Rate",
+      "targets": [
+        {
+          "expr": "avg(astroengine_cache_hit_ratio)",
+          "legendFormat": "hit rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        }
+      }
+    }
+  ]
+}
