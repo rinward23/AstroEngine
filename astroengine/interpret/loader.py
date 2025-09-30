@@ -1,3 +1,4 @@
+
 """Rulepack loading and validation helpers."""
 
 from __future__ import annotations
@@ -12,12 +13,14 @@ import yaml
 from .models import RulepackLintResult
 
 
+
 class RulepackValidationError(Exception):
-    """Raised when a rulepack fails schema or semantic validation."""
+    """Raised when rulepack parsing or validation fails."""
 
     def __init__(self, message: str, *, errors: list[dict[str, Any]] | None = None):
         super().__init__(message)
         self.errors = errors or []
+
 
 
 @dataclass(slots=True)
@@ -75,8 +78,10 @@ class Rulepack:
     content: dict[str, Any]
     source: str | None = None
 
+
     def profile_weights(self, profile_name: str) -> dict[str, float]:
         """Return tag weights for *profile_name* with sensible fallbacks."""
+
 
         profile = self.profiles.get(profile_name) or self.profiles.get("balanced")
         if profile is None:
@@ -363,15 +368,28 @@ def load_rulepack(raw: str | bytes | Path, *, source: str | None = None) -> Rule
 def lint_rulepack(raw: str | bytes | Path, *, source: str | None = None) -> RulepackLintResult:
     """Return lint diagnostics for a rulepack payload without persisting it."""
 
-    try:
-        loaded = load_rulepack(raw, source=source)
-    except RulepackValidationError as exc:
-        return RulepackLintResult(ok=False, errors=exc.errors, warnings=[], meta={"source": source})
 
+def iter_rulepack_rules(rulepack: LoadedRulepack | Rulepack) -> tuple[Rule, ...]:
+    if isinstance(rulepack, LoadedRulepack):
+        return rulepack.runtime.rules
+    return rulepack.rules
+
+
+
+def lint_rulepack(raw: str | bytes | Path | dict[str, Any], *, source: str | None = None) -> RulepackLintResult:
+    try:
+        if isinstance(raw, Mapping):
+            load_rulepack_from_data(raw, source=source)
+        else:
+            load_rulepack(raw, source=source)
+    except RulepackValidationError as exc:
+
+        return RulepackLintResult(ok=False, errors=exc.errors or [{"message": str(exc)}], warnings=[], meta={"source": source})
     return RulepackLintResult(
         ok=True,
         errors=[],
         warnings=[],
+
         meta={"rulepack": loaded.rulepack, "version": loaded.version, "source": loaded.source},
     )
 
@@ -388,6 +406,7 @@ __all__ = [
     "RuleCondition",
     "RuleOutcome",
     "Rulepack",
+
     "RulepackValidationError",
     "iter_rulepack_rules",
     "lint_rulepack",

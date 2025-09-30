@@ -5,10 +5,11 @@ import time
 from typing import Any, Callable, Dict, Tuple
 
 
-import orjson
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from prometheus_client import Histogram
+
+from astroengine.utils import json as json_utils
 
 
 from app.schemas.rel import (
@@ -93,7 +94,7 @@ _PAYLOAD_BYTES = Histogram(
 
 
 def _json_payload_size(body: Any) -> int:
-    return len(orjson.dumps(body))
+    return len(json_utils.dumps(body))
 
 
 def _etag_matches(request: Request, etag: str) -> bool:

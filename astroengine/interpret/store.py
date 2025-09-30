@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import json
 import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -142,11 +143,13 @@ class RulepackStore:
                 loaded = load_rulepack(raw, source=str(path))
             except RulepackValidationError:
                 continue
+
             name, title, description = _names_for(loaded)
             version = int(loaded.version or 1)
             created_at = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
             entry = _RulepackEntry(
                 id=loaded.rulepack,
+
                 name=name,
                 title=title,
                 description=description,
@@ -246,7 +249,7 @@ class RulepackStore:
             return cached.payload
         raw = info.path.read_text(encoding="utf-8")
         loaded = load_rulepack(raw, source=str(info.path))
-        content = loaded.content
+        content = loaded.raw
         meta = RulepackMeta(
             id=entry.id,
             name=entry.name,
@@ -261,8 +264,10 @@ class RulepackStore:
         rules_payload = [_rule_payload(rule) for rule in loaded.rules]
         payload = RulepackVersionPayload(
             meta=meta,
+
             profiles=profiles_payload,
             rules=rules_payload,
+
             version=version,
             etag=_compute_etag(content),
             content=content,
@@ -282,32 +287,38 @@ class RulepackStore:
 
     def save_rulepack(self, raw: str | bytes, *, source: str | None = None) -> RulepackMeta:
         loaded = load_rulepack(raw, source=source)
+
         if loaded.rulepack in self._builtin_entries:
             raise RulepackValidationError("cannot overwrite built-in rulepack")
         rp_dir = self.base_dir / loaded.rulepack
+
         rp_dir.mkdir(parents=True, exist_ok=True)
         meta_path = rp_dir / "meta.json"
         if meta_path.exists():
             data = json.loads(meta_path.read_text(encoding="utf-8"))
         else:
             data = {
+
                 "id": loaded.rulepack,
                 "name": _names_for(loaded)[0],
                 "title": _names_for(loaded)[1],
                 "description": _names_for(loaded)[2],
+
                 "mutable": True,
                 "versions": [],
             }
         next_version = max((int(v.get("version", 0)) for v in data["versions"]), default=0) + 1
         file_name = f"v{next_version}.yaml"
         target_path = rp_dir / file_name
-        target_path.write_text(_dump_rulepack(loaded.content), encoding="utf-8")
+        target_path.write_text(_dump_rulepack(loaded.raw), encoding="utf-8")
         created_at = _iso_now()
+
         name, title, description = _names_for(loaded)
         data["id"] = loaded.rulepack
         data["name"] = name
         data["title"] = title
         data["description"] = description
+
         data.setdefault("versions", [])
         data["versions"].append(
             {
@@ -317,6 +328,7 @@ class RulepackStore:
             }
         )
         meta_path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
+
         self._cache.pop((loaded.rulepack, next_version), None)
         available_versions = sorted(int(v["version"]) for v in data["versions"])
         return RulepackMeta(
@@ -325,6 +337,7 @@ class RulepackStore:
             version=next_version,
             title=title,
             description=description,
+
             created_at=created_at,
             mutable=True,
             available_versions=available_versions,

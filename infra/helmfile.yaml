@@ -1,0 +1,54 @@
+repositories:
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+
+environments:
+  dev:
+    values:
+      - env/dev.yaml
+  staging:
+    values:
+      - env/staging.yaml
+  prod:
+    values:
+      - env/prod.yaml
+
+releases:
+  - name: api
+    namespace: app
+    chart: ./helm/api
+    values:
+      - values/common.yaml
+      - values/api.yaml
+  - name: workers
+    namespace: app
+    chart: ./helm/workers
+    values:
+      - values/common.yaml
+      - values/workers.yaml
+  - name: ui
+    namespace: app
+    chart: ./helm/ui
+    values:
+      - values/common.yaml
+      - values/ui.yaml
+  - name: ingress
+    namespace: app
+    chart: ./helm/ingress
+    values:
+      - values/ingress.yaml
+  - name: otel
+    namespace: observability
+    chart: ./helm/otel-collector
+    values:
+      - values/otel.yaml
+  - name: prometheus
+    namespace: observability
+    chart: ./helm/prometheus
+    values:
+      - values/prometheus.yaml
+  - name: grafana
+    namespace: observability
+    chart: ./helm/grafana
+    values:
+      - values/grafana.yaml

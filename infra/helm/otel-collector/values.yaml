@@ -1,0 +1,27 @@
+image:
+  repository: otel/opentelemetry-collector
+  tag: 0.79.0
+  pullPolicy: IfNotPresent
+
+configMap:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+        http:
+  processors:
+    batch: {}
+    k8sattributes: {}
+  exporters:
+    otlphttp:
+      endpoint: https://observability.astroengine.com/v1/traces
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [batch, k8sattributes]
+        exporters: [otlphttp]
+      metrics:
+        receivers: [otlp]
+        processors: [batch, k8sattributes]
+        exporters: [otlphttp]
