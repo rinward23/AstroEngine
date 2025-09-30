@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, Optional
 from cachetools import TTLCache
 from prometheus_client import Counter
 
-import orjson
+from astroengine.utils import json as json_utils
 
 try:  # pragma: no cover - optional compression
     import zstandard as zstd
@@ -94,7 +94,7 @@ class RelationshipResponseCache:
         if not self._redis:
             return
         try:
-            packed = orjson.dumps(
+            packed = json_utils.dumps(
                 {
                     "body": entry.body,
                     "status": entry.status_code,
@@ -168,8 +168,8 @@ class RelationshipResponseCache:
         if marker == b"Z" and self._decompressor:
             payload = self._decompressor.decompress(payload)
         try:
-            data = orjson.loads(payload)
-        except orjson.JSONDecodeError:
+            data = json_utils.loads(payload)
+        except json_utils.JSONDecodeError:
             _LOGGER.error("Corrupted cache payload for key %s", key)
             return None
         return CacheEntry(

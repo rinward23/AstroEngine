@@ -194,6 +194,9 @@ class SwissEphemerisAdapter:
         "krishnamurti": swe.SIDM_KRISHNAMURTI,
         "raman": swe.SIDM_RAMAN,
         "deluce": swe.SIDM_DELUCE,
+        "yukteshwar": swe.SIDM_YUKTESHWAR,
+        "galactic_center_0_sag": swe.SIDM_GALCENT_0SAG,
+        "sassanian": swe.SIDM_SASSANIAN,
     }
 
 

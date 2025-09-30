@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterable, Mapping, MutableMapping
 
 import hashlib
 
-import orjson
+from astroengine.utils import json as json_utils
 
 _POS_PRECISION = 8
 _FLOAT_PRECISION = 8
@@ -133,12 +133,12 @@ def canonicalize_davison_payload(
 
 
 def _freeze_payload(payload: MutableMapping[str, Any], *, namespace: str) -> CanonicalPayload:
-    serialized = orjson.dumps(payload, option=orjson.OPT_SORT_KEYS)
+    serialized = json_utils.dumps(payload, option=json_utils.OPT_SORT_KEYS)
     digest = hashlib.sha256(serialized).hexdigest()[:32]
     return CanonicalPayload(payload=dict(payload), serialized=serialized, digest=f"{namespace}:v1:{digest}")
 
 
 def make_cache_key(namespace: str, payload: Mapping[str, Any]) -> CanonicalPayload:
-    serialized = orjson.dumps(payload, option=orjson.OPT_SORT_KEYS)
+    serialized = json_utils.dumps(payload, option=json_utils.OPT_SORT_KEYS)
     digest = hashlib.sha256(serialized).hexdigest()[:32]
     return CanonicalPayload(payload=dict(payload), serialized=serialized, digest=f"{namespace}:v1:{digest}")

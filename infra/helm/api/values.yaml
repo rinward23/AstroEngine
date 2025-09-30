@@ -1,0 +1,46 @@
+image:
+  repository: ghcr.io/astroengine/api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+environment:
+  LOG_LEVEL: info
+  ASTROENGINE_ENV: dev
+  API_VERSION: v1
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 65
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1
+    memory: 1Gi
+
+otel:
+  enabled: true
+  collectorEndpoint: http://otel-collector:4317
+
+rollout:
+  strategy: blueGreen
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 30

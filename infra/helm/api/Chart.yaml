@@ -1,0 +1,6 @@
+apiVersion: v2
+name: astroengine-api
+version: 0.1.0
+description: Deploys the AstroEngine FastAPI service with OTel and rollout strategies.
+type: application
+appVersion: "1.0.0"
