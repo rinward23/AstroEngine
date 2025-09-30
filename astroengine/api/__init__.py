@@ -29,3 +29,7 @@ def get_app() -> FastAPI:
 
 __all__ = ["create_app", "get_app"]
 
+
+app = get_app()
+
+
