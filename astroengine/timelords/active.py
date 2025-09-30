@@ -28,11 +28,52 @@ _LEVEL_ORDER = {
     "maha": 0,
     "antar": 1,
     "pratyantar": 2,
+    "sookshma": 3,
+    "praan": 4,
     "l1": 0,
     "l2": 1,
     "l3": 2,
     "l4": 3,
 }
+
+_SYSTEM_ALIASES = {
+    "profections": {"profections"},
+    "vimshottari": {"vimshottari"},
+    "zodiacal_releasing": {"zodiacal_releasing_spirit", "zodiacal_releasing_fortune"},
+    "zr_spirit": {"zodiacal_releasing_spirit"},
+    "zr_fortune": {"zodiacal_releasing_fortune"},
+    "zodiacal_releasing_spirit": {"zodiacal_releasing_spirit"},
+    "zodiacal_releasing_fortune": {"zodiacal_releasing_fortune"},
+}
+
+_DEFAULT_SYSTEMS = ("profections", "vimshottari", "zodiacal_releasing_spirit")
+
+
+def _resolve_systems(
+    systems: tuple[str, ...] | None,
+    include_fortune: bool,
+) -> set[str]:
+    if systems is None:
+        selected = {name for alias in _DEFAULT_SYSTEMS for name in _SYSTEM_ALIASES[alias]}
+        if include_fortune:
+            selected.add("zodiacal_releasing_fortune")
+        return selected
+
+    resolved: set[str] = set()
+    for system in systems:
+        key = system.lower()
+        aliases = _SYSTEM_ALIASES.get(key)
+        if not aliases:
+            raise ValueError(f"unknown timelord system '{system}'")
+        resolved.update(aliases)
+
+    if "zodiacal_releasing_fortune" in resolved and not include_fortune:
+        raise ValueError(
+            "include_fortune must be True to compute zodiacal releasing for fortune"
+        )
+    if not resolved:
+        raise ValueError("at least one timelord system must be selected")
+    return resolved
 
 
 @dataclass
@@ -42,16 +83,29 @@ class TimelordCalculator:
     context: TimelordContext
     until: datetime
     include_fortune: bool = False
+    systems: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
-        self.profections = generate_profection_periods(self.context, self.until)
-        self.vimshottari = generate_vimshottari_periods(self.context, self.until)
-        self.zr_spirit = generate_zodiacal_releasing(
-            self.context, self.until, lot="spirit"
+        selected = _resolve_systems(self.systems, self.include_fortune)
+
+        self.profections = (
+            generate_profection_periods(self.context, self.until)
+            if "profections" in selected
+            else []
+        )
+        self.vimshottari = (
+            generate_vimshottari_periods(self.context, self.until)
+            if "vimshottari" in selected
+            else []
+        )
+        self.zr_spirit = (
+            generate_zodiacal_releasing(self.context, self.until, lot="spirit")
+            if "zodiacal_releasing_spirit" in selected
+            else []
         )
         self.zr_fortune = (
             generate_zodiacal_releasing(self.context, self.until, lot="fortune")
-            if self.include_fortune
+            if "zodiacal_releasing_fortune" in selected
             else []
         )
 
