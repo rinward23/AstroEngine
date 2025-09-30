@@ -38,6 +38,7 @@ from .nakshatra import (
 from .panchanga import LunarMonth, lunar_month
 
 from .varga import compute_varga, dasamsa_sign, navamsa_sign
+from .yogas import PlanetStrength, YogaResult, analyze_yogas
 
 __all__ = [
     "AyanamsaInfo",
@@ -87,6 +88,9 @@ __all__ = [
     "compute_varga",
     "dasamsa_sign",
     "navamsa_sign",
-    "LunarMonth",
-    "lunar_month",
+
+    "PlanetStrength",
+    "YogaResult",
+    "analyze_yogas",
+
 ]
