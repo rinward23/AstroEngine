@@ -33,6 +33,7 @@ from .nakshatra import (
     position_for,
 )
 from .varga import compute_varga, dasamsa_sign, navamsa_sign
+from .yogas import PlanetStrength, YogaResult, analyze_yogas
 
 __all__ = [
     "AyanamsaInfo",
@@ -65,4 +66,7 @@ __all__ = [
     "compute_varga",
     "dasamsa_sign",
     "navamsa_sign",
+    "PlanetStrength",
+    "YogaResult",
+    "analyze_yogas",
 ]
