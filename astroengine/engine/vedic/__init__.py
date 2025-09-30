@@ -21,6 +21,8 @@ from .dasha_vimshottari import (
     vimshottari_sequence,
 )
 from .dasha_yogini import build_yogini, yogini_sequence
+from .lunar_calendar import masa_for_chart as masa_for_sidereal_chart
+from .lunar_calendar import paksha_for_chart as paksha_for_sidereal_chart
 from .nakshatra import (
     NAKSHATRA_ARC_DEGREES,
     PADA_ARC_DEGREES,
@@ -53,6 +55,8 @@ __all__ = [
     "vimshottari_sequence",
     "build_yogini",
     "yogini_sequence",
+    "masa_for_sidereal_chart",
+    "paksha_for_sidereal_chart",
     "NAKSHATRA_ARC_DEGREES",
     "PADA_ARC_DEGREES",
     "Nakshatra",
