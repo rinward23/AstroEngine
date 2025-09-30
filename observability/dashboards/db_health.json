@@ -1,0 +1,50 @@
+{
+  "title": "Database Health",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Connections",
+      "targets": [
+        {
+          "expr": "astroengine_db_connections{role=\"primary\"}",
+          "legendFormat": "Primary"
+        },
+        {
+          "expr": "astroengine_db_connections{role=\"replica\"}",
+          "legendFormat": "Replica"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Replication Lag",
+      "targets": [
+        {
+          "expr": "astroengine_db_replication_lag_seconds",
+          "legendFormat": "Lag"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "PITR Age",
+      "targets": [
+        {
+          "expr": "astroengine_db_last_backup_age_seconds"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    }
+  ]
+}

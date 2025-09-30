@@ -9,14 +9,23 @@ _APP_INSTANCE: FastAPI | None = None
 
 
 def create_app() -> FastAPI:
+    from .routers import lots as lots_router
     from .routers import plus as plus_router
     from .routers import scan as scan_router
     from .routers import synastry as synastry_router
+    from . import horary as horary_router
+
+    from .routers import vedic as vedic_router
+
 
     app = FastAPI(title="AstroEngine API")
     app.include_router(plus_router.router)
+    app.include_router(lots_router.router, prefix="/v1", tags=["lots"])
     app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])
     app.include_router(synastry_router.router, prefix="/v1/synastry", tags=["synastry"])
+
+    app.include_router(horary_router.router)
+
     return app
 
 
@@ -29,5 +38,7 @@ def get_app() -> FastAPI:
 
 app = get_app()
 
+
 __all__ = ["create_app", "get_app", "app"]
+
 

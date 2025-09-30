@@ -1,0 +1,6 @@
+apiVersion: v2
+name: astroengine-prometheus
+version: 0.1.0
+description: Prometheus deployment tuned for AstroEngine metrics collection.
+type: application
+appVersion: "2.43.0"

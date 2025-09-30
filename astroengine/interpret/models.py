@@ -1,11 +1,16 @@
 
+
 """Pydantic models and runtime dataclasses for interpretation rulepacks."""
+
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+
 from datetime import UTC, datetime
 from typing import Any, Iterable, Literal, Mapping, Sequence
+
 
 from pydantic import (
     AwareDatetime,
@@ -17,6 +22,7 @@ from pydantic import (
 )
 
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS
+
 
 
 Body = Literal[
@@ -141,8 +147,16 @@ class ProfileDefinition(BaseModel):
     """Profile weighting configuration for a rulepack."""
 
     base_multiplier: float = 1.0
-    tag_weights: dict[str, float] = Field(default_factory=dict)
-    rule_weights: dict[str, float] = Field(default_factory=dict)
+    tag_weights: dict[str, float] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("tags", "tag_weights"),
+    )
+    rule_weights: dict[str, float] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("rule_weights", "rules"),
+    )
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     @model_validator(mode="before")
     @classmethod
@@ -235,8 +249,9 @@ class RuleCondition(BaseModel):
         return data
 
     @field_validator("bodies", "aspect_in", mode="before")
+
     @classmethod
-    def _normalize_sequence(cls, value: Any) -> tuple[str, ...] | None:
+    def _normalize_bodies(cls, value: Any) -> tuple[str, ...] | None:
         if value is None:
             return None
         if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
@@ -245,8 +260,10 @@ class RuleCondition(BaseModel):
 
     @field_validator("bodiesA", "bodiesB", mode="before")
     @classmethod
+
     def _normalize_directional(cls, value: Any) -> tuple[str, ...] | str | None:
         if value in (None, "*"):
+
             return "*"
         if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
             return tuple(str(item) for item in value)
@@ -270,6 +287,7 @@ class RuleCondition(BaseModel):
                 continue
             result.append(degree)
         return tuple(result) if result else "*"
+
 
     @field_validator("longitude_ranges", mode="before")
     @classmethod
@@ -307,12 +325,13 @@ class RuleDefinition(BaseModel):
 
     id: str
     scope: Scope
-    title: str
-    text: str
+    title: str | None = None
+    text: str | None = None
     score: float = 1.0
     description: str | None = None
     tags: tuple[str, ...] = Field(default_factory=tuple)
     when: RuleCondition = Field(default_factory=RuleCondition)
+
     then: RuleThen
 
     @model_validator(mode="before")
@@ -342,6 +361,7 @@ class RuleDefinition(BaseModel):
         }
         return data
 
+
     @field_validator("tags", mode="before")
     @classmethod
     def _normalize_tags(cls, value: Any) -> tuple[str, ...]:
@@ -352,23 +372,26 @@ class RuleDefinition(BaseModel):
         return (str(value),)
 
     @model_validator(mode="after")
+
     def _sync_then(self) -> "RuleDefinition":
         object.__setattr__(self, "tags", tuple(self.then.tags))
         object.__setattr__(self, "score", float(self.then.base_score))
         if not self.text:
             object.__setattr__(self, "text", self.then.title)
+
         return self
 
 
 class RulepackHeader(BaseModel):
     """Metadata embedded within a rulepack document."""
 
-    id: str
-    name: str
-    title: str
+    id: str | None = None
+    name: str | None = None
+    title: str | None = None
     description: str | None = None
     version: int | None = None
     mutable: bool = False
+
 
     @model_validator(mode="before")
     @classmethod
@@ -390,8 +413,10 @@ class RulepackHeader(BaseModel):
         return data
 
 
+
 class RulepackDocument(BaseModel):
     """Fully parsed rulepack document supporting modern payloads."""
+
 
     rulepack: str
     version: int = 1
@@ -420,6 +445,7 @@ class RulepackDocument(BaseModel):
         data["meta"] = meta
         return data
 
+
     @field_validator("profiles", mode="before")
     @classmethod
     def _normalize_profiles(cls, value: Any) -> dict[str, dict[str, Any]]:
@@ -435,6 +461,15 @@ class RulepackDocument(BaseModel):
         if not isinstance(value, list):
             raise TypeError("rules must be an array")
         return value
+
+    @field_validator("archetypes", mode="before")
+    @classmethod
+    def _normalize_archetypes(cls, value: Any) -> dict[str, tuple[str, ...]]:
+        if value is None:
+            return {}
+        if isinstance(value, dict):
+            return {str(k): tuple(str(item) for item in v) for k, v in value.items()}
+        raise TypeError("archetypes must be mappings")
 
 
 class RulepackVersionPayload(BaseModel):
@@ -470,21 +505,25 @@ def now_utc() -> datetime:
 class RuleWhen:
     """Runtime representation of a rule's condition."""
 
+
     bodiesA: tuple[str, ...] | str
     bodiesB: tuple[str, ...] | str
     aspects: tuple[int, ...] | str
     min_severity: float
 
 
+
 @dataclass(slots=True)
 class RuleThenRuntime:
     """Runtime representation of a rule's consequence block."""
+
 
     title: str
     tags: tuple[str, ...]
     base_score: float
     score_fn: str
     markdown_template: str | None = None
+
 
 
 @dataclass(slots=True)
@@ -497,8 +536,10 @@ class Rule:
     then: RuleThenRuntime
 
 
+
 @dataclass(slots=True)
 class Rulepack:
+
     """Runtime rulepack used by the interpretation engine."""
 
     id: str
@@ -543,4 +584,5 @@ __all__ = [
     "Rulepack",
     "now_utc",
 ]
+
 

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: astroengine-workers
+version: 0.1.0
+description: Background worker deployment for AstroEngine queue processing.
+type: application
+appVersion: "1.0.0"

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "astroengine-grafana.fullname" . }}-datasources
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: {{ .Values.datasources.prometheus.type }}
+        access: {{ .Values.datasources.prometheus.access }}
+        url: {{ .Values.datasources.prometheus.url }}
+        isDefault: {{ .Values.datasources.prometheus.isDefault }}

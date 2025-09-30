@@ -45,6 +45,11 @@ def _ensure_entry_point_importable(ep: EntryPoint) -> Callable[..., object]:
                     site.addsitedir(location_str)
                     importlib.invalidate_caches()
         if module_name:
+            package_root = module_name.split(".", 1)[0]
+            try:
+                import_module(package_root)
+            except ModuleNotFoundError:
+                pass
             import_module(module_name)
         return ep.load()
 
