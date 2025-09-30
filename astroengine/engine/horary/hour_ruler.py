@@ -2,87 +2,25 @@
 
 from __future__ import annotations
 
-import math
 from datetime import UTC, datetime, timedelta
 
-import swisseph as swe
-
-from ...core.time import julian_day
-from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
+from ...ephemeris.adapter import ObserverLocation
 from ...ritual.timing import PLANETARY_HOUR_TABLE
+from ..observational.sun import solar_cycle
 from .models import GeoLocation, PlanetaryHourResult
 
 __all__ = ["planetary_hour", "sunrise_sunset"]
 
 
-_RISE_FLAGS = swe.BIT_DISC_CENTER | swe.BIT_NO_REFRACTION | swe.FLG_SWIEPH
-
-
-def _jd_to_datetime(jd_ut: float) -> datetime:
-    """Convert a Julian Day expressed in UT to a timezone-aware datetime."""
-
-    jd = jd_ut + 0.5
-    frac, integer = math.modf(jd)
-    z = int(integer)
-    a = z
-    if z >= 2299161:
-        alpha = int((z - 1867216.25) / 36524.25)
-        a = z + 1 + alpha - alpha // 4
-    b = a + 1524
-    c = int((b - 122.1) / 365.25)
-    d = int(365.25 * c)
-    e = int((b - d) / 30.6001)
-    day = b - d - int(30.6001 * e) + frac
-    month = e - 1 if e < 14 else e - 13
-    year = c - 4716 if month > 2 else c - 4715
-    day_floor = int(day)
-    frac_day = day - day_floor
-    hours = frac_day * 24.0
-    hour = int(hours)
-    minutes = (hours - hour) * 60.0
-    minute = int(minutes)
-    seconds = round((minutes - minute) * 60.0, 6)
-    second = int(seconds)
-    microsecond = int((seconds - second) * 1_000_000)
-    return datetime(
-        year, month, day_floor, hour, minute, second, microsecond, tzinfo=UTC
-    )
-
-
-def _ensure_ephemeris_ready() -> None:
-    SwissEphemerisAdapter.get_default_adapter()
-
-
-def _next_event(jd_ut: float, flag: int, location: GeoLocation) -> float:
-    _ensure_ephemeris_ready()
-    geopos = (float(location.longitude), float(location.latitude), float(location.altitude))
-    res, tret = swe.rise_trans(
-        jd_ut,
-        swe.SUN,
-        flag,
-        geopos,
-        0.0,
-        0.0,
-        _RISE_FLAGS,
-    )
-    if res != 0:
-        raise RuntimeError(
-            "Swiss Ephemeris could not compute sunrise/sunset for location"
-        )
-    return tret[0]
-
-
 def sunrise_sunset(moment: datetime, location: GeoLocation) -> tuple[datetime, datetime, datetime]:
     """Return sunrise, sunset, and next sunrise surrounding ``moment``."""
 
-    jd = julian_day(moment)
-    prev_sunrise_jd = _next_event(jd - 1.0, swe.CALC_RISE, location)
-    sunset_jd = _next_event(prev_sunrise_jd + 0.01, swe.CALC_SET, location)
-    next_sunrise_jd = _next_event(prev_sunrise_jd + 0.51, swe.CALC_RISE, location)
-    sunrise_dt = _jd_to_datetime(prev_sunrise_jd)
-    sunset_dt = _jd_to_datetime(sunset_jd)
-    next_sunrise_dt = _jd_to_datetime(next_sunrise_jd)
-    return sunrise_dt, sunset_dt, next_sunrise_dt
+    observer = ObserverLocation(
+        latitude_deg=float(location.latitude),
+        longitude_deg=float(location.longitude),
+        elevation_m=float(location.altitude),
+    )
+    return solar_cycle(moment, observer)
 
 
 def _local_weekday(dt_utc: datetime, location: GeoLocation) -> str:
