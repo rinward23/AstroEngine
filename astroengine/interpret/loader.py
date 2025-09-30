@@ -1,4 +1,6 @@
-"""Rulepack loading utilities with validation and engine adapters."""
+
+"""Compatibility loader for interpretation rulepacks."""
+
 
 from __future__ import annotations
 
@@ -6,26 +8,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from typing import Any, Generator, Mapping
-
+from typing import Any, Iterable
 
 import yaml
-from jsonschema import Draft202012Validator
 
+from .models import Rule, RuleThen, RuleWhen, Rulepack, RulepackDocument, RulepackLintResult
 
-from .models import (
-    ProfileDefinition,
-    Rule,
-    RuleThenRuntime,
-    RuleWhen,
-    Rulepack,
-    RulepackDocument,
-    RulepackLintResult,
-)
 
 
 class RulepackValidationError(Exception):
-    """Raised when a rulepack fails schema or semantic validation."""
+    """Raised when rulepack parsing or validation fails."""
 
     def __init__(self, message: str, *, errors: list[dict[str, Any]] | None = None):
         super().__init__(message)
@@ -35,8 +27,11 @@ class RulepackValidationError(Exception):
 
 @dataclass(frozen=True)
 class LoadedRulepack:
-    """Parsed rulepack document alongside its raw content and runtime view."""
 
+    """Loaded rulepack with compatibility helpers for legacy consumers."""
+
+
+    runtime: Rulepack
     document: RulepackDocument
     content: dict[str, Any]
     runtime: Rulepack
@@ -56,134 +51,169 @@ class LoadedRulepack:
     def profile_weights(self, profile: str) -> dict[str, float]:
         return self.runtime.profile_weights(profile)
 
-    @property
-    def archetypes(self) -> dict[str, list[str]]:
-        return self.runtime.archetypes
 
-
-    prepared = dict(data)
-    meta = prepared.get("meta")
-    meta_map = dict(meta) if isinstance(meta, Mapping) else {}
-    rulepack_id = prepared.get("rulepack")
-    if rulepack_id and "id" not in meta_map:
-        meta_map["id"] = str(rulepack_id)
-    if not rulepack_id and meta_map.get("id"):
-        prepared["rulepack"] = str(meta_map["id"])
-    if "name" not in meta_map and meta_map.get("title"):
-        meta_map["name"] = str(meta_map["title"])
-    if "title" not in meta_map and meta_map.get("name"):
-        meta_map["title"] = str(meta_map["name"])
-    if "version" not in prepared and "version" in meta_map:
-        prepared["version"] = meta_map.get("version")
-    if meta_map:
-        prepared["meta"] = meta_map
-    profiles = prepared.get("profiles")
-    if isinstance(profiles, Mapping):
-        normalized_profiles: dict[str, Any] = {}
-        for name, payload in profiles.items():
-            if not isinstance(payload, Mapping):
-                normalized_profiles[str(name)] = payload
-                continue
-            profile_payload = dict(payload)
-            if "tags" not in profile_payload and isinstance(
-                profile_payload.get("tag_weights"), Mapping
-            ):
-                profile_payload["tags"] = dict(profile_payload["tag_weights"])
-            normalized_profiles[str(name)] = profile_payload
-        prepared["profiles"] = normalized_profiles
-    return prepared
+    def __getattr__(self, item: str) -> Any:  # pragma: no cover - delegation helper
+        return getattr(self.runtime, item)
 
 
 
-def _parse_raw(content: str, *, source: str | None = None) -> dict[str, Any]:
+def _parse_raw(raw: str, *, source: str | None = None) -> dict[str, Any]:
     try:
-        return json.loads(content)
+        return json.loads(raw)
     except json.JSONDecodeError:
         try:
-            parsed = yaml.safe_load(content)
-        except yaml.YAMLError as exc:  # pragma: no cover - PyYAML handles wide input
+
+            data = yaml.safe_load(raw)
+        except yaml.YAMLError as exc:  # pragma: no cover - defensive
             raise RulepackValidationError(
                 f"failed to parse rulepack {source or ''}: {exc}"
             ) from exc
-        if not isinstance(parsed, Mapping):
-            raise RulepackValidationError("rulepack must be a JSON/YAML object")
-        return dict(parsed)
+        if not isinstance(data, dict):
+            raise RulepackValidationError("rulepack must decode to a mapping")
+        return data
 
 
+def _ensure_sequence(value: Any) -> tuple[Any, ...]:
+    if value is None:
+        return tuple()
+    if isinstance(value, (str, bytes)):
+        return (value,)
+    if isinstance(value, Iterable):
+        return tuple(value)
+    return (value,)
 
-def _build_runtime(document: RulepackDocument) -> Rulepack:
+
+def _legacy_rules(data: dict[str, Any]) -> tuple[Rule, ...]:
     rules: list[Rule] = []
-    for rule_def in document.rules:
-        cond = rule_def.when
-        bodies_a = cond.bodiesA if cond.bodiesA is not None else "*"
-        bodies_b = cond.bodiesB if cond.bodiesB is not None else "*"
-        aspects = cond.aspects if cond.aspects is not None else "*"
-        when = RuleWhen(
-            bodiesA=bodies_a,
-            bodiesB=bodies_b,
-            aspects=aspects,
-            min_severity=float(cond.min_severity or 0.0),
+    for entry in data.get("rules", []):
+        if not isinstance(entry, dict):
+            continue
+        rid = str(entry.get("id"))
+        scope = str(entry.get("scope", "synastry"))
+        when = entry.get("when") or {}
+        then = entry.get("then") or {}
+        bodies_a = when.get("bodiesA")
+        bodies_b = when.get("bodiesB")
+        aspects = when.get("aspects")
+        rule = Rule(
+            id=rid,
+            scope=scope,
+            when=RuleWhen(
+                bodiesA="*" if bodies_a in (None, "*") else tuple(str(x) for x in _ensure_sequence(bodies_a)),
+                bodiesB="*" if bodies_b in (None, "*") else tuple(str(x) for x in _ensure_sequence(bodies_b)),
+                aspects="*"
+                if aspects in (None, "*")
+                else tuple(int(float(x)) for x in _ensure_sequence(aspects)),
+                min_severity=float(when.get("min_severity", 0.0)),
+            ),
+            then=RuleThen(
+                title=str(then.get("title") or rid),
+                tags=tuple(str(tag) for tag in _ensure_sequence(then.get("tags"))),
+                base_score=float(then.get("base_score", 1.0)),
+                score_fn=str(then.get("score_fn", "linear")),
+                markdown_template=then.get("markdown_template"),
+            ),
         )
-        then = RuleThenRuntime(
-            title=rule_def.then.title,
-            tags=tuple(rule_def.then.tags),
-            base_score=float(rule_def.then.base_score),
-            score_fn=rule_def.then.score_fn,
-            markdown_template=rule_def.then.markdown_template,
-        )
-        rules.append(Rule(id=rule_def.id, scope=rule_def.scope, when=when, then=then))
-    return Rulepack(
-        id=document.rulepack,
-        version=int(document.version),
-        profiles=document.profiles,
-        archetypes=document.archetypes,
-        rules=rules,
-    )
+        rules.append(rule)
+    return tuple(rules)
 
 
-def load_rulepack(raw: Any, *, source: str | None = None) -> LoadedRulepack:
-    """Parse and validate a rulepack document from content or a filesystem path."""
+def _normalize_for_document(data: dict[str, Any]) -> dict[str, Any]:
+    if "meta" in data and isinstance(data["meta"], dict) and "id" in data["meta"]:
+        return data
+    pack_id = data.get("rulepack")
+    if not pack_id:
+        raise RulepackValidationError("rulepack id missing")
+    meta_src = data.get("meta") or {}
+    meta = {
+        "id": str(pack_id),
+        "name": str(meta_src.get("name") or pack_id),
+        "title": str(meta_src.get("title") or meta_src.get("name") or pack_id),
+        "description": meta_src.get("description"),
+        "version": int(data.get("version", 1)),
+        "mutable": bool(meta_src.get("mutable", False)),
+    }
+    profiles = {}
+    for name, payload in (data.get("profiles") or {}).items():
+        if isinstance(payload, dict):
+            tags = payload.get("tags") or {}
+            profiles[str(name)] = {
+                "base_multiplier": 1.0,
+                "tag_weights": {str(k): float(v) for k, v in tags.items()},
+                "rule_weights": {},
+            }
+    rules = []
+    raw_rules = data.get("rules")
+    if not isinstance(raw_rules, list) or not raw_rules:
+        raise RulepackValidationError("rulepack must contain at least one rule")
+    for entry in raw_rules:
+        if not isinstance(entry, dict):
+            continue
+        then = entry.get("then") or {}
+        when = entry.get("when") or {}
+        rules.append(
 
-    if isinstance(raw, Path):
-        potential_path = raw
-        if potential_path.exists() and potential_path.is_file():
-            text = potential_path.read_text(encoding="utf-8")
-            return load_rulepack(text, source=str(potential_path))
-    elif isinstance(raw, str):
-        stripped = raw.strip()
-        # Treat as path only when it resembles a filesystem reference.
-        if "\n" not in raw and not stripped.startswith("{") and not stripped.startswith("["):
-            potential_path = Path(raw)
-            if potential_path.exists() and potential_path.is_file():
-                text = potential_path.read_text(encoding="utf-8")
-                return load_rulepack(text, source=str(potential_path))
-    if isinstance(raw, bytes):
-        raw = raw.decode("utf-8")
-    if isinstance(raw, str):
-        content = _parse_raw(raw, source=source)
-    elif isinstance(raw, Mapping):
-        content = dict(raw)
-    else:
-        raise RulepackValidationError("rulepack payload must be string, bytes, mapping, or path")
-    return load_rulepack_from_data(content, source=source)
-
-
-def load_rulepack_from_data(data: Mapping[str, Any], *, source: str | None = None) -> LoadedRulepack:
-    """Validate a pre-parsed rulepack mapping."""
-
-    content = dict(data)
-    errors: list[dict[str, Any]] = []
-    for err in _VALIDATOR.iter_errors(content):
-        errors.append(
             {
-                "path": list(err.path),
-                "message": err.message,
-                "validator": err.validator,
+                "id": str(entry.get("id")),
+                "scope": str(entry.get("scope", "synastry")),
+                "title": str(then.get("title") or entry.get("id")),
+                "text": str(then.get("markdown_template") or ""),
+                "score": float(then.get("base_score", 1.0)),
+                "tags": list(then.get("tags") or []),
+                "when": {
+                    "bodies": tuple(str(x) for x in _ensure_sequence(when.get("bodiesA"))) or None,
+                    "aspect_in": tuple(str(x) for x in _ensure_sequence(when.get("aspects"))) or None,
+                    "min_severity": when.get("min_severity"),
+                },
             }
 
         )
-    return rules
 
+    return {"meta": meta, "profiles": profiles, "rules": rules}
+
+
+def _read_input(raw: str | bytes | Path | dict[str, Any], *, source: str | None = None) -> tuple[dict[str, Any], str | None]:
+    if isinstance(raw, dict):
+        return raw, source
+    if isinstance(raw, Path):
+        source = source or str(raw)
+        return _parse_raw(raw.read_text(encoding="utf-8"), source=source), source
+    if isinstance(raw, bytes):
+        return _parse_raw(raw.decode("utf-8"), source=source), source
+    if isinstance(raw, str):
+        if "\n" in raw or raw.lstrip().startswith("{") or raw.lstrip().startswith("["):
+            return _parse_raw(raw, source=source), source
+        candidate = Path(raw)
+        if candidate.exists():
+            source = source or str(candidate)
+            return _parse_raw(candidate.read_text(encoding="utf-8"), source=source), source
+        return _parse_raw(raw, source=source), source
+    raise TypeError("unsupported rulepack input type")
+
+
+def load_rulepack(raw: str | bytes | Path | dict[str, Any], *, source: str | None = None) -> LoadedRulepack:
+    """Load a rulepack from disk or raw bytes."""
+
+    content, src = _read_input(raw, source=source)
+    legacy_rules = _legacy_rules(content)
+    identifier = str(content.get("rulepack") or content.get("meta", {}).get("id"))
+    if not identifier:
+        raise RulepackValidationError("rulepack id missing")
+    profiles = {
+        str(name): payload if isinstance(payload, dict) else {}
+        for name, payload in (content.get("profiles") or {}).items()
+    }
+    normalized = _normalize_for_document(content)
+    try:
+        document = RulepackDocument.model_validate(normalized)
+    except Exception as exc:  # pragma: no cover - delegated to tests
+        raise RulepackValidationError("rulepack failed validation") from exc
+    runtime = Rulepack(rulepack=identifier, profiles=profiles, rules=legacy_rules, source=src)
+    return LoadedRulepack(runtime=runtime, document=document, content=content)
+
+
+def load_rulepack_from_data(data: dict[str, Any], *, source: str | None = None) -> LoadedRulepack:
+    return load_rulepack(data, source=source)
 
 
     runtime = _build_runtime(document)
@@ -253,32 +283,36 @@ def lint_rulepack(
     """Return lint diagnostics for a rulepack payload without raising."""
 
 
+def iter_rulepack_rules(rulepack: LoadedRulepack | Rulepack) -> tuple[Rule, ...]:
+    if isinstance(rulepack, LoadedRulepack):
+        return rulepack.runtime.rules
+    return rulepack.rules
+
+
+
+def lint_rulepack(raw: str | bytes | Path | dict[str, Any], *, source: str | None = None) -> RulepackLintResult:
     try:
         if isinstance(raw, Mapping):
             load_rulepack_from_data(raw, source=source)
         else:
             load_rulepack(raw, source=source)
     except RulepackValidationError as exc:
-        return RulepackLintResult(ok=False, errors=exc.errors, warnings=[], meta={"source": source})
-    return RulepackLintResult(ok=True, errors=[], warnings=[], meta={"source": source})
 
+        return RulepackLintResult(ok=False, errors=exc.errors or [{"message": str(exc)}], warnings=[], meta={"source": source})
+    return RulepackLintResult(
+        ok=True,
+        errors=[],
+        warnings=[],
+        meta={"id": loaded.rulepack, "rule_count": len(loaded.rules), "source": loaded.source},
+    )
 
-
-def iter_rulepack_rules(rulepack: Rulepack | LoadedRulepack) -> Generator[Rule, None, None]:
-    """Yield rules from either a runtime rulepack or a loaded wrapper."""
-
-    runtime = rulepack.runtime if isinstance(rulepack, LoadedRulepack) else rulepack
-    for rule in runtime.rules:
-        yield rule
 
 
 __all__ = [
     "LoadedRulepack",
     "RulepackValidationError",
-
     "iter_rulepack_rules",
     "lint_rulepack",
     "load_rulepack",
     "load_rulepack_from_data",
 ]
-

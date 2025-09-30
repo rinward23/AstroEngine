@@ -24,6 +24,12 @@ from pydantic import (
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS
 
 
+from dataclasses import dataclass
+from typing import Any, Iterable, Literal
+
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
+
+
 
 Body = Literal[
     "Sun",
@@ -43,6 +49,51 @@ Body = Literal[
 
 Aspect = Literal[0, 30, 45, 60, 72, 90, 120, 135, 144, 150, 180]
 Scope = Literal["synastry", "composite", "davison"]
+
+
+@dataclass(frozen=True)
+class RuleWhen:
+    bodiesA: tuple[str, ...] | str
+    bodiesB: tuple[str, ...] | str
+    aspects: tuple[int, ...] | str
+    min_severity: float
+
+
+@dataclass(frozen=True)
+class RuleThen:
+    title: str
+    tags: tuple[str, ...]
+    base_score: float
+    score_fn: str
+    markdown_template: str | None = None
+
+
+@dataclass(frozen=True)
+class Rule:
+    id: str
+    scope: str
+    when: RuleWhen
+    then: RuleThen
+
+
+@dataclass(frozen=True)
+class Rulepack:
+    rulepack: str
+    profiles: dict[str, dict[str, Any]]
+    rules: tuple[Rule, ...]
+    source: str | None = None
+
+    def profile_weights(self, profile: str) -> dict[str, float]:
+        data = self.profiles.get(profile)
+        if data is None:
+            data = self.profiles.get("balanced")
+        if data is None:
+            if self.profiles:
+                _, data = next(iter(self.profiles.items()))
+            else:
+                return {}
+        tags = data.get("tags") or data.get("tag_weights") or {}
+        return {str(k): float(v) for k, v in tags.items()}
 
 
 class RulepackMeta(BaseModel):

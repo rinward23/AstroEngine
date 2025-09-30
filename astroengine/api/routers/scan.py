@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
-from typing import Literal
+from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Body, HTTPException
+
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from ...core.transit_engine import scan_transits
@@ -295,7 +297,9 @@ def _normalize_aspects(values: Sequence[Any] | None) -> list[int]:
 
 
 @router.post("/progressions", response_model=ScanResponse)
-def api_scan_progressions(payload: dict[str, Any]) -> ScanResponse:
+def api_scan_progressions(
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload")
+) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = TransitScanRequest(**request_data)
     natal, start, end = request.iso_tuple()
@@ -323,7 +327,9 @@ def api_scan_progressions(payload: dict[str, Any]) -> ScanResponse:
 
 
 @router.post("/directions", response_model=ScanResponse)
-def api_scan_directions(payload: dict[str, Any]) -> ScanResponse:
+def api_scan_directions(
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload")
+) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = TransitScanRequest(**request_data)
     natal, start, end = request.iso_tuple()
@@ -351,7 +357,9 @@ def api_scan_directions(payload: dict[str, Any]) -> ScanResponse:
 
 
 @router.post("/transits", response_model=ScanResponse)
-def api_scan_transits(payload: dict[str, Any]) -> ScanResponse:
+def api_scan_transits(
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload")
+) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = TransitScanRequest(**request_data)
 
@@ -383,7 +391,9 @@ def api_scan_transits(payload: dict[str, Any]) -> ScanResponse:
 
 
 @router.post("/returns", response_model=ScanResponse)
-def api_scan_returns(payload: dict[str, Any]) -> ScanResponse:
+def api_scan_returns(
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload")
+) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = ReturnsScanRequest(**request_data)
 
