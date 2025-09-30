@@ -7,10 +7,16 @@ import datetime as dt
 import pytest
 
 from astroengine.chart import ChartLocation, TransitScanner, compute_natal_chart
+from astroengine.chart.natal import DEFAULT_BODIES
 from astroengine.profiles import load_base_profile, load_vca_outline
 from astroengine.scoring import OrbCalculator, lookup_dignities
 
 TOLERANCE_DEG = 0.05
+
+
+def _circular_delta(a: float, b: float) -> float:
+    diff = (b - a) % 360.0
+    return diff if diff <= 180.0 else 360.0 - diff
 
 GOLDEN_CHARTS = [
     (
@@ -151,6 +157,53 @@ def test_transit_scanner_detects_self_contacts(
     ]
     assert sun_hits, f"expected Sun conjunction for {label}"
     assert sun_hits[0].orb == pytest.approx(0.0, abs=1e-6)
+
+
+def test_transit_contact_boundaries_match_orb() -> None:
+    _, moment, location = GOLDEN_CHARTS[0][:3]
+    natal_chart = compute_natal_chart(moment, location)
+    scanner = TransitScanner()
+    contacts = scanner.scan(natal_chart, moment)
+    sun_contact = next(
+        contact
+        for contact in contacts
+        if contact.transiting_body == "Sun"
+        and contact.natal_body == "Sun"
+        and contact.angle == 0
+    )
+
+    assert sun_contact.ingress is not None
+    assert sun_contact.egress is not None
+    assert sun_contact.ingress < sun_contact.moment < sun_contact.egress
+    assert sun_contact.ingress_jd is not None
+    assert sun_contact.egress_jd is not None
+
+    adapter = scanner.adapter
+    natal_lon = natal_chart.positions["Sun"].longitude
+    sun_code = DEFAULT_BODIES["Sun"]
+
+    ingress_sep = _circular_delta(
+        adapter.body_position(sun_contact.ingress_jd, sun_code, body_name="Sun").longitude,
+        natal_lon,
+    )
+    egress_sep = _circular_delta(
+        adapter.body_position(sun_contact.egress_jd, sun_code, body_name="Sun").longitude,
+        natal_lon,
+    )
+
+    assert abs(ingress_sep - sun_contact.angle) == pytest.approx(
+        sun_contact.orb_allow, abs=5e-3
+    )
+    assert abs(egress_sep - sun_contact.angle) == pytest.approx(
+        sun_contact.orb_allow, abs=5e-3
+    )
+
+    assert adapter.julian_day(sun_contact.ingress) == pytest.approx(
+        sun_contact.ingress_jd, rel=0, abs=5e-7
+    )
+    assert adapter.julian_day(sun_contact.egress) == pytest.approx(
+        sun_contact.egress_jd, rel=0, abs=5e-7
+    )
 
 
 def test_orb_calculator_uses_policy() -> None:
