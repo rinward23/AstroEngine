@@ -1,6 +1,12 @@
 """Arabic Lots engine with DSL compilation, evaluation, and event scanning."""
 
-from .builtins import LotsProfile, builtin_profile, list_builtin_profiles
+from .builtins import (
+    LotsProfile,
+    builtin_profile,
+    list_builtin_profiles,
+    load_custom_profiles,
+    save_custom_profile,
+)
 from .dsl import (
     Add,
     Arc,
@@ -42,8 +48,10 @@ __all__ = [
     "compile_program",
     "detect_cycles",
     "evaluate",
+    "load_custom_profiles",
     "is_day",
     "list_builtin_profiles",
+    "save_custom_profile",
     "parse_lot_defs",
     "scan_lot_events",
 ]
