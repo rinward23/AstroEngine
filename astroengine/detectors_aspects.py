@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from functools import lru_cache
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -102,9 +103,18 @@ _HARMONIC_FAMILY_TO_NAMES: dict[int, tuple[str, ...]] = {
 }
 
 
+@lru_cache(maxsize=8)
+def _cached_policy(path: Path, mtime_ns: int) -> dict:
+    """Return the parsed policy document cached by path/mtime."""
+
+    return load_json_document(path)
+
+
 def _load_policy(path: str | None = None) -> dict:
     policy_path = Path(path) if path else _DEF_PATH
-    return load_json_document(policy_path)
+    resolved_path = policy_path.resolve()
+    mtime_ns = resolved_path.stat().st_mtime_ns
+    return _cached_policy(resolved_path, mtime_ns)
 
 
 def _normalize_name(name: str) -> str:
@@ -223,10 +233,16 @@ def detect_aspects(
     corridor_profile = str(corridor_cfg.get("profile", "gaussian"))
     corridor_minimum = float(corridor_cfg.get("minimum_deg", 0.1))
     default_orb = float(policy.get("default_orb_deg", 2.0))
-    delta_tracker = DeltaLambdaTracker()
-    out: list[AspectHit] = []
     cls_m = body_class(moving)
     cls_t = body_class(target)
+    aspect_entries: list[tuple[str, float, str, float, float]] = []
+    for aspect_name, (angle, family) in angles_map.items():
+        orb_allow = _orb_for(aspect_name, family, cls_m, cls_t, policy)
+        aspect_strength = max(orb_allow / max(default_orb, 1e-9), 0.25)
+        aspect_entries.append((aspect_name, angle, family, orb_allow, aspect_strength))
+
+    delta_tracker = DeltaLambdaTracker()
+    out: list[AspectHit] = []
 
     domain_profile: dict[int, DomainW] | None = None
     domain_meta: dict[str, dict] = {}
@@ -234,6 +250,7 @@ def detect_aspects(
     domain_system = house_system
     domain_location = None
     domain_alphas: Sequence[float] | None = None
+    domain_lat_lon: tuple[float, float] | None = None
 
     if natal_chart is not None:
         domain_profile, domain_meta = load_house_profile()
@@ -250,6 +267,14 @@ def detect_aspects(
         except Exception:
             domain_target = None
         domain_location = getattr(natal_chart, "location", None)
+        if domain_location is not None:
+            lat = getattr(domain_location, "latitude", None)
+            lon = getattr(domain_location, "longitude", None)
+            try:
+                if lat is not None and lon is not None:
+                    domain_lat_lon = (float(lat), float(lon))
+            except (TypeError, ValueError):
+                domain_lat_lon = None
         blend_spec = domain_meta.get("blend", {})
         alphas = blend_spec.get("natal_vs_transit")
         if isinstance(alphas, Sequence) and alphas:
@@ -258,8 +283,9 @@ def detect_aspects(
             except (TypeError, ValueError):
                 domain_alphas = None
 
+    body_pair = (moving, target)
     for iso in iso_ticks:
-        positions = provider.positions_ecliptic(iso, [moving, target])
+        positions = provider.positions_ecliptic(iso, body_pair)
         lon_moving = float(positions[moving]["lon"])
         lon_target = float(positions[target]["lon"])
         speed_moving = float(positions[moving].get("speed_lon", 0.0))
@@ -267,8 +293,7 @@ def detect_aspects(
         retrograde = speed_moving < 0 or speed_target < 0
 
         delta_lambda = delta_tracker.update(lon_target, lon_moving)
-        for aspect_name, (angle, family) in angles_map.items():
-            orb_allow = _orb_for(aspect_name, family, cls_m, cls_t, policy)
+        for aspect_name, angle, family, orb_allow, aspect_strength in aspect_entries:
             offset = signed_delta(delta_lambda - angle)
             if abs(offset) <= orb_allow:
                 separation_for_motion = angle + offset
@@ -279,7 +304,6 @@ def detect_aspects(
                     speed_target,
                 )
                 is_partile = abs(offset) <= partile_threshold
-                aspect_strength = max(orb_allow / max(default_orb, 1e-9), 0.25)
                 corridor_width = adaptive_corridor_width(
                     orb_allow,
                     speed_moving,
@@ -290,16 +314,16 @@ def detect_aspects(
                 )
                 domain_weights = None
                 if domain_profile is not None and domain_target is not None:
-                    weights_to_blend: list[DomainW] = [domain_target]
-                    moving_pos = positions.get(moving)
-                    if domain_location is not None and moving_pos is not None:
-                        lat = getattr(domain_location, "latitude", None)
-                        lon = getattr(domain_location, "longitude", None)
-                        if lat is not None and lon is not None:
+                    if domain_lat_lon is None:
+                        domain_weights = domain_target
+                    else:
+                        moving_pos = positions.get(moving)
+                        if moving_pos is not None:
+                            lat, lon = domain_lat_lon
                             transit_chart = {
                                 "ts": iso,
-                                "lat": float(lat),
-                                "lon": float(lon),
+                                "lat": lat,
+                                "lon": lon,
                                 "positions": {moving: moving_pos},
                             }
                             try:
@@ -312,14 +336,12 @@ def detect_aspects(
                             except Exception:
                                 transit_weights = None
                             if transit_weights is not None:
-                                weights_to_blend.append(transit_weights)
-                    if len(weights_to_blend) == 1:
-                        domain_weights = weights_to_blend[0]
-                    else:
-                        domain_weights = blend_domains(
-                            weights_to_blend,
-                            alphas=domain_alphas,
-                        )
+                                domain_weights = blend_domains(
+                                    [domain_target, transit_weights],
+                                    alphas=domain_alphas,
+                                )
+                        if domain_weights is None:
+                            domain_weights = domain_target
 
                 out.append(
                     AspectHit(
