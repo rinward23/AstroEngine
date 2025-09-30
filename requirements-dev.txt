@@ -10,6 +10,11 @@ httpx>=0.28
 
 streamlit>=1.39
 
+# Core API/runtime dependencies required by tests
+orjson>=3.10
+pypdf>=4.2
+prometheus-client>=0.20
+
 
 pytest>=8.0.0  # ENSURE-LINE
 pytest-cov>=4.1.0  # ENSURE-LINE
