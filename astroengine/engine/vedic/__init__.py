@@ -32,6 +32,7 @@ from .nakshatra import (
     pada_of,
     position_for,
 )
+from .panchanga import LunarMonth, lunar_month
 from .varga import compute_varga, dasamsa_sign, navamsa_sign
 
 __all__ = [
@@ -65,4 +66,6 @@ __all__ = [
     "compute_varga",
     "dasamsa_sign",
     "navamsa_sign",
+    "LunarMonth",
+    "lunar_month",
 ]
