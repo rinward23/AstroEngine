@@ -27,5 +27,8 @@ def get_app() -> FastAPI:
     return _APP_INSTANCE
 
 
-__all__ = ["create_app", "get_app"]
+app = get_app()
+
+
+__all__ = ["app", "create_app", "get_app"]
 
