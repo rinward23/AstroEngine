@@ -9,6 +9,15 @@ from pathlib import Path
 
 import pytest
 
+
+def _flag_enabled(name: str) -> bool:
+    """Return True when the boolean-like environment flag is enabled."""
+
+    value = os.getenv(name)
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
 # >>> AUTO-GEN BEGIN: AliasGeneratedToAstroengine v1.0
 """Pytest compatibility shim: route any `generated.*` imports to `astroengine`.
 Idempotent and safe to keep during the deprecation window.
@@ -38,6 +47,33 @@ PROJECT_ROOT_STR = str(PROJECT_ROOT)
 GENERATED_ROOT = PROJECT_ROOT / "generated"
 GENERATED_STR = str(GENERATED_ROOT)
 DATASETS_ROOT = PROJECT_ROOT / "datasets"
+
+_HTTP_TEST_FILES = {
+    (PROJECT_ROOT / rel).resolve()
+    for rel in (
+        Path("tests/test_api_aspects_search.py"),
+        Path("tests/test_api_electional.py"),
+        Path("tests/test_api_events.py"),
+        Path("tests/test_api_interpret.py"),
+        Path("tests/test_api_lots.py"),
+        Path("tests/test_api_policies.py"),
+        Path("tests/test_api_relationship.py"),
+        Path("tests/test_api_score_series.py"),
+        Path("tests/test_api_synastry_composites.py"),
+        Path("tests/test_openapi_examples.py"),
+        Path("tests/test_relationship_api.py"),
+        Path("tests/test_report_relationship_export.py"),
+        Path("tests/e2e/test_end_to_end.py"),
+    )
+}
+
+_HTTP_TEST_DIRS = {
+    (PROJECT_ROOT / rel).resolve() for rel in (Path("tests/api"),)
+}
+
+_PLUGIN_TEST_FILES = {
+    (PROJECT_ROOT / rel).resolve() for rel in (Path("tests/test_entrypoints.py"),)
+}
 
 
 def _refresh_paths_from_package() -> None:
@@ -119,16 +155,49 @@ def _have_ephe_path() -> bool:
 
 
 def pytest_collection_modifyitems(config, items):
-    """Auto-skip tests marked 'swiss' unless pyswisseph + ephemeris path are available."""
+    """Apply dynamic skips for optional integrations during collection."""
+
     swiss_missing = not _have_pyswisseph() or not _have_ephe_path()
-    if not swiss_missing:
+    http_disabled = not _flag_enabled("ASTROENGINE_ENABLE_HTTP_TESTS")
+    plugin_disabled = not _flag_enabled("ASTROENGINE_ENABLE_PLUGIN_TESTS")
+
+    skip_swiss = None
+    skip_http = None
+    skip_plugin = None
+
+    if swiss_missing:
+        skip_swiss = pytest.mark.skip(
+            reason="Swiss Ephemeris unavailable (no pyswisseph or SE_EPHE_PATH)."
+        )
+
+    if http_disabled:
+        skip_http = pytest.mark.skip(reason="HTTP API checks disabled during development.")
+
+    if plugin_disabled:
+        skip_plugin = pytest.mark.skip(
+            reason="Plugin discovery checks disabled during development."
+        )
+
+    if not any((skip_swiss, skip_http, skip_plugin)):
         return
-    skip_swiss = pytest.mark.skip(
-        reason="Swiss Ephemeris unavailable (no pyswisseph or SE_EPHE_PATH)."
-    )
+
     for item in items:
-        if "swiss" in item.keywords:
+        item_path = None
+
+        if skip_swiss and "swiss" in item.keywords:
             item.add_marker(skip_swiss)
+
+        if skip_http or skip_plugin:
+            item_path = Path(str(item.fspath)).resolve()
+
+        if skip_http and (
+            item_path in _HTTP_TEST_FILES
+            or any(parent in _HTTP_TEST_DIRS for parent in item_path.parents)
+        ):
+            item.add_marker(skip_http)
+
+        if skip_plugin and item_path in _PLUGIN_TEST_FILES:
+            item.add_marker(skip_plugin)
 
 
 # >>> AUTO-GEN END: swiss availability gating v1.0

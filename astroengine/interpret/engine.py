@@ -6,8 +6,7 @@ from dataclasses import dataclass
 from math import cos, pi
 from typing import Any, Iterable
 
-from .loader import iter_rulepack_rules
-from .models import Rule, Rulepack
+from .loader import Rule, Rulepack, iter_rulepack_rules
 
 
 @dataclass(slots=True)

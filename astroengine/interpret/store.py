@@ -15,7 +15,63 @@ from typing import Any, Dict
 
 import yaml
 
-from .loader import RulepackValidationError, load_rulepack
+from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS
+
+from .loader import Profile, Rule, Rulepack, RulepackValidationError, load_rulepack
+
+_ASPECT_NAME_BY_DEGREE = {int(round(angle)): name for name, angle in BASE_ASPECTS.items()}
+
+
+def _profile_payload(profile: Profile) -> dict[str, Any]:
+    return {
+        "base_multiplier": profile.base_multiplier,
+        "tag_weights": dict(profile.tag_weights),
+        "rule_weights": dict(profile.rule_weights),
+    }
+
+
+def _rule_payload(rule: Rule) -> dict[str, Any]:
+    bodies: list[str] = []
+    if rule.when.bodiesA != "*":
+        bodies.extend(str(body) for body in rule.when.bodiesA)
+    if rule.when.bodiesB != "*":
+        bodies.extend(str(body) for body in rule.when.bodiesB)
+    bodies_payload = bodies or None
+    aspects_payload: list[str] | None
+    if rule.when.aspects == "*":
+        aspects_payload = None
+    else:
+        aspects_payload = []
+        for aspect in rule.when.aspects:
+            name = _ASPECT_NAME_BY_DEGREE.get(int(round(aspect)))
+            if name is None:
+                name = str(int(round(aspect)))
+            aspects_payload.append(name)
+        if not aspects_payload:
+            aspects_payload = None
+    longitude_ranges = [list(item) for item in rule.when.longitude_ranges] if rule.when.longitude_ranges else None
+    return {
+        "id": rule.id,
+        "scope": rule.scope,
+        "title": rule.then.title,
+        "text": rule.then.markdown_template or rule.then.title,
+        "score": rule.then.base_score,
+        "tags": list(rule.then.tags),
+        "when": {
+            "bodies": bodies_payload,
+            "aspect_in": aspects_payload,
+            "min_severity": rule.when.min_severity,
+            "longitude_ranges": longitude_ranges,
+        },
+    }
+
+
+def _names_for(rulepack: Rulepack) -> tuple[str, str, str | None]:
+    meta = rulepack.meta
+    name = str(meta.get("name") or rulepack.rulepack)
+    title = str(meta.get("title") or name)
+    description = meta.get("description")
+    return name, title, description
 from .models import RulepackMeta, RulepackVersionPayload
 
 
@@ -87,15 +143,13 @@ class RulepackStore:
                 loaded = load_rulepack(raw, source=str(path))
             except RulepackValidationError:
                 continue
-            meta = loaded.meta
-            rulepack_id = str(meta.get("id") or loaded.rulepack)
-            name = str(meta.get("name") or meta.get("title") or rulepack_id)
-            title = str(meta.get("title") or name)
-            description = meta.get("description")
-            version = int(meta.get("version") or loaded.version or 1)
+
+            name, title, description = _names_for(loaded)
+            version = int(loaded.version or 1)
             created_at = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
             entry = _RulepackEntry(
-                id=rulepack_id,
+                id=loaded.rulepack,
+
                 name=name,
                 title=title,
                 description=description,
@@ -206,10 +260,14 @@ class RulepackStore:
             mutable=entry.mutable,
             available_versions=sorted(entry.versions),
         )
+        profiles_payload = {name: _profile_payload(profile) for name, profile in loaded.profiles.items()}
+        rules_payload = [_rule_payload(rule) for rule in loaded.rules]
         payload = RulepackVersionPayload(
             meta=meta,
-            profiles=content.get("profiles", {}),
-            rules=content.get("rules", []),
+
+            profiles=profiles_payload,
+            rules=rules_payload,
+
             version=version,
             etag=_compute_etag(content),
             content=content,
@@ -229,21 +287,23 @@ class RulepackStore:
 
     def save_rulepack(self, raw: str | bytes, *, source: str | None = None) -> RulepackMeta:
         loaded = load_rulepack(raw, source=source)
-        meta = loaded.meta
-        rulepack_id = str(meta.get("id") or loaded.rulepack)
-        if rulepack_id in self._builtin_entries:
+
+        if loaded.rulepack in self._builtin_entries:
             raise RulepackValidationError("cannot overwrite built-in rulepack")
-        rp_dir = self.base_dir / rulepack_id
+        rp_dir = self.base_dir / loaded.rulepack
+
         rp_dir.mkdir(parents=True, exist_ok=True)
         meta_path = rp_dir / "meta.json"
         if meta_path.exists():
             data = json.loads(meta_path.read_text(encoding="utf-8"))
         else:
             data = {
-                "id": rulepack_id,
-                "name": meta.get("name") or meta.get("title") or rulepack_id,
-                "title": meta.get("title") or meta.get("name") or rulepack_id,
-                "description": meta.get("description"),
+
+                "id": loaded.rulepack,
+                "name": _names_for(loaded)[0],
+                "title": _names_for(loaded)[1],
+                "description": _names_for(loaded)[2],
+
                 "mutable": True,
                 "versions": [],
             }
@@ -252,10 +312,13 @@ class RulepackStore:
         target_path = rp_dir / file_name
         target_path.write_text(_dump_rulepack(loaded.raw), encoding="utf-8")
         created_at = _iso_now()
-        data["id"] = rulepack_id
-        data["name"] = meta.get("name") or meta.get("title") or rulepack_id
-        data["title"] = meta.get("title") or data["name"]
-        data["description"] = meta.get("description")
+
+        name, title, description = _names_for(loaded)
+        data["id"] = loaded.rulepack
+        data["name"] = name
+        data["title"] = title
+        data["description"] = description
+
         data.setdefault("versions", [])
         data["versions"].append(
             {
@@ -265,14 +328,16 @@ class RulepackStore:
             }
         )
         meta_path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
-        self._cache.pop((rulepack_id, next_version), None)
+
+        self._cache.pop((loaded.rulepack, next_version), None)
         available_versions = sorted(int(v["version"]) for v in data["versions"])
         return RulepackMeta(
-            id=rulepack_id,
-            name=data["name"],
+            id=loaded.rulepack,
+            name=name,
             version=next_version,
-            title=data["title"],
-            description=data.get("description"),
+            title=title,
+            description=description,
+
             created_at=created_at,
             mutable=True,
             available_versions=available_versions,

@@ -169,29 +169,49 @@ class TransitEngine:
         if coarse_step.total_seconds() <= 0.0:
             raise ValueError("step_hours must correspond to a positive duration")
 
-        coarse_times: list[_dt.datetime] = [start]
-        if start != end:
-            current = start
-            while current < end:
-                next_tick = current + coarse_step
-                if next_tick <= current:
+        # ``prev`` variables seed the streaming coarse sampler.  This avoids
+        # materialising large intermediate lists when callers scan multi-month
+        # windows with sub-hour cadences.
+        prev_time = start
+        prev_sample = sample(prev_time)
+        prev_offset = compute_offset(prev_sample)
+
+        def iter_coarse_windows():
+            nonlocal prev_time, prev_sample, prev_offset
+            if start == end:
+                return
+            current_time = prev_time
+            while current_time < end:
+                next_time = current_time + coarse_step
+                if next_time <= current_time:
                     raise ValueError("step_hours too small to advance timeline")
-                if next_tick >= end:
-                    coarse_times.append(end)
-                    break
-                coarse_times.append(next_tick)
-                current = next_tick
-        samples = [sample(moment) for moment in coarse_times]
-        offsets = [compute_offset(item) for item in samples]
+                if next_time > end:
+                    next_time = end
 
-        for idx in range(1, len(coarse_times)):
-            start_time = coarse_times[idx - 1]
-            end_time = coarse_times[idx]
-            start_sample = samples[idx - 1]
-            end_sample = samples[idx]
-            start_offset = offsets[idx - 1]
-            end_offset = offsets[idx]
+                next_sample = sample(next_time)
+                next_offset = compute_offset(next_sample)
+                yield (
+                    prev_time,
+                    next_time,
+                    prev_sample,
+                    next_sample,
+                    prev_offset,
+                    next_offset,
+                )
+                prev_time = next_time
+                prev_sample = next_sample
+                prev_offset = next_offset
+                current_time = next_time
 
+        for (
+            start_time,
+            end_time,
+            start_sample,
+            end_sample,
+            start_offset,
+            end_offset,
+        ) in iter_coarse_windows():
+            
             bracketed = (
                 start_offset == 0.0
                 or end_offset == 0.0
@@ -255,6 +275,8 @@ class TransitEngine:
                 refined_seconds = (result.t_exact_jd - base_jd) * SECONDS_PER_DAY
                 refined_time = base_time + _dt.timedelta(seconds=refined_seconds)
                 refined_sample = self.adapter.sample(body, refined_time)
+                if tick_cache is not None:
+                    tick_cache[refined_time] = refined_sample
                 final_time = refined_time
                 final_sample = refined_sample
                 final_sample_offset = compute_offset(refined_sample)
@@ -276,6 +298,19 @@ class TransitEngine:
                 0.0,
             )
 
+            # Capture the final ephemeris sample so downstream consumers can reuse
+            # the precise longitude without re-sampling the Swiss Ephemeris.
+            metadata = {
+                "precision": precision_info,
+                "sample": {
+                    "body": int(body),
+                    "jd_utc": float(final_sample.jd_utc),
+                    "jd_tt": float(final_sample.jd_tt),
+                    "longitude": float(final_sample.longitude),
+                    "speed_longitude": float(final_sample.speed_longitude),
+                },
+            }
+
             yield LegacyTransitEvent(
                 timestamp=final_time,
                 body=str(body),
@@ -283,7 +318,7 @@ class TransitEngine:
                 aspect=f"{aspect_angle_deg:.0f}",
                 orb=abs(final_offset),
                 motion=motion_state.state,
-                metadata={"precision": precision_info},
+                metadata=metadata,
             )
 
 
@@ -407,6 +442,7 @@ def scan_transits(
 
     step_hours = max(float(step_days) * 24.0, 1.0)
     orb_allow = max(float(orb_deg), 0.0)
+    partile_limit = min(orb_allow, 0.1)
 
     hits: list[AspectHit] = []
     for moving_name, moving_code in moving_map.items():
@@ -425,12 +461,25 @@ def scan_transits(
                     event_time = event.timestamp
                     if event_time is None:
                         continue
+
                     moment = event_time.astimezone(_dt.timezone.utc)
-                    moment_jd = adapter.julian_day(moment)
-                    sample = adapter.body_position(
-                        moment_jd, moving_code, body_name=moving_name
+                    metadata = getattr(event, "metadata", None)
+                    sample_meta = (
+                        metadata.get("sample")
+                        if isinstance(metadata, dict)
+                        else None
                     )
-                    moving_lon = float(sample.longitude % 360.0)
+
+                    moving_lon: float
+                    moving_speed: float
+                    if isinstance(sample_meta, dict) and sample_meta.get("longitude") is not None:
+                        moving_lon = float(sample_meta["longitude"]) % 360.0
+                        moving_speed = float(sample_meta.get("speed_longitude", 0.0))
+                    else:
+                        sample = engine.adapter.sample(moving_code, moment)
+                        moving_lon = float(sample.longitude % 360.0)
+                        moving_speed = float(sample.speed_longitude)
+
                     delta_lambda = _normalize_degrees(target_lon - moving_lon)
                     offset = signed_delta(delta_lambda - aspect_angle)
                     if abs(offset) > orb_allow:
@@ -438,7 +487,7 @@ def scan_transits(
                     motion = classify_relative_motion(
                         aspect_angle + offset,
                         aspect_angle,
-                        float(sample.speed_longitude),
+                        moving_speed,
                         0.0,
                     )
                     hits.append(
@@ -454,7 +503,7 @@ def scan_transits(
                             offset_deg=float(offset),
                             orb_abs=float(abs(offset)),
                             orb_allow=float(orb_allow),
-                            is_partile=abs(offset) <= min(orb_allow, 0.1),
+                            is_partile=abs(offset) <= partile_limit,
                             applying_or_separating=motion.state,
                             family=family,
                             corridor_width_deg=None,
