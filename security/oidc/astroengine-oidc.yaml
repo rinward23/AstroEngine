@@ -1,0 +1,19 @@
+issuer: https://login.example.com/
+clientId: astroengine-platform
+redirectUris:
+  - https://ui.dev.astroengine.local/oidc/callback
+  - https://ui.staging.astroengine.local/oidc/callback
+  - https://ui.astroengine.com/oidc/callback
+postLogoutRedirectUris:
+  - https://astroengine.com
+scopes:
+  - openid
+  - profile
+  - email
+roles:
+  - name: viewer
+    description: Read-only access to tenant resources.
+  - name: analyst
+    description: Can schedule jobs and view analytics exports.
+  - name: admin
+    description: Full administrative control within a tenant.

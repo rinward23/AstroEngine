@@ -1,14 +1,14 @@
-"""Scan-related API endpoints for AstroEngine."""
-
 from __future__ import annotations
 
 import json
+
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, Body, HTTPException
+
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from ...core.transit_engine import scan_transits

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import json
 import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -86,14 +87,18 @@ class RulepackStore:
                 loaded = load_rulepack(raw, source=str(path))
             except RulepackValidationError:
                 continue
-            header = loaded.document.meta
-            version = int(header.version or 1)
+            meta = loaded.meta
+            rulepack_id = str(meta.get("id") or loaded.rulepack)
+            name = str(meta.get("name") or meta.get("title") or rulepack_id)
+            title = str(meta.get("title") or name)
+            description = meta.get("description")
+            version = int(meta.get("version") or loaded.version or 1)
             created_at = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
             entry = _RulepackEntry(
-                id=header.id,
-                name=header.name,
-                title=header.title,
-                description=header.description,
+                id=rulepack_id,
+                name=name,
+                title=title,
+                description=description,
                 mutable=False,
                 versions={
                     version: _RulepackVersion(
@@ -190,7 +195,7 @@ class RulepackStore:
             return cached.payload
         raw = info.path.read_text(encoding="utf-8")
         loaded = load_rulepack(raw, source=str(info.path))
-        content = loaded.content
+        content = loaded.raw
         meta = RulepackMeta(
             id=entry.id,
             name=entry.name,
@@ -203,8 +208,8 @@ class RulepackStore:
         )
         payload = RulepackVersionPayload(
             meta=meta,
-            profiles=loaded.document.profiles,
-            rules=loaded.document.rules,
+            profiles=content.get("profiles", {}),
+            rules=content.get("rules", []),
             version=version,
             etag=_compute_etag(content),
             content=content,
@@ -224,32 +229,33 @@ class RulepackStore:
 
     def save_rulepack(self, raw: str | bytes, *, source: str | None = None) -> RulepackMeta:
         loaded = load_rulepack(raw, source=source)
-        header = loaded.document.meta
-        if header.id in self._builtin_entries:
+        meta = loaded.meta
+        rulepack_id = str(meta.get("id") or loaded.rulepack)
+        if rulepack_id in self._builtin_entries:
             raise RulepackValidationError("cannot overwrite built-in rulepack")
-        rp_dir = self.base_dir / header.id
+        rp_dir = self.base_dir / rulepack_id
         rp_dir.mkdir(parents=True, exist_ok=True)
         meta_path = rp_dir / "meta.json"
         if meta_path.exists():
             data = json.loads(meta_path.read_text(encoding="utf-8"))
         else:
             data = {
-                "id": header.id,
-                "name": header.name,
-                "title": header.title,
-                "description": header.description,
+                "id": rulepack_id,
+                "name": meta.get("name") or meta.get("title") or rulepack_id,
+                "title": meta.get("title") or meta.get("name") or rulepack_id,
+                "description": meta.get("description"),
                 "mutable": True,
                 "versions": [],
             }
         next_version = max((int(v.get("version", 0)) for v in data["versions"]), default=0) + 1
         file_name = f"v{next_version}.yaml"
         target_path = rp_dir / file_name
-        target_path.write_text(_dump_rulepack(loaded.content), encoding="utf-8")
+        target_path.write_text(_dump_rulepack(loaded.raw), encoding="utf-8")
         created_at = _iso_now()
-        data["id"] = header.id
-        data["name"] = header.name
-        data["title"] = header.title
-        data["description"] = header.description
+        data["id"] = rulepack_id
+        data["name"] = meta.get("name") or meta.get("title") or rulepack_id
+        data["title"] = meta.get("title") or data["name"]
+        data["description"] = meta.get("description")
         data.setdefault("versions", [])
         data["versions"].append(
             {
@@ -259,14 +265,14 @@ class RulepackStore:
             }
         )
         meta_path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
-        self._cache.pop((header.id, next_version), None)
+        self._cache.pop((rulepack_id, next_version), None)
         available_versions = sorted(int(v["version"]) for v in data["versions"])
         return RulepackMeta(
-            id=header.id,
-            name=header.name,
+            id=rulepack_id,
+            name=data["name"],
             version=next_version,
-            title=header.title,
-            description=header.description,
+            title=data["title"],
+            description=data.get("description"),
             created_at=created_at,
             mutable=True,
             available_versions=available_versions,

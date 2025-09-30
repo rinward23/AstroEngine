@@ -1,0 +1,32 @@
+{
+  "title": "Bitmap Prefilter",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Prefilter Duration",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(astroengine_bitmap_prefilter_seconds_bucket[5m])) by (le))",
+          "legendFormat": "P95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Prefilter Errors",
+      "targets": [
+        {
+          "expr": "rate(astroengine_bitmap_prefilter_errors_total[5m])",
+          "legendFormat": "errors"
+        }
+      ]
+    }
+  ]
+}

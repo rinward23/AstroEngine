@@ -1,0 +1,21 @@
+image:
+  repository: ghcr.io/astroengine/workers
+  tag: latest
+  pullPolicy: IfNotPresent
+
+environment:
+  LOG_LEVEL: info
+  ASTROENGINE_ENV: dev
+  WORKER_CONCURRENCY: "4"
+
+queue:
+  brokerUrlSecret: astroengine-broker
+  resultBackendSecret: astroengine-backend
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1
+    memory: 512Mi

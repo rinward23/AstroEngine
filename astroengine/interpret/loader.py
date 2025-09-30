@@ -1,15 +1,19 @@
+
 """Compatibility loader for interpretation rulepacks."""
+
 
 from __future__ import annotations
 
-import json
+
 from dataclasses import dataclass
 from pathlib import Path
+
 from typing import Any, Iterable
 
 import yaml
 
 from .models import Rule, RuleThen, RuleWhen, Rulepack, RulepackDocument, RulepackLintResult
+
 
 
 class RulepackValidationError(Exception):
@@ -20,16 +24,37 @@ class RulepackValidationError(Exception):
         self.errors = errors or []
 
 
+
 @dataclass(frozen=True)
 class LoadedRulepack:
+
     """Loaded rulepack with compatibility helpers for legacy consumers."""
+
 
     runtime: Rulepack
     document: RulepackDocument
     content: dict[str, Any]
+    runtime: Rulepack
+
+    @property
+    def rulepack(self) -> str:
+        return self.runtime.id
+
+    @property
+    def profiles(self) -> dict[str, ProfileDefinition]:
+        return self.runtime.profiles
+
+    @property
+    def rules(self) -> list[Rule]:
+        return self.runtime.rules
+
+    def profile_weights(self, profile: str) -> dict[str, float]:
+        return self.runtime.profile_weights(profile)
+
 
     def __getattr__(self, item: str) -> Any:  # pragma: no cover - delegation helper
         return getattr(self.runtime, item)
+
 
 
 def _parse_raw(raw: str, *, source: str | None = None) -> dict[str, Any]:
@@ -37,6 +62,7 @@ def _parse_raw(raw: str, *, source: str | None = None) -> dict[str, Any]:
         return json.loads(raw)
     except json.JSONDecodeError:
         try:
+
             data = yaml.safe_load(raw)
         except yaml.YAMLError as exc:  # pragma: no cover - defensive
             raise RulepackValidationError(
@@ -126,6 +152,7 @@ def _normalize_for_document(data: dict[str, Any]) -> dict[str, Any]:
         then = entry.get("then") or {}
         when = entry.get("when") or {}
         rules.append(
+
             {
                 "id": str(entry.get("id")),
                 "scope": str(entry.get("scope", "synastry")),
@@ -139,7 +166,9 @@ def _normalize_for_document(data: dict[str, Any]) -> dict[str, Any]:
                     "min_severity": when.get("min_severity"),
                 },
             }
+
         )
+
     return {"meta": meta, "profiles": profiles, "rules": rules}
 
 
@@ -187,16 +216,88 @@ def load_rulepack_from_data(data: dict[str, Any], *, source: str | None = None) 
     return load_rulepack(data, source=source)
 
 
+    runtime = _build_runtime(document)
+    normalized = document.model_dump(mode="python")
+    return LoadedRulepack(document=document, content=normalized, runtime=runtime)
+
+
+    origin = source_name or source
+    if isinstance(raw, Mapping):
+        data = dict(raw)
+        origin = origin or "<mapping>"
+    elif isinstance(raw, (str, Path)):
+        path_obj: Path | None = None
+        try:
+            path_obj = Path(raw)
+        except (OSError, TypeError, ValueError):
+            path_obj = None
+        is_existing_path = False
+        if path_obj is not None:
+            try:
+                is_existing_path = path_obj.exists()
+            except OSError:
+                is_existing_path = False
+        if is_existing_path and path_obj is not None:
+            origin = origin or str(path_obj)
+            raw = path_obj.read_text(encoding="utf-8")
+            data = _parse_raw(raw, source=origin)
+        else:
+            origin = origin or "<inline>"
+            data = _parse_raw(str(raw), source=origin)
+    elif isinstance(raw, bytes):
+        origin = origin or "<bytes>"
+        data = _parse_raw(raw.decode("utf-8"), source=origin)
+    else:
+        raise TypeError("unsupported rulepack input type")
+    return load_rulepack_from_data(data, source=origin)
+
+
+def load_rulepack_from_data(data: Mapping[str, Any], *, source: str | None = None) -> Rulepack:
+    """Validate *data* against the rulepack schema and return a :class:`Rulepack`."""
+
+    prepared = _prepare_for_validation(data)
+    rules_raw = prepared.get("rules")
+    new_style = False
+    if isinstance(rules_raw, Iterable):
+        for entry in rules_raw:
+            if isinstance(entry, Mapping) and "then" in entry:
+                new_style = True
+                break
+    if new_style:
+        errors = [
+            {
+                "path": list(error.path),
+                "message": error.message,
+                "validator": error.validator,
+            }
+            for error in _VALIDATOR.iter_errors(prepared)
+        ]
+        if errors:
+            raise RulepackValidationError("rulepack failed schema validation", errors=errors)
+    return _build_rulepack(prepared)
+
+
+def lint_rulepack(
+    raw: str | bytes | Mapping[str, Any], *, source: str | None = None
+) -> RulepackLintResult:
+    """Return lint diagnostics for a rulepack payload without raising."""
+
+
 def iter_rulepack_rules(rulepack: LoadedRulepack | Rulepack) -> tuple[Rule, ...]:
     if isinstance(rulepack, LoadedRulepack):
         return rulepack.runtime.rules
     return rulepack.rules
 
 
+
 def lint_rulepack(raw: str | bytes | Path | dict[str, Any], *, source: str | None = None) -> RulepackLintResult:
     try:
-        loaded = load_rulepack(raw, source=source)
+        if isinstance(raw, Mapping):
+            load_rulepack_from_data(raw, source=source)
+        else:
+            load_rulepack(raw, source=source)
     except RulepackValidationError as exc:
+
         return RulepackLintResult(ok=False, errors=exc.errors or [{"message": str(exc)}], warnings=[], meta={"source": source})
     return RulepackLintResult(
         ok=True,
@@ -204,6 +305,7 @@ def lint_rulepack(raw: str | bytes | Path | dict[str, Any], *, source: str | Non
         warnings=[],
         meta={"id": loaded.rulepack, "rule_count": len(loaded.rules), "source": loaded.source},
     )
+
 
 
 __all__ = [
