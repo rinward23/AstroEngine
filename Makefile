@@ -1,8 +1,8 @@
-# >>> AUTO-GEN BEGIN: Makefile v1.1
-.PHONY: help setup hooks fmt lint lint-code test doctor clean fullcheck repair build
+# >>> AUTO-GEN BEGIN: Makefile v1.2
+.PHONY: help setup hooks fmt lint lint-code test doctor clean deepclean fullcheck repair build
 
 help:
-	@echo "Targets: setup, hooks, fmt, lint, lint-code, test, doctor, clean, fullcheck, repair, build"
+	@echo "Targets: setup, hooks, fmt, lint, lint-code, test, doctor, clean, deepclean, fullcheck, repair, build"
 
 setup:
 	python -m pip install --upgrade pip
@@ -37,6 +37,9 @@ clean:
 	rm -rf .pytest_cache .ruff_cache .mypy_cache build dist *.egg-info **/__pycache__
 	@[ -f diagnostics.json ] && rm -f diagnostics.json || true
 
+deepclean:
+	python scripts/cleanup/repo_clean.py --deep
+
 fullcheck:
 	python -m astroengine.maint --full --strict || true
 
@@ -45,4 +48,4 @@ repair:
 
 build:
 	python -m astroengine.maint --with-build || true
-# >>> AUTO-GEN END: Makefile v1.1
+# >>> AUTO-GEN END: Makefile v1.2

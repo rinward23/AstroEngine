@@ -6,6 +6,7 @@ from .esoteric import register_esoteric_module
 from .event_detectors import register_event_detectors_module
 from .mundane import register_mundane_module
 from .narrative import register_narrative_module
+from .jyotish import register_jyotish_module
 from .predictive import register_predictive_module
 from .registry import (
     AstroChannel,
@@ -38,6 +39,7 @@ def bootstrap_default_registry() -> AstroRegistry:
     register_esoteric_module(registry)
 
     register_mundane_module(registry)
+    register_jyotish_module(registry)
     register_narrative_module(registry)
 
     register_ritual_module(registry)

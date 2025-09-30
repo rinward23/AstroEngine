@@ -42,6 +42,26 @@ def test_station_refines_speed():
     values, _ = swe.calc_ut(mercury.jd, swe.MERCURY, swe.FLG_SWIEPH | swe.FLG_SPEED)
     assert abs(values[3]) < 5e-6
 
+    offsets = (0.5 / 24.0, 1.0 / 24.0, 2.0 / 24.0)
+    expected_station = None
+    for delta in offsets:
+        before_values, _ = swe.calc_ut(
+            mercury.jd - delta, swe.MERCURY, swe.FLG_SWIEPH | swe.FLG_SPEED
+        )
+        after_values, _ = swe.calc_ut(
+            mercury.jd + delta, swe.MERCURY, swe.FLG_SWIEPH | swe.FLG_SPEED
+        )
+        before = before_values[3]
+        after = after_values[3]
+        if before > 0 and after < 0:
+            expected_station = "retrograde"
+            break
+        if before < 0 and after > 0:
+            expected_station = "direct"
+            break
+
+    assert mercury.station_type == expected_station
+
     jds = [event.jd for event in events]
     assert jds == sorted(jds)
 

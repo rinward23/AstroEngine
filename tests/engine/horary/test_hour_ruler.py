@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from astroengine.engine.horary.hour_ruler import GeoLocation, planetary_hour
+from astroengine.engine.horary.hour_ruler import (
+    GeoLocation,
+    moonrise_moonset,
+    planetary_hour,
+)
 
 
 def test_planetary_hour_midday_london() -> None:
@@ -23,4 +27,17 @@ def test_planetary_hour_night_interval() -> None:
 
     assert result.index >= 12
     assert result.start < moment < result.end
+
+
+def test_moonrise_moonset_sequence() -> None:
+    location = GeoLocation(latitude=40.7128, longitude=-74.0060)
+    moment = datetime(2024, 3, 20, 12, 0, tzinfo=UTC)
+
+    moonrise, moonset, next_moonrise = moonrise_moonset(moment, location)
+
+    assert moonrise.tzinfo is UTC
+    assert moonset.tzinfo is UTC
+    assert next_moonrise.tzinfo is UTC
+    assert moonrise < moonset < next_moonrise
+    assert moonrise <= moment <= next_moonrise
 

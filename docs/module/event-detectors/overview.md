@@ -14,7 +14,7 @@ All detector families described below are wired into the shared registry and exe
 
 | Detector | Inputs & thresholds | Runtime implementation | Tests |
 | --- | --- | --- | --- |
-| Stations (retrograde/direct + shadows) | Longitudinal speed sign changes refined with Swiss Ephemeris. Shadow windows reuse the paired station longitudes. | `astroengine.detectors.stations.find_stations`, `astroengine.detectors.stations.find_shadow_periods`. | `tests/test_stations_impl.py` |
+| Stations (retrograde/direct + shadows) | Longitudinal speed sign changes refined with Swiss Ephemeris. Shadow windows reuse the paired station longitudes. Station payloads expose `station_type` to distinguish retrograde vs. direct turns. | `astroengine.detectors.stations.find_stations`, `astroengine.detectors.stations.find_shadow_periods`. | `tests/test_stations_impl.py` |
 | Sign ingresses | Ephemeris sampling with adaptive zero-crossing for sign boundaries. | `astroengine.detectors.ingresses.find_sign_ingresses`. | `tests/test_ingress_features.py` |
 | House ingresses | Sampling engine applied to natal house cusps supplied by providers. | `astroengine.detectors.ingresses.find_house_ingresses`. | `tests/test_ingresses_mundane.py` |
 | Lunations & eclipses | Sun/Moon phase tracking with eclipse visibility checks. | `astroengine.detectors.lunations.find_lunations`, `astroengine.detectors.eclipses.find_eclipses`. | `tests/test_lunations_impl.py`, `tests/test_eclipses_impl.py` |
