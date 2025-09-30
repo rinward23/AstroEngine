@@ -1,0 +1,6 @@
+apiVersion: v2
+name: astroengine-grafana
+version: 0.1.0
+description: Grafana deployment with AstroEngine dashboards.
+type: application
+appVersion: "9.5.2"

@@ -1,0 +1,6 @@
+cluster:
+  domain: astroengine.com
+  replicas:
+    api: 4
+    workers: 6
+    ui: 2

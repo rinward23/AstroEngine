@@ -1,0 +1,4 @@
+imagePullSecrets:
+  - name: astroengine-registry
+secrets:
+  vaultPath: secret/data/astroengine

@@ -1,0 +1,6 @@
+cluster:
+  domain: staging.astroengine.local
+  replicas:
+    api: 3
+    workers: 3
+    ui: 1

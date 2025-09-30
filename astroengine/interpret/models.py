@@ -4,10 +4,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 from datetime import UTC, datetime
 from typing import Any, Iterable, Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 @dataclass(slots=True, frozen=True)
@@ -203,8 +204,16 @@ class ProfileDefinition(BaseModel):
     """Profile weighting configuration for a rulepack."""
 
     base_multiplier: float = 1.0
-    tag_weights: dict[str, float] = Field(default_factory=dict)
-    rule_weights: dict[str, float] = Field(default_factory=dict)
+    tag_weights: dict[str, float] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("tags", "tag_weights"),
+    )
+    rule_weights: dict[str, float] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("rule_weights", "rules"),
+    )
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     @field_validator("tag_weights", "rule_weights", mode="before")
     @classmethod
@@ -219,19 +228,62 @@ class ProfileDefinition(BaseModel):
 class RuleCondition(BaseModel):
     """Condition block inside a rule definition."""
 
-    bodies: tuple[str, ...] | None = None
-    aspect_in: tuple[str, ...] | None = None
+    bodies: tuple[str, ...] | None = Field(default=None, validation_alias=AliasChoices("bodies"))
+    aspect_in: tuple[str, ...] | None = Field(default=None, validation_alias=AliasChoices("aspect_in"))
+    bodiesA: tuple[str, ...] | str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("bodiesA", "bodies_a"),
+    )
+    bodiesB: tuple[str, ...] | str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("bodiesB", "bodies_b"),
+    )
+    aspects: tuple[Any, ...] | str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("aspects"),
+    )
     min_severity: float | None = Field(default=None, ge=0.0)
     longitude_ranges: tuple[tuple[float, float], ...] | None = None
 
-    @field_validator("bodies", "aspect_in", mode="before")
+    @field_validator("bodies", mode="before")
     @classmethod
-    def _normalize_sequence(cls, value: Any) -> tuple[str, ...] | None:
+    def _normalize_bodies(cls, value: Any) -> tuple[str, ...] | None:
         if value is None:
             return None
         if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
             return tuple(str(item) for item in value)
         return (str(value),)
+
+    @field_validator("bodiesA", "bodiesB", mode="before")
+    @classmethod
+    def _normalize_body_side(cls, value: Any) -> tuple[str, ...] | str | None:
+        if value is None:
+            return None
+        if value == "*":
+            return "*"
+        if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
+            return tuple(str(item) for item in value)
+        return (str(value),)
+
+    @field_validator("aspect_in", mode="before")
+    @classmethod
+    def _normalize_aspect_names(cls, value: Any) -> tuple[str, ...] | None:
+        if value is None:
+            return None
+        if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
+            return tuple(str(item) for item in value)
+        return (str(value),)
+
+    @field_validator("aspects", mode="before")
+    @classmethod
+    def _normalize_aspects(cls, value: Any) -> tuple[Any, ...] | str | None:
+        if value is None:
+            return None
+        if value == "*":
+            return "*"
+        if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
+            return tuple(value)
+        return (value,)
 
     @field_validator("longitude_ranges", mode="before")
     @classmethod
@@ -250,12 +302,14 @@ class RuleDefinition(BaseModel):
 
     id: str
     scope: Scope
-    title: str
-    text: str
+    title: str | None = None
+    text: str | None = None
     score: float = 1.0
     description: str | None = None
     tags: tuple[str, ...] = Field(default_factory=tuple)
     when: RuleCondition = Field(default_factory=RuleCondition)
+    markdown_template: str | None = None
+    then: RuleOutcome | None = None
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -266,24 +320,47 @@ class RuleDefinition(BaseModel):
             return tuple(str(item) for item in value)
         return (str(value),)
 
+    @model_validator(mode="after")
+    def _populate_then(self) -> "RuleDefinition":
+        if self.then is None:
+            self.then = RuleOutcome(
+                title=self.title or self.id,
+                tags=self.tags,
+                base_score=float(self.score),
+                score_fn="linear",
+                markdown_template=self.markdown_template or self.text,
+            )
+        elif self.title is None:
+            self.title = self.then.title
+        if self.markdown_template is None and self.then.markdown_template is not None:
+            self.markdown_template = self.then.markdown_template
+        return self
+
 
 class RulepackHeader(BaseModel):
     """Metadata embedded within a rulepack document."""
 
-    id: str
-    name: str
-    title: str
+    id: str | None = None
+    name: str | None = None
+    title: str | None = None
     description: str | None = None
     version: int | None = None
     mutable: bool = False
+
+    model_config = ConfigDict(extra="allow")
 
 
 class RulepackDocument(BaseModel):
     """Fully parsed rulepack document."""
 
-    meta: RulepackHeader
+    rulepack: str | None = None
+    version: int | None = None
+    meta: RulepackHeader | None = None
     profiles: dict[str, ProfileDefinition] = Field(default_factory=dict)
     rules: list[RuleDefinition]
+    archetypes: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+
+    model_config = ConfigDict(extra="allow")
 
     @field_validator("profiles", mode="before")
     @classmethod
@@ -300,6 +377,15 @@ class RulepackDocument(BaseModel):
         if not isinstance(value, list):
             raise TypeError("rules must be an array")
         return value
+
+    @field_validator("archetypes", mode="before")
+    @classmethod
+    def _normalize_archetypes(cls, value: Any) -> dict[str, tuple[str, ...]]:
+        if value is None:
+            return {}
+        if isinstance(value, dict):
+            return {str(k): tuple(str(item) for item in v) for k, v in value.items()}
+        raise TypeError("archetypes must be mappings")
 
 
 class RulepackVersionPayload(BaseModel):
@@ -329,4 +415,90 @@ def now_utc() -> datetime:
     """Utility returning timezone-aware UTC now for metadata stamping."""
 
     return datetime.now(tz=UTC)
+
+
+class RuleOutcome(BaseModel):
+    """Result block describing effects of a matched rule."""
+
+    title: str
+    tags: tuple[str, ...] = Field(default_factory=tuple)
+    base_score: float = Field(default=0.5, ge=0.0)
+    score_fn: str = "linear"
+    markdown_template: str | None = None
+
+    model_config = ConfigDict(extra="allow")
+
+
+@dataclass(frozen=True, slots=True)
+class RuleWhen:
+    """Runtime representation of the `when` predicate."""
+
+    bodiesA: tuple[str, ...] | str
+    bodiesB: tuple[str, ...] | str
+    aspects: tuple[int, ...] | str
+    min_severity: float
+
+
+@dataclass(frozen=True, slots=True)
+class RuleThen:
+    """Runtime representation of the `then` payload."""
+
+    title: str
+    tags: tuple[str, ...]
+    base_score: float
+    score_fn: str
+    markdown_template: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Rule:
+    """Evaluation-ready interpretation rule."""
+
+    id: str
+    scope: str
+    when: RuleWhen
+    then: RuleThen
+
+
+@dataclass(slots=True)
+class Rulepack:
+    """Evaluation-ready rulepack with helper utilities."""
+
+    id: str
+    version: int
+    profiles: dict[str, ProfileDefinition] = field(default_factory=dict)
+    rules: tuple[Rule, ...] = field(default_factory=tuple)
+    archetypes: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def profile_weights(self, profile: str) -> dict[str, float]:
+        if not self.profiles:
+            return {}
+        if profile in self.profiles:
+            definition = self.profiles[profile]
+        elif "balanced" in self.profiles:
+            definition = self.profiles["balanced"]
+        else:
+            key = sorted(self.profiles)[0]
+            definition = self.profiles[key]
+        weights = {tag: float(weight) for tag, weight in definition.tag_weights.items()}
+        base = float(definition.base_multiplier)
+        if base != 1.0:
+            weights = {tag: weight * base for tag, weight in weights.items()}
+        return weights
+
+
+@dataclass(slots=True)
+class LoadedRulepack(Rulepack):
+    """Rulepack along with its validated document and raw payload."""
+
+    document: RulepackDocument | None = None
+    content: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def rulepack(self) -> str:
+        return self.id
+
+
+RuleDefinition.model_rebuild()
 

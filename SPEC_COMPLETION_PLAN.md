@@ -15,6 +15,7 @@ texts) — synthetic data is explicitly disallowed.
   * `docs/module/` (top-level module narratives).
   * `docs/module/<module>/submodules/` (submodule specs).
   * `docs/module/<module>/channels/<channel>/` (channel+subchannel specs).
+  * Newly established developer experience assets live under `docs/module/developer_platform.md` with supporting channel docs in `docs/module/developer_platform/` so SDK, CLI, portal, and webhook artefacts retain their module lineage.
 * Within each scope, include provenance appendices for any dataset reference
   (CSV, SQLite, Parquet, etc.) and index the file offsets or table names needed
   by the runtime for deterministic retrieval.

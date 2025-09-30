@@ -1,0 +1,24 @@
+datasources:
+  prometheus:
+    type: prometheus
+    url: http://astroengine-prometheus:9090
+    access: proxy
+    isDefault: true
+
+dashboardProviders:
+  astroengine:
+    apiVersion: 1
+    providers:
+      - name: astroengine
+        orgId: 1
+        folder: AstroEngine
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards/astroengine
+
+adminUser: admin
+adminPassword: changeme
+
+extraDashboards: {}

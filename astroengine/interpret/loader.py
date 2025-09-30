@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Mapping
 
 import json
+
 
 import yaml
 from jsonschema import Draft202012Validator
@@ -17,12 +19,14 @@ from .models import Rule, RuleThen, RuleWhen, Rulepack, RulepackLintResult
 from .schema import RULEPACK_SCHEMA
 
 
+
 class RulepackValidationError(Exception):
     """Raised when a rulepack fails schema or semantic validation."""
 
     def __init__(self, message: str, *, errors: list[dict[str, Any]] | None = None):
         super().__init__(message)
         self.errors = errors or []
+
 
 
 _VALIDATOR = Draft202012Validator(RULEPACK_SCHEMA)
@@ -64,6 +68,7 @@ def _prepare_for_validation(data: Mapping[str, Any]) -> dict[str, Any]:
     return prepared
 
 
+
 def _parse_raw(content: str, *, source: str | None = None) -> dict[str, Any]:
     try:
         return json.loads(content)
@@ -77,6 +82,7 @@ def _parse_raw(content: str, *, source: str | None = None) -> dict[str, Any]:
         if not isinstance(parsed, Mapping):
             raise RulepackValidationError("rulepack must be a JSON/YAML object")
         return dict(parsed)
+
 
 
 def _coerce_sequence(value: Any) -> tuple[str, ...] | str:
@@ -249,6 +255,10 @@ def _build_rulepack(data: Mapping[str, Any]) -> Rulepack:
     )
 
 
+def load_rulepack_from_data(data: dict[str, Any], *, source: str | None = None) -> LoadedRulepack:
+    """Validate *data* and return a runtime rulepack."""
+
+
 def load_rulepack(
     raw: str | bytes | Path | Mapping[str, Any],
     *,
@@ -318,6 +328,7 @@ def lint_rulepack(
 ) -> RulepackLintResult:
     """Return lint diagnostics for a rulepack payload without raising."""
 
+
     try:
         if isinstance(raw, Mapping):
             load_rulepack_from_data(raw, source=source)
@@ -334,8 +345,10 @@ def iter_rulepack_rules(rulepack: Rulepack) -> Iterator[Rule]:
     return iter(rulepack.rules)
 
 
+
 __all__ = [
     "RulepackValidationError",
+
     "iter_rulepack_rules",
     "lint_rulepack",
     "load_rulepack",

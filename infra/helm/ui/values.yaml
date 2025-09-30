@@ -1,0 +1,28 @@
+image:
+  repository: ghcr.io/astroengine/ui
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8501
+
+environment:
+  STREAMLIT_SERVER_ENABLE_CORS: "false"
+  STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION: "true"
+  ASTROENGINE_ENV: dev
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+    - host: ui.dev.astroengine.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: ui-tls
+      hosts:
+        - ui.dev.astroengine.local

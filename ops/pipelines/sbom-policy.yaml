@@ -1,0 +1,14 @@
+minimumCompliance:
+  spdxVersion: 2.3
+  requiredSections:
+    - packages
+    - files
+    - relationships
+    - creationInfo
+vulnerabilityThresholds:
+  critical: 0
+  high: 5
+licenseAllowList:
+  - MIT
+  - Apache-2.0
+  - BSD-3-Clause
