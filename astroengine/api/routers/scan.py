@@ -115,6 +115,8 @@ class Hit(BaseModel):
     lon_target: float | None = None
     delta: float | None = None
     offset: float | None = None
+    speed_deg_per_day: float | None = None
+    retrograde: bool | None = None
     metadata: dict[str, Any] | None = None
 
 
@@ -172,6 +174,7 @@ def _hit_from_aspect(hit: AspectHit | Mapping[str, Any]) -> Hit:
     offset = _value_from_hit(hit, "offset_deg", "offset")
     metadata = _value_from_hit(hit, "metadata", "meta")
     retrograde = _value_from_hit(hit, "retrograde")
+    speed = _value_from_hit(hit, "speed_deg_per_day", "speed")
 
     meta_dict: dict[str, Any] | None
     if isinstance(metadata, Mapping):
@@ -183,6 +186,9 @@ def _hit_from_aspect(hit: AspectHit | Mapping[str, Any]) -> Hit:
     if retrograde is not None:
         meta_dict = dict(meta_dict or {})
         meta_dict.setdefault("retrograde", bool(retrograde))
+    if speed is not None:
+        meta_dict = dict(meta_dict or {})
+        meta_dict.setdefault("speed_deg_per_day", float(speed))
 
     return Hit(
         ts=str(when_iso) if when_iso is not None else "",
@@ -197,6 +203,8 @@ def _hit_from_aspect(hit: AspectHit | Mapping[str, Any]) -> Hit:
         lon_target=float(lon_target) if lon_target is not None else None,
         delta=float(delta) if delta is not None else None,
         offset=float(offset) if offset is not None else None,
+        speed_deg_per_day=float(speed) if speed is not None else None,
+        retrograde=bool(retrograde) if retrograde is not None else None,
         metadata=meta_dict,
     )
 
@@ -247,6 +255,10 @@ def _hit_to_canonical(hit: Hit) -> dict[str, Any]:
         meta.setdefault("lon_moving", hit.lon_moving)
     if hit.lon_target is not None:
         meta.setdefault("lon_target", hit.lon_target)
+    if hit.speed_deg_per_day is not None:
+        meta.setdefault("speed_deg_per_day", hit.speed_deg_per_day)
+    if hit.retrograde is not None:
+        meta.setdefault("retrograde", hit.retrograde)
     return {
         "ts": hit.ts,
         "moving": hit.moving,
