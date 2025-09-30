@@ -1,0 +1,14 @@
+controller:
+  replicaCount: 2
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+  config:
+    enable-modsecurity: "true"
+    enable-owasp-modsecurity-crs: "true"
+    limit-req-status-code: "429"
+    limit-req-zone: "astroengine"
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "10254"

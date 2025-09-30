@@ -18,5 +18,6 @@
 | I-11 | Backfill mundane ingress dataset ingestion | Mundane Astrology Guild | ✅ Complete | 2024-07-22 | `astroengine/modules/mundane/`, Solar Fire ingress exports | Solar ingress charts now resolved via `compute_solar_ingress_chart`; covered by `tests/test_ingresses_mundane.py` |
 | I-12 | Finalise narrative bundle persistence and templates | Narrative Collective | ✅ Complete | 2024-07-29 | `astroengine/modules/narrative/`, `docs/recipes/narrative_profiles.md` | Narrative outputs composed by `astroengine.narrative.compose_narrative`; verified by `tests/test_narrative_summaries.py` |
 | I-13 | Ship UX overlays with documented data sources | UX & Maps Team | ⏳ Planned | 2024-08-05 | `astroengine/modules/ux/`, `docs/module/interop.md` | Registry placeholders recorded; must document atlas/tz datasets before release |
+| I-14 | Publish developer platform specifications (SDKs, CLI, portal, webhooks) | Developer Experience Guild | ✅ Complete | 2024-05-27 | `sdks/*`, `cli/`, `devportal/`, `openapi/v*.json` | `docs/module/developer_platform.md`, `docs/module/developer_platform/*.md`, updated `SPEC_COMPLETION_PLAN.md` |
 
 Future work: add new rows when detectors, providers, or export channels are implemented so progress remains auditable.

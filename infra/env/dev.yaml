@@ -1,0 +1,6 @@
+cluster:
+  domain: dev.astroengine.local
+  replicas:
+    api: 2
+    workers: 2
+    ui: 1
