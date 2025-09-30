@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-import math
 from datetime import UTC, datetime, timedelta
 
-import swisseph as swe
-
-from ...core.time import julian_day
-from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
+from ...ephemeris.adapter import ObserverLocation
 from ...ritual.timing import PLANETARY_HOUR_TABLE
+from ..observational.sun import solar_cycle
 from .models import GeoLocation, PlanetaryHourResult
 
 __all__ = ["planetary_hour", "sunrise_sunset", "moonrise_moonset"]
+
 
 
 _RISE_FLAGS = swe.BIT_DISC_CENTER | swe.BIT_NO_REFRACTION | swe.FLG_SWIEPH
@@ -119,6 +117,7 @@ def moonrise_moonset(moment: datetime, location: GeoLocation) -> tuple[datetime,
     # The Moon's diurnal cycle is shorter than the Sun's, so a tighter fallback helps
     # keep the search within the same lunation day if the direct query fails.
     return _rise_set_cycle(moment, location, body=swe.MOON, fallback_step=0.35)
+
 
 
 def _local_weekday(dt_utc: datetime, location: GeoLocation) -> str:
