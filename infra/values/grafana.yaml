@@ -1,0 +1,12 @@
+adminPasswordSecret: astroengine-grafana
+extraDashboards:
+  engine_scans: |
+    {{ readFile "../observability/dashboards/engine_scans.json" | indent 4 }}
+  optimizer_latency: |
+    {{ readFile "../observability/dashboards/optimizer_latency.json" | indent 4 }}
+  returns_perf: |
+    {{ readFile "../observability/dashboards/returns_perf.json" | indent 4 }}
+  minor_bitmap: |
+    {{ readFile "../observability/dashboards/minor_bitmap.json" | indent 4 }}
+  db_health: |
+    {{ readFile "../observability/dashboards/db_health.json" | indent 4 }}

@@ -198,6 +198,19 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
+
+class TraditionalRun(ModuleScopeMixin, TimestampMixin, Base):
+    """Persisted payloads for traditional engine runs."""
+
+    __tablename__ = "traditional_runs"
+    __table_args__ = _table_args(Index("ix_traditional_runs_kind", "kind"))
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(String(40), nullable=False, unique=True, default=_uuid_hex)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    inputs: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    result: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+
     name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
 
     weights: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
