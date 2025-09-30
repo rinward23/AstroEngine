@@ -76,6 +76,17 @@ from .core import (
     to_tt,
 )
 from .diagnostics import collect_diagnostics  # ENSURE-LINE
+from .engine.vedic import (
+    NAKSHATRA_ARC_DEGREES,
+    PADA_ARC_DEGREES,
+    Nakshatra,
+    NakshatraPosition,
+    lord_of_nakshatra,
+    nakshatra_info,
+    nakshatra_of,
+    pada_of,
+    position_for,
+)
 from .ephemeris import EphemerisConfig  # noqa: F401
 from .ephemeris import (
     EphemerisAdapter,
@@ -334,6 +345,15 @@ __all__ = [
     "PlanetaryDay",
     "VoidOfCourseRule",
     "ElectionalWindow",
+    "NAKSHATRA_ARC_DEGREES",
+    "PADA_ARC_DEGREES",
+    "Nakshatra",
+    "NakshatraPosition",
+    "nakshatra_info",
+    "nakshatra_of",
+    "lord_of_nakshatra",
+    "pada_of",
+    "position_for",
     "assign_decans",
     "decan_for_longitude",
     "VCA_CORE_BODIES",
