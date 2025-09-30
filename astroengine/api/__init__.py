@@ -13,6 +13,7 @@ def create_app() -> FastAPI:
     from .routers import plus as plus_router
     from .routers import scan as scan_router
     from .routers import synastry as synastry_router
+    from . import horary as horary_router
 
     from .routers import vedic as vedic_router
 
@@ -23,7 +24,7 @@ def create_app() -> FastAPI:
     app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])
     app.include_router(synastry_router.router, prefix="/v1/synastry", tags=["synastry"])
 
-    app.include_router(vedic_router.router)
+    app.include_router(horary_router.router)
 
     return app
 
@@ -33,7 +34,6 @@ def get_app() -> FastAPI:
     if _APP_INSTANCE is None:
         _APP_INSTANCE = create_app()
     return _APP_INSTANCE
-
 
 
 app = get_app()
