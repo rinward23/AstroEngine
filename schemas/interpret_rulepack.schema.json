@@ -7,19 +7,9 @@
   "properties": {
     "rulepack": {"type": "string", "minLength": 1},
     "version": {"type": "integer", "minimum": 1},
-    "meta": {
-      "type": "object",
-      "properties": {
-        "id": {"type": "string", "minLength": 1},
-        "name": {"type": "string", "minLength": 1},
-        "title": {"type": "string", "minLength": 1},
-        "description": {"type": "string"},
-        "author": {"type": "string"},
-        "version": {"type": "integer", "minimum": 1},
-        "mutable": {"type": "boolean"}
-      },
-      "additionalProperties": true
-    },
+
+    "meta": {"type": "object"},
+
     "profiles": {
       "type": "object",
       "additionalProperties": {
@@ -37,9 +27,20 @@
           "rule_weights": {
             "type": "object",
             "additionalProperties": {"type": "number"}
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {"type": "number"}
           }
         },
-        "additionalProperties": false
+        "additionalProperties": true
+      }
+    },
+    "archetypes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string"}
       }
     },
     "archetypes": {
@@ -53,8 +54,22 @@
       "type": "array",
       "minItems": 1,
       "items": {
-        "oneOf": [
-          {
+
+        "type": "object",
+        "required": ["id", "scope", "when"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "scope": {"enum": ["synastry", "composite", "davison"]},
+          "title": {"type": "string"},
+          "description": {"type": "string"},
+          "text": {"type": ["string", "null"]},
+          "score": {"type": "number"},
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "when": {
+
             "type": "object",
             "required": ["id", "scope", "when", "then"],
             "properties": {
@@ -97,59 +112,62 @@
                 },
                 "additionalProperties": true
               },
-              "then": {
-                "type": "object",
-                "required": ["title", "tags"],
-                "properties": {
-                  "title": {"type": "string", "minLength": 1},
-                  "tags": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "minItems": 1
-                  },
-                  "base_score": {"type": "number", "minimum": 0, "maximum": 1},
-                  "score_fn": {"type": "string"},
-                  "markdown_template": {"type": "string"}
-                },
-                "additionalProperties": true
+
+              "bodiesA": {
+                "oneOf": [
+                  {"type": "array", "items": {"type": "string"}},
+                  {"const": "*"}
+                ]
+              },
+              "bodiesB": {
+                "oneOf": [
+                  {"type": "array", "items": {"type": "string"}},
+                  {"const": "*"}
+                ]
+              },
+              "aspect_in": {
+                "type": "array",
+                "items": {"type": "string"}
+              },
+              "aspects": {
+                "oneOf": [
+                  {"type": "array", "items": {"type": "number"}},
+                  {"const": "*"}
+                ]
+              },
+              "min_severity": {"type": "number", "minimum": 0},
+              "longitude_ranges": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": {"type": "number"}
+                }
               }
             },
-            "additionalProperties": false
+            "additionalProperties": true
           },
-          {
+          "then": {
             "type": "object",
-            "required": ["id", "scope", "title", "text"],
+            "required": ["title", "tags"],
             "properties": {
-              "id": {"type": "string", "minLength": 1},
-              "scope": {"enum": ["synastry", "composite", "davison"]},
-              "title": {"type": "string", "minLength": 1},
-              "text": {"type": "string"},
-              "score": {"type": "number"},
+              "title": {"type": "string"},
               "tags": {
                 "type": "array",
                 "items": {"type": "string"}
               },
-              "when": {
-                "type": "object",
-                "properties": {
-                  "bodies": {
-                    "type": "array",
-                    "items": {"type": "string"}
-                  },
-                  "aspect_in": {
-                    "type": "array",
-                    "items": {"type": "string"}
-                  },
-                  "min_severity": {"type": "number", "minimum": 0}
-                },
-                "additionalProperties": true
-              }
+              "base_score": {"type": "number"},
+              "score_fn": {"type": "string"},
+              "markdown_template": {"type": ["string", "null"]}
             },
-            "additionalProperties": false
+            "additionalProperties": true
           }
-        ]
+        },
+        "additionalProperties": true
+
       }
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }
