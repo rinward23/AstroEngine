@@ -1,12 +1,84 @@
 
-"""Pydantic models for interpretation API and rulepacks."""
+"""Pydantic and dataclass models for interpretation APIs and rulepacks."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Iterable, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
+
+
+@dataclass(slots=True, frozen=True)
+class RuleWhen:
+    """Condition block describing when a rule activates."""
+
+    bodiesA: tuple[str, ...] | str
+    bodiesB: tuple[str, ...] | str
+    aspects: tuple[int, ...] | str
+    min_severity: float
+
+    @property
+    def bodies(self) -> tuple[str, ...] | None:
+        """Return a normalized pair of bodies when explicitly defined."""
+
+        if isinstance(self.bodiesA, tuple) and isinstance(self.bodiesB, tuple):
+            if len(self.bodiesA) == 1 and len(self.bodiesB) == 1:
+                return (self.bodiesA[0], self.bodiesB[0])
+        return None
+
+    @property
+    def aspect_in(self) -> tuple[int, ...] | None:
+        if isinstance(self.aspects, tuple):
+            return self.aspects
+        return None
+
+
+@dataclass(slots=True, frozen=True)
+class RuleThen:
+    """Outcome block describing what happens when a rule triggers."""
+
+    title: str
+    tags: tuple[str, ...]
+    base_score: float
+    score_fn: str
+    markdown_template: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class Rule:
+    """Runtime rule used by the interpretation engine."""
+
+    id: str
+    scope: str
+    when: RuleWhen
+    then: RuleThen
+
+
+@dataclass(slots=True)
+class Rulepack:
+    """Loaded rulepack with helper methods for weighting profiles."""
+
+    rulepack: str
+    version: int
+    profiles: dict[str, dict[str, float]]
+    rules: list[Rule]
+    archetypes: dict[str, tuple[str, ...]]
+    meta: dict[str, Any]
+    raw: dict[str, Any]
+
+    def profile_weights(self, profile: str) -> dict[str, float]:
+        """Return tag weights for *profile*, falling back gracefully."""
+
+        if profile in self.profiles:
+            return dict(self.profiles[profile])
+        if "balanced" in self.profiles:
+            return dict(self.profiles["balanced"])
+        if self.profiles:
+            first_key = sorted(self.profiles)[0]
+            return dict(self.profiles[first_key])
+        return {}
 
 
 Body = Literal[
