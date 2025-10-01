@@ -52,7 +52,7 @@ __all__ = [
     "is_day",
     "list_builtin_profiles",
 
-    "save_custom_profile",
+    "load_custom_profiles",
 
     "parse_lot_defs",
     "save_custom_profile",
