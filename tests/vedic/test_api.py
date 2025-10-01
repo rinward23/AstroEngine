@@ -44,16 +44,18 @@ def test_vimshottari_endpoint_structure():
     assert first["start"].endswith("Z")
 
 
-def test_varga_endpoint_returns_d9():
+def test_varga_endpoint_returns_requested_vargas():
     response = client.post(
         "/v1/vedic/varga",
         json={
             "natal": NATAL,
             "ayanamsa": "lahiri",
-            "charts": ["D9", "D10"],
+            "charts": ["D1", "D7", "D9", "D10", "D30"],
         },
     )
     assert response.status_code == 200
     data = response.json()
+    for key in ["D1", "D7", "D9", "D10", "D30"]:
+        assert key in data["charts"]
     assert "D9" in data["charts"]
     assert "Sun" in data["charts"]["D9"]
