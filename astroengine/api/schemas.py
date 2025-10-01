@@ -51,6 +51,7 @@ class Hit(BaseModel):
     orb: float
     applying: bool | None = None
     retrograde: bool | None = None
+    speed_deg_per_day: float | None = None
 
 
 class ScanResponse(BaseModel):

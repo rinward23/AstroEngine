@@ -16,9 +16,12 @@ __all__ = [
     "AyanamsaInfo",
     "AyanamsaPreset",
     "SIDEREAL_PRESETS",
+    "PRIMARY_AYANAMSAS",
+    "available_ayanamsas",
     "ayanamsa_metadata",
     "ayanamsa_value",
     "normalize_ayanamsa",
+    "swe_ayanamsa",
 ]
 
 
@@ -88,6 +91,14 @@ SIDEREAL_PRESETS: Final[Mapping[AyanamsaPreset, AyanamsaInfo]] = {
 }
 
 
+PRIMARY_AYANAMSAS: Final[tuple[AyanamsaPreset, ...]] = (
+    AyanamsaPreset.LAHIRI,
+    AyanamsaPreset.RAMAN,
+    AyanamsaPreset.KRISHNAMURTI,
+    AyanamsaPreset.FAGAN_BRADLEY,
+)
+
+
 def normalize_ayanamsa(value: str | AyanamsaPreset) -> AyanamsaPreset:
     """Return the canonical :class:`AyanamsaPreset` for ``value``."""
 
@@ -147,3 +158,25 @@ def available_ayanamsas() -> Iterable[AyanamsaPreset]:
     """Return all presets recognised by the engine."""
 
     return tuple(SIDEREAL_PRESETS.keys())
+
+
+def swe_ayanamsa(
+    moment: datetime,
+    preset: AyanamsaPreset | str = AyanamsaPreset.LAHIRI,
+) -> dict[str, object]:
+    """Return Swiss Ephemeris ayanamsa data for ``moment``.
+
+    The helper exposes the canonical presets backed by the Swiss Ephemeris
+    constants, ensuring the common Lahiri, Raman, Krishnamurti, and
+    Fagan/Bradley modes are easily accessible alongside the wider preset
+    catalogue.
+    """
+
+    normalized = normalize_ayanamsa(preset)
+    info = SIDEREAL_PRESETS[normalized]
+    metadata = ayanamsa_metadata(normalized, moment)
+    return {
+        **metadata,
+        "preset": normalized,
+        "swe_mode": info.swe_mode,
+    }
