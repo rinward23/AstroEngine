@@ -106,6 +106,18 @@ _BODY_CODE_TO_NAME = {
     9: "pluto",
 }
 
+_VIMSHOTTARI_LORDS = {
+    "ketu",
+    "venus",
+    "sun",
+    "moon",
+    "mars",
+    "rahu",
+    "jupiter",
+    "saturn",
+    "mercury",
+}
+
 
 class _TickCachingProvider:
     """Memoize ``positions_ecliptic`` calls for a single scan session."""
@@ -198,6 +210,37 @@ def _attach_timelords(
         return
     stack = calculator.active_stack(_parse_iso_datetime(event.timestamp))
     event.metadata.setdefault("timelord_rulers", stack.rulers())
+    vimshottari_periods = [
+        period
+        for period in stack.iter_periods()
+        if period.system == "vimshottari"
+        and period.ruler.lower() in _VIMSHOTTARI_LORDS
+    ]
+    matches: list[dict[str, object]] = []
+    moving = event.moving.lower()
+    target = event.target.lower()
+    for period in vimshottari_periods:
+        ruler = period.ruler.lower()
+        if moving == ruler:
+            matches.append(
+                {
+                    "role": "moving",
+                    "ruler": period.ruler,
+                    "level": period.level,
+                    "system": period.system,
+                }
+            )
+        if target == ruler:
+            matches.append(
+                {
+                    "role": "target",
+                    "ruler": period.ruler,
+                    "level": period.level,
+                    "system": period.system,
+                }
+            )
+    if matches:
+        event.metadata.setdefault("transit_over_dasha_lords", matches)
     event.metadata.setdefault("timelords", stack.to_dict())
 
 

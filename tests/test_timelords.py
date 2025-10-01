@@ -38,6 +38,21 @@ def test_vimshottari_includes_antar_periods() -> None:
     assert abs(ketu_antar[-1].end_jd - first_maha.end_jd) < 1e-4
 
 
+def test_vimshottari_supports_deep_levels() -> None:
+    start = datetime(2024, 3, 20, tzinfo=UTC)
+    events = compute_vimshottari_dasha(
+        5.0,
+        start,
+        cycles=1,
+        levels=("maha", "antar", "pratyantar", "sookshma", "praan"),
+    )
+    levels = {event.level for event in events}
+    assert {"antar", "pratyantar", "sookshma", "praan"}.issubset(levels)
+    praan = [event for event in events if event.level == "praan"]
+    assert praan, "expected praan level periods"
+    assert all(period.parent for period in praan)
+
+
 def test_zodiacal_releasing_levels() -> None:
     start = datetime(2024, 3, 20, tzinfo=UTC)
     events = compute_zodiacal_releasing(5.0, start, periods=4, levels=("l1", "l2"))

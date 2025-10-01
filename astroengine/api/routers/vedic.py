@@ -134,7 +134,7 @@ class DashaResponse(BaseModel):
 class VargaRequest(BaseModel):
     natal: NatalPayload
     ayanamsa: str = "lahiri"
-    charts: list[Literal["D9", "D10"]]
+    charts: list[Literal["D1", "D7", "D9", "D10", "D30"]]
 
 
 class VargaResponse(BaseModel):

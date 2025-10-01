@@ -49,9 +49,13 @@ __all__ = [
     "compile_program",
     "detect_cycles",
     "evaluate",
+    "load_custom_profiles",
     "is_day",
     "list_builtin_profiles",
+
     "save_custom_profile",
+
     "parse_lot_defs",
+    "save_custom_profile",
     "scan_lot_events",
 ]

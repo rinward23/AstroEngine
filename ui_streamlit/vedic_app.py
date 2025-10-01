@@ -151,8 +151,11 @@ if chart.houses:
 
 vim_periods = build_vimshottari(context, levels=level_choice, options=VimshottariOptions())
 yogini_periods = build_yogini(context, levels=2, options=YoginiOptions())
+rasi = compute_varga(chart.positions, "D1", ascendant=chart.houses.ascendant if chart.houses else None)
+saptamsa = compute_varga(chart.positions, "D7", ascendant=chart.houses.ascendant if chart.houses else None)
 navamsa = compute_varga(chart.positions, "D9", ascendant=chart.houses.ascendant if chart.houses else None)
 dasamsa = compute_varga(chart.positions, "D10", ascendant=chart.houses.ascendant if chart.houses else None)
+trimsamsa = compute_varga(chart.positions, "D30", ascendant=chart.houses.ascendant if chart.houses else None)
 
 chart_tab, nak_tab, dasha_tab, varga_tab, export_tab = st.tabs(
     ["Chart", "Nakshatras", "Dashas", "Vargas", "Export"]
@@ -189,6 +192,10 @@ with dasha_tab:
     st.dataframe(_dasha_dataframe(yogini_periods), use_container_width=True)
 
 with varga_tab:
+    st.subheader("Rāśi (D1)")
+    st.dataframe(pd.DataFrame.from_dict(rasi, orient="index"), use_container_width=True)
+    st.subheader("Saptāṁśa (D7)")
+    st.dataframe(pd.DataFrame.from_dict(saptamsa, orient="index"), use_container_width=True)
     st.subheader("Navāṁśa (D9)")
     st.dataframe(pd.DataFrame.from_dict(navamsa, orient="index"), use_container_width=True)
     st.plotly_chart(
@@ -200,6 +207,8 @@ with varga_tab:
     )
     st.subheader("Daśāṁśa (D10)")
     st.dataframe(pd.DataFrame.from_dict(dasamsa, orient="index"), use_container_width=True)
+    st.subheader("Triṁśāṁśa (D30)")
+    st.dataframe(pd.DataFrame.from_dict(trimsamsa, orient="index"), use_container_width=True)
 
 with export_tab:
     st.subheader("Export JSON")
@@ -213,8 +222,11 @@ with export_tab:
         "positions": positions,
         "vimshottari": [_serialize_period(period) for period in vim_periods],
         "yogini": [_serialize_period(period) for period in yogini_periods],
+        "rasi": rasi,
+        "saptamsa": saptamsa,
         "navamsa": navamsa,
         "dasamsa": dasamsa,
+        "trimsamsa": trimsamsa,
     }
     st.download_button(
         "Download JSON",

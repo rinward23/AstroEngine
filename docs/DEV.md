@@ -30,6 +30,21 @@ bash scripts/setup_git_hooks.sh
 
 This sets Git to use the repo-managed `pre-commit` and `pre-push` hooks automatically.
 
+## Cleanup helpers
+
+Keep branches free from generated clutter:
+
+```bash
+make clean        # remove lightweight caches
+make deepclean    # invoke scripts/cleanup/repo_clean.py --deep
+```
+
+`deepclean` trims trailing whitespace in tracked text assets and purges build
+artefacts (node_modules, .pytest_cache, etc.) while leaving the module →
+submodule → channel → subchannel hierarchy intact.  Dataset stores such as
+`datasets/`, `profiles/`, `rulesets/`, and `astroengine/data/` are explicitly
+excluded from text normalisation so reference ephemerides remain untouched.
+
 ## Typical update flow
 
 ```bash
