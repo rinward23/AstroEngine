@@ -6,6 +6,9 @@ from typing import Protocol
 
 from ..canonical import BodyPosition
 from .se_fixedstars import get_star_lonlat as get_star_lonlat
+from .sweph_bridge import ensure_sweph_alias
+
+ensure_sweph_alias()
 
 
 class EphemerisProvider(Protocol):

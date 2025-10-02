@@ -4,17 +4,17 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-import swisseph as swe
-
-from ...core.time import julian_day
-from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
+from ...ephemeris.adapter import ObserverLocation
 from ...ritual.timing import PLANETARY_HOUR_TABLE
+from ..observational.sun import solar_cycle
 from .models import GeoLocation, PlanetaryHourResult
 
-__all__ = ["planetary_hour", "sunrise_sunset"]
+__all__ = ["planetary_hour", "sunrise_sunset", "moonrise_moonset"]
+
 
 
 _RISE_FLAGS = swe.BIT_DISC_CENTER | swe.BIT_NO_REFRACTION | swe.FLG_SWIEPH
+
 
 
 def _next_event(
@@ -32,12 +32,14 @@ def _next_event(
         event=event,
         flags=_RISE_FLAGS,
         body_name="Sun",
+
     )
     if result.status != 0 or result.julian_day is None:
         raise RuntimeError(
             "Swiss Ephemeris could not compute sunrise/sunset for location"
         )
     return result.julian_day
+
 
 
 def sunrise_sunset(
@@ -57,6 +59,7 @@ def sunrise_sunset(
     sunset_dt = adapter.from_julian_day(sunset_jd)
     next_sunrise_dt = adapter.from_julian_day(next_sunrise_jd)
     return sunrise_dt, sunset_dt, next_sunrise_dt
+
 
 
 def _local_weekday(dt_utc: datetime, location: GeoLocation) -> str:

@@ -1,7 +1,4 @@
-
-
 """Pydantic models and runtime dataclasses for interpretation rulepacks."""
-
 
 from __future__ import annotations
 
@@ -20,6 +17,7 @@ from pydantic import (
 )
 
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS
+
 
 Body = Literal[
     "Sun",

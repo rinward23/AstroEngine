@@ -44,6 +44,7 @@ def test_scan_progressions_endpoint(client: TestClient, monkeypatch: pytest.Monk
                 "orb": 0.25,
                 "applying": True,
                 "retrograde": False,
+                "speed_deg_per_day": 0.92,
             }
         ]
 
@@ -58,6 +59,10 @@ def test_scan_progressions_endpoint(client: TestClient, monkeypatch: pytest.Monk
     assert data["method"] == "progressions"
     assert data["count"] == 1
     assert data["hits"][0]["moving"] == "Venus"
+    assert data["hits"][0]["retrograde"] is False
+    assert data["hits"][0]["speed_deg_per_day"] == pytest.approx(0.92)
+    assert data["hits"][0]["metadata"]["retrograde"] is False
+    assert data["hits"][0]["metadata"]["speed_deg_per_day"] == pytest.approx(0.92)
 
 
 def test_scan_directions_endpoint(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

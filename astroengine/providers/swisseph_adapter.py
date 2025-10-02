@@ -11,6 +11,7 @@ except Exception:  # pragma: no cover
     swe = None
 
 from ..core.bodies import canonical_name
+from ..ephemeris.swisseph_adapter import swe_calc
 
 SE_SUN = getattr(swe, "SUN", 0) if swe else 0
 SE_MOON = getattr(swe, "MOON", 1) if swe else 1
@@ -47,10 +48,10 @@ def se_body_id_for(name: str, vc: VariantConfig) -> Tuple[int, bool]:
 def position_vec(body_id: int, jd_ut: float, *, flags: int = 0):
     if swe is None:
         raise RuntimeError("pyswisseph not available")
-    values, rc = swe.calc_ut(jd_ut, body_id, flags)
-    if rc < 0:
-        raise RuntimeError(f"swe.calc_ut failed with code {rc}")
-    return values
+    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=body_id, flag=flags)
+    if serr:
+        raise RuntimeError(serr)
+    return xx
 
 
 def position_with_variants(name: str, jd_ut: float, vc: VariantConfig, *, flags: int = 0):

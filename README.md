@@ -272,6 +272,14 @@ latitudes, and longitudinal speeds for the visible planets and Pluto.
 Install `pyswisseph` alongside the official ephemeris files for
 production deployments to regain full Swiss Ephemeris precision.
 
+# External integrations registry
+
+AstroEngine catalogues third-party libraries and desktop suites inside the
+`integrations` module.  Review
+[`docs/integrations/external_tools.md`](docs/integrations/external_tools.md) for
+install sources covering Swiss Ephemeris (`sweph`/`pyswisseph`), Skyfield,
+Flatlib, Maitreya, Jagannatha Hora, and open-source Panchanga projects.
+
 # >>> AUTO-GEN END: AE README Providers Addendum v1.2
 
 # >>> AUTO-GEN BEGIN: AE README Aspects + Domain Report v1.0
