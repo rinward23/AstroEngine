@@ -31,6 +31,7 @@ lint-code:
 	isort --check-only --profile=black .
 
 test:
+	# Ensure test dependencies are installed before running pytest
 	python scripts/install_test_dependencies.py --quiet
 	pytest -q
 
