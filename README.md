@@ -54,6 +54,51 @@ Inspecting the generated file is a convenient way to verify that Swiss
 Ephemeris (or the PyMeeus fallback) is configured correctly before
 trying richer recipes.
 
+### v1 release verification checklist
+
+Teams bringing up the v1 stack for the first time can lean on the
+following repeatable sequence to validate that every module, submodule,
+channel, and subchannel remains intact and data-backed:
+
+1. **Provision dependencies & run the default test suite**
+   ```bash
+   make setup
+   make doctor
+   make test
+   ```
+   These targets install the declared extras, confirm the environment is
+   healthy, and execute the repository's deterministic unit coverage.
+
+2. **Execute the maintainer diagnostic**
+   ```bash
+   python -m astroengine.maint --full --strict
+   # auto-install any optional extras that are missing
+   python -m astroengine.maint --full --strict --auto-install all --yes
+   ```
+   The maintainer harness walks the module hierarchy, ensuring that each
+   registered provider and ephemeris bridge loads correctly.
+
+3. **Generate a Moon/Sun transit report**
+   Use the CLI recipe in the section above to emit a JSON transit file.
+   Inspecting the resulting dataset guarantees the ephemerides feeding
+   v1 are returning verifiable positions.
+
+4. **Smoke-test the interactive UI**
+   ```bash
+   streamlit run apps/streamlit_transit_scanner.py
+   ```
+   The Streamlit bundle surfaces the same data-backed scans, highlights
+   Swiss Ephemeris status, and exposes export paths for CSV/SQLite/Parquet.
+
+5. **Bring up the v1 REST API**
+   ```bash
+   uvicorn app.relationship_api:create_app --factory --host 0.0.0.0 --port 8000
+   ```
+   Hit `/v1/relationship/synastry`, `/v1/relationship/composite`,
+   `/v1/relationship/davison`, and `/v1/healthz` with real Solar Fire or
+   Swiss-derived datasets to confirm the deployed service returns
+   verifiable payloads.
+
 # >>> AUTO-GEN BEGIN: Minimal App Quickstart v1.1
 ## Run the minimal application
 
