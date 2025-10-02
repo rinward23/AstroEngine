@@ -1,4 +1,8 @@
 from datetime import UTC, datetime
+import sys
+from types import ModuleType, SimpleNamespace
+
+import pytest
 
 from astroengine.narrative import summarize_top_events
 from astroengine.narrative.gpt_api import GPTNarrativeClient
@@ -59,3 +63,45 @@ def test_summarize_top_events_with_timelords() -> None:
     assert summary.startswith("Sidereal Emphasis")
     assert "Mars" in summary
     assert "ayanamsha" in summary.lower()
+
+
+def test_gpt_client_supports_openai_sdk(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured_kwargs: dict[str, object] = {}
+    captured_call: dict[str, object] = {}
+
+    def create_completion(**kwargs: object) -> SimpleNamespace:
+        captured_call.update(kwargs)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content="Paris"),
+                )
+            ]
+        )
+
+    class DummyOpenAI:
+        def __init__(self, **kwargs: object) -> None:
+            captured_kwargs.update(kwargs)
+            self.chat = SimpleNamespace(
+                completions=SimpleNamespace(create=create_completion)
+            )
+
+    module = ModuleType("openai")
+    module.OpenAI = DummyOpenAI  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "openai", module)
+
+    client = GPTNarrativeClient(
+        api_key="token",
+        model="openai/gpt-5",
+        base_url="https://models.github.ai/inference",
+        allow_stub=False,
+    )
+
+    assert client.available
+    result = client.summarize("What is the capital of France?")
+    assert result == "Paris"
+    assert captured_kwargs == {
+        "api_key": "token",
+        "base_url": "https://models.github.ai/inference",
+    }
+    assert captured_call["model"] == "openai/gpt-5"
