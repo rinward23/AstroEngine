@@ -13,6 +13,12 @@ from .ayanamsa import (
     normalize_ayanamsa,
     swe_ayanamsa,
 )
+from .ashtakavarga import (
+    AshtakavargaSet,
+    Bhinnashtakavarga,
+    compute_bhinnashtakavarga,
+    compute_sarvashtakavarga,
+)
 from .chart import VedicChartContext, compute_sidereal_chart, build_context
 from .dasha_vimshottari import (
     DashaPeriod,
@@ -44,14 +50,8 @@ from .nakshatra import (
     position_for,
 )
 
-from .varga import (
-    compute_varga,
-    dasamsa_sign,
-    navamsa_sign,
-    rasi_sign,
-    saptamsa_sign,
-    trimsamsa_sign,
-)
+from .varga import compute_varga, dasamsa_sign, navamsa_sign
+from .shadbala import ShadbalaReport, ShadbalaScore, compute_shadbala
 
 
 __all__ = [
@@ -110,8 +110,12 @@ __all__ = [
     "dasamsa_sign",
     "navamsa_sign",
 
-    "rasi_sign",
-    "saptamsa_sign",
-    "trimsamsa_sign",
+    "Bhinnashtakavarga",
+    "AshtakavargaSet",
+    "compute_bhinnashtakavarga",
+    "compute_sarvashtakavarga",
+    "ShadbalaScore",
+    "ShadbalaReport",
+    "compute_shadbala",
 
 ]

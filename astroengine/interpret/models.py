@@ -1,14 +1,10 @@
-
-
 """Pydantic models and runtime dataclasses for interpretation rulepacks."""
-
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Iterable, Literal, Mapping, Sequence
-
 
 from pydantic import (
     AliasChoices,
