@@ -7,8 +7,6 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-import swisseph as swe
-
 from .context import TimelordContext
 from .models import TimelordPeriod
 from .utils import clamp_end
@@ -86,7 +84,7 @@ def _cycle(start_ruler: str) -> Iterable[_PeriodSeed]:
 
 def _sidereal_moon_longitude(context: TimelordContext) -> float:
     moon = context.chart.positions["Moon"]
-    ayanamsa = swe.get_ayanamsa_ut(context.chart.julian_day)
+    ayanamsa = context.adapter.ayanamsa(context.chart.julian_day)
     return (moon.longitude - ayanamsa) % 360.0
 
 

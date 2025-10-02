@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from datetime import UTC, datetime, timedelta
 
 import swisseph as swe
@@ -18,70 +17,45 @@ __all__ = ["planetary_hour", "sunrise_sunset"]
 _RISE_FLAGS = swe.BIT_DISC_CENTER | swe.BIT_NO_REFRACTION | swe.FLG_SWIEPH
 
 
-def _jd_to_datetime(jd_ut: float) -> datetime:
-    """Convert a Julian Day expressed in UT to a timezone-aware datetime."""
-
-    jd = jd_ut + 0.5
-    frac, integer = math.modf(jd)
-    z = int(integer)
-    a = z
-    if z >= 2299161:
-        alpha = int((z - 1867216.25) / 36524.25)
-        a = z + 1 + alpha - alpha // 4
-    b = a + 1524
-    c = int((b - 122.1) / 365.25)
-    d = int(365.25 * c)
-    e = int((b - d) / 30.6001)
-    day = b - d - int(30.6001 * e) + frac
-    month = e - 1 if e < 14 else e - 13
-    year = c - 4716 if month > 2 else c - 4715
-    day_floor = int(day)
-    frac_day = day - day_floor
-    hours = frac_day * 24.0
-    hour = int(hours)
-    minutes = (hours - hour) * 60.0
-    minute = int(minutes)
-    seconds = round((minutes - minute) * 60.0, 6)
-    second = int(seconds)
-    microsecond = int((seconds - second) * 1_000_000)
-    return datetime(
-        year, month, day_floor, hour, minute, second, microsecond, tzinfo=UTC
-    )
-
-
-def _ensure_ephemeris_ready() -> None:
-    SwissEphemerisAdapter.get_default_adapter()
-
-
-def _next_event(jd_ut: float, flag: int, location: GeoLocation) -> float:
-    _ensure_ephemeris_ready()
-    geopos = (float(location.longitude), float(location.latitude), float(location.altitude))
-    res, tret = swe.rise_trans(
+def _next_event(
+    adapter: SwissEphemerisAdapter,
+    jd_ut: float,
+    event: str,
+    location: GeoLocation,
+) -> float:
+    result = adapter.rise_transit(
         jd_ut,
         swe.SUN,
-        flag,
-        geopos,
-        0.0,
-        0.0,
-        _RISE_FLAGS,
+        latitude=location.latitude,
+        longitude=location.longitude,
+        elevation=location.altitude,
+        event=event,
+        flags=_RISE_FLAGS,
+        body_name="Sun",
     )
-    if res != 0:
+    if result.status != 0 or result.julian_day is None:
         raise RuntimeError(
             "Swiss Ephemeris could not compute sunrise/sunset for location"
         )
-    return tret[0]
+    return result.julian_day
 
 
-def sunrise_sunset(moment: datetime, location: GeoLocation) -> tuple[datetime, datetime, datetime]:
+def sunrise_sunset(
+    moment: datetime,
+    location: GeoLocation,
+    *,
+    adapter: SwissEphemerisAdapter | None = None,
+) -> tuple[datetime, datetime, datetime]:
     """Return sunrise, sunset, and next sunrise surrounding ``moment``."""
 
+    adapter = adapter or SwissEphemerisAdapter.get_default_adapter()
     jd = julian_day(moment)
-    prev_sunrise_jd = _next_event(jd - 1.0, swe.CALC_RISE, location)
-    sunset_jd = _next_event(prev_sunrise_jd + 0.01, swe.CALC_SET, location)
-    next_sunrise_jd = _next_event(prev_sunrise_jd + 0.51, swe.CALC_RISE, location)
-    sunrise_dt = _jd_to_datetime(prev_sunrise_jd)
-    sunset_dt = _jd_to_datetime(sunset_jd)
-    next_sunrise_dt = _jd_to_datetime(next_sunrise_jd)
+    prev_sunrise_jd = _next_event(adapter, jd - 1.0, "rise", location)
+    sunset_jd = _next_event(adapter, prev_sunrise_jd + 0.01, "set", location)
+    next_sunrise_jd = _next_event(adapter, prev_sunrise_jd + 0.51, "rise", location)
+    sunrise_dt = adapter.from_julian_day(prev_sunrise_jd)
+    sunset_dt = adapter.from_julian_day(sunset_jd)
+    next_sunrise_dt = adapter.from_julian_day(next_sunrise_jd)
     return sunrise_dt, sunset_dt, next_sunrise_dt
 
 
@@ -108,7 +82,10 @@ def planetary_hour(moment: datetime, location: GeoLocation) -> PlanetaryHourResu
     else:
         moment = moment.astimezone(UTC)
 
-    sunrise_dt, sunset_dt, next_sunrise_dt = sunrise_sunset(moment, location)
+    adapter = SwissEphemerisAdapter.get_default_adapter()
+    sunrise_dt, sunset_dt, next_sunrise_dt = sunrise_sunset(
+        moment, location, adapter=adapter
+    )
 
     weekday = _local_weekday(sunrise_dt, location)
     sequence = PLANETARY_HOUR_TABLE[weekday]

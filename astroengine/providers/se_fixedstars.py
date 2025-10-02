@@ -6,18 +6,28 @@ supported by Swiss Ephemeris (e.g., "Aldebaran", "Regulus").
 """
 from __future__ import annotations
 
-try:
-    import swisseph as swe  # type: ignore
-except Exception:  # pragma: no cover
-    swe = None  # type: ignore
+from ..ephemeris import SwissEphemerisAdapter
+
+_ADAPTER: SwissEphemerisAdapter | None = None
+
+
+def _require_adapter() -> SwissEphemerisAdapter:
+    global _ADAPTER
+    if _ADAPTER is not None:
+        return _ADAPTER
+    try:
+        _ADAPTER = SwissEphemerisAdapter.get_default_adapter()
+    except Exception as exc:  # pragma: no cover - guarded in calling code
+        raise RuntimeError(
+            "pyswisseph not available; install astroengine[ephem]"
+        ) from exc
+    return _ADAPTER
 
 
 def get_star_lonlat(name: str, jd_ut: float) -> tuple[float, float]:
-    if swe is None:
-        raise RuntimeError("pyswisseph not available; install astroengine[ephem]")
-    # Swiss returns ecliptic lon/lat in degrees via fixstar2
-    lon, lat, _dist = swe.fixstar2(name, jd_ut)
-    return float(lon), float(lat)
+    adapter = _require_adapter()
+    position = adapter.fixed_star(name, jd_ut)
+    return float(position.longitude), float(position.latitude)
 
 
 # >>> AUTO-GEN END: se-fixedstars-adapter v1.0
