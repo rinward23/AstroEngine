@@ -51,6 +51,24 @@ from .nakshatra import (
 )
 
 from .varga import VARGA_DEFINITIONS, compute_varga, dasamsa_sign, navamsa_sign
+from .karmic import (
+    CharaKaraka,
+    KarakamshaLagna,
+    IshtaKashtaResult,
+    KarmaSegment,
+    EclipseAlignment,
+    KarmicProfile,
+    compute_chara_karakas,
+    karakamsha_lagna,
+    ishta_kashta_phala,
+    karma_attributions,
+    eclipse_alignment_roles,
+    build_karmic_profile,
+)
+from .shadbala import ShadbalaReport, ShadbalaScore, compute_shadbala
+from .panchanga import LunarMonth, lunar_month
+from .panchang import NakshatraStatus
+from .yogas import PlanetStrength, YogaResult, analyze_yogas
 
 
 __all__ = [
@@ -98,12 +116,32 @@ __all__ = [
     "dasamsa_sign",
     "navamsa_sign",
 
-    "Bhinnashtakavarga",
-    "AshtakavargaSet",
-    "compute_bhinnashtakavarga",
-    "compute_sarvashtakavarga",
     "ShadbalaScore",
     "ShadbalaReport",
     "compute_shadbala",
 
+    "LunarMonth",
+    "lunar_month",
+
+    "PlanetStrength",
+    "YogaResult",
+    "analyze_yogas",
+
+    "CharaKaraka",
+    "KarakamshaLagna",
+    "IshtaKashtaResult",
+    "KarmaSegment",
+    "EclipseAlignment",
+    "KarmicProfile",
+    "compute_chara_karakas",
+    "karakamsha_lagna",
+    "ishta_kashta_phala",
+    "karma_attributions",
+    "eclipse_alignment_roles",
+    "build_karmic_profile",
+
+    "Bhinnashtakavarga",
+    "AshtakavargaSet",
+    "compute_bhinnashtakavarga",
+    "compute_sarvashtakavarga",
 ]
