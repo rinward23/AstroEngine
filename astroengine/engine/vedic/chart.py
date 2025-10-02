@@ -43,6 +43,7 @@ def compute_sidereal_chart(
     ayanamsa: str = "lahiri",
     house_system: str | None = None,
     bodies: Mapping[str, int] | None = None,
+    nodes_variant: str = "mean",
 ) -> NatalChart:
     """Compute a sidereal natal chart using the requested ayanamsa."""
 
@@ -51,6 +52,7 @@ def compute_sidereal_chart(
         zodiac="sidereal",
         ayanamsha=normalized,
         house_system=house_system or "whole_sign",
+        nodes_variant=nodes_variant,
     )
     adapter = SwissEphemerisAdapter.from_chart_config(config)
     return compute_natal_chart(
@@ -70,6 +72,7 @@ def build_context(
     ayanamsa: str = "lahiri",
     house_system: str | None = None,
     bodies: Mapping[str, int] | None = None,
+    nodes_variant: str = "mean",
 ) -> VedicChartContext:
     """Return a :class:`VedicChartContext` for API and dasha helpers."""
 
@@ -79,6 +82,7 @@ def build_context(
         zodiac="sidereal",
         ayanamsha=normalized,
         house_system=house_system or "whole_sign",
+        nodes_variant=nodes_variant,
     )
     adapter = SwissEphemerisAdapter.from_chart_config(config)
     chart = compute_natal_chart(
