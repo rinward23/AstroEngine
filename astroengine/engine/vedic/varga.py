@@ -1,16 +1,25 @@
-"""Divisional chart helpers (Navāṁśa and Daśāṁśa)."""
+"""Divisional chart helpers for Vedic vargas.
+
+The module originally exposed only Navāṁśa (D9) and Daśāṁśa (D10).  This
+revision generalises the implementation so additional vargas can reuse the
+same bookkeeping while documenting the sign-subdivision rule that each chart
+uses.  Consumers that still call :func:`navamsa_sign` or :func:`dasamsa_sign`
+receive the same tuple payloads as before, but richer metadata (including the
+source sign that counting began from) is made available via
+``compute_varga``.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Literal
+from dataclasses import dataclass
+from math import floor
+from typing import Callable, Literal
 
 from ...detectors.ingresses import ZODIAC_SIGNS, sign_index
 
 __all__ = ["navamsa_sign", "dasamsa_sign", "compute_varga"]
 
-NAVAMSA_SPAN = 30.0 / 9.0
-DASAMSA_SPAN = 30.0 / 10.0
 
 MOVABLE_SIGNS = {0, 3, 6, 9}
 FIXED_SIGNS = {1, 4, 7, 10}
@@ -33,80 +42,215 @@ def _modal_start(sign_idx: int) -> int:
     return (sign_idx + 4) % 12  # dual signs
 
 
+def _is_odd_sign(sign_idx: int) -> bool:
+    # Aries (index 0) is an odd sign, so use even indices for odd signs.
+    return sign_idx % 2 == 0
+
+
+def _odd_even_start(even_offset: int) -> Callable[[int], int]:
+    def _inner(sign_idx: int) -> int:
+        if _is_odd_sign(sign_idx):
+            return sign_idx
+        return (sign_idx + even_offset) % 12
+
+    return _inner
+
+
+def _drekkana_dest(sign_idx: int, part_index: int) -> int:
+    return (sign_idx + (part_index * 4)) % 12
+
+
+def _sequential_dest(start_fn: Callable[[int], int]) -> Callable[[int, int], int]:
+    def _inner(sign_idx: int, part_index: int) -> int:
+        return (start_fn(sign_idx) + part_index) % 12
+
+    return _inner
+
+
+@dataclass(frozen=True)
+class VargaDefinition:
+    code: str
+    name: str
+    divisions: int
+    part_key: str
+    start_fn: Callable[[int], int]
+    dest_fn: Callable[[int, int], int]
+    rule_description: str
+
+    @property
+    def span(self) -> float:
+        return 30.0 / self.divisions
+
+
+_ODD_EVEN_7TH = _odd_even_start(6)
+_ODD_EVEN_9TH = _odd_even_start(8)
+_ODD_EVEN_6TH = _odd_even_start(5)
+_ODD_EVEN_5TH = _odd_even_start(4)
+
+VARGA_DEFINITIONS: dict[str, VargaDefinition] = {
+    "D3": VargaDefinition(
+        code="D3",
+        name="Drekkana",
+        divisions=3,
+        part_key="drekkana",
+        start_fn=lambda sign_idx: sign_idx,
+        dest_fn=_drekkana_dest,
+        rule_description="Triplicity counting: each 10° segment maps to the elemental trine.",
+    ),
+    "D7": VargaDefinition(
+        code="D7",
+        name="Saptāṁśa",
+        divisions=7,
+        part_key="saptamsa",
+        start_fn=_ODD_EVEN_7TH,
+        dest_fn=_sequential_dest(_ODD_EVEN_7TH),
+        rule_description="Odd signs count from the natal sign; even signs count from the 7th sign.",
+    ),
+    "D9": VargaDefinition(
+        code="D9",
+        name="Navāṁśa",
+        divisions=9,
+        part_key="pada",
+        start_fn=_modal_start,
+        dest_fn=_sequential_dest(_modal_start),
+        rule_description="Movable signs count from the natal sign, fixed from the 9th, dual from the 5th.",
+    ),
+    "D10": VargaDefinition(
+        code="D10",
+        name="Daśāṁśa",
+        divisions=10,
+        part_key="part",
+        start_fn=_modal_start,
+        dest_fn=_sequential_dest(_modal_start),
+        rule_description="Movable signs count from the natal sign, fixed from the 9th, dual from the 5th.",
+    ),
+    "D12": VargaDefinition(
+        code="D12",
+        name="Dvādāṁśa",
+        divisions=12,
+        part_key="dwadasamsa",
+        start_fn=_ODD_EVEN_7TH,
+        dest_fn=_sequential_dest(_ODD_EVEN_7TH),
+        rule_description="Odd signs count from the natal sign; even signs count from the 7th sign.",
+    ),
+    "D16": VargaDefinition(
+        code="D16",
+        name="Ṣoḍaśāṁśa",
+        divisions=16,
+        part_key="shodasamsa",
+        start_fn=_ODD_EVEN_9TH,
+        dest_fn=_sequential_dest(_ODD_EVEN_9TH),
+        rule_description="Odd signs count from the natal sign; even signs count from the 9th sign.",
+    ),
+    "D24": VargaDefinition(
+        code="D24",
+        name="Siddhāṁśa",
+        divisions=24,
+        part_key="siddhamsa",
+        start_fn=_ODD_EVEN_9TH,
+        dest_fn=_sequential_dest(_ODD_EVEN_9TH),
+        rule_description="Odd signs count from the natal sign; even signs count from the 9th sign.",
+    ),
+    "D45": VargaDefinition(
+        code="D45",
+        name="Akṣavedāṁśa",
+        divisions=45,
+        part_key="akshavedamsa",
+        start_fn=_ODD_EVEN_5TH,
+        dest_fn=_sequential_dest(_ODD_EVEN_5TH),
+        rule_description="Odd signs count from the natal sign; even signs count from the 5th sign.",
+    ),
+    "D60": VargaDefinition(
+        code="D60",
+        name="Ṣaṣṭiāṁśa",
+        divisions=60,
+        part_key="shashtiamsa",
+        start_fn=_ODD_EVEN_6TH,
+        dest_fn=_sequential_dest(_ODD_EVEN_6TH),
+        rule_description="Odd signs count from the natal sign; even signs count from the 6th sign.",
+    ),
+}
+
+
+def _part_index(degrees_in_sign: float, divisions: int) -> int:
+    span = 30.0 / divisions
+    # ``floor`` is more stable than ``//`` for floats that are very close to
+    # a boundary (e.g. 10° with a 3°20' span).
+    raw = floor((degrees_in_sign / span) + 1e-9)
+    if raw >= divisions:
+        return divisions - 1
+    return int(raw)
+
+
+def _varga_components(longitude: float, definition: VargaDefinition) -> tuple[int, float, int, int]:
+    sign_idx = sign_index(longitude)
+    deg = _deg_in_sign(longitude)
+    part_index = _part_index(deg, definition.divisions)
+    start_sign = definition.start_fn(sign_idx)
+    dest_sign = definition.dest_fn(sign_idx, part_index)
+    deg_in_part = deg - (part_index * definition.span)
+    varga_longitude = (dest_sign * 30.0) + (deg_in_part * definition.divisions)
+    return dest_sign, varga_longitude % 360.0, part_index + 1, start_sign
+
+
 def navamsa_sign(longitude: float) -> tuple[int, float, int]:
     """Return the Navāṁśa sign index, longitude, and pada for ``longitude``."""
 
-    sign_idx = sign_index(longitude)
-    deg = _deg_in_sign(longitude)
-    pada_index = int(deg // NAVAMSA_SPAN)
-    start_sign = _modal_start(sign_idx)
-    dest_sign = (start_sign + pada_index) % 12
-    deg_in_pada = deg - (pada_index * NAVAMSA_SPAN)
-    navamsa_longitude = (dest_sign * 30.0) + (deg_in_pada * 9.0)
-    return dest_sign, navamsa_longitude % 360.0, pada_index + 1
+    dest_sign, lon, pada, _ = _varga_components(longitude, VARGA_DEFINITIONS["D9"])
+    return dest_sign, lon, pada
 
 
 def dasamsa_sign(longitude: float) -> tuple[int, float, int]:
     """Return the Daśāṁśa sign index, longitude, and decan for ``longitude``."""
 
-    sign_idx = sign_index(longitude)
-    deg = _deg_in_sign(longitude)
-    part_index = int(deg // DASAMSA_SPAN)
-    start_sign = _modal_start(sign_idx)
-    dest_sign = (start_sign + part_index) % 12
-    deg_in_part = deg - (part_index * DASAMSA_SPAN)
-    dasamsa_longitude = (dest_sign * 30.0) + (deg_in_part * 10.0)
-    return dest_sign, dasamsa_longitude % 360.0, part_index + 1
+    dest_sign, lon, part, _ = _varga_components(longitude, VARGA_DEFINITIONS["D10"])
+    return dest_sign, lon, part
 
 
 def compute_varga(
     natal_positions: Mapping[str, object],
-    kind: Literal["D9", "D10"],
+    kind: Literal["D3", "D7", "D9", "D10", "D12", "D16", "D24", "D45", "D60"],
     *,
     ascendant: float | None = None,
 ) -> dict[str, dict[str, float | int | str]]:
-    """Compute varga placements for ``natal_positions``."""
+    """Compute varga placements for ``natal_positions``.
 
+    The ``kind`` parameter accepts the standard ``D`` notation (e.g. ``"D9"``
+    for Navāṁśa).  Each supported chart uses the Parasari counting rule noted
+    in :data:`VARGA_DEFINITIONS` to determine which sign a subdivision maps to.
+    """
+
+    definition = VARGA_DEFINITIONS.get(kind.upper())
+    if definition is None:  # pragma: no cover - guarded by caller
+        raise ValueError("Unsupported varga kind")
     results: dict[str, dict[str, float | int | str]] = {}
     for name, position in natal_positions.items():
         longitude = getattr(position, "longitude", None)
         if longitude is None:
             continue
-        if kind.upper() == "D9":
-            sign_idx, lon, pada = navamsa_sign(longitude)
-            results[name] = {
-                "longitude": lon,
-                "sign": ZODIAC_SIGNS[sign_idx],
-                "sign_index": sign_idx,
-                "pada": pada,
-            }
-        elif kind.upper() == "D10":
-            sign_idx, lon, part = dasamsa_sign(longitude)
-            results[name] = {
-                "longitude": lon,
-                "sign": ZODIAC_SIGNS[sign_idx],
-                "sign_index": sign_idx,
-                "part": part,
-            }
-        else:  # pragma: no cover - guarded by caller
-            raise ValueError("Unsupported varga kind")
+        sign_idx, lon, part_index, start_sign = _varga_components(longitude, definition)
+        results[name] = {
+            "longitude": lon,
+            "sign": ZODIAC_SIGNS[sign_idx],
+            "sign_index": sign_idx,
+            definition.part_key: part_index,
+            "start_sign": ZODIAC_SIGNS[start_sign],
+            "start_sign_index": start_sign,
+            "segment_arc_degrees": definition.span,
+            "rule": definition.rule_description,
+        }
 
     if ascendant is not None:
-        if kind.upper() == "D9":
-            sign_idx, lon, pada = navamsa_sign(ascendant)
-            results["Ascendant"] = {
-                "longitude": lon,
-                "sign": ZODIAC_SIGNS[sign_idx],
-                "sign_index": sign_idx,
-                "pada": pada,
-            }
-        else:
-            sign_idx, lon, part = dasamsa_sign(ascendant)
-            results["Ascendant"] = {
-                "longitude": lon,
-                "sign": ZODIAC_SIGNS[sign_idx],
-                "sign_index": sign_idx,
-                "part": part,
-            }
+        sign_idx, lon, part_index, start_sign = _varga_components(ascendant, definition)
+        results["Ascendant"] = {
+            "longitude": lon,
+            "sign": ZODIAC_SIGNS[sign_idx],
+            "sign_index": sign_idx,
+            definition.part_key: part_index,
+            "start_sign": ZODIAC_SIGNS[start_sign],
+            "start_sign_index": start_sign,
+            "segment_arc_degrees": definition.span,
+            "rule": definition.rule_description,
+        }
 
     return results

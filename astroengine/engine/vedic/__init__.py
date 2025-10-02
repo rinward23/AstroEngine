@@ -32,7 +32,7 @@ from .nakshatra import (
     pada_of,
     position_for,
 )
-from .varga import compute_varga, dasamsa_sign, navamsa_sign
+from .varga import VARGA_DEFINITIONS, compute_varga, dasamsa_sign, navamsa_sign
 
 __all__ = [
     "AyanamsaInfo",
@@ -62,6 +62,7 @@ __all__ = [
     "nakshatra_of",
     "pada_of",
     "position_for",
+    "VARGA_DEFINITIONS",
     "compute_varga",
     "dasamsa_sign",
     "navamsa_sign",
