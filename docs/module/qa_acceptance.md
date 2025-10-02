@@ -21,7 +21,7 @@ This plan captures the checks that must pass before shipping changes to the runt
 
 | Test file | Focus | Notes |
 | --- | --- | --- |
-| `tests/test_module_registry.py` | Ensures the default registry registers the `vca` module, its submodules, and channels. | Protects the module → submodule → channel hierarchy. |
+| `tests/test_module_registry.py` | Ensures the default registry registers key modules (`vca`, `integrations`) and their submodules/channels. | Protects the module → submodule → channel hierarchy. |
 | `tests/test_vca_ruleset.py` | Verifies aspect angles and orb lookups exposed through `astroengine.rulesets`. | Guards the values documented in `docs/module/core-transit-math.md`. |
 | `tests/test_vca_profile.py` | Loads JSON/YAML profiles and confirms active aspect angles match expectations. | Exercises `profiles/base_profile.yaml` and `profiles/vca_outline.json`. |
 | `tests/test_domain_scoring.py` | Checks domain weighting methods (`weighted`, `top`, `softmax`). | Ensures severity scaling remains deterministic. |

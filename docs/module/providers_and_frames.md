@@ -10,6 +10,17 @@
 
 AstroEngine resolves ephemeris data through provider plugins that implement the `EphemerisProvider` protocol. The goal of this document is to record the contract expected by the runtime so that future providers remain deterministic, expose provenance, and keep the module/submodule/channel hierarchy intact.
 
+## Registry mapping
+
+The default registry exports the following provider paths:
+
+- `providers.ephemeris.plugins.swiss_ephemeris`
+- `providers.ephemeris.plugins.skyfield`
+- `providers.cadence.profiles.default`
+- `providers.frames.preferences.profile_flags`
+
+These nodes reference the files and documentation described below so the runtime always resolves provider metadata from audited sources.
+
 ## Provider protocol summary
 
 `astroengine/providers/__init__.py` defines the following structures:

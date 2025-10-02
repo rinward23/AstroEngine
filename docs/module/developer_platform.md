@@ -6,6 +6,15 @@
 
 The developer platform module guarantees that external integrations are driven by the frozen OpenAPI specifications published under `openapi/` and that all runtime outputs are derived from verified Solar Fire exports, Swiss Ephemeris datasets, or database artefacts versioned in `datasets/`. Each submodule below inherits the following invariants:
 
+## Registry mapping
+
+- `developer_platform.sdks.languages.{typescript,python}`
+- `developer_platform.cli.workflows.transit_scan`
+- `developer_platform.devportal.surfaces.{docs,playground,collections}`
+- `developer_platform.webhooks.contracts.{jobs,verification}`
+
+The registry entries currently mark these surfaces as planned deliverables while anchoring them to the documentation listed in this file.
+
 1. **Source-of-truth alignment** – All generated artefacts originate from the `openapi/v*.json` schema files. Any hand-edit passes must log a provenance note referencing the schema hash and the Solar Fire or Swiss Ephemeris datasets used for validation.
 2. **Hierarchical integrity** – Submodules may extend the hierarchy with new channels/subchannels but must not delete or orphan existing modules. Regression tests confirm that registry entries in `astroengine/modules` still resolve.
 3. **Data fidelity** – SDK and CLI outputs surface only values produced by sanctioned providers (Swiss Ephemeris cache, natal chart datasets in `datasets/solarfire/`, or SQLite bundles shipped under `datasets/sqlite/`). Synthetic ephemerides or placeholder natal data are disallowed.

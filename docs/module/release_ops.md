@@ -21,13 +21,24 @@ The core package depends on `pyswisseph`, `numpy`, `pydantic>=2`, `python-dateut
 
 ## Registry compatibility snapshot
 
-The default registry currently exposes a single module:
+The default registry currently exposes the following modules:
 
-| Module | Submodules | Channels | Source |
-| --- | --- | --- | --- |
-| `vca` | `catalogs`, `profiles`, `rulesets` | `catalogs.bodies.{core,extended,centaurs,tnos,sensitive_points}`, `profiles.domain.{vca_neutral,vca_mind_plus,vca_body_plus,vca_spirit_plus}`, `rulesets.aspects.definitions` | `astroengine/modules/vca/__init__.py` |
+- `vca`: Venus Cycle Analytics datasets (`catalogs`, `profiles`, `uncertainty`, `rulesets`).
+- `event_detectors`: Stations, ingresses, lunations, declination, and overlay detectors backed by Swiss Ephemeris rulesets.
+- `esoterica`: Decans, tarot, numerology, and oracular correspondences tied to documented sources.
+- `mundane`: Solar ingress chart generation with aspect overlays.
+- `jyotish`: Parasara dignities, karakas, and graha yuddha reference tables.
+- `narrative`: Bundled narrative summaries, profile templates, and time-lord overlays.
+- `ritual`: Planetary day/hour tables, void-of-course filters, and electional guidelines.
+- `predictive`: Progressions, directions, returns, midpoint overlays, and vedic gochara scaffolding.
+- `ux`: Placeholder channels for maps, timelines, and plugin surfaces.
+- `integrations`: External tool catalogues (Swiss Ephemeris, Skyfield, Flatlib, Maitreya, JHora, Panchanga projects).
+- `data_packs`: CSV/YAML/JSON datasets such as `profiles/base_profile.yaml`, `profiles/dignities.csv`, and `schemas/orbs_policy.json`.
+- `providers`: Ephemeris provider registry metadata and cadence/frame preferences.
+- `interop`: Export schemas (`schemas/result_schema_v1.json`, `schemas/contact_gate_schema_v2.json`, etc.).
+- `developer_platform`: Planned SDKs, CLI workflows, portal surfaces, and webhook contracts.
 
-When new modules are registered, update this table and the documentation in `docs/module/event-detectors/overview.md` to preserve the module → submodule → channel → subchannel hierarchy.
+New modules must extend this list and keep their documentation in `docs/module/` aligned with the registry to preserve the module → submodule → channel → subchannel hierarchy.
 
 ## Release checklist
 

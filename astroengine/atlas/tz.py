@@ -6,10 +6,30 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from typing import Literal
+import importlib
+import importlib.util
+from typing import Literal, NoReturn
 from zoneinfo import ZoneInfo
 
-from timezonefinder import TimezoneFinder
+_timezonefinder_spec = importlib.util.find_spec("timezonefinder")
+
+if _timezonefinder_spec is not None:  # pragma: no cover - exercised via integration tests
+    TimezoneFinder = importlib.import_module("timezonefinder").TimezoneFinder
+else:
+    class TimezoneFinder:  # type: ignore[override]
+        """Fallback that surfaces a helpful error when timezonefinder is missing."""
+
+        def _raise(self) -> NoReturn:
+            raise ModuleNotFoundError(
+                "timezonefinder is required for timezone lookups. Install the "
+                "'timezonefinder' extra to enable astroengine.atlas.tz helpers."
+            )
+
+        def timezone_at(self, *, lng: float, lat: float) -> str | None:  # noqa: D401
+            self._raise()
+
+        def closest_timezone_at(self, *, lng: float, lat: float) -> str | None:  # noqa: D401
+            self._raise()
 
 
 Policy = Literal["earliest", "latest", "shift_forward", "raise"]
