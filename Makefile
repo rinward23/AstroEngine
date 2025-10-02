@@ -30,8 +30,8 @@ lint-code:
 	isort --check-only --profile=black .
 
 test:
-        python scripts/install_test_dependencies.py --quiet
-        pytest -q
+	python scripts/install_test_dependencies.py --quiet
+	pytest -q
 
 doctor:
 	python -m astroengine.diagnostics || true
