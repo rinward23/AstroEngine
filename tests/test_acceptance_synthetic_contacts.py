@@ -105,6 +105,3 @@ def test_scan_contacts_decl_only_emits_declination_events():
     assert events and all(event.kind.startswith("decl_") for event in events)
     first = events[0]
     assert "decl_moving" in first.metadata and "decl_target" in first.metadata
-
-
-# >>> AUTO-GEN END: AE Synthetic Acceptance v1.0

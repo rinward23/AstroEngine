@@ -342,7 +342,4 @@ def _register() -> None:
         register_provider("swiss", SwissProvider())
     elif _PYMEEUS_AVAILABLE:
         register_provider("swiss", SwissFallbackProvider())
-
-
 _register()
-# >>> AUTO-GEN END: AE Swiss Provider v1.0

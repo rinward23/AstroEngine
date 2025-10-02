@@ -16,11 +16,12 @@ import shutil
 import subprocess
 import sys
 import textwrap
+from dataclasses import dataclass
 from pathlib import Path
 
 REPO = os.environ.get("GITHUB_REPOSITORY", "")
 TOKEN = os.environ.get("GITHUB_TOKEN")
-BASE_URL = f"https://api.github.com/repos/{REPO}"
+BASE_URL = f"https://api.github.com/repos/{REPO}" if REPO else ""
 ROOT = Path(__file__).resolve().parents[2]
 TRIAGE_DIR = Path(__file__).resolve().parent
 TRIAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -96,9 +97,17 @@ def harvest_todos() -> list[str]:
     return items[:200]
 
 
+@dataclass
+class GitHubUnavailable(Exception):
+    reason: str
+
+
 def gh_request(method: str, path: str, json_body=None):
     import json as _json
     import urllib.request
+
+    if not BASE_URL or not TOKEN:
+        raise GitHubUnavailable("missing GitHub repository or token in environment")
 
     req = urllib.request.Request(BASE_URL + path, method=method)
     req.add_header("Authorization", f"Bearer {TOKEN}")
@@ -108,23 +117,30 @@ def gh_request(method: str, path: str, json_body=None):
         req.add_header("Content-Type", "application/json")
     else:
         data = None
-    with urllib.request.urlopen(req, data=data) as r:
-        return json.loads(r.read().decode())
+    try:
+        with urllib.request.urlopen(req, data=data) as r:
+            return json.loads(r.read().decode())
+    except Exception as exc:  # pragma: no cover - best effort network call
+        raise GitHubUnavailable(str(exc)) from exc
 
 
 def upsert_issue(title: str, body: str, labels: list[str]):
     # search existing open issues by title
-    q = "/issues?state=open&per_page=100"
-    issues = gh_request("GET", q)
-    for it in issues:
-        if it.get("title") == title:
-            gh_request(
-                "PATCH", f"/issues/{it['number']}", {"body": body, "labels": labels}
-            )
-            return it["number"]
-    # create new
-    it = gh_request("POST", "/issues", {"title": title, "body": body, "labels": labels})
-    return it["number"]
+    try:
+        q = "/issues?state=open&per_page=100"
+        issues = gh_request("GET", q)
+        for it in issues:
+            if it.get("title") == title:
+                gh_request(
+                    "PATCH", f"/issues/{it['number']}", {"body": body, "labels": labels}
+                )
+                return it["number"]
+        # create new
+        it = gh_request("POST", "/issues", {"title": title, "body": body, "labels": labels})
+        return it["number"]
+    except GitHubUnavailable as exc:
+        print(f"[triage] Skipping issue sync: {exc.reason}", file=sys.stderr)
+        return None
 
 
 def make_health_report() -> tuple[str, dict]:
@@ -171,27 +187,38 @@ def make_health_report() -> tuple[str, dict]:
 
 def write_index_md(path: Path):
     # Simple index of open issues for easy web reference from chat
-    items = gh_request("GET", "/issues?state=open&per_page=100")
-    by_label = {}
-    for it in items:
-        for lab in it.get("labels", []):
-            name = lab["name"] if isinstance(lab, dict) else lab
-            by_label.setdefault(name, []).append(it)
     md = [
         "# AstroEngine — Issue Index (auto‑generated)",
         "Open issues grouped by label. Source of truth is GitHub Issues.",
         "",
     ]
 
-    def link(i):
-        return f"- #{i['number']} {i['title']} (by @{i['user']['login']})"
+    try:
+        items = gh_request("GET", "/issues?state=open&per_page=100")
+    except GitHubUnavailable as exc:
+        md.append(
+            "_Issue data unavailable: GitHub API could not be reached (" + exc.reason + ")._"
+        )
+    else:
+        by_label = {}
+        for it in items:
+            for lab in it.get("labels", []):
+                name = lab["name"] if isinstance(lab, dict) else lab
+                by_label.setdefault(name, []).append(it)
 
-    for label in sorted(by_label.keys()):
-        md.append(f"\n## {label}")
-        for it in sorted(by_label[label], key=lambda x: x["number"]):
-            md.append(link(it))
+        def link(i):
+            return f"- #{i['number']} {i['title']} (by @{i['user']['login']})"
+
+        for label in sorted(by_label.keys()):
+            md.append(f"\n## {label}")
+            for it in sorted(by_label[label], key=lambda x: x["number"]):
+                md.append(link(it))
+
+        if len(md) == 3:
+            md.append("_No open issues detected for the configured repository._")
+
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_text("\n".join(md))
+    Path(path).write_text("\n".join(md) + "\n")
 
 
 def main():
