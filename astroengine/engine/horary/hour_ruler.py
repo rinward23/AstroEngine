@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-import math
 from datetime import UTC, datetime, timedelta
 
-import swisseph as swe
-
-from ...core.time import julian_day
-from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
+from ...ephemeris.adapter import ObserverLocation
 from ...ritual.timing import PLANETARY_HOUR_TABLE
+from ..observational.sun import solar_cycle
 from .models import GeoLocation, PlanetaryHourResult
 
-__all__ = ["planetary_hour", "sunrise_sunset"]
+__all__ = ["planetary_hour", "sunrise_sunset", "moonrise_moonset"]
+
 
 
 _RISE_FLAGS = swe.BIT_DISC_CENTER | swe.BIT_NO_REFRACTION | swe.FLG_SWIEPH
@@ -53,12 +51,18 @@ def _ensure_ephemeris_ready() -> None:
     SwissEphemerisAdapter.get_default_adapter()
 
 
-def _next_event(jd_ut: float, flag: int, location: GeoLocation) -> float:
+def _next_event(
+    jd_ut: float,
+    flag: int,
+    location: GeoLocation,
+    *,
+    body: int = swe.SUN,
+) -> float:
     _ensure_ephemeris_ready()
     geopos = (float(location.longitude), float(location.latitude), float(location.altitude))
     res, tret = swe.rise_trans(
         jd_ut,
-        swe.SUN,
+        body,
         flag,
         geopos,
         0.0,
@@ -72,17 +76,48 @@ def _next_event(jd_ut: float, flag: int, location: GeoLocation) -> float:
     return tret[0]
 
 
+def _rise_set_cycle(
+    moment: datetime,
+    location: GeoLocation,
+    *,
+    body: int,
+    fallback_step: float = 0.51,
+) -> tuple[datetime, datetime, datetime]:
+    """Return the rise, set, and subsequent rise for ``body`` around ``moment``."""
+
+    jd = julian_day(moment)
+    prev_rise_jd = _next_event(jd - 1.0, swe.CALC_RISE, location, body=body)
+    if prev_rise_jd > jd:
+        prev_rise_jd = _next_event(prev_rise_jd - 1.0, swe.CALC_RISE, location, body=body)
+
+    set_jd = _next_event(prev_rise_jd + 0.01, swe.CALC_SET, location, body=body)
+    if set_jd <= prev_rise_jd:
+        set_jd = _next_event(prev_rise_jd + fallback_step, swe.CALC_SET, location, body=body)
+
+    next_rise_jd = _next_event(set_jd + 0.01, swe.CALC_RISE, location, body=body)
+    if next_rise_jd <= set_jd:
+        next_rise_jd = _next_event(set_jd + fallback_step, swe.CALC_RISE, location, body=body)
+
+    return (
+        _jd_to_datetime(prev_rise_jd),
+        _jd_to_datetime(set_jd),
+        _jd_to_datetime(next_rise_jd),
+    )
+
+
 def sunrise_sunset(moment: datetime, location: GeoLocation) -> tuple[datetime, datetime, datetime]:
     """Return sunrise, sunset, and next sunrise surrounding ``moment``."""
 
-    jd = julian_day(moment)
-    prev_sunrise_jd = _next_event(jd - 1.0, swe.CALC_RISE, location)
-    sunset_jd = _next_event(prev_sunrise_jd + 0.01, swe.CALC_SET, location)
-    next_sunrise_jd = _next_event(prev_sunrise_jd + 0.51, swe.CALC_RISE, location)
-    sunrise_dt = _jd_to_datetime(prev_sunrise_jd)
-    sunset_dt = _jd_to_datetime(sunset_jd)
-    next_sunrise_dt = _jd_to_datetime(next_sunrise_jd)
-    return sunrise_dt, sunset_dt, next_sunrise_dt
+    return _rise_set_cycle(moment, location, body=swe.SUN)
+
+
+def moonrise_moonset(moment: datetime, location: GeoLocation) -> tuple[datetime, datetime, datetime]:
+    """Return moonrise, moonset, and next moonrise surrounding ``moment``."""
+
+    # The Moon's diurnal cycle is shorter than the Sun's, so a tighter fallback helps
+    # keep the search within the same lunation day if the direct query fails.
+    return _rise_set_cycle(moment, location, body=swe.MOON, fallback_step=0.35)
+
 
 
 def _local_weekday(dt_utc: datetime, location: GeoLocation) -> str:

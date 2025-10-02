@@ -6,7 +6,7 @@ import logging
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Optional
 
@@ -30,6 +30,7 @@ __all__ = [
     "BodyPosition",
     "EquatorialPosition",
     "HousePositions",
+    "SolarCycleEvents",
     "SwissEphemerisAdapter",
     "VariantConfig",
     "resolve_house_code",
@@ -122,6 +123,29 @@ class EquatorialPosition:
     declination: float
     speed_ra: float
     speed_declination: float
+
+
+@dataclass(frozen=True)
+class SolarCycleEvents:
+    """Sunrise, sunset, and transit metadata for a single day."""
+
+    sunrise: datetime | None
+    sunset: datetime | None
+    next_sunrise: datetime | None
+    transit: datetime | None
+    provenance: Mapping[str, object]
+
+    def to_dict(self) -> Mapping[str, object | None]:
+        """Return a serialisable mapping of the solar cycle."""
+
+        payload: dict[str, object | None] = {
+            "sunrise": self.sunrise.isoformat() if self.sunrise else None,
+            "sunset": self.sunset.isoformat() if self.sunset else None,
+            "next_sunrise": self.next_sunrise.isoformat() if self.next_sunrise else None,
+            "transit": self.transit.isoformat() if self.transit else None,
+            "provenance": dict(self.provenance),
+        }
+        return payload
 
 
 @dataclass(frozen=True)
@@ -517,6 +541,20 @@ class SwissEphemerisAdapter:
         )
         return swe.julday(moment_utc.year, moment_utc.month, moment_utc.day, hour)
 
+    @staticmethod
+    def _datetime_from_jd_ut(jd_ut: float) -> datetime:
+        """Convert a UT-based Julian day to a timezone-aware datetime."""
+
+        year, month, day, ut_hours = swe.revjul(jd_ut, swe.GREG_CAL)
+        base = datetime(year, month, day, tzinfo=UTC)
+        total_seconds = ut_hours * 3600.0
+        seconds = int(total_seconds)
+        microseconds = int(round((total_seconds - seconds) * 1_000_000))
+        if microseconds >= 1_000_000:
+            seconds += 1
+            microseconds -= 1_000_000
+        return base + timedelta(seconds=seconds, microseconds=microseconds)
+
     def body_equatorial(self, jd_ut: float, body_code: int) -> EquatorialPosition:
         """Return right ascension/declination data for ``body_code``."""
 
@@ -592,6 +630,117 @@ class SwissEphemerisAdapter:
             name: self.body_position(jd_ut, code, body_name=name)
             for name, code in bodies.items()
         }
+
+    def sunrise_sunset(
+        self,
+        moment: datetime,
+        *,
+        longitude: float,
+        latitude: float,
+        elevation_m: float = 0.0,
+        refraction: bool = False,
+        pressure_mbar: float | None = None,
+        temperature_c: float | None = None,
+        disc_center: bool = True,
+    ) -> SolarCycleEvents:
+        """Return sunrise, sunset, next sunrise, and transit for the Sun."""
+
+        if moment.tzinfo is None:
+            moment_utc = moment.replace(tzinfo=UTC)
+        else:
+            moment_utc = moment.astimezone(UTC)
+
+        jd_ut = self.julian_day(moment_utc)
+        geopos = (float(longitude), float(latitude), float(elevation_m))
+
+        flags = swe.FLG_SWIEPH
+        if disc_center:
+            flags |= swe.BIT_DISC_CENTER
+        pressure = 0.0
+        temperature = 0.0
+        if refraction:
+            flags &= ~swe.BIT_NO_REFRACTION
+            pressure = float(pressure_mbar if pressure_mbar is not None else 1013.25)
+            temperature = float(temperature_c if temperature_c is not None else 15.0)
+        else:
+            flags |= swe.BIT_NO_REFRACTION
+            if pressure_mbar is not None:
+                pressure = float(pressure_mbar)
+            if temperature_c is not None:
+                temperature = float(temperature_c)
+
+        def _event(start_jd: float, event_flag: int) -> float | None:
+            result, tret = swe.rise_trans(
+                start_jd,
+                swe.SUN,
+                event_flag,
+                geopos,
+                pressure,
+                temperature,
+                flags,
+            )
+            if result == 0:
+                return tret[0]
+            if result == -2:
+                return None
+            raise RuntimeError(
+                {
+                    "event": "swisseph_rise_trans_error",
+                    "code": int(result),
+                    "event_flag": int(event_flag),
+                    "start_jd_ut": start_jd,
+                    "geopos": {
+                        "longitude_deg": geopos[0],
+                        "latitude_deg": geopos[1],
+                        "elevation_m": geopos[2],
+                    },
+                }
+            )
+
+        sunrise_jd = _event(jd_ut - 1.0, swe.CALC_RISE)
+        sunset_jd = _event(
+            (sunrise_jd if sunrise_jd is not None else jd_ut) + 0.01,
+            swe.CALC_SET,
+        )
+        next_sunrise_jd = _event(
+            (sunrise_jd if sunrise_jd is not None else jd_ut) + 0.51,
+            swe.CALC_RISE,
+        )
+        transit_jd = _event(jd_ut - 0.5, swe.CALC_MTRANSIT)
+
+        metadata: Mapping[str, object] = {
+            "body": "sun",
+            "body_code": int(swe.SUN),
+            "source": "swisseph.rise_trans",
+            "start_jd_ut": jd_ut,
+            "moment_utc": moment_utc.isoformat(),
+            "flags": int(flags),
+            "refraction": refraction,
+            "disc_center": disc_center,
+            "pressure_mbar": pressure,
+            "temperature_c": temperature,
+            "geopos": {
+                "longitude_deg": geopos[0],
+                "latitude_deg": geopos[1],
+                "elevation_m": geopos[2],
+            },
+        }
+
+        return SolarCycleEvents(
+            sunrise=self._datetime_from_jd_ut(sunrise_jd)
+            if sunrise_jd is not None
+            else None,
+            sunset=self._datetime_from_jd_ut(sunset_jd)
+            if sunset_jd is not None
+            else None,
+            next_sunrise=self._datetime_from_jd_ut(next_sunrise_jd)
+            if next_sunrise_jd is not None
+            else None,
+            transit=self._datetime_from_jd_ut(transit_jd)
+            if transit_jd is not None
+            else None,
+            provenance=metadata,
+        )
 
     def _variant_override(self, body_name: str | None) -> tuple[Optional[int], bool]:
         if not body_name:

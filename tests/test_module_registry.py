@@ -22,3 +22,20 @@ def test_serialize_vca_ruleset_matches_registry():
     aspects = rulesets.get_channel("aspects")
     definitions = aspects.get_subchannel("definitions").describe()
     assert payload["id"] == definitions["payload"]["id"]
+
+
+def test_integrations_module_catalogues_external_tooling():
+    module = DEFAULT_REGISTRY.get_module("integrations")
+    ephemeris = module.get_submodule("ephemeris_tooling")
+    swiss = ephemeris.get_channel("swiss_ephemeris")
+    sweph = swiss.get_subchannel("sweph")
+    assert sweph.metadata["project_url"] == "https://www.astro.com/swisseph/"
+    assert sweph.payload == {"ephemeris_path": "datasets/swisseph_stub"}
+
+    python_toolkits = module.get_submodule("python_toolkits")
+    libraries = python_toolkits.get_channel("libraries")
+    assert "flatlib" in libraries.subchannels
+
+    vedic = module.get_submodule("vedic_workflows")
+    desktop = vedic.get_channel("desktop_suites")
+    assert "maitreya" in desktop.subchannels

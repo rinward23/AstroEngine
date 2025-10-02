@@ -203,6 +203,22 @@ from .ritual import (
     VoidOfCourseRule,
 )
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
+from .jyotish import (
+    GrahaYuddhaOutcome,
+    HouseClaim,
+    HouseWinner,
+    SrishtiAspect,
+    StrengthScore,
+    determine_house_lords,
+    evaluate_house_claims,
+    evaluate_house_claims_from_chart,
+    house_occupants,
+    karakas_for_house,
+    match_karakas,
+    score_planet_strength,
+    compute_srishti_aspects,
+    detect_graha_yuddha,
+)
 from .scoring import (
     DEFAULT_ASPECTS,
     OrbCalculator,
@@ -388,6 +404,20 @@ __all__ = [
     "DirectionEvent",
     "ProfectionEvent",
     "OutOfBoundsEvent",
+    "determine_house_lords",
+    "house_occupants",
+    "karakas_for_house",
+    "match_karakas",
+    "StrengthScore",
+    "score_planet_strength",
+    "SrishtiAspect",
+    "GrahaYuddhaOutcome",
+    "compute_srishti_aspects",
+    "detect_graha_yuddha",
+    "HouseClaim",
+    "HouseWinner",
+    "evaluate_house_claims",
+    "evaluate_house_claims_from_chart",
 ]
 
 # Hypothesis 6.112+ disallows timezone-aware bounds for datetimes; provide a

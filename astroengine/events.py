@@ -55,12 +55,19 @@ class EclipseEvent(BaseEvent):
 
 @dataclass(frozen=True)
 class StationEvent(BaseEvent):
-    """Represents a planetary station (speed crossing zero)."""
+    """Represents a planetary station (speed crossing zero).
+
+    The ``station_type`` field distinguishes whether the station marks the
+    onset of retrograde motion (``"retrograde"``) or the return to direct
+    motion (``"direct"``). For rare cases where the direction cannot be
+    established the value remains ``None``.
+    """
 
     body: str
     motion: str
     longitude: float
     speed_longitude: float
+    station_type: str | None = None
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,4 @@
-
-
 """Pydantic models and runtime dataclasses for interpretation rulepacks."""
-
 
 from __future__ import annotations
 
