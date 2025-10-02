@@ -51,6 +51,7 @@ __all__ = [
     "evaluate",
     "load_custom_profiles",
     "is_day",
+    "load_custom_profiles",
     "list_builtin_profiles",
 
     "save_custom_profile",
