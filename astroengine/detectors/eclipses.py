@@ -11,6 +11,7 @@ except Exception:  # pragma: no cover
     swe = None  # type: ignore
 
 from ..events import EclipseEvent
+from ..ephemeris.swisseph_adapter import swe_calc
 from .common import jd_to_iso, moon_lon, sun_lon
 
 __all__ = ["find_eclipses"]
@@ -23,10 +24,13 @@ def _moon_latitude(jd_ut: float) -> float:
 
     if swe is None:
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
-    values, _ = swe.calc_ut(jd_ut, swe.MOON, swe.FLG_SWIEPH | swe.FLG_SPEED)
-    if len(values) < 2:
+    flag = swe.FLG_SWIEPH | swe.FLG_SPEED
+    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=swe.MOON, flag=flag)
+    if serr:
+        raise RuntimeError(serr)
+    if len(xx) < 2:
         raise RuntimeError("Swiss ephemeris did not return latitude component")
-    return float(values[1])
+    return float(xx[1])
 
 
 def _normalize_location(

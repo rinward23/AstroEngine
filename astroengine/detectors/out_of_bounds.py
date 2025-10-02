@@ -10,6 +10,7 @@ except Exception:  # pragma: no cover
     swe = None  # type: ignore
 
 from ..events import OutOfBoundsEvent
+from ..ephemeris.swisseph_adapter import swe_calc
 from .common import jd_to_iso, solve_zero_crossing
 
 __all__ = ["find_out_of_bounds"]
@@ -28,17 +29,20 @@ _BODY_CODES = {
 
 
 def _declination(jd_ut: float, code: int) -> tuple[float, float]:
-    values, _ = swe.calc_ut(
-        jd_ut, code, swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_EQUATORIAL
-    )
-    dec = float(values[1])
-    speed_dec = float(values[4]) if len(values) > 4 else float("nan")
+    flag = swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_EQUATORIAL
+    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=code, flag=flag)
+    if serr:
+        raise RuntimeError(serr)
+    dec = float(xx[1])
+    speed_dec = float(xx[4]) if len(xx) > 4 else float("nan")
     return dec, speed_dec
 
 
 def _tropic_limit(jd_ut: float) -> float:
-    values, _ = swe.calc_ut(jd_ut, swe.ECL_NUT)
-    return abs(float(values[0]))
+    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=swe.ECL_NUT, flag=0)
+    if serr:
+        raise RuntimeError(serr)
+    return abs(float(xx[0]))
 
 
 def _oob_value(jd_ut: float, code: int) -> float:

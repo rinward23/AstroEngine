@@ -27,6 +27,7 @@ from datetime import UTC
 from typing import Any
 
 from astroengine.ephemeris import EphemerisAdapter
+from astroengine.ephemeris.swisseph_adapter import swe_calc
 
 
 @dataclass
@@ -367,10 +368,12 @@ def smoketest_positions(iso_utc: str = "2025-01-01T00:00:00Z") -> list[dict[str,
         ]
         out: list[dict[str, Any]] = []
         for name, pid in ids:
-            positions, *_ = swe.calc_ut(jd, pid)
-            lon = float(positions[0])
-            lat = float(positions[1])
-            dist = float(positions[2])
+            xx, _, serr = swe_calc(jd_ut=jd, planet_index=pid, flag=0)
+            if serr:
+                raise RuntimeError(serr)
+            lon = float(xx[0])
+            lat = float(xx[1])
+            dist = float(xx[2])
             out.append({"body": name, "lon_deg": lon, "lat_deg": lat, "dist_au": dist})
         return out
     except Exception as e:  # pragma: no cover - smoketest is best-effort

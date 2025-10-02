@@ -11,6 +11,7 @@ except Exception:  # pragma: no cover
     swe = None  # type: ignore
 
 from ..events import ShadowPeriod, StationEvent
+from ..ephemeris.swisseph_adapter import swe_calc
 from .common import delta_deg, jd_to_iso, solve_zero_crossing
 
 __all__ = ["find_stations", "find_shadow_periods"]
@@ -28,13 +29,19 @@ _BODY_CODES = {
 
 
 def _speed(jd_ut: float, code: int) -> float:
-    values, _ = swe.calc_ut(jd_ut, code, swe.FLG_SWIEPH | swe.FLG_SPEED)
-    return float(values[3])
+    flag = swe.FLG_SWIEPH | swe.FLG_SPEED
+    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=code, flag=flag)
+    if serr:
+        raise RuntimeError(serr)
+    return float(xx[3])
 
 
 def _longitude(jd_ut: float, code: int) -> float:
-    values, _ = swe.calc_ut(jd_ut, code, swe.FLG_SWIEPH | swe.FLG_SPEED)
-    return float(values[0]) % 360.0
+    flag = swe.FLG_SWIEPH | swe.FLG_SPEED
+    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=code, flag=flag)
+    if serr:
+        raise RuntimeError(serr)
+    return float(xx[0]) % 360.0
 
 
 def find_stations(
