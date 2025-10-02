@@ -31,7 +31,10 @@ __all__ = [
     "BodyPosition",
     "EquatorialPosition",
     "HousePositions",
-    "SolarCycleEvents",
+
+    "FixedStarPosition",
+    "RiseTransitResult",
+
     "SwissEphemerisAdapter",
     "VariantConfig",
     "resolve_house_code",
@@ -97,6 +100,18 @@ _NODE_VARIANT_CODES = {
 _LILITH_VARIANT_CODES = {
     "mean": int(getattr(swe, "MEAN_APOG", 12)),
     "true": int(getattr(swe, "OSCU_APOG", 13)),
+}
+
+
+_RISE_TRANSIT_EVENTS: Mapping[str, int] = {
+    "rise": swe.CALC_RISE,
+    "set": swe.CALC_SET,
+    "transit": swe.CALC_MTRANSIT,
+    "upper_transit": swe.CALC_MTRANSIT,
+    "meridian_transit": swe.CALC_MTRANSIT,
+    "culmination": swe.CALC_MTRANSIT,
+    "antitransit": swe.CALC_ITRANSIT,
+    "lower_transit": swe.CALC_ITRANSIT,
 }
 
 
@@ -199,6 +214,35 @@ class HousePositions:
             payload["provenance"] = dict(self.provenance)
 
         return payload
+
+
+@dataclass(frozen=True)
+class FixedStarPosition:
+    """Computed coordinates for a fixed star via Swiss Ephemeris."""
+
+    name: str
+    julian_day: float
+    longitude: float
+    latitude: float
+    distance_au: float
+    speed_longitude: float
+    speed_latitude: float
+    speed_distance: float
+    flags: int
+    computation_flags: int
+
+
+@dataclass(frozen=True)
+class RiseTransitResult:
+    """Rise/set/transit metadata returned by Swiss Ephemeris."""
+
+    body: str
+    event: str
+    julian_day: float | None
+    datetime: datetime | None
+    status: int
+    rsmi: int
+    flags: int
 
 
 class SwissEphemerisAdapter:
@@ -543,18 +587,15 @@ class SwissEphemerisAdapter:
         return swe.julday(moment_utc.year, moment_utc.month, moment_utc.day, hour)
 
     @staticmethod
-    def _datetime_from_jd_ut(jd_ut: float) -> datetime:
-        """Convert a UT-based Julian day to a timezone-aware datetime."""
 
-        year, month, day, ut_hours = swe.revjul(jd_ut, swe.GREG_CAL)
+    def from_julian_day(jd_ut: float) -> datetime:
+        """Convert a Julian Day in UT back to a timezone-aware datetime."""
+
+        year, month, day, hour = swe.revjul(jd_ut, swe.GREG_CAL)
         base = datetime(year, month, day, tzinfo=UTC)
-        total_seconds = ut_hours * 3600.0
-        seconds = int(total_seconds)
-        microseconds = int(round((total_seconds - seconds) * 1_000_000))
-        if microseconds >= 1_000_000:
-            seconds += 1
-            microseconds -= 1_000_000
-        return base + timedelta(seconds=seconds, microseconds=microseconds)
+        seconds = hour * 3600.0
+        return base + timedelta(seconds=seconds)
+
 
     def body_equatorial(self, jd_ut: float, body_code: int) -> EquatorialPosition:
         """Return right ascension/declination data for ``body_code``."""
@@ -651,115 +692,139 @@ class SwissEphemerisAdapter:
             for name, code in bodies.items()
         }
 
-    def sunrise_sunset(
+
+    @staticmethod
+    def planet_name(body_code: int) -> str:
+        """Return the Swiss Ephemeris display name for ``body_code``."""
+
+        return swe.get_planet_name(body_code)
+
+    def ayanamsa(self, jd_ut: float, *, true_longitude: bool = False) -> float:
+        """Return the ayanamsa value for ``jd_ut`` in degrees."""
+
+        self._apply_sidereal_mode()
+        if true_longitude:
+            delta_t = swe.deltat(jd_ut)
+            return swe.get_ayanamsa(jd_ut + delta_t)
+        return swe.get_ayanamsa_ut(jd_ut)
+
+    def ayanamsa_details(self, jd_ut: float) -> Mapping[str, float | int | None]:
+        """Return ayanamsa metadata including Swiss mode flags."""
+
+        self._apply_sidereal_mode()
+        if self._sidereal_mode is None:
+            value = swe.get_ayanamsa_ut(jd_ut)
+            return {"value": value, "mode": None, "flags": None}
+        flags, value = swe.get_ayanamsa_ex_ut(jd_ut, self._sidereal_mode)
+        return {"value": value, "mode": self._sidereal_mode, "flags": flags}
+
+    def rise_transit(
         self,
-        moment: datetime,
+        jd_ut: float,
+        body: int | str,
         *,
-        longitude: float,
         latitude: float,
-        elevation_m: float = 0.0,
-        refraction: bool = False,
-        pressure_mbar: float | None = None,
-        temperature_c: float | None = None,
-        disc_center: bool = True,
-    ) -> SolarCycleEvents:
-        """Return sunrise, sunset, next sunrise, and transit for the Sun."""
+        longitude: float,
+        elevation: float = 0.0,
+        event: str = "rise",
+        pressure_hpa: float = 0.0,
+        temperature_c: float = 0.0,
+        flags: int | None = None,
+        body_name: str | None = None,
+    ) -> RiseTransitResult:
+        """Compute the next rise/set/transit event for ``body`` after ``jd_ut``."""
 
-        if moment.tzinfo is None:
-            moment_utc = moment.replace(tzinfo=UTC)
+        event_key = (event or "rise").lower()
+        try:
+            rsmi = _RISE_TRANSIT_EVENTS[event_key]
+        except KeyError as exc:  # pragma: no cover - guarded by validation
+            options = ", ".join(sorted(_RISE_TRANSIT_EVENTS))
+            raise ValueError(f"Unknown rise/transit event '{event}'. Options: {options}") from exc
+
+        override_code, _ = self._variant_override(body_name)
+        effective_body: int | str = body
+        if override_code is not None:
+            effective_body = override_code
+
+        label: str
+        if body_name is not None:
+            label = body_name
+        elif isinstance(body, str):
+            label = body
+        elif isinstance(effective_body, int):
+            try:
+                label = self.planet_name(int(effective_body))
+            except Exception:  # pragma: no cover - defensive
+                label = str(effective_body)
         else:
-            moment_utc = moment.astimezone(UTC)
+            label = str(effective_body)
 
-        jd_ut = self.julian_day(moment_utc)
-        geopos = (float(longitude), float(latitude), float(elevation_m))
+        flags_value = flags if flags is not None else self._calc_flags
+        if self._is_sidereal:
+            flags_value |= swe.FLG_SIDEREAL
 
-        flags = swe.FLG_SWIEPH
-        if disc_center:
-            flags |= swe.BIT_DISC_CENTER
-        pressure = 0.0
-        temperature = 0.0
-        if refraction:
-            flags &= ~swe.BIT_NO_REFRACTION
-            pressure = float(pressure_mbar if pressure_mbar is not None else 1013.25)
-            temperature = float(temperature_c if temperature_c is not None else 15.0)
+        self._apply_sidereal_mode()
+        geopos = (float(longitude), float(latitude), float(elevation))
+        status, tret = swe.rise_trans(
+            jd_ut,
+            effective_body,
+            rsmi,
+            geopos,
+            pressure_hpa,
+            temperature_c,
+            flags_value,
+        )
+
+        event_jd = tret[0] if tret else None
+        event_dt: datetime | None = None
+        if status == 0 and event_jd is not None and event_jd != 0.0:
+            event_dt = self.from_julian_day(event_jd)
         else:
-            flags |= swe.BIT_NO_REFRACTION
-            if pressure_mbar is not None:
-                pressure = float(pressure_mbar)
-            if temperature_c is not None:
-                temperature = float(temperature_c)
+            event_jd = None if status != 0 else event_jd
 
-        def _event(start_jd: float, event_flag: int) -> float | None:
-            result, tret = swe.rise_trans(
-                start_jd,
-                swe.SUN,
-                event_flag,
-                geopos,
-                pressure,
-                temperature,
-                flags,
-            )
-            if result == 0:
-                return tret[0]
-            if result == -2:
-                return None
-            raise RuntimeError(
-                {
-                    "event": "swisseph_rise_trans_error",
-                    "code": int(result),
-                    "event_flag": int(event_flag),
-                    "start_jd_ut": start_jd,
-                    "geopos": {
-                        "longitude_deg": geopos[0],
-                        "latitude_deg": geopos[1],
-                        "elevation_m": geopos[2],
-                    },
-                }
-            )
-
-        sunrise_jd = _event(jd_ut - 1.0, swe.CALC_RISE)
-        sunset_jd = _event(
-            (sunrise_jd if sunrise_jd is not None else jd_ut) + 0.01,
-            swe.CALC_SET,
+        return RiseTransitResult(
+            body=label,
+            event=event_key,
+            julian_day=event_jd,
+            datetime=event_dt,
+            status=status,
+            rsmi=rsmi,
+            flags=flags_value,
         )
-        next_sunrise_jd = _event(
-            (sunrise_jd if sunrise_jd is not None else jd_ut) + 0.51,
-            swe.CALC_RISE,
-        )
-        transit_jd = _event(jd_ut - 0.5, swe.CALC_MTRANSIT)
 
-        metadata: Mapping[str, object] = {
-            "body": "sun",
-            "body_code": int(swe.SUN),
-            "source": "swisseph.rise_trans",
-            "start_jd_ut": jd_ut,
-            "moment_utc": moment_utc.isoformat(),
-            "flags": int(flags),
-            "refraction": refraction,
-            "disc_center": disc_center,
-            "pressure_mbar": pressure,
-            "temperature_c": temperature,
-            "geopos": {
-                "longitude_deg": geopos[0],
-                "latitude_deg": geopos[1],
-                "elevation_m": geopos[2],
-            },
-        }
+    def fixed_star(
+        self,
+        name: str,
+        jd_ut: float,
+        *,
+        flags: int | None = None,
+        use_ut: bool = True,
+    ) -> FixedStarPosition:
+        """Return longitude/latitude data for ``name`` at ``jd_ut``."""
 
-        return SolarCycleEvents(
-            sunrise=self._datetime_from_jd_ut(sunrise_jd)
-            if sunrise_jd is not None
-            else None,
-            sunset=self._datetime_from_jd_ut(sunset_jd)
-            if sunset_jd is not None
-            else None,
-            next_sunrise=self._datetime_from_jd_ut(next_sunrise_jd)
-            if next_sunrise_jd is not None
-            else None,
-            transit=self._datetime_from_jd_ut(transit_jd)
-            if transit_jd is not None
-            else None,
-            provenance=metadata,
+        self._apply_sidereal_mode()
+        flags_value = flags if flags is not None else self._calc_flags
+        if self._is_sidereal:
+            flags_value |= swe.FLG_SIDEREAL
+
+        if use_ut:
+            values, resolved_name, retflags = swe.fixstar_ut(name, jd_ut, flags_value)
+        else:
+            values, resolved_name, retflags = swe.fixstar(name, jd_ut, flags_value)
+
+        lon, lat, dist, speed_lon, speed_lat, speed_dist = values
+        return FixedStarPosition(
+            name=str(resolved_name).strip(),
+            julian_day=jd_ut,
+            longitude=lon % 360.0,
+            latitude=lat,
+            distance_au=dist,
+            speed_longitude=speed_lon,
+            speed_latitude=speed_lat,
+            speed_distance=speed_dist,
+            flags=retflags,
+            computation_flags=flags_value,
+
         )
 
     def _variant_override(self, body_name: str | None) -> tuple[Optional[int], bool]:
@@ -833,7 +898,7 @@ class SwissEphemerisAdapter:
 
 
         if self._is_sidereal:
-            ayan = swe.get_ayanamsa_ut(jd_ut)
+            ayan = self.ayanamsa(jd_ut)
             cusps = tuple((c - ayan) % 360.0 for c in cusps)
             ascendant = (angles[0] - ayan) % 360.0
             midheaven = (angles[1] - ayan) % 360.0

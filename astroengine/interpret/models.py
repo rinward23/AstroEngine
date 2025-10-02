@@ -19,7 +19,6 @@ from pydantic import (
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS
 
 
-
 Body = Literal[
     "Sun",
     "Moon",

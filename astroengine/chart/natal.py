@@ -133,7 +133,7 @@ def compute_natal_chart(
 
     zodiac = chart_config.zodiac
     ayanamsa_name = chart_config.ayanamsha if zodiac == "sidereal" else None
-    ayanamsa_degrees = swe.get_ayanamsa_ut(jd_ut) if ayanamsa_name else None
+    ayanamsa_degrees = adapter.ayanamsa(jd_ut) if ayanamsa_name else None
     provenance: dict[str, object] = {"zodiac": zodiac, "house_system": chart_config.house_system}
     if ayanamsa_name:
         provenance.update(
