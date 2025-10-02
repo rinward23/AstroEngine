@@ -44,6 +44,17 @@ _DASHA_YEARS = {
 _TOTAL_SEQUENCE_YEARS = sum(_DASHA_YEARS.values())
 
 
+_LEVEL_NAMES: tuple[str, ...] = (
+    "maha",
+    "antar",
+    "pratyantar",
+    "sookshma",
+    "praan",
+)
+
+_LEVEL_TO_DEPTH = {name: depth for depth, name in enumerate(_LEVEL_NAMES, start=1)}
+
+
 __all__ = ["vimsottari_dashas", "compute_vimshottari_dasha"]
 
 
@@ -187,76 +198,117 @@ def _to_jd(moment: datetime) -> float:
     return (moment_utc.timestamp() / 86400.0) + UNIX_EPOCH_JD
 
 
-def _generate_antar_periods(
+def _generate_nested_periods(
     ruler_index: int,
-    maha_start: datetime,
-    maha_end: datetime,
-    maha_total_years: float,
+    parent_start: datetime,
+    parent_end: datetime,
+    parent_total_years: float,
     skip_years: float,
+    *,
     method: str,
+    requested_levels: set[str],
+    max_depth: int,
+    depth: int,
+    parent_chain: tuple[str, ...],
 ) -> list[DashaPeriodEvent]:
-    if maha_start >= maha_end:
+    if depth > max_depth:
         return []
 
+    parent_start = _ensure_utc(parent_start)
+    parent_end = _ensure_utc(parent_end)
+    if parent_end <= parent_start or parent_total_years <= 0.0:
+        return []
+
+    parent_total_days = parent_total_years * TROPICAL_YEAR_DAYS
+    active_days = (parent_end - parent_start).total_seconds() / 86400.0
+    if active_days <= 0.0:
+        return []
+
+    start_fraction = 0.0
+    if parent_total_years > 0.0:
+        start_fraction = max(0.0, min(skip_years / parent_total_years, 1.0))
+
+    active_fraction = min(max(active_days / parent_total_days, 0.0), 1.0 - start_fraction)
+    end_fraction = min(1.0, start_fraction + active_fraction)
+    coverage = max(end_fraction - start_fraction, 0.0)
+    if coverage <= 0.0:
+        return []
+
+    level_name = _LEVEL_NAMES[depth - 1]
     order = _DASHA_SEQUENCE[ruler_index:] + _DASHA_SEQUENCE[:ruler_index]
-    parent = _DASHA_SEQUENCE[ruler_index]
-
-    current = _ensure_utc(maha_start)
-
-    remaining_skip = max(skip_years, 0.0)
-    produced_years = 0.0
-    active_years = max(maha_total_years - skip_years, 0.0)
+    parent_length = timedelta(days=active_days)
     events: list[DashaPeriodEvent] = []
 
-    epsilon = timedelta(days=1e-6)
+    cumulative = 0.0
+    epsilon = 1e-9
+    for offset, sub in enumerate(order):
+        fraction = _DASHA_YEARS[sub] / _TOTAL_SEQUENCE_YEARS
+        sub_start_fraction = cumulative
+        sub_end_fraction = cumulative + fraction
+        cumulative = sub_end_fraction
 
-    for sub in order:
-        full_years = maha_total_years * (_DASHA_YEARS[sub] / _TOTAL_SEQUENCE_YEARS)
-        if remaining_skip >= full_years:
-            remaining_skip -= full_years
+        if sub_end_fraction <= start_fraction + epsilon:
             continue
-        if remaining_skip > 0.0:
-            full_years -= remaining_skip
-            remaining_skip = 0.0
-        if full_years <= 0.0:
-            continue
-        produced_years += full_years
-        if produced_years > active_years:
-            full_years -= produced_years - active_years
-            produced_years = active_years
-        delta = timedelta(days=full_years * TROPICAL_YEAR_DAYS)
-        end = current + delta
-        if end > maha_end:
-            end = maha_end
-        if end <= current:
-            continue
-        events.append(
-            DashaPeriodEvent(
-                ts=_to_iso(current),
-                jd=_to_jd(current),
-                method=method,
-                level="antar",
-                ruler=sub,
-                end_ts=_to_iso(end),
-                end_jd=_to_jd(end),
-                parent=parent,
-            )
-        )
-        current = end
-        if current >= maha_end - epsilon:
+        if sub_start_fraction >= end_fraction - epsilon:
             break
-    if events and current < maha_end:
-        last = events[-1]
-        events[-1] = DashaPeriodEvent(
-            ts=last.ts,
-            jd=last.jd,
-            method=last.method,
-            level=last.level,
-            ruler=last.ruler,
-            end_ts=_to_iso(maha_end),
-            end_jd=_to_jd(maha_end),
-            parent=last.parent,
+
+        actual_start_fraction = max(sub_start_fraction, start_fraction)
+        actual_end_fraction = min(sub_end_fraction, end_fraction)
+        if actual_start_fraction >= actual_end_fraction:
+            continue
+
+        if coverage <= 0.0:
+            continue
+        normalized_start = (actual_start_fraction - start_fraction) / coverage
+        normalized_end = (actual_end_fraction - start_fraction) / coverage
+        child_start = parent_start + parent_length * normalized_start
+        child_end = parent_start + parent_length * normalized_end
+        if (
+            offset == len(order) - 1
+            or actual_end_fraction >= end_fraction - epsilon
+            or child_end > parent_end
+        ):
+            child_end = parent_end
+
+        child_total_years = parent_total_years * fraction
+        skipped_fraction = max(0.0, start_fraction - sub_start_fraction)
+        child_skip_years = (
+            child_total_years * (skipped_fraction / fraction)
+            if fraction > 0.0
+            else 0.0
         )
+
+        if level_name in requested_levels:
+            events.append(
+                DashaPeriodEvent(
+                    ts=_to_iso(child_start),
+                    jd=_to_jd(child_start),
+                    method=method,
+                    level=level_name,
+                    ruler=sub,
+                    end_ts=_to_iso(child_end),
+                    end_jd=_to_jd(child_end),
+                    parent=parent_chain[-1] if parent_chain else None,
+                )
+            )
+
+        next_index = (ruler_index + offset) % len(_DASHA_SEQUENCE)
+        if depth < max_depth:
+            events.extend(
+                _generate_nested_periods(
+                    next_index,
+                    child_start,
+                    child_end,
+                    child_total_years,
+                    child_skip_years,
+                    method=method,
+                    requested_levels=requested_levels,
+                    max_depth=max_depth,
+                    depth=depth + 1,
+                    parent_chain=(*parent_chain, sub),
+                )
+            )
+
     return events
 
 
@@ -275,8 +327,9 @@ def compute_vimshottari_dasha(
     normalized_levels = {level.lower() for level in levels}
     if not normalized_levels:
         raise ValueError("at least one dasha level must be requested")
-    if not normalized_levels.issubset({"maha", "antar"}):
-        raise ValueError("unsupported dasha levels requested")
+    unknown = normalized_levels.difference(_LEVEL_TO_DEPTH)
+    if unknown:
+        raise ValueError(f"unsupported dasha levels requested: {sorted(unknown)!r}")
 
     start = _ensure_utc(start)
     longitude = norm360(moon_longitude_deg)
@@ -290,6 +343,7 @@ def compute_vimshottari_dasha(
     elapsed_years = total_years * fraction_elapsed
     current = start
     events: list[DashaPeriodEvent] = []
+    max_depth = max(_LEVEL_TO_DEPTH[level] for level in normalized_levels)
 
     for cycle in range(cycles):
         for offset_index in range(len(_DASHA_SEQUENCE)):
@@ -319,15 +373,19 @@ def compute_vimshottari_dasha(
                         parent=None,
                     )
                 )
-            if "antar" in normalized_levels:
+            if max_depth > 1:
                 events.extend(
-                    _generate_antar_periods(
+                    _generate_nested_periods(
                         idx,
                         current,
                         maha_end,
                         full_years,
                         skip_years,
-                        method,
+                        method=method,
+                        requested_levels=normalized_levels,
+                        max_depth=max_depth,
+                        depth=2,
+                        parent_chain=(lord,),
                     )
                 )
             current = maha_end

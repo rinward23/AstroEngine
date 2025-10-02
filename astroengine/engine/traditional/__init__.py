@@ -19,6 +19,8 @@ from .zr import apply_loosing_of_bond, flag_peaks_fortune, zr_periods
 from .sect import sect_info
 from .life_lengths import find_alcocoden, find_hyleg
 from .profiles import load_traditional_profiles
+from .lunar_calendar import masa_for_chart as masa_for_tropical_chart
+from .lunar_calendar import paksha_for_chart as paksha_for_tropical_chart
 
 __all__ = [
     "AlcocodenResult",
@@ -39,6 +41,8 @@ __all__ = [
     "find_hyleg",
     "flag_peaks_fortune",
     "load_traditional_profiles",
+    "masa_for_tropical_chart",
+    "paksha_for_tropical_chart",
     "profection_year_segments",
     "sect_info",
     "zr_periods",
