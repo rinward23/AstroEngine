@@ -413,4 +413,3 @@ __all__ = [
     "load_rulepack",
     "load_rulepack_from_data",
 ]
-

@@ -66,4 +66,3 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 __all__ = ["DEFAULT_APP_PATH", "main"]
-

@@ -34,4 +34,3 @@ app.include_router(reports_router)
 
 
 __all__ = ["app", "configure_position_provider", "clear_position_provider"]
-

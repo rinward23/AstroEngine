@@ -297,4 +297,3 @@ def moonrise_moonset(
         adapter.from_julian_day(moonset_jd).astimezone(UTC),
         adapter.from_julian_day(next_moonrise_jd).astimezone(UTC),
     )
-

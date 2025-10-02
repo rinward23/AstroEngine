@@ -15,4 +15,3 @@ def test_grid_prefers_major_on_tie() -> None:
 def test_empty_cell_when_no_hit() -> None:
     grid = build_grid([], ["Sun"], ["Moon"])
     assert grid["Sun"]["Moon"].best is None
-

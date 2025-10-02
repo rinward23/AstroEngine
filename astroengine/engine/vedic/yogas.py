@@ -456,4 +456,3 @@ def analyze_yogas(context: VedicChartContext) -> tuple[YogaResult, ...]:
 
 
 __all__ = ["PlanetStrength", "YogaResult", "analyze_yogas"]
-

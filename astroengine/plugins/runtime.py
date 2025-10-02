@@ -84,4 +84,3 @@ def load_providers(registry: Registry) -> list[str]:
         registry.register_provider(prov_name, prov_obj)
         names.append(ep.name)
     return sorted(names)
-

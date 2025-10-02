@@ -121,4 +121,3 @@ def events_to_ics(
 
     lines.append("END:VCALENDAR")
     return "\r\n".join(lines) + "\r\n"
-

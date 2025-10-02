@@ -251,4 +251,3 @@ def evaluate_case(
         "radicality": _serialize_checks(checks),
         "judgement": _serialize_judgement(judgement),
     }
-

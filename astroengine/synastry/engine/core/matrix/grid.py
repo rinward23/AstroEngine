@@ -60,4 +60,3 @@ def build_grid(
             row[body_b] = GridCell(best=best.get((body_a, body_b)))
         grid[body_a] = row
     return grid
-

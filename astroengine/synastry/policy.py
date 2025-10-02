@@ -103,4 +103,3 @@ class MidpointPolicy:
         if weight is None:
             weight = self.source_family_weights.get("other", 1.0)
         return float(weight)
-

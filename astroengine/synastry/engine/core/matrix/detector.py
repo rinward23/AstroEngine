@@ -151,4 +151,3 @@ def detect_hits(
         )
     )
     return hits
-

@@ -24,4 +24,3 @@ def test_midpoint_symmetric_order(a_deg: float, b_deg: float) -> None:
     mid_ba = circular_midpoint(b_deg, a_deg)
     delta = abs(((mid_ab - mid_ba + 180.0) % 360.0) - 180.0)
     assert math.isclose(delta, 0.0, abs_tol=1e-9) or math.isclose(delta, 180.0, abs_tol=1e-9)
-

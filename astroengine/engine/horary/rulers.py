@@ -213,4 +213,3 @@ def reception_for(body: str, dignity: DignityStatus) -> tuple[str, ...]:
         if ruler and ruler != target:
             receptions.append(key)
     return tuple(receptions)
-

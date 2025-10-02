@@ -59,4 +59,3 @@ def filter_supported(bodies: Iterable[str], provider) -> tuple[List[str], List[S
 
 
 __all__ = ["SupportIssue", "filter_supported"]
-

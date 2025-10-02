@@ -18,4 +18,3 @@ def test_overlay_contains_wheels_and_lines() -> None:
     assert line.body_b == "Moon"
     assert line.aspect == 90
     assert line.offset == 2.0
-

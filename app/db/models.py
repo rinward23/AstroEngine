@@ -575,4 +575,3 @@ __all__ = [
 
 # Backwards compatible alias retained for legacy imports
 RuleSetVersion = RulesetVersion
-

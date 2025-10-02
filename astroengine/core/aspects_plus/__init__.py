@@ -8,4 +8,3 @@ from .scan import Hit
 
 
 __all__ = ["aggregate", "search", "harmonics", "orb_limit", "Hit"]
-

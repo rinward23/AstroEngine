@@ -168,4 +168,3 @@ class JudgementResult:
     score: float
     classification: str
     contributions: tuple[JudgementContribution, ...]
-

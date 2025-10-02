@@ -240,4 +240,3 @@ def solar_arc_natal_aspects(
 
     hits.sort(key=lambda hit: (hit.when_iso, hit.moving, hit.target, hit.angle_deg))
     return hits
-

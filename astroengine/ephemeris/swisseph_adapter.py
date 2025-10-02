@@ -1068,4 +1068,3 @@ def swe_calc(
         raise RuntimeError(serr)
     serr = ""
     return tuple(xx), ret_flag, serr
-

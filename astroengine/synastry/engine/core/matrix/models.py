@@ -162,4 +162,3 @@ class Scores(BaseModel):
     by_body_family: dict[str, float]
     overall: float
     raw_total: float = Field(alias="rawTotal")
-

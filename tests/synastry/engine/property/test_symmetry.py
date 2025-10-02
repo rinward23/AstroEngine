@@ -18,4 +18,3 @@ def test_synastry_symmetry() -> None:
     forward = {(hit.body_a, hit.body_b, hit.aspect, round(hit.delta, 6)) for hit in hits_ab}
     reverse = {(hit.body_b, hit.body_a, hit.aspect, round(hit.delta, 6)) for hit in hits_ba}
     assert forward == reverse
-

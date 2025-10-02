@@ -282,4 +282,3 @@ def upsert_profile(
     profiles[profile.name.lower()] = profile
     save_profiles(profiles, storage_path)
     return profile
-

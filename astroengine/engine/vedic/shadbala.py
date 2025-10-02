@@ -268,4 +268,3 @@ def compute_shadbala(
         scores[planet] = score
 
     return ShadbalaReport(scores=scores)
-

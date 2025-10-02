@@ -149,4 +149,3 @@ class OrbPolicy:
     @property
     def effective(self) -> float:
         return min(self.base, self.cap)
-

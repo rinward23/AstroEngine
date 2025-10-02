@@ -73,4 +73,3 @@ def is_node(name: str, aliases: Iterable[str] | None = None) -> bool:
     if aliases:
         return normalized in NODE_NAMES or normalized in {_normalize_name(a) for a in aliases}
     return normalized in NODE_NAMES
-

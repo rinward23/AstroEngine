@@ -195,4 +195,3 @@ def run_checks(
                 )
 
     return checks
-

@@ -103,4 +103,3 @@ def test_judgement_scoring_and_penalty() -> None:
     )
     penalized = score_testimonies(chart, sigset, [penalty], profile)
     assert penalized.score < result.score
-

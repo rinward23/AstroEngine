@@ -14,4 +14,3 @@ def test_severity_monotonic() -> None:
         assert hits, "expected hit within orb"
         severities.append(hits[0].severity)
     assert severities == sorted(severities, reverse=True)
-
