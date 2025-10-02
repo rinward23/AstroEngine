@@ -65,7 +65,9 @@ from .nakshatra import (
 )
 
 from .panchang import NakshatraStatus
+from .panchanga import lunar_month
 from .shadbala import ShadbalaReport, ShadbalaScore, compute_shadbala
+from .yogas import analyze_yogas
 from .varga import (
     VARGA_DEFINITIONS,
     compute_varga,
@@ -108,6 +110,7 @@ __all__ = [
     "Nakshatra",
     "NakshatraPosition",
     "NakshatraStatus",
+    "lunar_month",
     "lord_of_nakshatra",
     "nakshatra_info",
     "nakshatra_of",
@@ -142,5 +145,6 @@ __all__ = [
     "ShadbalaScore",
     "ShadbalaReport",
     "compute_shadbala",
+    "analyze_yogas",
 
 ]

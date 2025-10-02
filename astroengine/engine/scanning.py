@@ -122,13 +122,14 @@ _VIMSHOTTARI_LORDS = {
 class _TickCachingProvider:
     """Memoize ``positions_ecliptic`` calls for a single scan session."""
 
-    __slots__ = ("_provider", "_cache")
+    __slots__ = ("_provider", "_cache", "_canonical_cache")
 
     def __init__(self, provider: object) -> None:
         self._provider = provider
         self._cache: dict[
             tuple[str, tuple[str, ...]], Mapping[str, Mapping[str, float]]
         ] = {}
+        self._canonical_cache: dict[frozenset[str], tuple[str, ...]] = {}
 
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str] | None
@@ -140,7 +141,12 @@ class _TickCachingProvider:
         if not bodies_tuple:
             return {}
 
-        canonical = tuple(sorted({name.lower() for name in bodies_tuple}))
+        lowered = tuple(name.lower() for name in bodies_tuple)
+        canonical_key = frozenset(lowered)
+        canonical = self._canonical_cache.get(canonical_key)
+        if canonical is None:
+            canonical = tuple(sorted(canonical_key))
+            self._canonical_cache[canonical_key] = canonical
         key = (iso_utc, canonical)
 
         normalized = self._cache.get(key)
@@ -151,8 +157,8 @@ class _TickCachingProvider:
 
         return {
             name: normalized[name_lower]
-            for name in bodies_tuple
-            if (name_lower := name.lower()) in normalized
+            for name, name_lower in zip(bodies_tuple, lowered)
+            if name_lower in normalized
         }
 
     def __getattr__(self, name: str):  # pragma: no cover - delegation passthrough
@@ -551,6 +557,35 @@ def _aspect_events(
         )
 
 
+def _collect_support_metadata(
+    moving: str,
+    target: str,
+    provider: object,
+    *,
+    feature_metadata: dict[str, object],
+) -> tuple[set[str], list[str], dict[str, object] | None]:
+    """Return supported bodies and provenance for unsupported probes."""
+
+    supported_bodies, support_issues = filter_supported((moving, target), provider)
+    skipped: set[str] = set()
+    if support_issues:
+        feature_metadata["support_issues"] = [issue.__dict__ for issue in support_issues]
+        for issue in support_issues:
+            LOG.warning(
+                "body_unsupported: %s (%s)",
+                issue.body,
+                issue.reason,
+                extra={"event": "body_unsupported", "body": issue.body, "reason": issue.reason},
+            )
+            name = canonical_name(issue.body) or issue.body
+            if name:
+                skipped.add(name)
+
+    skipped_bodies = sorted(skipped)
+    skip_payload = {"skipped_bodies": skipped_bodies} if skipped_bodies else None
+    return set(supported_bodies), skipped_bodies, skip_payload
+
+
 def scan_contacts(
     start_iso: str,
     end_iso: str,
@@ -623,27 +658,6 @@ def scan_contacts(
     if chart_config is not None:
         SwissEphemerisAdapter.configure_defaults(chart_config=chart_config)
 
-    if hasattr(scan_provider, "position") or hasattr(scan_provider, "positions_ecliptic"):
-        supported_bodies, support_issues = filter_supported([moving, target], scan_provider)
-        supported_set = set(supported_bodies)
-    else:
-        supported_bodies = [moving, target]
-        supported_set = {moving, target}
-        support_issues = []
-    skipped_bodies = sorted(
-        {canonical_name(issue.body) for issue in support_issues if canonical_name(issue.body)}
-    )
-    for issue in support_issues:
-        logger.warning(
-            {
-                "event": "body_unsupported",
-                "body": canonical_name(issue.body) or issue.body,
-                "reason": issue.reason,
-            }
-        )
-    if moving not in supported_set or target not in supported_set:
-        return []
-
     profile_data = resolve_profile(profile, profile_id)
     profile_ctx = build_scan_profile_context(
         profile_data,
@@ -684,32 +698,14 @@ def scan_contacts(
         "variants", {"nodes": nodes_variant, "lilith": lilith_variant}
     )
 
-    skip_metadata = {"skipped_bodies": list(skipped_bodies)} if skipped_bodies else None
-
     events: list[LegacyTransitEvent] = []
-    skip_metadata_payload: dict[str, object] | None = None
-    if skipped_bodies:
-        skip_metadata_payload = {"skipped_bodies": list(skipped_bodies)}
-
-    skip_metadata: dict[str, object] | None = None
-    supported_bodies, support_issues = filter_supported((moving, target), scan_provider)
-    if support_issues:
-        feature_metadata["support_issues"] = [issue.__dict__ for issue in support_issues]
-        skipped = [
-            canonical_name(issue.body) or issue.body
-            for issue in support_issues
-            if canonical_name(issue.body) or issue.body
-        ]
-        if skipped:
-            skip_metadata = {"skipped_bodies": sorted(set(skipped))}
-        for issue in support_issues:
-            LOG.warning(
-                "body_unsupported: %s (%s)",
-                issue.body,
-                issue.reason,
-                extra={"event": "body_unsupported", "body": issue.body, "reason": issue.reason},
-            )
-    if moving not in supported_bodies or target not in supported_bodies:
+    supported_set, skipped_bodies, skip_metadata_payload = _collect_support_metadata(
+        moving,
+        target,
+        scan_provider,
+        feature_metadata=feature_metadata,
+    )
+    if moving not in supported_set or target not in supported_set:
         return events
 
     requested_step = int(step_minutes) if step_minutes is not None else 60

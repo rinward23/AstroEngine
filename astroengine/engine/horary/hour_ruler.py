@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from ...ephemeris.adapter import ObserverLocation
+import swisseph as swe
+
+from ...core.time import julian_day
+from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from ...ritual.timing import PLANETARY_HOUR_TABLE
-from ..observational.sun import solar_cycle
 from .models import GeoLocation, PlanetaryHourResult
 
 __all__ = ["planetary_hour", "sunrise_sunset", "moonrise_moonset"]
@@ -22,16 +24,19 @@ def _next_event(
     jd_ut: float,
     event: str,
     location: GeoLocation,
+    *,
+    body_code: int,
+    body_name: str,
 ) -> float:
     result = adapter.rise_transit(
         jd_ut,
-        swe.SUN,
+        body_code,
         latitude=location.latitude,
         longitude=location.longitude,
         elevation=location.altitude,
         event=event,
         flags=_RISE_FLAGS,
-        body_name="Sun",
+        body_name=body_name,
 
     )
     if result.status != 0 or result.julian_day is None:
@@ -52,9 +57,25 @@ def sunrise_sunset(
 
     adapter = adapter or SwissEphemerisAdapter.get_default_adapter()
     jd = julian_day(moment)
-    prev_sunrise_jd = _next_event(adapter, jd - 1.0, "rise", location)
-    sunset_jd = _next_event(adapter, prev_sunrise_jd + 0.01, "set", location)
-    next_sunrise_jd = _next_event(adapter, prev_sunrise_jd + 0.51, "rise", location)
+    prev_sunrise_jd = _next_event(
+        adapter, jd - 1.0, "rise", location, body_code=swe.SUN, body_name="Sun"
+    )
+    sunset_jd = _next_event(
+        adapter,
+        prev_sunrise_jd + 0.01,
+        "set",
+        location,
+        body_code=swe.SUN,
+        body_name="Sun",
+    )
+    next_sunrise_jd = _next_event(
+        adapter,
+        prev_sunrise_jd + 0.51,
+        "rise",
+        location,
+        body_code=swe.SUN,
+        body_name="Sun",
+    )
     sunrise_dt = adapter.from_julian_day(prev_sunrise_jd)
     sunset_dt = adapter.from_julian_day(sunset_jd)
     next_sunrise_dt = adapter.from_julian_day(next_sunrise_jd)
@@ -134,5 +155,51 @@ def planetary_hour(moment: datetime, location: GeoLocation) -> PlanetaryHourResu
         next_sunrise=next_sunrise_dt,
         day_ruler=day_ruler,
         sequence=sequence,
+    )
+
+def moonrise_moonset(
+    moment: datetime,
+    location: GeoLocation,
+    *,
+    adapter: SwissEphemerisAdapter | None = None,
+) -> tuple[datetime, datetime, datetime]:
+    """Return moonrise, moonset, and next moonrise around ``moment``."""
+
+    adapter = adapter or SwissEphemerisAdapter.get_default_adapter()
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    else:
+        moment = moment.astimezone(UTC)
+
+    jd = julian_day(moment)
+    prev_moonrise_jd = _next_event(
+        adapter,
+        jd - 1.0,
+        "rise",
+        location,
+        body_code=swe.MOON,
+        body_name="Moon",
+    )
+    moonset_jd = _next_event(
+        adapter,
+        prev_moonrise_jd + 0.01,
+        "set",
+        location,
+        body_code=swe.MOON,
+        body_name="Moon",
+    )
+    next_moonrise_jd = _next_event(
+        adapter,
+        prev_moonrise_jd + 0.51,
+        "rise",
+        location,
+        body_code=swe.MOON,
+        body_name="Moon",
+    )
+
+    return (
+        adapter.from_julian_day(prev_moonrise_jd).astimezone(UTC),
+        adapter.from_julian_day(moonset_jd).astimezone(UTC),
+        adapter.from_julian_day(next_moonrise_jd).astimezone(UTC),
     )
 

@@ -1,13 +1,16 @@
 # >>> AUTO-GEN BEGIN: Makefile v1.2
-.PHONY: help setup hooks fmt lint lint-code test doctor clean deepclean fullcheck repair build
+.PHONY: help setup install-optional hooks fmt lint lint-code test doctor clean deepclean fullcheck repair build
 
 help:
-	@echo "Targets: setup, hooks, fmt, lint, lint-code, test, doctor, clean, deepclean, fullcheck, repair, build"
+@echo "Targets: setup, install-optional, hooks, fmt, lint, lint-code, test, doctor, clean, deepclean, fullcheck, repair, build"
 
 setup:
-	python -m pip install --upgrade pip
-	@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-	@if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e . || true; fi
+python -m pip install --upgrade pip
+@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+@if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e . || true; fi
+
+install-optional:
+python scripts/install_optional_dependencies.py
 
 hooks:
 	python -m pip install -U pre-commit

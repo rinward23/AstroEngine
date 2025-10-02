@@ -22,7 +22,10 @@ deterministic ephemeris or chart data.
 
 - **Flatlib** – classical astrology calculations implemented in pure Python,
   referenced by AstroEngine for delineations that complement Swiss Ephemeris
-  and Skyfield data.  Repository: <https://github.com/flatangle/flatlib>.
+  and Skyfield data.  Install it via
+  `python scripts/install_optional_dependencies.py` so the helper can keep
+  `pyswisseph` pinned to the supported 2.10 series while installing
+  `flatlib==0.2.3`. Repository: <https://github.com/flatangle/flatlib>.
 
 ## Desktop workflows
 
