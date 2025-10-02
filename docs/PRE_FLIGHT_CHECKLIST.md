@@ -19,6 +19,6 @@
 - [ ] `registry/orbs_policy.yaml` has `orbs_default` with luminaries/personal/social/outer/minors.
 
 ## Safety nets
-- [ ] AUTO-GEN fence validators green.
-- [ ] Issue triage workflow updated meta health report.
+- [x] AUTO-GEN fence validators green. (2025-10-02T02:41Z via `python scripts/validators/validate_fences.py`)
+- [x] Issue triage workflow updated meta health report. (2025-10-02T02:43Z via `GITHUB_REPOSITORY=astroengine/AstroEngine python .github/triage/scan_repo.py --update-issues --write-index docs/ISSUE_INDEX.md` with offline fallback noted)
 # >>> AUTO-GEN END: pre-flight checklist v1.0
