@@ -16,6 +16,7 @@ from .topocentric import (
     topocentric_equatorial,
 )
 from .events import EventOptions, rise_set_times, transit_time
+from .sun import solar_cycle, solar_cycle_for_location
 from .windows import (
     HeliacalProfile,
     VisibilityConstraints,
@@ -45,6 +46,8 @@ __all__ = [
     "refraction_saemundsson",
     "render_altaz_diagram",
     "rise_set_times",
+    "solar_cycle",
+    "solar_cycle_for_location",
     "topocentric_ecliptic",
     "topocentric_equatorial",
     "transit_time",

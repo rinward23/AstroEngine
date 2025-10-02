@@ -3,5 +3,5 @@
 from __future__ import annotations
 
 
-__all__ = ["plus", "scan", "synastry", "topocentric"]
+__all__ = ["plus", "scan", "synastry", "topocentric", "vedic"]
 

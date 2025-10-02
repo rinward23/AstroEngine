@@ -76,6 +76,17 @@ from .core import (
     to_tt,
 )
 from .diagnostics import collect_diagnostics  # ENSURE-LINE
+from .engine.vedic import (
+    NAKSHATRA_ARC_DEGREES,
+    PADA_ARC_DEGREES,
+    Nakshatra,
+    NakshatraPosition,
+    lord_of_nakshatra,
+    nakshatra_info,
+    nakshatra_of,
+    pada_of,
+    position_for,
+)
 from .ephemeris import EphemerisConfig  # noqa: F401
 from .ephemeris import (
     EphemerisAdapter,
@@ -180,6 +191,22 @@ from .ritual import (
     VoidOfCourseRule,
 )
 from .rulesets import VCA_RULESET, get_vca_aspect, vca_orb_for
+from .jyotish import (
+    GrahaYuddhaOutcome,
+    HouseClaim,
+    HouseWinner,
+    SrishtiAspect,
+    StrengthScore,
+    determine_house_lords,
+    evaluate_house_claims,
+    evaluate_house_claims_from_chart,
+    house_occupants,
+    karakas_for_house,
+    match_karakas,
+    score_planet_strength,
+    compute_srishti_aspects,
+    detect_graha_yuddha,
+)
 from .scoring import (
     DEFAULT_ASPECTS,
     OrbCalculator,
@@ -334,6 +361,15 @@ __all__ = [
     "PlanetaryDay",
     "VoidOfCourseRule",
     "ElectionalWindow",
+    "NAKSHATRA_ARC_DEGREES",
+    "PADA_ARC_DEGREES",
+    "Nakshatra",
+    "NakshatraPosition",
+    "nakshatra_info",
+    "nakshatra_of",
+    "lord_of_nakshatra",
+    "pada_of",
+    "position_for",
     "assign_decans",
     "decan_for_longitude",
     "VCA_CORE_BODIES",
@@ -356,6 +392,20 @@ __all__ = [
     "DirectionEvent",
     "ProfectionEvent",
     "OutOfBoundsEvent",
+    "determine_house_lords",
+    "house_occupants",
+    "karakas_for_house",
+    "match_karakas",
+    "StrengthScore",
+    "score_planet_strength",
+    "SrishtiAspect",
+    "GrahaYuddhaOutcome",
+    "compute_srishti_aspects",
+    "detect_graha_yuddha",
+    "HouseClaim",
+    "HouseWinner",
+    "evaluate_house_claims",
+    "evaluate_house_claims_from_chart",
 ]
 
 # Hypothesis 6.112+ disallows timezone-aware bounds for datetimes; provide a
