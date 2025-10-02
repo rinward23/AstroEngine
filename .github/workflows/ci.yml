@@ -32,25 +32,16 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python-version: "3.10"
-            coverage: false
-          - os: ubuntu-latest
             python-version: "3.11"
             coverage: true
           - os: ubuntu-latest
             python-version: "3.12"
             coverage: false
           - os: macos-latest
-            python-version: "3.10"
-            coverage: false
-          - os: macos-latest
             python-version: "3.11"
             coverage: false
           - os: macos-latest
             python-version: "3.12"
-            coverage: false
-          - os: windows-latest
-            python-version: "3.10"
             coverage: false
           - os: windows-latest
             python-version: "3.11"
