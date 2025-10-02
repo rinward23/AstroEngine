@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from .data_packs import register_data_packs_module
+from .developer_platform import register_developer_platform_module
 from .esoteric import register_esoteric_module
 from .event_detectors import register_event_detectors_module
 from .integrations import register_integrations_module
 from .mundane import register_mundane_module
 from .narrative import register_narrative_module
 from .jyotish import register_jyotish_module
+from .interop import register_interop_module
 from .predictive import register_predictive_module
 from .registry import (
     AstroChannel,
@@ -16,6 +19,7 @@ from .registry import (
     AstroSubchannel,
     AstroSubmodule,
 )
+from .providers import register_providers_module
 from .ritual import register_ritual_module
 from .ux import register_ux_module
 from .vca import register_vca_module
@@ -47,6 +51,10 @@ def bootstrap_default_registry() -> AstroRegistry:
     register_predictive_module(registry)
     register_ux_module(registry)
     register_integrations_module(registry)
+    register_data_packs_module(registry)
+    register_providers_module(registry)
+    register_interop_module(registry)
+    register_developer_platform_module(registry)
     return registry
 
 

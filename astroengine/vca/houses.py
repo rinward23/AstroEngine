@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import importlib
+import importlib.util
+import math
+import weakref
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-import math
-import weakref
 from typing import Any, Mapping, Sequence
-
-import yaml
 
 from ..chart.config import ChartConfig
 from ..chart.natal import DEFAULT_BODIES, ChartLocation
@@ -71,6 +71,15 @@ _PROFILE_META: dict[int, dict[str, dict[str, Any]]] = {}
 _PROFILE_META_REFS: dict[int, weakref.ReferenceType[_ProfileDict]] = {}
 
 
+def _load_yaml_module():
+    if importlib.util.find_spec("yaml") is None:
+        raise ModuleNotFoundError(
+            "PyYAML is required to load house profiles. Install the 'pyyaml' extra to "
+            "enable astroengine.vca.houses.",
+        )
+    return importlib.import_module("yaml")
+
+
 def _default_profile_path() -> Path:
     return profiles_dir() / "domains" / "houses.yaml"
 
@@ -89,6 +98,7 @@ def load_house_profile(
     path: str | None = None,
 ) -> tuple[dict[int, DomainW], dict[str, dict[str, Any]]]:
     profile_path = Path(path) if path else _default_profile_path()
+    yaml = _load_yaml_module()
     data = yaml.safe_load(profile_path.read_text(encoding="utf-8")) or {}
 
     profile: _ProfileDict = _ProfileDict()

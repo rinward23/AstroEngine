@@ -4,15 +4,29 @@ from __future__ import annotations
 
 import logging
 import os
+import importlib
+import importlib.util
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from functools import lru_cache
 from typing import TYPE_CHECKING, ClassVar, Optional
-
-import swisseph as swe
+from types import ModuleType
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _swe() -> ModuleType:
+    """Return the swisseph module, raising a helpful error if unavailable."""
+
+    if importlib.util.find_spec("swisseph") is None:
+        raise ModuleNotFoundError(
+            "swisseph is required for Swiss Ephemeris calculations. Install the "
+            "'pyswisseph' extra to enable astroengine.ephemeris features."
+        )
+    return importlib.import_module("swisseph")
 
 from .sidereal import (
     DEFAULT_SIDEREAL_AYANAMSHA,
@@ -92,27 +106,37 @@ def resolve_house_code(name_or_code: str) -> tuple[str, str]:
     )
 
 
-_NODE_VARIANT_CODES = {
-    "mean": int(getattr(swe, "MEAN_NODE", 10)),
-    "true": int(getattr(swe, "TRUE_NODE", 11)),
-}
-
-_LILITH_VARIANT_CODES = {
-    "mean": int(getattr(swe, "MEAN_APOG", 12)),
-    "true": int(getattr(swe, "OSCU_APOG", 13)),
-}
+@lru_cache(maxsize=1)
+def _node_variant_codes() -> Mapping[str, int]:
+    swe = _swe()
+    return {
+        "mean": int(getattr(swe, "MEAN_NODE", 10)),
+        "true": int(getattr(swe, "TRUE_NODE", 11)),
+    }
 
 
-_RISE_TRANSIT_EVENTS: Mapping[str, int] = {
-    "rise": swe.CALC_RISE,
-    "set": swe.CALC_SET,
-    "transit": swe.CALC_MTRANSIT,
-    "upper_transit": swe.CALC_MTRANSIT,
-    "meridian_transit": swe.CALC_MTRANSIT,
-    "culmination": swe.CALC_MTRANSIT,
-    "antitransit": swe.CALC_ITRANSIT,
-    "lower_transit": swe.CALC_ITRANSIT,
-}
+@lru_cache(maxsize=1)
+def _lilith_variant_codes() -> Mapping[str, int]:
+    swe = _swe()
+    return {
+        "mean": int(getattr(swe, "MEAN_APOG", 12)),
+        "true": int(getattr(swe, "OSCU_APOG", 13)),
+    }
+
+
+@lru_cache(maxsize=1)
+def _rise_transit_events() -> Mapping[str, int]:
+    swe = _swe()
+    return {
+        "rise": swe.CALC_RISE,
+        "set": swe.CALC_SET,
+        "transit": swe.CALC_MTRANSIT,
+        "upper_transit": swe.CALC_MTRANSIT,
+        "meridian_transit": swe.CALC_MTRANSIT,
+        "culmination": swe.CALC_MTRANSIT,
+        "antitransit": swe.CALC_ITRANSIT,
+        "lower_transit": swe.CALC_ITRANSIT,
+    }
 
 
 @dataclass(frozen=True)
@@ -257,16 +281,7 @@ class SwissEphemerisAdapter:
     _DEFAULT_AYANAMSHA: ClassVar[str | None] = DEFAULT_SIDEREAL_AYANAMSHA
     _DEFAULT_ADAPTER: ClassVar[SwissEphemerisAdapter | None] = None
     _DEFAULT_VARIANTS: ClassVar[VariantConfig] = VariantConfig()
-    _AYANAMSHA_MODES: ClassVar[dict[str, int]] = {
-        "lahiri": swe.SIDM_LAHIRI,
-        "fagan_bradley": swe.SIDM_FAGAN_BRADLEY,
-        "krishnamurti": swe.SIDM_KRISHNAMURTI,
-        "raman": swe.SIDM_RAMAN,
-        "deluce": swe.SIDM_DELUCE,
-        "yukteshwar": swe.SIDM_YUKTESHWAR,
-        "galactic_center_0_sag": swe.SIDM_GALCENT_0SAG,
-        "sassanian": swe.SIDM_SASSANIAN,
-    }
+    _AYANAMSHA_MODES: ClassVar[dict[str, int] | None] = None
 
 
     _HOUSE_SYSTEM_CODES: ClassVar[Mapping[str, bytes]] = {
@@ -296,6 +311,22 @@ class SwissEphemerisAdapter:
         "meridian_axial": "meridian",
         "topo": "topocentric",
     }
+
+    @classmethod
+    def _ayanamsha_modes(cls) -> dict[str, int]:
+        if cls._AYANAMSHA_MODES is None:
+            swe = _swe()
+            cls._AYANAMSHA_MODES = {
+                "lahiri": swe.SIDM_LAHIRI,
+                "fagan_bradley": swe.SIDM_FAGAN_BRADLEY,
+                "krishnamurti": swe.SIDM_KRISHNAMURTI,
+                "raman": swe.SIDM_RAMAN,
+                "deluce": swe.SIDM_DELUCE,
+                "yukteshwar": swe.SIDM_YUKTESHWAR,
+                "galactic_center_0_sag": swe.SIDM_GALCENT_0SAG,
+                "sassanian": swe.SIDM_SASSANIAN,
+            }
+        return cls._AYANAMSHA_MODES
 
 
     def __init__(
@@ -378,6 +409,7 @@ class SwissEphemerisAdapter:
         )
         self._last_house_metadata: Optional[dict[str, object]] = None
 
+        swe = _swe()
         self._calc_flags = swe.FLG_SWIEPH | swe.FLG_SPEED
         self._fallback_flags = swe.FLG_MOSEPH | swe.FLG_SPEED
         if self._is_sidereal:
@@ -507,18 +539,20 @@ class SwissEphemerisAdapter:
     def _resolve_sidereal_mode(cls, ayanamsha: str | None) -> int:
         assert ayanamsha is not None
         try:
-            return cls._AYANAMSHA_MODES[ayanamsha]
+            return cls._ayanamsha_modes()[ayanamsha]
         except KeyError as exc:  # pragma: no cover - guarded by validation upstream
             raise ValueError(f"Unsupported ayanamsha '{ayanamsha}'") from exc
 
     def _apply_sidereal_mode(self) -> None:
         if self._sidereal_mode is None:
             return
+        swe = _swe()
         swe.set_sid_mode(self._sidereal_mode, 0.0, 0.0)
 
     def _configure_ephemeris_path(
         self, ephemeris_path: str | os.PathLike[str] | None
     ) -> str | None:
+        swe = _swe()
         if ephemeris_path is not None:
             swe.set_ephe_path(str(ephemeris_path))
             return str(ephemeris_path)
@@ -546,7 +580,7 @@ class SwissEphemerisAdapter:
                 f"Unsupported ayanamsha '{ayanamsha}'. Supported options: {options}"
             )
         try:
-            return self._AYANAMSHA_MODES[key]
+            return type(self)._ayanamsha_modes()[key]
         except KeyError as exc:  # pragma: no cover - guarded by SUPPORTED_AYANAMSHAS
             raise ValueError(
                 f"Swiss Ephemeris does not expose SIDM constant for '{key}'"
@@ -554,6 +588,7 @@ class SwissEphemerisAdapter:
 
     def _apply_sidereal_mode(self) -> None:
         if self._sidereal_mode is not None:
+            swe = _swe()
             swe.set_sid_mode(self._sidereal_mode, 0.0, 0.0)
 
     # ------------------------------------------------------------------
@@ -562,6 +597,7 @@ class SwissEphemerisAdapter:
     def set_ephemeris_path(self, ephemeris_path: str | os.PathLike[str]) -> str:
         """Explicitly set the ephemeris search path."""
 
+        swe = _swe()
         swe.set_ephe_path(str(ephemeris_path))
         self.ephemeris_path = str(ephemeris_path)
         return self.ephemeris_path
@@ -584,6 +620,7 @@ class SwissEphemerisAdapter:
             + moment_utc.second / 3600.0
             + moment_utc.microsecond / 3.6e9
         )
+        swe = _swe()
         return swe.julday(moment_utc.year, moment_utc.month, moment_utc.day, hour)
 
     @staticmethod
@@ -591,6 +628,7 @@ class SwissEphemerisAdapter:
     def from_julian_day(jd_ut: float) -> datetime:
         """Convert a Julian Day in UT back to a timezone-aware datetime."""
 
+        swe = _swe()
         year, month, day, hour = swe.revjul(jd_ut, swe.GREG_CAL)
         base = datetime(year, month, day, tzinfo=UTC)
         seconds = hour * 3600.0
@@ -602,6 +640,7 @@ class SwissEphemerisAdapter:
 
         self._apply_sidereal_mode()
 
+        swe = _swe()
         flags = self._calc_flags | swe.FLG_EQUATORIAL
         try:
             xx, _, serr = swe_calc(
@@ -632,6 +671,7 @@ class SwissEphemerisAdapter:
         effective_code = override_code if override_code is not None else body_code
 
         self._apply_sidereal_mode()
+        swe = _swe()
         flags = self._calc_flags
         try:
             xx, _, serr = swe_calc(
@@ -697,12 +737,14 @@ class SwissEphemerisAdapter:
     def planet_name(body_code: int) -> str:
         """Return the Swiss Ephemeris display name for ``body_code``."""
 
+        swe = _swe()
         return swe.get_planet_name(body_code)
 
     def ayanamsa(self, jd_ut: float, *, true_longitude: bool = False) -> float:
         """Return the ayanamsa value for ``jd_ut`` in degrees."""
 
         self._apply_sidereal_mode()
+        swe = _swe()
         if true_longitude:
             delta_t = swe.deltat(jd_ut)
             return swe.get_ayanamsa(jd_ut + delta_t)
@@ -712,6 +754,7 @@ class SwissEphemerisAdapter:
         """Return ayanamsa metadata including Swiss mode flags."""
 
         self._apply_sidereal_mode()
+        swe = _swe()
         if self._sidereal_mode is None:
             value = swe.get_ayanamsa_ut(jd_ut)
             return {"value": value, "mode": None, "flags": None}
@@ -736,9 +779,9 @@ class SwissEphemerisAdapter:
 
         event_key = (event or "rise").lower()
         try:
-            rsmi = _RISE_TRANSIT_EVENTS[event_key]
+            rsmi = _rise_transit_events()[event_key]
         except KeyError as exc:  # pragma: no cover - guarded by validation
-            options = ", ".join(sorted(_RISE_TRANSIT_EVENTS))
+            options = ", ".join(sorted(_rise_transit_events()))
             raise ValueError(f"Unknown rise/transit event '{event}'. Options: {options}") from exc
 
         override_code, _ = self._variant_override(body_name)
@@ -760,6 +803,7 @@ class SwissEphemerisAdapter:
             label = str(effective_body)
 
         flags_value = flags if flags is not None else self._calc_flags
+        swe = _swe()
         if self._is_sidereal:
             flags_value |= swe.FLG_SIDEREAL
 
@@ -804,6 +848,7 @@ class SwissEphemerisAdapter:
 
         self._apply_sidereal_mode()
         flags_value = flags if flags is not None else self._calc_flags
+        swe = _swe()
         if self._is_sidereal:
             flags_value |= swe.FLG_SIDEREAL
 
@@ -840,9 +885,9 @@ class SwissEphemerisAdapter:
         elif lowered == "mean_node":
             node_variant = "mean"
         if canonical in {"mean_node", "true_node"} or lowered in {"node", "north_node", "nn"}:
-            return _NODE_VARIANT_CODES[node_variant], False
+            return _node_variant_codes()[node_variant], False
         if canonical == "south_node" or lowered in {"south_node", "sn"}:
-            return _NODE_VARIANT_CODES[node_variant], True
+            return _node_variant_codes()[node_variant], True
 
         lilith_variant = self._variant_config.normalized_lilith()
         if lowered == "true_lilith":
@@ -850,7 +895,7 @@ class SwissEphemerisAdapter:
         elif lowered == "mean_lilith":
             lilith_variant = "mean"
         if canonical in {"mean_lilith", "true_lilith"} or lowered in {"lilith", "black_moon_lilith"}:
-            return _LILITH_VARIANT_CODES[lilith_variant], False
+            return _lilith_variant_codes()[lilith_variant], False
 
         return None, False
 
@@ -874,6 +919,7 @@ class SwissEphemerisAdapter:
         fallback_reason: str | None = None
 
         try:
+            swe = _swe()
             cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, used_code)
         except Exception as exc:
             # Certain quadrant systems fail at extreme latitudes; fallback to Whole Sign.
@@ -892,6 +938,7 @@ class SwissEphemerisAdapter:
                         "reason": fallback_reason,
                     }
                 )
+                swe = _swe()
                 cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, used_code)
             else:
                 raise
@@ -1000,8 +1047,7 @@ def swe_calc(
 ) -> tuple[tuple[float, ...], int, str]:
     """Invoke Swiss Ephemeris core calculation with normalized arguments."""
 
-    if swe is None:  # pragma: no cover - import guard retained for safety
-        raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
+    swe = _swe()
 
     try:
         calc_fn = swe.calc if use_tt else swe.calc_ut

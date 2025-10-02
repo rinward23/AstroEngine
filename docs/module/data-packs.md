@@ -1,6 +1,6 @@
 # Data Packs Specification
 
-- **Module**: `data-packs`
+- **Module**: `data_packs` (docs slug `data-packs`)
 - **Maintainer**: Data Stewardship Team
 - **Source artifacts**:
   - `profiles/dignities.csv`
@@ -10,6 +10,17 @@
   - `profiles/base_profile.yaml`
 
 AstroEngine bundles a small number of static datasets that are consumed by the registry-backed modules. This document enumerates the files, their fields, and the validation coverage inside the repository so the assets remain traceable and no modules lose access to required inputs.
+
+## Registry mapping
+
+The default registry exposes the following paths for this module:
+
+- `data_packs.profiles.catalogue.base_profile`
+- `data_packs.profiles.catalogue.vca_outline`
+- `data_packs.catalogs.csv.{dignities,fixed_stars,star_names}`
+- `data_packs.schemas.orbs.policy`
+
+Each entry points to the datasets listed below with provenance metadata taken directly from the files or accompanying documentation.
 
 ## Dataset inventory
 
