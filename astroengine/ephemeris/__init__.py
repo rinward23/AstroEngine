@@ -18,7 +18,12 @@ from .refinement import (
     refine_root,
 )
 from .support import SupportIssue, filter_supported
-from .swisseph_adapter import BodyPosition, HousePositions, SwissEphemerisAdapter
+from .swisseph_adapter import (
+    BodyPosition,
+    HousePositions,
+    SolarCycleEvents,
+    SwissEphemerisAdapter,
+)
 
 __all__ = [
     "EphemerisAdapter",
@@ -34,6 +39,7 @@ __all__ = [
     "SwissEphemerisAdapter",
     "BodyPosition",
     "HousePositions",
+    "SolarCycleEvents",
     "TimeScaleContext",
     "SupportIssue",
     "filter_supported",
