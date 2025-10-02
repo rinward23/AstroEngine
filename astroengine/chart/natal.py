@@ -6,8 +6,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-import swisseph as swe
-
 from ..ephemeris import BodyPosition, HousePositions, SwissEphemerisAdapter
 from ..scoring import DEFAULT_ASPECTS, OrbCalculator
 from .config import ChartConfig
@@ -20,17 +18,18 @@ __all__ = [
     "compute_natal_chart",
 ]
 
+# Swiss Ephemeris body indexes (Sun=0 … Pluto=9) remain stable across releases.
 DEFAULT_BODIES: Mapping[str, int] = {
-    "Sun": swe.SUN,
-    "Moon": swe.MOON,
-    "Mercury": swe.MERCURY,
-    "Venus": swe.VENUS,
-    "Mars": swe.MARS,
-    "Jupiter": swe.JUPITER,
-    "Saturn": swe.SATURN,
-    "Uranus": swe.URANUS,
-    "Neptune": swe.NEPTUNE,
-    "Pluto": swe.PLUTO,
+    "Sun": 0,
+    "Moon": 1,
+    "Mercury": 2,
+    "Venus": 3,
+    "Mars": 4,
+    "Jupiter": 5,
+    "Saturn": 6,
+    "Uranus": 7,
+    "Neptune": 8,
+    "Pluto": 9,
 }
 
 

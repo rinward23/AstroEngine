@@ -12,6 +12,16 @@
 
 The AstroEngine validation layer loads JSON schemas and supporting data from `./schemas`. This document describes the current files so downstream exporters know which payloads are supported and how they are tested. The schema keys are registered via `astroengine.data.schemas` and exercised through `astroengine.validation.validate_payload`.
 
+## Registry mapping
+
+- `interop.schemas.json_schema.result_v1`
+- `interop.schemas.json_schema.result_v1_with_domains`
+- `interop.schemas.json_schema.contact_gate_v2`
+- `interop.schemas.json_schema.natal_input_v1_ext`
+- `interop.schemas.json_data.orbs_policy`
+
+These registry nodes ensure every export payload cites an audited schema or data document.
+
 ## Schema catalogue
 
 | Key | File | Purpose | Primary sections |
