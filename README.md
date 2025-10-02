@@ -242,16 +242,19 @@ augmenting the runtime with additional registries.
 
 # >>> AUTO-GEN BEGIN: AE README Providers Addendum v1.2
 ### Optional providers & catalogs
-Install selectively via extras:
+Use the helper script to install the complete optional stack, including the
+patched flatlib workflow that keeps `pyswisseph` at 2.10.3.2:
 
 ```bash
-pip install -e .[fallback-ephemeris]   # skyfield + jplephem
-pip install -e .[astro-core]           # astropy frames/units
-pip install -e .[catalogs]             # astroquery (Horizons/SBDB/VizieR)
-pip install -e .[tz]                   # offline timezone lookup
-pip install -e .[qa-novas]             # NOVAS QA checks
-pip install -e .[trad]                 # flatlib (dignities/lots)
+make install-optional
+# or
+python scripts/install_optional_dependencies.py --upgrade-pip
 ```
+
+The script installs `requirements-optional.txt`, verifies critical imports such
+as `pymeeus`, `PyYAML`, and `pydantic`, and installs `flatlib==0.2.3` without
+pulling its outdated `pyswisseph==2.08` constraint so the Swiss bindings remain
+on the supported 2.10 series.
 
 ### CLI
 

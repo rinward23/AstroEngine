@@ -3,7 +3,6 @@
 # ephem
 pyswisseph>=2.10
 pymeeus>=0.5.12
-flatlib>=0.2.3
 # skyfield
 skyfield>=1.48
 jplephem>=2.21
