@@ -1,14 +1,14 @@
 typing_extensions>=4.9.0  # ENSURE-LINE
 pip-tools>=7.4.0  # ENSURE-LINE
 pipdeptree>=2.20.0  # ENSURE-LINE
-pyswisseph==2.10.3.2  # ENSURE-LINE
+pyswisseph==2.10.3.2; python_version < "3.12"  # ENSURE-LINE
 
 jinja2>=3.1
-fastapi>=0.117
-pydantic>=2.11
-httpx>=0.28
+fastapi>=0.117,<0.118
+pydantic>=2.11,<3
+httpx>=0.28,<0.29
 
-streamlit>=1.39
+streamlit>=1.35
 
 # Core API/runtime dependencies required by tests
 orjson>=3.10
