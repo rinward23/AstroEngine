@@ -21,7 +21,7 @@ Use this checklist when declaring the specification complete for a release. Prov
 - [ ] `profiles/base_profile.yaml`, `profiles/dignities.csv`, and `profiles/fixed_stars.csv` reviewed; provenance columns present and checksums recorded. Evidence: __________________
 - [ ] `schemas/orbs_policy.json` values match those used by the runtime (`tests/test_orbs_policy.py`). Evidence: __________________
 - [ ] Revision log entries added in accordance with `docs/governance/data_revision_policy.md`. Evidence: __________________
-- [ ] Solar Fire export hashes (transits, returns, natal inputs) captured and linked to the datasets above. Evidence: __________________
+- [ ] Solar Fire export hashes (transits, returns, natal inputs) captured and linked to the datasets above (see `docs/provenance/solarfire_exports.md`). Evidence: __________________
 
 ## Section C — QA & testing
 

@@ -46,7 +46,7 @@ New modules must extend this list and keep their documentation in `docs/module/`
 2. Capture an environment report with `python -m astroengine.infrastructure.environment pyswisseph numpy pydantic python-dateutil timezonefinder tzdata pyyaml click rich orjson pyarrow duckdb`.
 3. Execute `pytest` and confirm all tests pass.
 4. Review the documentation updates in `docs/module/*.md`, `docs/governance/*.md`, and `docs/burndown.md` to make sure they reference real files. Note any schema or dataset edits in `docs/governance/data_revision_policy.md`.
-5. Verify Solar Fire comparison reports and dataset indexes referenced by the release (e.g., natal return tables, transit exports). Record the checksums in the release notes so future audits can reproduce the run.
+5. Verify Solar Fire comparison reports and dataset indexes referenced by the release (e.g., natal return tables, transit exports). Record the checksums in the release notes and sync them with `docs/provenance/solarfire_exports.md` so future audits can reproduce the run.
 6. Tag the release (`git tag vX.Y.Z`) and push the tag after tests succeed.
 7. Build distribution artifacts using `python -m build` (add the build dependency when publishing to PyPI).
 8. Attach the environment report, pytest log, and Solar Fire verification artefacts to the release notes.

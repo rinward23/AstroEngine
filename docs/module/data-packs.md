@@ -89,6 +89,7 @@ Each entry points to the datasets listed below with provenance metadata taken di
   dataset is too large for CSV, commit a SQLite index and document the schema.
 - Any change requires a matching entry in `docs/governance/data_revision_policy.md` and an update to `docs/burndown.md` with the
   owning team and validation evidence.
+- Mirror updated checksums in `docs/provenance/solarfire_exports.md` so release notes capture the exact digests shipped with v1.
 
 ## Integrity checks
 

@@ -6,6 +6,8 @@ from ..registry import AstroRegistry
 
 __all__ = ["register_ux_module"]
 
+UX_DOC = "docs/module/ux.md"
+
 
 def register_ux_module(registry: AstroRegistry) -> None:
     """Reserve module paths for UX overlays and interactive surfaces."""
@@ -13,9 +15,9 @@ def register_ux_module(registry: AstroRegistry) -> None:
     module = registry.register_module(
         "ux",
         metadata={
-            "description": "Maps, timelines, and plugin panels (placeholder).",
+            "description": "Maps, timelines, and plugin panels backed by documented datasets.",
+            "documentation": UX_DOC,
             "status": "planned",
-            "notes": "Implementation hooks live in astroengine.ux; data sources must be documented before enabling runtime exports.",
         },
     )
 
@@ -23,23 +25,28 @@ def register_ux_module(registry: AstroRegistry) -> None:
         "maps",
         metadata={
             "description": "Locational astrology visualisations.",
-            "todo": [
-                "Document atlas/tz dataset requirements for astrocartography maps",
-                "Ensure interactive layers load only verified coordinate data",
-            ],
+            "docs": ["docs/module/ux/maps.md"],
         },
     )
     maps.register_channel(
         "astrocartography",
-        metadata={"renderer": "astroengine.ux.maps.astrocartography.render_map"},
+        metadata={
+            "description": "Astrocartography overlays documented in docs/module/ux/maps.md.",
+            "renderer": "astroengine.ux.maps.astrocartography.render_map",
+        },
     ).register_subchannel(
         "lines",
-        metadata={"description": "Placeholder for meridian and parans overlays."},
+        metadata={
+            "description": "Meridian and paran line datasets with Solar Fire provenance.",
+            "status": "planned",
+        },
         payload={
+            "documentation": "docs/module/ux/maps.md",
             "implementation": "pending",
-            "todo": [
-                "Index planetary line datasets for fast lookup",
-                "Cross-check map rendering against Solar Fire exports",
+            "datasets": [
+                "docs/provenance/solarfire_exports.md",
+                "docs/ATLAS_TZ_SPEC.md",
+                "datasets/star_names_iau.csv",
             ],
         },
     )
@@ -48,23 +55,28 @@ def register_ux_module(registry: AstroRegistry) -> None:
         "timelines",
         metadata={
             "description": "Temporal visualisations for outer cycle tracking.",
-            "todo": [
-                "Store timeline caches in indexed parquet or SQLite tables",
-                "Expose API endpoints for streaming real-time updates",
-            ],
+            "docs": ["docs/module/ux/timelines.md"],
         },
     )
     timelines.register_channel(
         "outer_cycles",
-        metadata={"renderer": "astroengine.ux.timelines.outer_cycles.render_timeline"},
+        metadata={
+            "description": "Outer cycle timelines documented in docs/module/ux/timelines.md.",
+            "renderer": "astroengine.ux.timelines.outer_cycles.render_timeline",
+        },
     ).register_subchannel(
         "transits",
-        metadata={"description": "Placeholder for cycle overlay timeline exports."},
+        metadata={
+            "description": "Cycle overlay timeline exports derived from detector datasets.",
+            "status": "planned",
+        },
         payload={
+            "documentation": "docs/module/ux/timelines.md",
             "implementation": "pending",
-            "todo": [
-                "Document data provenance for plotted events",
-                "Integrate severity bands once scoring outputs are indexed",
+            "datasets": [
+                "docs/provenance/solarfire_exports.md",
+                "docs/module/core-transit-math.md",
+                "docs/module/event-detectors/overview.md",
             ],
         },
     )
@@ -73,24 +85,29 @@ def register_ux_module(registry: AstroRegistry) -> None:
         "plugins",
         metadata={
             "description": "Streamlit panels and hook-based extensions.",
-            "todo": [
-                "List built-in UI panels exposed via astroengine.plugins",
-                "Add automated checks ensuring plugin payloads cite their data sources",
-            ],
+            "docs": ["docs/module/ux/plugins.md"],
         },
     )
     plugins.register_channel(
         "panels",
-        metadata={"registry": "astroengine.ux.plugins"},
+        metadata={
+            "description": "Streamlit-based panels documented in docs/module/ux/plugins.md.",
+            "registry": "astroengine.ux.plugins",
+        },
     ).register_subchannel(
         "streamlit",
-        metadata={"description": "Placeholder for Streamlit-hosted UI panels."},
+        metadata={
+            "description": "Streamlit-hosted UI panels with documented dataset provenance.",
+            "status": "planned",
+        },
         payload={
+            "documentation": "docs/module/ux/plugins.md",
             "implementation": "pending",
             "commands": ["astroengine-streamlit"],
-            "todo": [
-                "Document commands to launch example panels",
-                "Track dataset provenance for any panel-derived outputs",
+            "datasets": [
+                "docs/provenance/solarfire_exports.md",
+                "docs/ATLAS_TZ_SPEC.md",
+                "docs/module/ux/timelines.md",
             ],
         },
     )
