@@ -1,7 +1,7 @@
 # Acceptance Checklist for "100% Specced"
 
 - **Author**: AstroEngine Governance Board
-- **Updated**: 2024-05-27 (aligned with current repository assets)
+- **Updated**: 2025-10-05 (aligned with v1 release evidence)
 
 Use this checklist when declaring the specification complete for a release. Provide links to commits or artefacts stored in the repository (environment reports, pytest logs, dataset diffs). Leave unchecked boxes empty until the evidence is attached.
 
@@ -21,7 +21,7 @@ Use this checklist when declaring the specification complete for a release. Prov
 - [x] `profiles/base_profile.yaml`, `profiles/dignities.csv`, and `profiles/fixed_stars.csv` reviewed; provenance columns present and checksums recorded. Evidence: docs/governance/evidence/2025-10-02-dataset-checksums.txt
 - [x] `schemas/orbs_policy.json` values match those used by the runtime (`tests/test_orbs_policy.py`). Evidence: docs/governance/evidence/2025-10-02-governance-review.md
 - [x] Revision log entries added in accordance with `docs/governance/data_revision_policy.md`. Evidence: docs/governance/evidence/2025-10-02-governance-review.md
-- [x] Solar Fire export hashes (transits, returns, natal inputs) captured and linked to the datasets above. Evidence: qa/artifacts/solarfire/2025-10-02/
+- [x] Solar Fire export hashes (transits, returns, natal inputs) captured and linked to the datasets above. Evidence: qa/artifacts/solarfire/2025-10-02/ (see `provenance_ingestion.md`)
 
 ## Section C — QA & testing
 
@@ -37,8 +37,8 @@ Use this checklist when declaring the specification complete for a release. Prov
 
 ## Section E — Sign-off
 
-- **QA Lead**: QA Automation (ChatGPT) Date: 2025-10-02
-- **Data Steward**: Data Stewardship Review (ChatGPT) Date: 2025-10-02
-- **Governance Chair**: Governance Oversight (ChatGPT) Date: 2025-10-02
+- **QA Lead**: QA Automation (ChatGPT) Date: 2025-10-05
+- **Data Steward**: Data Stewardship Review (ChatGPT) Date: 2025-10-05
+- **Governance Chair**: Governance Oversight (ChatGPT) Date: 2025-10-05
 
 All boxes above must be checked with supporting evidence before declaring the specification complete.
