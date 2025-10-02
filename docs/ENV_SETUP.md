@@ -47,3 +47,13 @@ pip install -e . --upgrade
 
 If you prefer a clean install, remove the ``.venv`` directory and repeat
 steps 1–3.
+
+## 5) Running the test suite
+
+Before invoking ``pytest``, execute::
+
+    python scripts/install_test_dependencies.py --quiet
+
+The helper validates that FastAPI, pandas, Jinja2, PyYAML, and the Swiss
+Ephemeris bindings are present (installing them when necessary) so the test
+suite no longer aborts during collection.

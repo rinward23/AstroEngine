@@ -232,7 +232,8 @@ developer activities.  Run `make` (or `make help`) to view the curated targets.
 - `make format` — apply Ruff autofixes alongside Black and isort formatting.
 - `make lint` — check code style without mutating the working tree.
 - `make typecheck` — execute `mypy` on the typed package surfaces.
-- `make test` — run the full `pytest` suite, including CLI and ephemeris tests.
+- `make test` — ensure the test dependency stack is installed and then run the
+  full `pytest` suite, including CLI and ephemeris tests.
 - `make check` — convenience target that executes linting, type checking,
   and tests in sequence to validate merge readiness.
 
