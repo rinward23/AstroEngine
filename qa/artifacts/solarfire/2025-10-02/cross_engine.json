@@ -1,0 +1,122 @@
+{
+  "adapters": [
+    {
+      "adapter": "swiss_b",
+      "breaches": [],
+      "decl_stats": {
+        "max": 0.0,
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      },
+      "lon_stats": {
+        "max": 0.0,
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      },
+      "sample_count": 6
+    }
+  ],
+  "matrix": {
+    "bodies": [
+      "sun",
+      "moon",
+      "mercury"
+    ],
+    "metadata": {
+      "source": "swiss_vs_swiss"
+    },
+    "timestamps": [
+      "2024-01-01T00:00:00Z",
+      "2024-06-01T00:00:00Z"
+    ],
+    "tolerances": {
+      "default": {
+        "decl_arcsec": 5.0,
+        "lon_arcsec": 5.0
+      }
+    }
+  },
+  "metadata": {
+    "run_started": "2025-10-02T02:54:39.250605+00:00",
+    "source": "swiss_vs_swiss"
+  },
+  "reference": "swiss_a",
+  "samples": [
+    {
+      "adapter": "swiss_b",
+      "body": "mercury",
+      "decl_arcsec": 0.0,
+      "decl_violation": false,
+      "lon_arcsec": 0.0,
+      "lon_violation": false,
+      "speed_lon_arcsec_per_hour": 0.0,
+      "timestamp": "2024-01-01T00:00:00Z",
+      "tolerance_decl_arcsec": 5.0,
+      "tolerance_lon_arcsec": 5.0
+    },
+    {
+      "adapter": "swiss_b",
+      "body": "moon",
+      "decl_arcsec": 0.0,
+      "decl_violation": false,
+      "lon_arcsec": 0.0,
+      "lon_violation": false,
+      "speed_lon_arcsec_per_hour": 0.0,
+      "timestamp": "2024-01-01T00:00:00Z",
+      "tolerance_decl_arcsec": 5.0,
+      "tolerance_lon_arcsec": 5.0
+    },
+    {
+      "adapter": "swiss_b",
+      "body": "sun",
+      "decl_arcsec": 0.0,
+      "decl_violation": false,
+      "lon_arcsec": 0.0,
+      "lon_violation": false,
+      "speed_lon_arcsec_per_hour": 0.0,
+      "timestamp": "2024-01-01T00:00:00Z",
+      "tolerance_decl_arcsec": 5.0,
+      "tolerance_lon_arcsec": 5.0
+    },
+    {
+      "adapter": "swiss_b",
+      "body": "mercury",
+      "decl_arcsec": 0.0,
+      "decl_violation": false,
+      "lon_arcsec": 0.0,
+      "lon_violation": false,
+      "speed_lon_arcsec_per_hour": 0.0,
+      "timestamp": "2024-06-01T00:00:00Z",
+      "tolerance_decl_arcsec": 5.0,
+      "tolerance_lon_arcsec": 5.0
+    },
+    {
+      "adapter": "swiss_b",
+      "body": "moon",
+      "decl_arcsec": 0.0,
+      "decl_violation": false,
+      "lon_arcsec": 0.0,
+      "lon_violation": false,
+      "speed_lon_arcsec_per_hour": 0.0,
+      "timestamp": "2024-06-01T00:00:00Z",
+      "tolerance_decl_arcsec": 5.0,
+      "tolerance_lon_arcsec": 5.0
+    },
+    {
+      "adapter": "swiss_b",
+      "body": "sun",
+      "decl_arcsec": 0.0,
+      "decl_violation": false,
+      "lon_arcsec": 0.0,
+      "lon_violation": false,
+      "speed_lon_arcsec_per_hour": 0.0,
+      "timestamp": "2024-06-01T00:00:00Z",
+      "tolerance_decl_arcsec": 5.0,
+      "tolerance_lon_arcsec": 5.0
+    }
+  ]
+}
