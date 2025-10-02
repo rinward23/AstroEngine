@@ -19,6 +19,7 @@ can be indexed safely without losing any modules during future edits.
 make setup    # or follow docs/DEV_ENV.md
 make doctor   # environment sanity (strict)
 make test     # run unit tests
+export SE_EPHE_PATH=/path/to/se/data   # optional for precision; falls back if missing
 ```
 
 ### One-command usability check
