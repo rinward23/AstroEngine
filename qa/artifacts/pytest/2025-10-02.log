@@ -1,0 +1,17 @@
+../../root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_config.py:373
+  /root/.pyenv/versions/3.11.12/lib/python3.11/site-packages/pydantic/_internal/_config.py:373: UserWarning: Valid config keys have changed in V2:
+  * 'schema_extra' has been renamed to 'json_schema_extra'
+    warnings.warn(message, UserWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+--------------------------------------- benchmark 'relationship': 1 tests ----------------------------------------
+Name (time in ms)              Min     Max    Mean  StdDev  Median     IQR  Outliers       OPS  Rounds  Iterations
+------------------------------------------------------------------------------------------------------------------
+test_synastry_benchmark     2.8854  4.3979  3.0865  0.1910  3.0351  0.1565     27;14  323.9959     283           1
+------------------------------------------------------------------------------------------------------------------
+
+Legend:
+  Outliers: 1 Standard Deviation from Mean; 1.5 IQR (InterQuartile Range) from 1st Quartile and 3rd Quartile.
+  OPS: Operations Per Second, computed as 1 / Mean
+163 passed, 38 skipped, 3 warnings in 27.34s
