@@ -19,6 +19,7 @@ can be indexed safely without losing any modules during future edits.
 make setup    # or follow docs/DEV_ENV.md
 make doctor   # environment sanity (strict)
 make test     # run unit tests
+export SE_EPHE_PATH=/path/to/se/data   # optional for precision; falls back if missing
 ```
 
 ### One-command usability check
@@ -279,6 +280,10 @@ developer activities.  Run `make` (or `make help`) to view the curated targets.
 - `make typecheck` — execute `mypy` on the typed package surfaces.
 - `make test` — ensure the test dependency stack is installed and then run the
   full `pytest` suite, including CLI and ephemeris tests.
+  - When invoking `pytest` manually, run it from the repository root so the
+    `pytest.ini` entry `pythonpath = generated` stays in effect.  This keeps the
+    deprecated compatibility package `generated.astroengine` visible to tests
+    and local scripts that still import from that namespace.
 - `make check` — convenience target that executes linting, type checking,
   and tests in sequence to validate merge readiness.
 

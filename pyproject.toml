@@ -24,8 +24,11 @@ dependencies = [
   "pandas>=2.2",
   "python-dateutil>=2.8",
   "pydantic>=2.11,<3",
+
   "PyYAML>=6.0",
+
   "jsonschema>=4.21",
+  "PyYAML>=6.0",
   "requests>=2.31",
   "python-multipart>=0.0.9",
   "SQLAlchemy>=2.0",
@@ -49,7 +52,7 @@ dependencies = [
 [project.optional-dependencies]
 # Core astroengine stacks
 ephem = [
-  "pyswisseph>=2.10",
+  "pyswisseph>=2.10; python_version < \"3.12\"",
   "pymeeus>=0.5.12",
 ]
 skyfield = [
@@ -102,9 +105,11 @@ api = [
   "httpx>=0.28,<0.29",
 ]
 providers = [
+
   "pyswisseph>=2.10",
   "timezonefinder>=8.1",
   "tzdata>=2024.1",
+
 ]
 dev = [
   "pytest",
@@ -115,7 +120,7 @@ dev = [
 ]
 
 all = [
-  "pyswisseph>=2.10",
+  "pyswisseph>=2.10; python_version < \"3.12\"",
   "pymeeus>=0.5.12",
   "skyfield>=1.49",
   "jplephem>=2.21",

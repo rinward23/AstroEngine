@@ -1,7 +1,7 @@
 # >>> AUTO-GEN BEGIN: optional-reqs v1.0
 # Mirrors pyproject extras for non-pep517 workflows
 # ephem
-pyswisseph>=2.10
+pyswisseph>=2.10; python_version < "3.12"
 pymeeus>=0.5.12
 # skyfield
 skyfield>=1.49
