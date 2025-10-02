@@ -13,6 +13,7 @@ from typing import Any, Iterable, Literal, Mapping, Sequence
 
 
 from pydantic import (
+    AliasChoices,
     AwareDatetime,
     BaseModel,
     ConfigDict,
