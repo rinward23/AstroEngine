@@ -36,7 +36,7 @@ fastapi>=0.117
 uvicorn>=0.37
 pydantic>=2.11
 icalendar>=6
-httpx>=0.27
+httpx>=0.28,<0.29
 # providers
 timezonefinder>=6
 tzdata
