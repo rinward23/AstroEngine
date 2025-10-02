@@ -44,17 +44,23 @@ def test_vimshottari_endpoint_structure():
     assert first["start"].endswith("Z")
 
 
+
 def test_varga_endpoint_returns_extended_vargas():
+
     response = client.post(
         "/v1/vedic/varga",
         json={
             "natal": NATAL,
             "ayanamsa": "lahiri",
+
             "charts": ["D3", "D7", "D9", "D10", "D60"],
+
         },
     )
     assert response.status_code == 200
     data = response.json()
+
     assert all(code in data["charts"] for code in ("D3", "D7", "D9", "D10", "D60"))
     d60 = data["charts"]["D60"]
     assert any(payload.get("rule") for payload in d60.values())
+

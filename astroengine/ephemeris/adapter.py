@@ -13,6 +13,7 @@ from typing import Final, cast
 
 from ..core.angles import AspectMotion, DeltaLambdaTracker, classify_relative_motion
 from ..core.time import TimeConversion, to_tt
+from .swisseph_adapter import swe_calc
 from .sidereal import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,
@@ -364,14 +365,20 @@ class EphemerisAdapter:
         self, moment: TimeConversion, body: int, flags: int
     ) -> tuple[float, float, float, float, float, float, float, float, float, float]:
         assert swe is not None
-        if self._use_tt:
-            jd = moment.jd_tt
-            calc_fn = swe.calc
-        else:
-            jd = moment.jd_utc
-            calc_fn = swe.calc_ut
-        result, _ = calc_fn(jd, body, flags)
-        eq_result, _ = calc_fn(jd, body, flags | swe.FLG_EQUATORIAL)
+        jd = moment.jd_tt if self._use_tt else moment.jd_utc
+        result, _, serr = swe_calc(
+            jd_ut=jd, planet_index=body, flag=flags, use_tt=self._use_tt
+        )
+        if serr:
+            raise RuntimeError(serr)
+        eq_result, _, serr_eq = swe_calc(
+            jd_ut=jd,
+            planet_index=body,
+            flag=flags | swe.FLG_EQUATORIAL,
+            use_tt=self._use_tt,
+        )
+        if serr_eq:
+            raise RuntimeError(serr_eq)
         longitude, latitude, distance, lon_speed, lat_speed, dist_speed = result
         ra, dec, _, ra_speed, dec_speed, _ = eq_result
         return (
@@ -393,15 +400,24 @@ class EphemerisAdapter:
         if not _HAS_SWE:
             raise RuntimeError("Moshier fallback requires pyswisseph to be installed")
         assert swe is not None
-        if self._use_tt:
-            jd = moment.jd_tt
-            calc_fn = swe.calc
-        else:
-            jd = moment.jd_utc
-            calc_fn = swe.calc_ut
+        jd = moment.jd_tt if self._use_tt else moment.jd_utc
         moshier_flags = flags | swe.FLG_MOSEPH
-        result, _ = calc_fn(jd, body, moshier_flags)
-        eq_result, _ = calc_fn(jd, body, moshier_flags | swe.FLG_EQUATORIAL)
+        result, _, serr = swe_calc(
+            jd_ut=jd,
+            planet_index=body,
+            flag=moshier_flags,
+            use_tt=self._use_tt,
+        )
+        if serr:
+            raise RuntimeError(serr)
+        eq_result, _, serr_eq = swe_calc(
+            jd_ut=jd,
+            planet_index=body,
+            flag=moshier_flags | swe.FLG_EQUATORIAL,
+            use_tt=self._use_tt,
+        )
+        if serr_eq:
+            raise RuntimeError(serr_eq)
         longitude, latitude, distance, lon_speed, lat_speed, dist_speed = result
         ra, dec, _, ra_speed, dec_speed, _ = eq_result
         return (

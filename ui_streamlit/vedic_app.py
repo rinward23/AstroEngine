@@ -10,6 +10,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from astroengine.chart.config import VALID_NODE_VARIANTS
 from astroengine.detectors.ingresses import ZODIAC_SIGNS, sign_index
 from astroengine.engine.vedic import (
     VARGA_DEFINITIONS,
@@ -47,6 +48,8 @@ AYANAMSA_CHOICES = [
     "sassanian",
     "deluce",
 ]
+
+NODE_VARIANT_CHOICES = sorted(VALID_NODE_VARIANTS)
 
 
 def _to_utc(value: datetime) -> datetime:
@@ -140,10 +143,24 @@ with st.sidebar:
     lon = st.number_input("Longitude", value=-74.0060, format="%.4f")
     ayanamsa = st.selectbox("Ayanamsa", AYANAMSA_CHOICES, index=0)
     house_system = st.selectbox("House system", ["whole_sign", "placidus", "koch"], index=0)
+    node_variant_index = NODE_VARIANT_CHOICES.index("mean") if "mean" in NODE_VARIANT_CHOICES else 0
+    nodes_variant = st.selectbox(
+        "Lunar node variant",
+        NODE_VARIANT_CHOICES,
+        index=node_variant_index,
+        help="Choose whether to use mean or true lunar nodes when casting the chart.",
+    )
     level_choice = st.slider("Vimśottarī levels", min_value=1, max_value=3, value=3)
 
 moment = datetime.combine(date_value, time_value).replace(tzinfo=UTC)
-context = build_context(moment, lat, lon, ayanamsa=ayanamsa, house_system=house_system)
+context = build_context(
+    moment,
+    lat,
+    lon,
+    ayanamsa=ayanamsa,
+    house_system=house_system,
+    nodes_variant=nodes_variant,
+)
 chart = context.chart
 
 positions = [_nakshatra_payload(name, pos.longitude) for name, pos in chart.positions.items()]
@@ -153,6 +170,7 @@ if asc_value is not None:
 
 vim_periods = build_vimshottari(context, levels=level_choice, options=VimshottariOptions())
 yogini_periods = build_yogini(context, levels=2, options=YoginiOptions())
+
 varga_codes = ["D3", "D7", "D9", "D10", "D12", "D16", "D24", "D45", "D60"]
 varga_results = {
     code: compute_varga(chart.positions, code, ascendant=asc_value)
@@ -161,17 +179,19 @@ varga_results = {
 navamsa = varga_results["D9"]
 dasamsa = varga_results["D10"]
 
+
 chart_tab, nak_tab, dasha_tab, varga_tab, export_tab = st.tabs(
     ["Chart", "Nakshatras", "Dashas", "Vargas", "Export"]
 )
 
 with chart_tab:
     st.subheader("Sidereal Chart Overview")
-    meta_cols = st.columns(4)
+    meta_cols = st.columns(5)
     meta_cols[0].metric("Ayanamsa", chart.ayanamsa or "-")
     meta_cols[1].metric("Ayanamsa °", f"{chart.ayanamsa_degrees:.6f}" if chart.ayanamsa_degrees is not None else "-")
     meta_cols[2].metric("House System", chart.metadata.get("house_system") if chart.metadata else house_system)
     meta_cols[3].metric("Moment", _iso(chart.moment))
+    meta_cols[4].metric("Node Variant", context.config.nodes_variant.title())
     st.plotly_chart(_build_wheel(positions, "Sidereal Wheel"), use_container_width=True)
     st.dataframe(pd.DataFrame(positions), use_container_width=True)
 
@@ -196,6 +216,7 @@ with dasha_tab:
     st.dataframe(_dasha_dataframe(yogini_periods), use_container_width=True)
 
 with varga_tab:
+
     for code in varga_codes:
         definition = VARGA_DEFINITIONS[code]
         st.subheader(f"{definition.name} ({code})")
@@ -214,6 +235,7 @@ with varga_tab:
                 use_container_width=True,
             )
 
+
 with export_tab:
     st.subheader("Export JSON")
     payload = {
@@ -226,9 +248,13 @@ with export_tab:
         "positions": positions,
         "vimshottari": [_serialize_period(period) for period in vim_periods],
         "yogini": [_serialize_period(period) for period in yogini_periods],
+        "rasi": rasi,
+        "saptamsa": saptamsa,
         "navamsa": navamsa,
         "dasamsa": dasamsa,
+
         "vargas": varga_results,
+
     }
     st.download_button(
         "Download JSON",

@@ -35,6 +35,14 @@ ORDER: Sequence[tuple[str, float]] = (
 )
 TOTAL_YEARS = sum(duration for _, duration in ORDER)
 
+_LEVEL_BY_DEPTH = {
+    1: "maha",
+    2: "antar",
+    3: "pratyantar",
+    4: "sookshma",
+    5: "praan",
+}
+
 
 @dataclass(frozen=True)
 class DashaPeriod:
@@ -106,8 +114,11 @@ def _subdivide(
             fraction = accumulator / TOTAL_YEARS
             sub_end = start + timedelta(days=total_days * fraction)
         parent_years = total_days / options.year_basis
-        metadata = {"parent": parent_ruler, "span_years": parent_years * (years / TOTAL_YEARS)}
-        level_name = "antar" if level == 2 else "pratyantar"
+        metadata = {
+            "parent": parent_ruler,
+            "span_years": parent_years * (years / TOTAL_YEARS),
+        }
+        level_name = _LEVEL_BY_DEPTH.get(level, f"level{level}")
         periods.append(
             DashaPeriod(
                 system="vimshottari",
@@ -160,8 +171,10 @@ def build_vimshottari(
 ) -> list[DashaPeriod]:
     """Return Vimśottarī dashas covering 120 years from the birth moment."""
 
-    if levels < 1 or levels > 3:
-        raise ValueError("levels must be between 1 and 3")
+    if levels < 1 or levels > len(_LEVEL_BY_DEPTH):
+        raise ValueError(
+            f"levels must be between 1 and {len(_LEVEL_BY_DEPTH)}"
+        )
     opts = options or VimshottariOptions()
     natal = _chart_from_context(chart)
     anchor_start = _apply_anchor(natal.moment, opts)

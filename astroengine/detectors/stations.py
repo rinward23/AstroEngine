@@ -11,6 +11,7 @@ except Exception:  # pragma: no cover
     swe = None  # type: ignore
 
 from ..events import ShadowPeriod, StationEvent
+from ..ephemeris.swisseph_adapter import swe_calc
 from .common import delta_deg, jd_to_iso, solve_zero_crossing
 
 __all__ = ["find_stations", "find_shadow_periods"]
@@ -28,13 +29,19 @@ _BODY_CODES = {
 
 
 def _speed(jd_ut: float, code: int) -> float:
-    values, _ = swe.calc_ut(jd_ut, code, swe.FLG_SWIEPH | swe.FLG_SPEED)
-    return float(values[3])
+    flag = swe.FLG_SWIEPH | swe.FLG_SPEED
+    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=code, flag=flag)
+    if serr:
+        raise RuntimeError(serr)
+    return float(xx[3])
 
 
 def _longitude(jd_ut: float, code: int) -> float:
-    values, _ = swe.calc_ut(jd_ut, code, swe.FLG_SWIEPH | swe.FLG_SPEED)
-    return float(values[0]) % 360.0
+    flag = swe.FLG_SWIEPH | swe.FLG_SPEED
+    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=code, flag=flag)
+    if serr:
+        raise RuntimeError(serr)
+    return float(xx[0]) % 360.0
 
 
 def find_stations(
@@ -89,6 +96,9 @@ def find_stations(
                 key = (name, int(round(root * 86400)))
                 if key not in seen:
                     longitude = _longitude(root, code)
+                    station_type = _classify_station(root, code)
+                    if station_type not in {"retrograde", "direct"}:
+                        station_type = None
                     events.append(
                         StationEvent(
                             ts=jd_to_iso(root),
@@ -97,6 +107,7 @@ def find_stations(
                             motion="stationary",
                             longitude=longitude,
                             speed_longitude=0.0,
+                            station_type=station_type,
                         )
                     )
                     seen.add(key)
@@ -218,7 +229,7 @@ def find_shadow_periods(
 
         typed: list[tuple[StationEvent, str]] = []
         for event in stations:
-            kind = _classify_station(event.jd, code)
+            kind = event.station_type or _classify_station(event.jd, code)
             if kind in {"retrograde", "direct"}:
                 typed.append((event, kind))
 

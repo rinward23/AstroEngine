@@ -1,4 +1,4 @@
-"""Vimśottarī Daśā calculator (maha/antar/pratyantar levels)."""
+"""Vimśottarī Daśā calculator supporting maha → praan levels."""
 
 from __future__ import annotations
 
@@ -6,8 +6,6 @@ import itertools
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-
-import swisseph as swe
 
 from .context import TimelordContext
 from .models import TimelordPeriod
@@ -18,6 +16,14 @@ __all__ = [
     "VIMSHOTTARI_SEQUENCE",
     "generate_vimshottari_periods",
 ]
+
+_LEVEL_BY_DEPTH = {
+    1: "maha",
+    2: "antar",
+    3: "pratyantar",
+    4: "sookshma",
+    5: "praan",
+}
 
 NAKSHATRA_DEGREES = 360.0 / 27.0
 
@@ -86,7 +92,7 @@ def _cycle(start_ruler: str) -> Iterable[_PeriodSeed]:
 
 def _sidereal_moon_longitude(context: TimelordContext) -> float:
     moon = context.chart.positions["Moon"]
-    ayanamsa = swe.get_ayanamsa_ut(context.chart.julian_day)
+    ayanamsa = context.adapter.ayanamsa(context.chart.julian_day)
     return (moon.longitude - ayanamsa) % 360.0
 
 
@@ -162,14 +168,16 @@ def _subdivide(
         else:
             fraction = accumulator / TOTAL_YEARS
             sub_end = start + timedelta(days=total_days * fraction)
+        level_name = _LEVEL_BY_DEPTH.get(level, f"level{level}")
+        metadata = {"parent": ruler}
         periods.append(
             TimelordPeriod(
                 system="vimshottari",
-                level="antar" if level == 2 else "pratyantar",
+                level=level_name,
                 ruler=seed.ruler,
                 start=cursor,
                 end=sub_end,
-                metadata={"parent": ruler},
+                metadata=metadata,
             )
         )
         if level < max_level:
@@ -181,10 +189,14 @@ def generate_vimshottari_periods(
     context: TimelordContext,
     until: datetime,
     *,
-    levels: int = 3,
+    levels: int = 5,
 ) -> list[TimelordPeriod]:
     """Return Vimśottarī periods covering ``context.moment`` → ``until``."""
 
     if levels < 1:
         raise ValueError("levels must be >= 1")
+    if levels > len(_LEVEL_BY_DEPTH):
+        raise ValueError(
+            f"levels must be <= {len(_LEVEL_BY_DEPTH)} for Vimśottarī calculations"
+        )
     return _maha_periods(context, until, levels=levels)

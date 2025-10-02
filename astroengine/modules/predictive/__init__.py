@@ -148,3 +148,63 @@ def register_predictive_module(registry: AstroRegistry) -> None:
         "transits",
         metadata={"description": "Transit scans across biwheel chart pairs."},
     )
+
+    gochar = module.register_submodule(
+        "vedic_gochar",
+        metadata={
+            "description": "Sidereal gochara overlays linking natal, dasha, and divisional rulers.",
+            "engine": "astroengine.engine.vedic.gochar",
+        },
+    )
+
+    gochar_transits = gochar.register_channel(
+        "transits",
+        metadata={
+            "description": "Transit contacts weighted against natal placements and active dashas.",
+            "tests": ["tests/vedic/test_gochar.py"],
+        },
+    )
+    gochar_transits.register_subchannel(
+        "natal_contacts",
+        metadata={
+            "description": "Gochara hits on natal planets with dasha amplification.",
+        },
+    )
+    gochar_transits.register_subchannel(
+        "divisional_lords",
+        metadata={
+            "description": "Transits referencing divisional-chart lords (D9, D10, etc).",
+        },
+    )
+    gochar_transits.register_subchannel(
+        "transit_to_transit",
+        metadata={
+            "description": "Aspect relationships between transiting planets for stacking effects.",
+        },
+    )
+
+    triggers = gochar.register_channel(
+        "triggers",
+        metadata={
+            "description": "Outer-planet retrograde cycle change detection.",
+        },
+    )
+    triggers.register_subchannel(
+        "retrograde_cycles",
+        metadata={
+            "description": "Retrograde ⇄ direct transitions flagged as activation triggers.",
+        },
+    )
+
+    alerts = gochar.register_channel(
+        "alerts",
+        metadata={
+            "description": "Weighted gochara contacts exceeding configured alert thresholds.",
+        },
+    )
+    alerts.register_subchannel(
+        "high_weight",
+        metadata={
+            "description": "Priority contacts for notification and scheduling pipelines.",
+        },
+    )

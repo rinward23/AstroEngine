@@ -6,7 +6,7 @@ import logging
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Optional
 
@@ -27,9 +27,14 @@ if TYPE_CHECKING:  # pragma: no cover - runtime import avoided for typing only
     from ..chart.config import ChartConfig
 
 __all__ = [
+    "swe_calc",
     "BodyPosition",
     "EquatorialPosition",
     "HousePositions",
+
+    "FixedStarPosition",
+    "RiseTransitResult",
+
     "SwissEphemerisAdapter",
     "VariantConfig",
     "resolve_house_code",
@@ -98,6 +103,18 @@ _LILITH_VARIANT_CODES = {
 }
 
 
+_RISE_TRANSIT_EVENTS: Mapping[str, int] = {
+    "rise": swe.CALC_RISE,
+    "set": swe.CALC_SET,
+    "transit": swe.CALC_MTRANSIT,
+    "upper_transit": swe.CALC_MTRANSIT,
+    "meridian_transit": swe.CALC_MTRANSIT,
+    "culmination": swe.CALC_MTRANSIT,
+    "antitransit": swe.CALC_ITRANSIT,
+    "lower_transit": swe.CALC_ITRANSIT,
+}
+
+
 @dataclass(frozen=True)
 class BodyPosition:
     """Structured ephemeris output for a single body."""
@@ -122,6 +139,29 @@ class EquatorialPosition:
     declination: float
     speed_ra: float
     speed_declination: float
+
+
+@dataclass(frozen=True)
+class SolarCycleEvents:
+    """Sunrise, sunset, and transit metadata for a single day."""
+
+    sunrise: datetime | None
+    sunset: datetime | None
+    next_sunrise: datetime | None
+    transit: datetime | None
+    provenance: Mapping[str, object]
+
+    def to_dict(self) -> Mapping[str, object | None]:
+        """Return a serialisable mapping of the solar cycle."""
+
+        payload: dict[str, object | None] = {
+            "sunrise": self.sunrise.isoformat() if self.sunrise else None,
+            "sunset": self.sunset.isoformat() if self.sunset else None,
+            "next_sunrise": self.next_sunrise.isoformat() if self.next_sunrise else None,
+            "transit": self.transit.isoformat() if self.transit else None,
+            "provenance": dict(self.provenance),
+        }
+        return payload
 
 
 @dataclass(frozen=True)
@@ -174,6 +214,35 @@ class HousePositions:
             payload["provenance"] = dict(self.provenance)
 
         return payload
+
+
+@dataclass(frozen=True)
+class FixedStarPosition:
+    """Computed coordinates for a fixed star via Swiss Ephemeris."""
+
+    name: str
+    julian_day: float
+    longitude: float
+    latitude: float
+    distance_au: float
+    speed_longitude: float
+    speed_latitude: float
+    speed_distance: float
+    flags: int
+    computation_flags: int
+
+
+@dataclass(frozen=True)
+class RiseTransitResult:
+    """Rise/set/transit metadata returned by Swiss Ephemeris."""
+
+    body: str
+    event: str
+    julian_day: float | None
+    datetime: datetime | None
+    status: int
+    rsmi: int
+    flags: int
 
 
 class SwissEphemerisAdapter:
@@ -517,6 +586,17 @@ class SwissEphemerisAdapter:
         )
         return swe.julday(moment_utc.year, moment_utc.month, moment_utc.day, hour)
 
+    @staticmethod
+
+    def from_julian_day(jd_ut: float) -> datetime:
+        """Convert a Julian Day in UT back to a timezone-aware datetime."""
+
+        year, month, day, hour = swe.revjul(jd_ut, swe.GREG_CAL)
+        base = datetime(year, month, day, tzinfo=UTC)
+        seconds = hour * 3600.0
+        return base + timedelta(seconds=seconds)
+
+
     def body_equatorial(self, jd_ut: float, body_code: int) -> EquatorialPosition:
         """Return right ascension/declination data for ``body_code``."""
 
@@ -524,12 +604,18 @@ class SwissEphemerisAdapter:
 
         flags = self._calc_flags | swe.FLG_EQUATORIAL
         try:
-            values, _ = swe.calc_ut(jd_ut, body_code, flags)
-        except Exception:
+            xx, _, serr = swe_calc(
+                jd_ut=jd_ut, planet_index=body_code, flag=flags
+            )
+        except RuntimeError:
             flags = self._fallback_flags | swe.FLG_EQUATORIAL
-            values, _ = swe.calc_ut(jd_ut, body_code, flags)
+            xx, _, serr = swe_calc(
+                jd_ut=jd_ut, planet_index=body_code, flag=flags
+            )
+        if serr:
+            raise RuntimeError(serr)
 
-        ra, decl, _, speed_ra, speed_decl, _ = values
+        ra, decl, _, speed_ra, speed_decl, _ = xx
         return EquatorialPosition(
             right_ascension=ra % 360.0,
             declination=decl,
@@ -548,12 +634,18 @@ class SwissEphemerisAdapter:
         self._apply_sidereal_mode()
         flags = self._calc_flags
         try:
-            values, _ = swe.calc_ut(jd_ut, effective_code, flags)
-        except Exception:
+            xx, _, serr = swe_calc(
+                jd_ut=jd_ut, planet_index=effective_code, flag=flags
+            )
+        except RuntimeError:
             flags = self._fallback_flags
-            values, _ = swe.calc_ut(jd_ut, effective_code, flags)
+            xx, _, serr = swe_calc(
+                jd_ut=jd_ut, planet_index=effective_code, flag=flags
+            )
+        if serr:
+            raise RuntimeError(serr)
 
-        lon, lat, dist, speed_lon, speed_lat, speed_dist = values
+        lon, lat, dist, speed_lon, speed_lat, speed_dist = xx
 
         if derived:
             lon = (lon + 180.0) % 360.0
@@ -564,10 +656,17 @@ class SwissEphemerisAdapter:
 
 
         try:
-            eq_values, _ = swe.calc_ut(jd_ut, effective_code, flags | swe.FLG_EQUATORIAL)
-            _decl, _speed_decl = eq_values[1], eq_values[4]
-        except Exception:
+            eq_xx, _, serr = swe_calc(
+                jd_ut=jd_ut,
+                planet_index=effective_code,
+                flag=flags | swe.FLG_EQUATORIAL,
+            )
+            _decl, _speed_decl = eq_xx[1], eq_xx[4]
+        except RuntimeError:
             _decl, _speed_decl = float("nan"), float("nan")
+        else:
+            if serr:
+                raise RuntimeError(serr)
 
 
         return BodyPosition(
@@ -592,6 +691,141 @@ class SwissEphemerisAdapter:
             name: self.body_position(jd_ut, code, body_name=name)
             for name, code in bodies.items()
         }
+
+
+    @staticmethod
+    def planet_name(body_code: int) -> str:
+        """Return the Swiss Ephemeris display name for ``body_code``."""
+
+        return swe.get_planet_name(body_code)
+
+    def ayanamsa(self, jd_ut: float, *, true_longitude: bool = False) -> float:
+        """Return the ayanamsa value for ``jd_ut`` in degrees."""
+
+        self._apply_sidereal_mode()
+        if true_longitude:
+            delta_t = swe.deltat(jd_ut)
+            return swe.get_ayanamsa(jd_ut + delta_t)
+        return swe.get_ayanamsa_ut(jd_ut)
+
+    def ayanamsa_details(self, jd_ut: float) -> Mapping[str, float | int | None]:
+        """Return ayanamsa metadata including Swiss mode flags."""
+
+        self._apply_sidereal_mode()
+        if self._sidereal_mode is None:
+            value = swe.get_ayanamsa_ut(jd_ut)
+            return {"value": value, "mode": None, "flags": None}
+        flags, value = swe.get_ayanamsa_ex_ut(jd_ut, self._sidereal_mode)
+        return {"value": value, "mode": self._sidereal_mode, "flags": flags}
+
+    def rise_transit(
+        self,
+        jd_ut: float,
+        body: int | str,
+        *,
+        latitude: float,
+        longitude: float,
+        elevation: float = 0.0,
+        event: str = "rise",
+        pressure_hpa: float = 0.0,
+        temperature_c: float = 0.0,
+        flags: int | None = None,
+        body_name: str | None = None,
+    ) -> RiseTransitResult:
+        """Compute the next rise/set/transit event for ``body`` after ``jd_ut``."""
+
+        event_key = (event or "rise").lower()
+        try:
+            rsmi = _RISE_TRANSIT_EVENTS[event_key]
+        except KeyError as exc:  # pragma: no cover - guarded by validation
+            options = ", ".join(sorted(_RISE_TRANSIT_EVENTS))
+            raise ValueError(f"Unknown rise/transit event '{event}'. Options: {options}") from exc
+
+        override_code, _ = self._variant_override(body_name)
+        effective_body: int | str = body
+        if override_code is not None:
+            effective_body = override_code
+
+        label: str
+        if body_name is not None:
+            label = body_name
+        elif isinstance(body, str):
+            label = body
+        elif isinstance(effective_body, int):
+            try:
+                label = self.planet_name(int(effective_body))
+            except Exception:  # pragma: no cover - defensive
+                label = str(effective_body)
+        else:
+            label = str(effective_body)
+
+        flags_value = flags if flags is not None else self._calc_flags
+        if self._is_sidereal:
+            flags_value |= swe.FLG_SIDEREAL
+
+        self._apply_sidereal_mode()
+        geopos = (float(longitude), float(latitude), float(elevation))
+        status, tret = swe.rise_trans(
+            jd_ut,
+            effective_body,
+            rsmi,
+            geopos,
+            pressure_hpa,
+            temperature_c,
+            flags_value,
+        )
+
+        event_jd = tret[0] if tret else None
+        event_dt: datetime | None = None
+        if status == 0 and event_jd is not None and event_jd != 0.0:
+            event_dt = self.from_julian_day(event_jd)
+        else:
+            event_jd = None if status != 0 else event_jd
+
+        return RiseTransitResult(
+            body=label,
+            event=event_key,
+            julian_day=event_jd,
+            datetime=event_dt,
+            status=status,
+            rsmi=rsmi,
+            flags=flags_value,
+        )
+
+    def fixed_star(
+        self,
+        name: str,
+        jd_ut: float,
+        *,
+        flags: int | None = None,
+        use_ut: bool = True,
+    ) -> FixedStarPosition:
+        """Return longitude/latitude data for ``name`` at ``jd_ut``."""
+
+        self._apply_sidereal_mode()
+        flags_value = flags if flags is not None else self._calc_flags
+        if self._is_sidereal:
+            flags_value |= swe.FLG_SIDEREAL
+
+        if use_ut:
+            values, resolved_name, retflags = swe.fixstar_ut(name, jd_ut, flags_value)
+        else:
+            values, resolved_name, retflags = swe.fixstar(name, jd_ut, flags_value)
+
+        lon, lat, dist, speed_lon, speed_lat, speed_dist = values
+        return FixedStarPosition(
+            name=str(resolved_name).strip(),
+            julian_day=jd_ut,
+            longitude=lon % 360.0,
+            latitude=lat,
+            distance_au=dist,
+            speed_longitude=speed_lon,
+            speed_latitude=speed_lat,
+            speed_distance=speed_dist,
+            flags=retflags,
+            computation_flags=flags_value,
+
+        )
 
     def _variant_override(self, body_name: str | None) -> tuple[Optional[int], bool]:
         if not body_name:
@@ -664,7 +898,7 @@ class SwissEphemerisAdapter:
 
 
         if self._is_sidereal:
-            ayan = swe.get_ayanamsa_ut(jd_ut)
+            ayan = self.ayanamsa(jd_ut)
             cusps = tuple((c - ayan) % 360.0 for c in cusps)
             ascendant = (angles[0] - ayan) % 360.0
             midheaven = (angles[1] - ayan) % 360.0
@@ -760,4 +994,32 @@ class SwissEphemerisAdapter:
             "Unsupported house system "
             f"'{system or self.chart_config.house_system}'. Valid options: {options}"
         )
+
+def swe_calc(
+    *, jd_ut: float, planet_index: int, flag: int, use_tt: bool = False
+) -> tuple[tuple[float, ...], int, str]:
+    """Invoke Swiss Ephemeris core calculation with normalized arguments."""
+
+    if swe is None:  # pragma: no cover - import guard retained for safety
+        raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
+
+    try:
+        calc_fn = swe.calc if use_tt else swe.calc_ut
+        xx, ret_flag = calc_fn(jd_ut, planet_index, flag)
+    except Exception as exc:  # pragma: no cover - pass through detailed context
+        serr = str(exc)
+        raise RuntimeError(
+            f"Swiss ephemeris failed for body index {planet_index} at JD {jd_ut}: {serr}"
+        ) from exc
+
+    # ``swe.calc_ut`` mirrors the C ``swe_calc`` contract returning the calculation flag
+    # and populating an error string for negative return codes.  ``pyswisseph`` surfaces
+    # the flag directly, but the error text is only visible via the raised exception.
+    # Maintain the ``serr`` placeholder for downstream callers to keep the canonical
+    # tuple structure available during future PySwisseph updates.
+    if ret_flag < 0:
+        serr = f"Swiss ephemeris returned error code {ret_flag}"
+        raise RuntimeError(serr)
+    serr = ""
+    return tuple(xx), ret_flag, serr
 

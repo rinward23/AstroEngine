@@ -2010,7 +2010,10 @@ def _add_timelord_compute_args(
     parser.add_argument(
         "--timelord-levels",
         default="maha,antar",
-        help="Comma-separated Vimśottarī levels to include",
+        help=(
+            "Comma-separated Vimśottarī levels to include (maha, antar, pratyantar, "
+            "sookshma, praan)"
+        ),
     )
     parser.add_argument(
         "--zr", action="store_true", help="Emit zodiacal releasing periods"

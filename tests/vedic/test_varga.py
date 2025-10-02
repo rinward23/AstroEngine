@@ -3,10 +3,12 @@ from types import SimpleNamespace
 import pytest
 
 from astroengine.engine.vedic import (
+
     VARGA_DEFINITIONS,
     compute_varga,
     dasamsa_sign,
     navamsa_sign,
+
 )
 
 
@@ -32,6 +34,7 @@ def test_compute_varga_includes_ascendant():
     result = compute_varga(positions, "D9", ascendant=83.0)
     assert "Ascendant" in result
     assert "pada" in result["Ascendant"]
+
     assert result["Ascendant"]["start_sign"] == "Libra"
     assert result["Ascendant"]["segment_arc_degrees"] == pytest.approx(30.0 / 9.0)
 
@@ -62,3 +65,4 @@ def test_shashtiamsa_precision_even_sign():
     assert mars["sign"] == "Sagittarius"
     assert mars["shashtiamsa"] == 3
     assert mars["segment_arc_degrees"] == pytest.approx(0.5)
+

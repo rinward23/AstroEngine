@@ -1,3 +1,4 @@
+
 """Divisional chart helpers for Vedic vargas.
 
 The module originally exposed only Navāṁśa (D9) and Daśāṁśa (D10).  This
@@ -9,21 +10,49 @@ source sign that counting began from) is made available via
 ``compute_varga``.
 """
 
+
 from __future__ import annotations
 
 from collections.abc import Mapping
+
 from dataclasses import dataclass
 from math import floor
+
 from typing import Callable, Literal
 
 from ...detectors.ingresses import ZODIAC_SIGNS, sign_index
 
-__all__ = ["navamsa_sign", "dasamsa_sign", "compute_varga"]
+__all__ = [
+    "rasi_sign",
+    "saptamsa_sign",
+    "navamsa_sign",
+    "dasamsa_sign",
+    "trimsamsa_sign",
+    "compute_varga",
+]
+
 
 
 MOVABLE_SIGNS = {0, 3, 6, 9}
 FIXED_SIGNS = {1, 4, 7, 10}
 DUAL_SIGNS = {2, 5, 8, 11}
+ODD_SIGNS = {0, 2, 4, 6, 8, 10}
+EVEN_SIGNS = {1, 3, 5, 7, 9, 11}
+
+ODD_TRIMSAMSA = (
+    (5.0, 0, "Mars"),
+    (5.0, 10, "Saturn"),
+    (8.0, 2, "Mercury"),
+    (7.0, 6, "Venus"),
+    (5.0, 8, "Jupiter"),
+)
+EVEN_TRIMSAMSA = (
+    (5.0, 1, "Venus"),
+    (5.0, 11, "Jupiter"),
+    (8.0, 9, "Saturn"),
+    (7.0, 7, "Mars"),
+    (5.0, 5, "Mercury"),
+)
 
 
 def _normalize(longitude: float) -> float:
@@ -40,6 +69,7 @@ def _modal_start(sign_idx: int) -> int:
     if sign_idx in FIXED_SIGNS:
         return (sign_idx + 8) % 12
     return (sign_idx + 4) % 12  # dual signs
+
 
 
 def _is_odd_sign(sign_idx: int) -> bool:
@@ -80,6 +110,7 @@ class VargaDefinition:
     @property
     def span(self) -> float:
         return 30.0 / self.divisions
+
 
 
 _ODD_EVEN_7TH = _odd_even_start(6)
@@ -207,9 +238,54 @@ def dasamsa_sign(longitude: float) -> tuple[int, float, int]:
     return dest_sign, lon, part
 
 
+def trimsamsa_sign(longitude: float) -> tuple[int, float, dict[str, int | str]]:
+    """Return the Triṁśāṁśa sign, longitude, and ruler metadata for ``longitude``."""
+
+    sign_idx = sign_index(longitude)
+    deg = _deg_in_sign(longitude)
+    segments = ODD_TRIMSAMSA if sign_idx in ODD_SIGNS else EVEN_TRIMSAMSA
+    accumulated = 0.0
+    for index, (width, dest_sign, ruler) in enumerate(segments, start=1):
+        upper = accumulated + width
+        if deg < upper or abs(deg - upper) < 1e-9:
+            deg_in_segment = deg - accumulated
+            scale = 30.0 / width
+            trimsamsa_longitude = (dest_sign * 30.0) + (deg_in_segment * scale)
+            payload = {"segment": index, "ruler": ruler}
+            return dest_sign, trimsamsa_longitude % 360.0, payload
+        accumulated = upper
+    # Should never be reached, but fall back to final segment.
+    width, dest_sign, ruler = segments[-1]
+    scale = 30.0 / width
+    trimsamsa_longitude = dest_sign * 30.0
+    payload = {"segment": len(segments), "ruler": ruler}
+    return dest_sign, trimsamsa_longitude % 360.0, payload
+
+
+def _navamsa_payload(longitude: float) -> tuple[int, float, dict[str, int | str]]:
+    sign_idx, lon, pada = navamsa_sign(longitude)
+    return sign_idx, lon, {"pada": pada}
+
+
+def _dasamsa_payload(longitude: float) -> tuple[int, float, dict[str, int | str]]:
+    sign_idx, lon, part = dasamsa_sign(longitude)
+    return sign_idx, lon, {"part": part}
+
+
+VARGA_COMPUTERS: Mapping[str, Callable[[float], tuple[int, float, dict[str, int | str]]]] = {
+    "D1": rasi_sign,
+    "D7": saptamsa_sign,
+    "D9": _navamsa_payload,
+    "D10": _dasamsa_payload,
+    "D30": trimsamsa_sign,
+}
+
+
 def compute_varga(
     natal_positions: Mapping[str, object],
+
     kind: Literal["D3", "D7", "D9", "D10", "D12", "D16", "D24", "D45", "D60"],
+
     *,
     ascendant: float | None = None,
 ) -> dict[str, dict[str, float | int | str]]:
@@ -220,14 +296,17 @@ def compute_varga(
     in :data:`VARGA_DEFINITIONS` to determine which sign a subdivision maps to.
     """
 
+
     definition = VARGA_DEFINITIONS.get(kind.upper())
     if definition is None:  # pragma: no cover - guarded by caller
         raise ValueError("Unsupported varga kind")
+
     results: dict[str, dict[str, float | int | str]] = {}
     for name, position in natal_positions.items():
         longitude = getattr(position, "longitude", None)
         if longitude is None:
             continue
+
         sign_idx, lon, part_index, start_sign = _varga_components(longitude, definition)
         results[name] = {
             "longitude": lon,
@@ -252,5 +331,6 @@ def compute_varga(
             "segment_arc_degrees": definition.span,
             "rule": definition.rule_description,
         }
+
 
     return results
