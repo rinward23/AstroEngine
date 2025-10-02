@@ -97,6 +97,33 @@ def _sequential_dest(start_fn: Callable[[int], int]) -> Callable[[int, int], int
     return _inner
 
 
+def rasi_sign(longitude: float) -> tuple[int, float, dict[str, int | str]]:
+    """Return the rāśi (sign) index for ``longitude`` with metadata."""
+
+    sign_idx = sign_index(longitude)
+    lon = _normalize(longitude)
+    return sign_idx, lon, {
+        "sign": ZODIAC_SIGNS[sign_idx],
+        "sign_index": sign_idx,
+        "segment_arc_degrees": 30.0,
+        "rule": "Base rāśi positions use the natal sign without subdivision.",
+    }
+
+
+def saptamsa_sign(longitude: float) -> tuple[int, float, dict[str, int | str]]:
+    """Return the Saptāṁśa (D7) placement metadata for ``longitude``."""
+
+    definition = VARGA_DEFINITIONS["D7"]
+    dest_sign, lon, part_index, start_sign = _varga_components(longitude, definition)
+    return dest_sign, lon, {
+        "saptamsa": part_index,
+        "start_sign": ZODIAC_SIGNS[start_sign],
+        "start_sign_index": start_sign,
+        "segment_arc_degrees": definition.span,
+        "rule": definition.rule_description,
+    }
+
+
 @dataclass(frozen=True)
 class VargaDefinition:
     code: str

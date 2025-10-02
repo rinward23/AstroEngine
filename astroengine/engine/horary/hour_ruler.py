@@ -3,6 +3,25 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
+
+try:  # pragma: no cover - Swiss Ephemeris is optional in some environments
+    import swisseph as swe
+except ModuleNotFoundError:  # pragma: no cover - tests exercise fallback path
+    swe = None  # type: ignore[assignment]
+
+if swe is not None:  # pragma: no branch - sentinel guards runtime import
+    from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter as _SwissAdapter
+else:  # pragma: no cover - fallback exercised when swe missing
+    _SwissAdapter = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:  # pragma: no cover - typing aid only
+    from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
+
+if _SwissAdapter is not None:
+    SwissEphemerisAdapter = _SwissAdapter
+else:  # pragma: no cover - ensures attribute exists for typing tools
+    SwissEphemerisAdapter = None  # type: ignore[assignment]
 
 import swisseph as swe
 
@@ -15,18 +34,43 @@ __all__ = ["planetary_hour", "sunrise_sunset", "moonrise_moonset"]
 
 
 
-_RISE_FLAGS = swe.BIT_DISC_CENTER | swe.BIT_NO_REFRACTION | swe.FLG_SWIEPH
+_HAS_SWE = swe is not None
+_RISE_FLAGS = (
+    (swe.BIT_DISC_CENTER | swe.BIT_NO_REFRACTION | swe.FLG_SWIEPH)
+    if _HAS_SWE
+    else 0
+)
+_MOON_FLAGS = _RISE_FLAGS
+
+
+
+def _normalize_moment(moment: datetime) -> datetime:
+    if moment.tzinfo is None:
+        return moment.replace(tzinfo=UTC)
+    return moment.astimezone(UTC)
+
+
+def _ensure_adapter(
+    adapter: "SwissEphemerisAdapter | None",
+) -> "SwissEphemerisAdapter":
+    if _SwissAdapter is None:
+        raise RuntimeError(
+            "Swiss Ephemeris support is required for rise/transit calculations"
+        )
+    return adapter or _SwissAdapter.get_default_adapter()
 
 
 
 def _next_event(
-    adapter: SwissEphemerisAdapter,
+    adapter: "SwissEphemerisAdapter",
     jd_ut: float,
     event: str,
     location: GeoLocation,
     *,
+
     body_code: int,
     body_name: str,
+
 ) -> float:
     result = adapter.rise_transit(
         jd_ut,
@@ -35,13 +79,16 @@ def _next_event(
         longitude=location.longitude,
         elevation=location.altitude,
         event=event,
+
         flags=_RISE_FLAGS,
+
         body_name=body_name,
 
     )
     if result.status != 0 or result.julian_day is None:
+        label = body_name or "body"
         raise RuntimeError(
-            "Swiss Ephemeris could not compute sunrise/sunset for location"
+            f"Swiss Ephemeris could not compute {label.lower()} {event} for location"
         )
     return result.julian_day
 
@@ -51,9 +98,10 @@ def sunrise_sunset(
     moment: datetime,
     location: GeoLocation,
     *,
-    adapter: SwissEphemerisAdapter | None = None,
+    adapter: "SwissEphemerisAdapter | None" = None,
 ) -> tuple[datetime, datetime, datetime]:
     """Return sunrise, sunset, and next sunrise surrounding ``moment``."""
+
 
     adapter = adapter or SwissEphemerisAdapter.get_default_adapter()
     jd = julian_day(moment)
@@ -79,7 +127,54 @@ def sunrise_sunset(
     sunrise_dt = adapter.from_julian_day(prev_sunrise_jd)
     sunset_dt = adapter.from_julian_day(sunset_jd)
     next_sunrise_dt = adapter.from_julian_day(next_sunrise_jd)
+
     return sunrise_dt, sunset_dt, next_sunrise_dt
+
+
+def moonrise_moonset(
+    moment: datetime,
+    location: GeoLocation,
+    *,
+    adapter: "SwissEphemerisAdapter | None" = None,
+) -> tuple[datetime, datetime, datetime]:
+    """Return moonrise, moonset, and next moonrise surrounding ``moment``."""
+
+    normalized = _normalize_moment(moment)
+
+    resolved_adapter = _ensure_adapter(adapter)
+    jd = _SwissAdapter.julian_day(normalized)
+    prev_rise = _next_event(
+        resolved_adapter,
+        jd - 1.0,
+        "rise",
+        location,
+        body_code=swe.MOON,
+        body_name="Moon",
+        flags=_MOON_FLAGS,
+    )
+    set_jd = _next_event(
+        resolved_adapter,
+        prev_rise + 0.01,
+        "set",
+        location,
+        body_code=swe.MOON,
+        body_name="Moon",
+        flags=_MOON_FLAGS,
+    )
+    next_rise = _next_event(
+        resolved_adapter,
+        prev_rise + 0.51,
+        "rise",
+        location,
+        body_code=swe.MOON,
+        body_name="Moon",
+        flags=_MOON_FLAGS,
+    )
+    return (
+        resolved_adapter.from_julian_day(prev_rise),
+        resolved_adapter.from_julian_day(set_jd),
+        resolved_adapter.from_julian_day(next_rise),
+    )
 
 
 
@@ -106,7 +201,7 @@ def planetary_hour(moment: datetime, location: GeoLocation) -> PlanetaryHourResu
     else:
         moment = moment.astimezone(UTC)
 
-    adapter = SwissEphemerisAdapter.get_default_adapter()
+    adapter = _SwissAdapter.get_default_adapter() if _SwissAdapter else None
     sunrise_dt, sunset_dt, next_sunrise_dt = sunrise_sunset(
         moment, location, adapter=adapter
     )
