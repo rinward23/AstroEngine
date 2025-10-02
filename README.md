@@ -31,6 +31,18 @@ python -m astroengine.maint --full --strict --auto-install all --yes
 ```
 
 See `docs/DIAGNOSTICS.md`, `docs/SWISS_EPHEMERIS.md`, and `docs/QUALITY_GATE.md` for details.
+
+### Run API + Streamlit in 2 commands
+
+```bash
+export DATABASE_URL="sqlite+pysqlite:///${PWD}/dev.db" SE_EPHE_PATH="$HOME/.sweph/ephe"
+(uvicorn app.relationship_api:create_app --factory --host 0.0.0.0 --port 8000 & streamlit run ui/streamlit/pages/05_Synastry_Composite.py)
+```
+
+The first command pins the SQLite dev database (`dev.db` in the repo root) and
+points Swiss Ephemeris to your local data so neither service falls back to the
+reduced-precision providers. The subshell then launches the FastAPI service and
+Streamlit playground together so the UI can call the freshly started API.
 # >>> AUTO-GEN END: README Quick Start v1.1
 
 ### First transit sanity check
