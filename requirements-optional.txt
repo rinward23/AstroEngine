@@ -1,17 +1,17 @@
 # >>> AUTO-GEN BEGIN: optional-reqs v1.0
 # Mirrors pyproject extras for non-pep517 workflows
 # ephem
-pyswisseph>=2.10
+pyswisseph>=2.10; python_version < "3.12"
 pymeeus>=0.5.12
 # skyfield
-skyfield>=1.48
+skyfield>=1.49
 jplephem>=2.21
 # catalogs
 astroquery>=0.4
 
 # exporters
 
-pyarrow>=15
+pyarrow>=16
 ics>=0.7
 # document generators
 pypdf>=4.2
@@ -32,14 +32,14 @@ pluggy>=1.5
 streamlit>=1.35
 plotly>=5.20
 # api
-fastapi>=0.117
+fastapi>=0.117,<0.118
 uvicorn>=0.37
-pydantic>=2.11
+pydantic>=2.11,<3
 icalendar>=6
 httpx>=0.28,<0.29
 # providers
-timezonefinder>=6
-tzdata
+timezonefinder>=8.1
+tzdata>=2024.1
 # shared helper
 requests>=2.31
 

@@ -8,6 +8,7 @@ setup:
 python -m pip install --upgrade pip
 @if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 @if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e . || true; fi
+python -m astroengine.diagnostics --strict || true
 
 install-optional:
 python scripts/install_optional_dependencies.py
@@ -30,8 +31,8 @@ lint-code:
 	isort --check-only --profile=black .
 
 test:
-        python scripts/install_test_dependencies.py --quiet
-        pytest -q
+	python scripts/install_test_dependencies.py --quiet
+	pytest -q
 
 doctor:
 	python -m astroengine.diagnostics || true
