@@ -20,10 +20,13 @@ classifiers = [
 
 # Core runtime deps kept lean. Everything else under extras.
 dependencies = [
-  "numpy>=1.24",
-  "pandas>=2.0",
+  "numpy>=1.26",
+  "pandas>=2.2",
   "python-dateutil>=2.8",
   "pydantic>=2.11,<3",
+
+  "PyYAML>=6.0",
+
   "jsonschema>=4.21",
   "PyYAML>=6.0",
   "requests>=2.31",
@@ -32,8 +35,8 @@ dependencies = [
   "alembic>=1.13",
   "ics>=0.7",
   "duckdb>=0.10",
-  "timezonefinder>=6.2",
-  "tzdata>=2023.3",
+  "timezonefinder>=8.1",
+  "tzdata>=2024.1",
   "pluggy>=1.5",
   "skyfield>=1.49",
   "jplephem>=2.21",
@@ -60,7 +63,7 @@ catalogs = [
   "astroquery>=0.4",
 ]
 exporters = [
-  "pyarrow>=15",
+  "pyarrow>=16",
   "ics>=0.7",
 ]
 narrative = [
@@ -97,14 +100,16 @@ ui = [
 api = [
   "fastapi>=0.117,<0.118",
   "uvicorn>=0.37,<0.38",
-  "pydantic>=2.9,<3",
+  "pydantic>=2.11,<3",
   "icalendar>=6",
-  "httpx>=0.27",
+  "httpx>=0.28,<0.29",
 ]
 providers = [
-  "pyswisseph>=2.10; python_version < \"3.12\"",
-  "timezonefinder>=6",
-  "tzdata",
+
+  "pyswisseph>=2.10",
+  "timezonefinder>=8.1",
+  "tzdata>=2024.1",
+
 ]
 dev = [
   "pytest",
@@ -120,7 +125,7 @@ all = [
   "skyfield>=1.49",
   "jplephem>=2.21",
   "astroquery>=0.4",
-  "pyarrow>=15",
+  "pyarrow>=16",
   "ics>=0.7",
   "jinja2>=3.1",
   "numba>=0.58",
@@ -131,11 +136,11 @@ all = [
   "plotly>=5.20",
   "fastapi>=0.117,<0.118",
   "uvicorn>=0.37,<0.38",
-  "pydantic>=2.9,<3",
+  "pydantic>=2.11,<3",
   "icalendar>=6",
-  "httpx>=0.27",
-  "timezonefinder>=6",
-  "tzdata",
+  "httpx>=0.28,<0.29",
+  "timezonefinder>=8.1",
+  "tzdata>=2024.1",
   "pypdf>=4.2",
   "weasyprint>=62",
   "python-docx>=1.1",
