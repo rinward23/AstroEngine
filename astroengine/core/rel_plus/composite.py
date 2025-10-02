@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Dict, Iterable, Mapping, MutableMapping, Optional, Protocol
 
+from astroengine.ephemeris.swisseph_adapter import swe_calc
+
 
 TAU = 360.0
 
@@ -378,9 +380,14 @@ class SwissEphemerisAdapter:
         result: ChartPositions = {}
         for body in bodies:
             code = self._resolve_body(body, node_policy)
-            xx, ret = self._swe.calc_ut(jd, code, self._flags)
-            if ret < 0:
-                raise EphemerisError(f"Swiss Ephemeris error {ret} for body '{body}'")
+            try:
+                xx, _, serr = swe_calc(
+                    jd_ut=jd, planet_index=code, flag=self._flags
+                )
+            except RuntimeError as exc:
+                raise EphemerisError(str(exc)) from exc
+            if serr:
+                raise EphemerisError(serr)
             lon_deg = wrap_degrees(xx[0])
             lat_deg = xx[1]
             dist = xx[2]

@@ -27,6 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover - runtime import avoided for typing only
     from ..chart.config import ChartConfig
 
 __all__ = [
+    "swe_calc",
     "BodyPosition",
     "EquatorialPosition",
     "HousePositions",
@@ -524,12 +525,18 @@ class SwissEphemerisAdapter:
 
         flags = self._calc_flags | swe.FLG_EQUATORIAL
         try:
-            values, _ = swe.calc_ut(jd_ut, body_code, flags)
-        except Exception:
+            xx, _, serr = swe_calc(
+                jd_ut=jd_ut, planet_index=body_code, flag=flags
+            )
+        except RuntimeError:
             flags = self._fallback_flags | swe.FLG_EQUATORIAL
-            values, _ = swe.calc_ut(jd_ut, body_code, flags)
+            xx, _, serr = swe_calc(
+                jd_ut=jd_ut, planet_index=body_code, flag=flags
+            )
+        if serr:
+            raise RuntimeError(serr)
 
-        ra, decl, _, speed_ra, speed_decl, _ = values
+        ra, decl, _, speed_ra, speed_decl, _ = xx
         return EquatorialPosition(
             right_ascension=ra % 360.0,
             declination=decl,
@@ -548,12 +555,18 @@ class SwissEphemerisAdapter:
         self._apply_sidereal_mode()
         flags = self._calc_flags
         try:
-            values, _ = swe.calc_ut(jd_ut, effective_code, flags)
-        except Exception:
+            xx, _, serr = swe_calc(
+                jd_ut=jd_ut, planet_index=effective_code, flag=flags
+            )
+        except RuntimeError:
             flags = self._fallback_flags
-            values, _ = swe.calc_ut(jd_ut, effective_code, flags)
+            xx, _, serr = swe_calc(
+                jd_ut=jd_ut, planet_index=effective_code, flag=flags
+            )
+        if serr:
+            raise RuntimeError(serr)
 
-        lon, lat, dist, speed_lon, speed_lat, speed_dist = values
+        lon, lat, dist, speed_lon, speed_lat, speed_dist = xx
 
         if derived:
             lon = (lon + 180.0) % 360.0
@@ -564,10 +577,17 @@ class SwissEphemerisAdapter:
 
 
         try:
-            eq_values, _ = swe.calc_ut(jd_ut, effective_code, flags | swe.FLG_EQUATORIAL)
-            _decl, _speed_decl = eq_values[1], eq_values[4]
-        except Exception:
+            eq_xx, _, serr = swe_calc(
+                jd_ut=jd_ut,
+                planet_index=effective_code,
+                flag=flags | swe.FLG_EQUATORIAL,
+            )
+            _decl, _speed_decl = eq_xx[1], eq_xx[4]
+        except RuntimeError:
             _decl, _speed_decl = float("nan"), float("nan")
+        else:
+            if serr:
+                raise RuntimeError(serr)
 
 
         return BodyPosition(
@@ -760,4 +780,32 @@ class SwissEphemerisAdapter:
             "Unsupported house system "
             f"'{system or self.chart_config.house_system}'. Valid options: {options}"
         )
+
+def swe_calc(
+    *, jd_ut: float, planet_index: int, flag: int, use_tt: bool = False
+) -> tuple[tuple[float, ...], int, str]:
+    """Invoke Swiss Ephemeris core calculation with normalized arguments."""
+
+    if swe is None:  # pragma: no cover - import guard retained for safety
+        raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
+
+    try:
+        calc_fn = swe.calc if use_tt else swe.calc_ut
+        xx, ret_flag = calc_fn(jd_ut, planet_index, flag)
+    except Exception as exc:  # pragma: no cover - pass through detailed context
+        serr = str(exc)
+        raise RuntimeError(
+            f"Swiss ephemeris failed for body index {planet_index} at JD {jd_ut}: {serr}"
+        ) from exc
+
+    # ``swe.calc_ut`` mirrors the C ``swe_calc`` contract returning the calculation flag
+    # and populating an error string for negative return codes.  ``pyswisseph`` surfaces
+    # the flag directly, but the error text is only visible via the raised exception.
+    # Maintain the ``serr`` placeholder for downstream callers to keep the canonical
+    # tuple structure available during future PySwisseph updates.
+    if ret_flag < 0:
+        serr = f"Swiss ephemeris returned error code {ret_flag}"
+        raise RuntimeError(serr)
+    serr = ""
+    return tuple(xx), ret_flag, serr
 
