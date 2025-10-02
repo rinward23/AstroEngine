@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .esoteric import register_esoteric_module
 from .event_detectors import register_event_detectors_module
+from .integrations import register_integrations_module
 from .mundane import register_mundane_module
 from .narrative import register_narrative_module
 from .predictive import register_predictive_module
@@ -43,6 +44,7 @@ def bootstrap_default_registry() -> AstroRegistry:
     register_ritual_module(registry)
     register_predictive_module(registry)
     register_ux_module(registry)
+    register_integrations_module(registry)
     return registry
 
 
