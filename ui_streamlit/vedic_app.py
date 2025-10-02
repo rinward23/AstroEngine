@@ -13,6 +13,7 @@ import streamlit as st
 from astroengine.chart.config import VALID_NODE_VARIANTS
 from astroengine.detectors.ingresses import ZODIAC_SIGNS, sign_index
 from astroengine.engine.vedic import (
+    VARGA_DEFINITIONS,
     VimshottariOptions,
     build_context,
     build_vimshottari,
@@ -163,16 +164,21 @@ context = build_context(
 chart = context.chart
 
 positions = [_nakshatra_payload(name, pos.longitude) for name, pos in chart.positions.items()]
-if chart.houses:
-    positions.append(_nakshatra_payload("Ascendant", chart.houses.ascendant))
+asc_value = chart.houses.ascendant if chart.houses else None
+if asc_value is not None:
+    positions.append(_nakshatra_payload("Ascendant", asc_value))
 
 vim_periods = build_vimshottari(context, levels=level_choice, options=VimshottariOptions())
 yogini_periods = build_yogini(context, levels=2, options=YoginiOptions())
-rasi = compute_varga(chart.positions, "D1", ascendant=chart.houses.ascendant if chart.houses else None)
-saptamsa = compute_varga(chart.positions, "D7", ascendant=chart.houses.ascendant if chart.houses else None)
-navamsa = compute_varga(chart.positions, "D9", ascendant=chart.houses.ascendant if chart.houses else None)
-dasamsa = compute_varga(chart.positions, "D10", ascendant=chart.houses.ascendant if chart.houses else None)
-trimsamsa = compute_varga(chart.positions, "D30", ascendant=chart.houses.ascendant if chart.houses else None)
+
+varga_codes = ["D3", "D7", "D9", "D10", "D12", "D16", "D24", "D45", "D60"]
+varga_results = {
+    code: compute_varga(chart.positions, code, ascendant=asc_value)
+    for code in varga_codes
+}
+navamsa = varga_results["D9"]
+dasamsa = varga_results["D10"]
+
 
 chart_tab, nak_tab, dasha_tab, varga_tab, export_tab = st.tabs(
     ["Chart", "Nakshatras", "Dashas", "Vargas", "Export"]
@@ -210,23 +216,25 @@ with dasha_tab:
     st.dataframe(_dasha_dataframe(yogini_periods), use_container_width=True)
 
 with varga_tab:
-    st.subheader("Rāśi (D1)")
-    st.dataframe(pd.DataFrame.from_dict(rasi, orient="index"), use_container_width=True)
-    st.subheader("Saptāṁśa (D7)")
-    st.dataframe(pd.DataFrame.from_dict(saptamsa, orient="index"), use_container_width=True)
-    st.subheader("Navāṁśa (D9)")
-    st.dataframe(pd.DataFrame.from_dict(navamsa, orient="index"), use_container_width=True)
-    st.plotly_chart(
-        _build_wheel([
-            {"Body": name, "Longitude": payload["longitude"]}
-            for name, payload in navamsa.items()
-        ], "Navāṁśa Wheel"),
-        use_container_width=True,
-    )
-    st.subheader("Daśāṁśa (D10)")
-    st.dataframe(pd.DataFrame.from_dict(dasamsa, orient="index"), use_container_width=True)
-    st.subheader("Triṁśāṁśa (D30)")
-    st.dataframe(pd.DataFrame.from_dict(trimsamsa, orient="index"), use_container_width=True)
+
+    for code in varga_codes:
+        definition = VARGA_DEFINITIONS[code]
+        st.subheader(f"{definition.name} ({code})")
+        st.caption(definition.rule_description)
+        data = varga_results[code]
+        st.dataframe(pd.DataFrame.from_dict(data, orient="index"), use_container_width=True)
+        if code in {"D9", "D10"}:
+            st.plotly_chart(
+                _build_wheel(
+                    [
+                        {"Body": name, "Longitude": payload["longitude"]}
+                        for name, payload in data.items()
+                    ],
+                    f"{definition.name} Wheel",
+                ),
+                use_container_width=True,
+            )
+
 
 with export_tab:
     st.subheader("Export JSON")
@@ -244,7 +252,9 @@ with export_tab:
         "saptamsa": saptamsa,
         "navamsa": navamsa,
         "dasamsa": dasamsa,
-        "trimsamsa": trimsamsa,
+
+        "vargas": varga_results,
+
     }
     st.download_button(
         "Download JSON",

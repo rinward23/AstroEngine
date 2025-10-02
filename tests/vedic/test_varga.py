@@ -3,12 +3,12 @@ from types import SimpleNamespace
 import pytest
 
 from astroengine.engine.vedic import (
+
+    VARGA_DEFINITIONS,
     compute_varga,
     dasamsa_sign,
     navamsa_sign,
-    rasi_sign,
-    saptamsa_sign,
-    trimsamsa_sign,
+
 )
 
 
@@ -35,42 +35,34 @@ def test_compute_varga_includes_ascendant():
     assert "Ascendant" in result
     assert "pada" in result["Ascendant"]
 
-
-def test_trimsamsa_segments_for_odd_sign():
-    sign_idx, longitude, payload = trimsamsa_sign(2.0)  # Aries 2°
-    assert sign_idx == 0  # Aries
-    assert payload == {"segment": 1, "ruler": "Mars"}
-    assert longitude == pytest.approx(12.0, abs=1e-6)
+    assert result["Ascendant"]["start_sign"] == "Libra"
+    assert result["Ascendant"]["segment_arc_degrees"] == pytest.approx(30.0 / 9.0)
 
 
-def test_trimsamsa_segments_for_even_sign():
-    sign_idx, longitude, payload = trimsamsa_sign(35.0)  # Taurus 5°
-    assert sign_idx == 1  # Taurus
-    assert payload == {"segment": 1, "ruler": "Venus"}
-    assert longitude == pytest.approx(60.0, abs=1e-6)
+def test_drekkana_triplicity_rule():
+    positions = {"Sun": SimpleNamespace(longitude=15.0)}  # Aries 15°
+    result = compute_varga(positions, "D3")
+    sun = result["Sun"]
+    assert sun["sign"] == "Leo"
+    assert sun["drekkana"] == 2
+    assert sun["start_sign"] == "Aries"
+    assert sun["rule"] == VARGA_DEFINITIONS["D3"].rule_description
 
 
-def test_compute_varga_supports_extended_set():
-    positions = {"Sun": SimpleNamespace(longitude=1.0)}
-    d1 = compute_varga(positions, "D1")
-    d7 = compute_varga(positions, "D7")
-    d30 = compute_varga(positions, "D30")
-    assert d1["Sun"]["sign"] == "Aries"
-    assert "segment" in d7["Sun"]
-    assert d7["Sun"]["segment"] == 1
-    assert d30["Sun"]["ruler"] == "Mars"
+def test_saptamsa_even_sign_counts_from_seventh():
+    positions = {"Moon": SimpleNamespace(longitude=35.0)}  # Taurus 5°
+    result = compute_varga(positions, "D7")
+    moon = result["Moon"]
+    assert moon["sign"] == "Sagittarius"
+    assert moon["start_sign"] == "Scorpio"
+    assert moon["saptamsa"] == 2
 
 
-def test_rasi_sign_matches_natal_longitude():
-    sign_idx, longitude, extra = rasi_sign(213.5)
-    assert sign_idx == 7  # Scorpio
-    assert longitude == pytest.approx(213.5 % 360.0)
-    assert extra == {}
-
-
-def test_saptamsa_even_sign_start():
-    sign_idx, longitude, payload = saptamsa_sign(95.0)  # Cancer (even sign)
-    assert payload["segment"] == 2
-    assert sign_idx == 10  # Aquarius
-    assert longitude == pytest.approx(305.0, abs=1e-6)
+def test_shashtiamsa_precision_even_sign():
+    positions = {"Mars": SimpleNamespace(longitude=31.0)}  # Taurus 1°
+    result = compute_varga(positions, "D60")
+    mars = result["Mars"]
+    assert mars["sign"] == "Sagittarius"
+    assert mars["shashtiamsa"] == 3
+    assert mars["segment_arc_degrees"] == pytest.approx(0.5)
 
