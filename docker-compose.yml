@@ -1,36 +1,11 @@
-version: "3.9"
-
+version: "3.10"
 services:
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        EXTRA_GROUPS: "api,providers"
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
-      DATABASE_URL: "sqlite+pysqlite:////app/data/dev.db"
-      SE_EPHE_PATH: "/app/data/ephe"
-    volumes:
-      - ./data:/app/data
+      PYTHONUNBUFFERED: "1"
     ports:
       - "8000:8000"
-
-  ui:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        EXTRA_GROUPS: "ui,providers"
-    command: >-
-      streamlit run ui/streamlit/pages/05_Synastry_Composite.py
-      --server.port=8501
-      --server.address=0.0.0.0
-    environment:
-      API_BASE_URL: "http://api:8000"
-      SE_EPHE_PATH: "/app/data/ephe"
     volumes:
-      - ./data:/app/data
-    ports:
-      - "8501:8501"
-    depends_on:
-      - api
+      - .:/app

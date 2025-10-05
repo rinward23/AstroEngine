@@ -4,6 +4,19 @@ The project now relies on plain Python virtual environments and no longer
 requires Conda/Mamba tooling.  Use the steps below to create an isolated
 runtime and verify the interpreter health.
 
+## 0) Confirm platform prerequisites
+
+Before creating the virtual environment, ensure the host system provides the
+tools AstroEngine expects during development:
+
+- **Python 3.11.x** — verify with `python3.11 --version` to confirm the
+  interpreter matches the supported series.
+- **Git 2.30+** — required for cloning the repository and managing updates.
+- **Build toolchain** — install `build-essential` on Linux or the Xcode
+  Command Line Tools on macOS so native extensions compile without issues.
+
+With the prerequisites in place, proceed to the virtual environment setup.
+
 ## 1) Create and activate a virtual environment
 
 ```bash
