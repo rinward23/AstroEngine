@@ -166,6 +166,10 @@ channel, and subchannel remains intact and data-backed:
    streamlit run apps/streamlit_transit_scanner.py
    ```
 
+   > **Heads-up:** the repository ships a ``streamlit/`` testing shim for
+   > unit suites. Always start UI scripts with ``streamlit run`` rather than
+   > ``python`` so the real Streamlit package loads before the shim.
+
 * **Scan Transits**: choose provider/time window/bodies/targets; optionally pin an entrypoint; previews canonical events and exports to SQLite/Parquet.
 * **Swiss Smoketest**: runs `scripts/swe_smoketest.py` to validate Swiss setup.
 * The sidebar lists detected scan entrypoints and environment overrides; install `pandas` for the tabular preview.
