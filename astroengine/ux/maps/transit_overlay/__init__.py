@@ -1,32 +1,21 @@
-"""Locational visualization helpers (astrocartography, local space, maps)."""
-
+"""Transit ↔ natal heliocentric overlay utilities."""
 from __future__ import annotations
 
-from .astrocartography import (
-    LocalSpaceVector,
-    MapLine,
-    astrocartography_lines,
-    local_space_vectors,
-)
-from .transit_overlay import (
-    AspectHit,
+from .aspects import AspectHit, TRANSIT_ORB_LIMITS, compute_transit_aspects
+from .engine import (
     OverlayBodyState,
     OverlayFrame,
     OverlayOptions,
     OverlayRequest,
     TransitOverlayResult,
     compute_overlay_frames,
-    compute_transit_aspects,
-    render_overlay_svg,
-    scale_au,
 )
+from .layout import BREAKS, scale_au
+from .svg import render_overlay_svg
 
 __all__ = [
-    "LocalSpaceVector",
-    "MapLine",
-    "astrocartography_lines",
-    "local_space_vectors",
     "AspectHit",
+    "TRANSIT_ORB_LIMITS",
     "OverlayBodyState",
     "OverlayFrame",
     "OverlayOptions",
@@ -35,5 +24,6 @@ __all__ = [
     "compute_overlay_frames",
     "compute_transit_aspects",
     "render_overlay_svg",
+    "BREAKS",
     "scale_au",
 ]

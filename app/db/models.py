@@ -133,7 +133,23 @@ class OrbPolicy(ModuleScopeMixin, TimestampMixin, Base):
     __tablename__ = "orb_policies"
     __table_args__ = _table_args(
         UniqueConstraint("name", name="uq_orb_policy_name"),
+        UniqueConstraint(
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+            "name",
+            name="uq_orb_policies_scope_name",
+        ),
         Index("ix_orb_policies_module_channel", "module", "channel"),
+        Index(
+            "ix_orb_policies_scope_full",
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+        ),
+        Index("ix_orb_policies_created_at", "created_at"),
     )
 
 
@@ -193,7 +209,16 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
     """Store severity weights used during scoring routines."""
 
     __tablename__ = "severity_profiles"
-    __table_args__ = _table_args()
+    __table_args__ = _table_args(
+        Index(
+            "ix_severity_profiles_scope_full",
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+        ),
+        Index("ix_severity_profiles_created_at", "created_at"),
+    )
 
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -203,7 +228,25 @@ class TraditionalRun(ModuleScopeMixin, TimestampMixin, Base):
     """Persisted payloads for traditional engine runs."""
 
     __tablename__ = "traditional_runs"
-    __table_args__ = _table_args(Index("ix_traditional_runs_kind", "kind"))
+    __table_args__ = _table_args(
+        Index("ix_traditional_runs_kind", "kind"),
+        UniqueConstraint(
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+            "run_id",
+            name="uq_traditional_runs_scope_run_id",
+        ),
+        Index(
+            "ix_traditional_runs_scope_full",
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+        ),
+        Index("ix_traditional_runs_created_at", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     run_id: Mapped[str] = mapped_column(String(40), nullable=False, unique=True, default=_uuid_hex)
@@ -246,6 +289,26 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
 
 
     __tablename__ = "charts"
+    __table_args__ = _table_args(
+        UniqueConstraint("chart_key", name="uq_charts_chart_key"),
+        UniqueConstraint(
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+            "chart_key",
+            name="uq_charts_scope_key",
+        ),
+        Index(
+            "ix_charts_scope_full",
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+        ),
+        Index("ix_charts_dt_utc", "dt_utc"),
+        Index("ix_charts_created_at", "created_at"),
+    )
 
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -257,7 +320,9 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     )
     profile_key: Mapped[str] = mapped_column(String(64), nullable=False)
     kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    dt_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    _dt_utc: Mapped[datetime | None] = mapped_column(
+        "dt_utc", DateTime(timezone=True), nullable=True
+    )
 
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     lon: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -279,7 +344,7 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
         profile_key = kwargs.pop("profile_key", None)
 
         if dt_utc is not None:
-            kwargs.setdefault("reference_time", _ensure_utc(dt_utc))
+            kwargs.setdefault("_dt_utc", _ensure_utc(dt_utc))
 
         if kind is not None:
             if isinstance(kind, ChartKind):
@@ -297,11 +362,11 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
 
     @property
     def dt_utc(self) -> datetime | None:
-        return self.reference_time
+        return self._dt_utc
 
     @dt_utc.setter
     def dt_utc(self, value: datetime | None) -> None:
-        self.reference_time = _ensure_utc(value) if value is not None else None
+        self._dt_utc = _ensure_utc(value) if value is not None else None
 
 
 class RulesetVersion(ModuleScopeMixin, TimestampMixin, Base):
@@ -311,7 +376,24 @@ class RulesetVersion(ModuleScopeMixin, TimestampMixin, Base):
 
     __table_args__ = _table_args(
         UniqueConstraint("ruleset_key", "version", name="uq_ruleset_version"),
+        UniqueConstraint(
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+            "ruleset_key",
+            "version",
+            name="uq_ruleset_versions_scope_key_version",
+        ),
         Index("ix_ruleset_versions_module_channel", "module", "channel"),
+        Index(
+            "ix_ruleset_versions_scope_full",
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+        ),
+        Index("ix_ruleset_versions_created_at", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -371,9 +453,26 @@ class Event(ModuleScopeMixin, TimestampMixin, Base):
 
     __table_args__ = _table_args(
         UniqueConstraint("event_key", name="uq_events_event_key"),
+        UniqueConstraint(
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+            "event_key",
+            name="uq_events_scope_key",
+        ),
         Index("ix_events_start_ts", "event_time"),
         Index("ix_events_chart", "chart_id"),
         Index("ix_events_module_channel", "module", "channel"),
+        Index(
+            "ix_events_scope_full",
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+        ),
+        Index("ix_events_event_time_scope", "event_time", "module", "channel"),
+        Index("ix_events_created_at", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -454,6 +553,25 @@ class AsteroidMeta(ModuleScopeMixin, TimestampMixin, Base):
     """Auxiliary metadata for asteroid lookups."""
 
     __tablename__ = "asteroid_meta"
+    __table_args__ = _table_args(
+        UniqueConstraint("designation", name="uq_asteroid_designation"),
+        UniqueConstraint(
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+            "designation",
+            name="uq_asteroid_meta_scope_designation",
+        ),
+        Index(
+            "ix_asteroid_meta_scope_full",
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+        ),
+        Index("ix_asteroid_meta_created_at", "created_at"),
+    )
 
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -495,6 +613,25 @@ class ExportJob(ModuleScopeMixin, TimestampMixin, Base):
     """Queued exports for downstream delivery."""
 
     __tablename__ = "export_jobs"
+    __table_args__ = _table_args(
+        UniqueConstraint(
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+            "job_key",
+            name="uq_export_jobs_scope_key",
+        ),
+        Index(
+            "ix_export_jobs_scope_full",
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+        ),
+        Index("ix_export_jobs_requested_at", "requested_at"),
+        Index("ix_export_jobs_completed_at", "completed_at"),
+    )
 
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

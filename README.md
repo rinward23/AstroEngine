@@ -31,6 +31,18 @@ python -m astroengine.maint --full --strict --auto-install all --yes
 ```
 
 See `docs/DIAGNOSTICS.md`, `docs/SWISS_EPHEMERIS.md`, and `docs/QUALITY_GATE.md` for details.
+
+### Run API + Streamlit in 2 commands
+
+```bash
+export DATABASE_URL="sqlite+pysqlite:///${PWD}/dev.db" SE_EPHE_PATH="$HOME/.sweph/ephe"
+(uvicorn app.relationship_api:create_app --factory --host 0.0.0.0 --port 8000 & streamlit run ui/streamlit/pages/05_Synastry_Composite.py)
+```
+
+The first command pins the SQLite dev database (`dev.db` in the repo root) and
+points Swiss Ephemeris to your local data so neither service falls back to the
+reduced-precision providers. The subshell then launches the FastAPI service and
+Streamlit playground together so the UI can call the freshly started API.
 # >>> AUTO-GEN END: README Quick Start v1.1
 
 ### First transit sanity check
@@ -290,6 +302,19 @@ developer activities.  Run `make` (or `make help`) to view the curated targets.
 These helpers ensure the module → submodule → channel → subchannel hierarchy
 remains intact, particularly when integrating new Solar Fire derived datasets or
 augmenting the runtime with additional registries.
+
+### Updating dependency manifests
+
+`requirements.txt`, `requirements-dev.txt`, and `requirements-optional.txt`
+are generated from `pyproject.toml` so the dependency graph only has one
+source of truth. Regenerate them with:
+
+```bash
+python scripts/generate_requirements.py
+```
+
+Pass `--check` to verify whether the tracked files already match the
+`pyproject` declarations.
 
 # >>> AUTO-GEN BEGIN: AE README Providers Addendum v1.2
 ### Optional providers & catalogs

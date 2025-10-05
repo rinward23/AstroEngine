@@ -9,15 +9,20 @@ import sys
 
 def _resolve_run():
     try:
-        from streamlit.relationship_lab import run as streamlit_run
+        from ui.streamlit.relationship_lab import run as streamlit_run
+
         return streamlit_run
     except ModuleNotFoundError:
         repo_root = pathlib.Path(__file__).resolve().parents[1]
-        package_root = repo_root / "streamlit"
+        package_root = repo_root / "ui"
         for path in (str(repo_root), str(package_root)):
             if path not in sys.path:
                 sys.path.insert(0, path)
-        module = importlib.import_module("relationship_lab.app")
+        module = importlib.import_module("ui.streamlit.relationship_lab.app")
+        sys.modules.setdefault("ui.streamlit.relationship_lab", module)
+        # Backwards compatibility for historical imports that expected
+        # ``streamlit.relationship_lab`` when the module lived under the
+        # ``streamlit/`` tree.
         sys.modules.setdefault("streamlit.relationship_lab", module)
         return module.run
 

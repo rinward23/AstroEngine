@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Query
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
@@ -20,6 +20,10 @@ from ...ephemeris import SwissEphemerisAdapter
 from ...events import ReturnEvent
 from ...exporters import write_parquet_canonical, write_sqlite_canonical
 from ...exporters_ics import write_ics_canonical
+
+
+DEFAULT_PAGE_LIMIT = 500
+MAX_PAGE_LIMIT = 2000
 
 
 router = APIRouter()
@@ -125,6 +129,12 @@ class ScanResponse(BaseModel):
     hits: list[Hit]
     count: int
     export: dict[str, Any] | None = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "description": "count reflects total hits before pagination is applied"
+        }
+    )
 
 
 
@@ -310,13 +320,27 @@ def _normalize_aspects(values: Sequence[Any] | None) -> list[int]:
 
 @router.post("/progressions", response_model=ScanResponse)
 def api_scan_progressions(
-    payload: Mapping[str, Any] = Body(..., description="Scan request payload")
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
+    limit: int = Query(
+        DEFAULT_PAGE_LIMIT,
+        ge=1,
+        le=MAX_PAGE_LIMIT,
+        description=(
+            "Maximum number of hits to return (default {default}, maximum {maximum})."
+            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+        ),
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+        description="Number of hits to skip from the start of the result set.",
+    ),
 ) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = TransitScanRequest(**request_data)
     natal, start, end = request.iso_tuple()
 
-    hits = [
+    all_hits = [
         _hit_from_aspect(hit)
         for hit in progressed_natal_aspects(
             natal_ts=natal,
@@ -329,24 +353,45 @@ def api_scan_progressions(
         )
     ]
 
+    total_hits = len(all_hits)
+    page_hits = all_hits[offset : offset + limit]
 
     export_info = (
-        _export_hits(request.export, hits, method="progressions")
+        _export_hits(request.export, all_hits, method="progressions")
         if request.export
         else None
     )
-    return ScanResponse(method="progressions", hits=hits, count=len(hits), export=export_info)
+    return ScanResponse(
+        method="progressions",
+        hits=page_hits,
+        count=total_hits,
+        export=export_info,
+    )
 
 
 @router.post("/directions", response_model=ScanResponse)
 def api_scan_directions(
-    payload: Mapping[str, Any] = Body(..., description="Scan request payload")
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
+    limit: int = Query(
+        DEFAULT_PAGE_LIMIT,
+        ge=1,
+        le=MAX_PAGE_LIMIT,
+        description=(
+            "Maximum number of hits to return (default {default}, maximum {maximum})."
+            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+        ),
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+        description="Number of hits to skip from the start of the result set.",
+    ),
 ) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = TransitScanRequest(**request_data)
     natal, start, end = request.iso_tuple()
 
-    hits = [
+    all_hits = [
         _hit_from_aspect(hit)
         for hit in solar_arc_natal_aspects(
             natal_ts=natal,
@@ -359,18 +404,39 @@ def api_scan_directions(
         )
     ]
 
+    total_hits = len(all_hits)
+    page_hits = all_hits[offset : offset + limit]
 
     export_info = (
-        _export_hits(request.export, hits, method="directions")
+        _export_hits(request.export, all_hits, method="directions")
         if request.export
         else None
     )
-    return ScanResponse(method="directions", hits=hits, count=len(hits), export=export_info)
+    return ScanResponse(
+        method="directions",
+        hits=page_hits,
+        count=total_hits,
+        export=export_info,
+    )
 
 
 @router.post("/transits", response_model=ScanResponse)
 def api_scan_transits(
-    payload: Mapping[str, Any] = Body(..., description="Scan request payload")
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
+    limit: int = Query(
+        DEFAULT_PAGE_LIMIT,
+        ge=1,
+        le=MAX_PAGE_LIMIT,
+        description=(
+            "Maximum number of hits to return (default {default}, maximum {maximum})."
+            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+        ),
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+        description="Number of hits to skip from the start of the result set.",
+    ),
 ) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = TransitScanRequest(**request_data)
@@ -378,7 +444,7 @@ def api_scan_transits(
     if (request.method or "").strip().lower() == "transits":
         raise HTTPException(status_code=501, detail="Transit scans are not yet available")
     natal, start, end = request.iso_tuple()
-    hits = [
+    all_hits = [
         _hit_from_aspect(hit)
         for hit in scan_transits(
             natal_ts=natal,
@@ -392,19 +458,40 @@ def api_scan_transits(
         )
     ]
 
+    total_hits = len(all_hits)
+    page_hits = all_hits[offset : offset + limit]
 
     export_info = (
-        _export_hits(request.export, hits, method="transits")
+        _export_hits(request.export, all_hits, method="transits")
         if request.export
         else None
     )
 
-    return ScanResponse(method="transits", hits=hits, count=len(hits), export=export_info)
+    return ScanResponse(
+        method="transits",
+        hits=page_hits,
+        count=total_hits,
+        export=export_info,
+    )
 
 
 @router.post("/returns", response_model=ScanResponse)
 def api_scan_returns(
-    payload: Mapping[str, Any] = Body(..., description="Scan request payload")
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
+    limit: int = Query(
+        DEFAULT_PAGE_LIMIT,
+        ge=1,
+        le=MAX_PAGE_LIMIT,
+        description=(
+            "Maximum number of hits to return (default {default}, maximum {maximum})."
+            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+        ),
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+        description="Number of hits to skip from the start of the result set.",
+    ),
 ) -> ScanResponse:
     request_data = _normalize_scan_payload(payload)
     request = ReturnsScanRequest(**request_data)
@@ -443,12 +530,20 @@ def api_scan_returns(
 
         hits.extend(_hit_from_return(event) for event in events)
 
+    total_hits = len(hits)
+    page_hits = hits[offset : offset + limit]
+
     export_info = (
         _export_hits(request.export, hits, method="returns")
         if request.export
         else None
     )
-    return ScanResponse(method="returns", hits=hits, count=len(hits), export=export_info)
+    return ScanResponse(
+        method="returns",
+        hits=page_hits,
+        count=total_hits,
+        export=export_info,
+    )
 
 
 __all__ = [

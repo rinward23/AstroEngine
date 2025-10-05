@@ -4,11 +4,13 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from streamlit.report_builder.templating import ReportContext, render_markdown
+from ui.streamlit.report_builder.templating import ReportContext, render_markdown
 
 
 def test_default_template_snapshot() -> None:
-    sample = json.loads(Path("streamlit/report_builder/samples/findings_sample.json").read_text())
+    sample = json.loads(
+        Path("ui/streamlit/report_builder/samples/findings_sample.json").read_text()
+    )
     context = ReportContext(
         findings=sample["findings"],
         rulepack=sample["rulepack"],

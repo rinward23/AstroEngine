@@ -75,6 +75,32 @@ def register_ux_module(registry: AstroRegistry) -> None:
         },
     )
 
+
+    overlay = maps.register_channel(
+        "transit_overlay",
+        metadata={
+            "renderer": "astroengine.ux.maps.transit_overlay.compute_overlay_frames",
+            "aspects": "astroengine.ux.maps.transit_overlay.compute_transit_aspects",
+            "export": "astroengine.ux.maps.transit_overlay.render_overlay_svg",
+        },
+    )
+    overlay.register_subchannel(
+        "heliocentric_biwheel",
+        metadata={
+            "description": "Heliocentric solar-system map overlaying natal and transit positions.",
+        },
+        payload={
+            "renderer": "astroengine.ux.maps.transit_overlay.compute_overlay_frames",
+            "aspects": "astroengine.ux.maps.transit_overlay.compute_transit_aspects",
+            "export": "astroengine.ux.maps.transit_overlay.render_overlay_svg",
+            "layout": "astroengine.ux.maps.transit_overlay.scale_au",
+            "datasets": [
+                "qa/artifacts/solarfire/2025-10-02/cross_engine.json",
+                "profiles/base_profile.yaml",
+            ],
+            "tests": ["tests/test_transit_overlay.py"],
+        },
+    )
     timelines = module.register_submodule(
         "timelines",
         metadata={
