@@ -42,18 +42,7 @@ migrate:
 -$(ALEMBIC) upgrade head || true
 
 cache-warm:
-$(PY) - <<PY
-from os import getenv
-bodies=getenv("AE_WARM_BODIES","sun,moon").split(",")
-start=getenv("AE_WARM_START","2000-01-01")
-end=getenv("AE_WARM_END","2030-12-31")
-try:
-    from astroengine.legacy.cache import warm as warm_cache
-    warm_cache(bodies=bodies, start=start, end=end)
-    print("Cache warmed", bodies)
-except Exception as e:
-    print("Cache warm skipped:", e)
-PY
+	@:
 
 doctor:
 $(PY) - <<PY
@@ -96,4 +85,6 @@ migrate:
 	.venv/bin/alembic upgrade head
 
 cache-warm:
+	AE_WARM_START=$${AE_WARM_START:-1900-01-01} \
+	AE_WARM_END=$${AE_WARM_END:-2100-12-31} \
 	python -m astroengine.pipeline.cache_warm
