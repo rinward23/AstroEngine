@@ -31,6 +31,7 @@ class AtlasLookupError(RuntimeError):
 class _AtlasConfig:
     offline_enabled: bool
     data_path: Path | None
+    online_fallback_enabled: bool
 
 
 def geocode(query: str, *, settings: Settings | None = None) -> GeocodeResult:
@@ -71,6 +72,15 @@ def geocode(query: str, *, settings: Settings | None = None) -> GeocodeResult:
         except AtlasLookupError as exc:
             offline_failure = exc
 
+    if not cfg.online_fallback_enabled:
+        if offline_failure:
+            raise AtlasLookupError(
+                f"Offline atlas lookup failed ({offline_failure}). Online fallback is disabled in settings."
+            ) from offline_failure
+        raise AtlasLookupError(
+            "Online atlas fallback is disabled. Enable the offline atlas dataset or allow the online fallback in settings."
+        )
+
     try:
         return _geocode_online(trimmed)
     except AtlasLookupError as online_exc:
@@ -84,9 +94,13 @@ def geocode(query: str, *, settings: Settings | None = None) -> GeocodeResult:
 def _extract_config(settings: Settings) -> _AtlasConfig:
     atlas_cfg = getattr(settings, "atlas", None)
     if atlas_cfg is None:
-        return _AtlasConfig(False, None)
+        return _AtlasConfig(False, None, False)
     data_path = Path(atlas_cfg.data_path).expanduser() if atlas_cfg.data_path else None
-    return _AtlasConfig(bool(atlas_cfg.offline_enabled), data_path)
+    return _AtlasConfig(
+        bool(atlas_cfg.offline_enabled),
+        data_path,
+        bool(getattr(atlas_cfg, "online_fallback_enabled", False)),
+    )
 
 
 def _geocode_offline(query: str, db_path: Path) -> GeocodeResult:

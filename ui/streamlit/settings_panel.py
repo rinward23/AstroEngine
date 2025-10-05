@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 
 from astroengine.config import (
@@ -287,11 +289,48 @@ offline_atlas = st.toggle(
     value=current_settings.atlas.offline_enabled,
     help="Enable lookups against a bundled SQLite atlas instead of online geocoding.",
 )
+
+atlas_dir = Path("data/atlas")
+atlas_candidates = set()
+if atlas_dir.exists():
+    for pattern in ("*.sqlite", "*.db", "*.sqlite3"):
+        for candidate in atlas_dir.glob(pattern):
+            atlas_candidates.add(candidate.as_posix())
+
+atlas_options = [None] + sorted(atlas_candidates)
+current_atlas_path = (current_settings.atlas.data_path or "").strip() or None
+atlas_select_index = 0
+if current_atlas_path and current_atlas_path in atlas_options:
+    atlas_select_index = atlas_options.index(current_atlas_path)
+
+atlas_selection = st.selectbox(
+    "Bundled offline atlases",
+    atlas_options,
+    index=atlas_select_index,
+    format_func=lambda value: "Manual path" if value is None else Path(value).name,
+    help="Select an atlas packaged with AstroEngine or choose a manual location.",
+    key="atlas_select_choice",
+)
+
+atlas_path_state_key = "atlas_path_entry"
+if atlas_path_state_key not in st.session_state:
+    st.session_state[atlas_path_state_key] = current_settings.atlas.data_path or ""
+if atlas_selection and st.session_state[atlas_path_state_key] != atlas_selection:
+    st.session_state[atlas_path_state_key] = atlas_selection
+
 atlas_path = st.text_input(
     "Offline atlas SQLite path",
-    value=current_settings.atlas.data_path or "",
+    value=st.session_state[atlas_path_state_key],
+    key=atlas_path_state_key,
     help="Path to an atlas database with a 'places' table and search_name index.",
 )
+
+online_fallback = st.toggle(
+    "Allow online fallback geocoding",
+    value=current_settings.atlas.online_fallback_enabled,
+    help="Use Nominatim lookups when the offline atlas misses a location (requires the 'geopy' extra).",
+)
+atlas_path_value = (atlas_path or "").strip()
 
 if st.button("💾 Save Settings", type="primary"):
     updated = Settings(
@@ -335,6 +374,11 @@ if st.button("💾 Save Settings", type="primary"):
             "source": ephemeris_source,
             "path": se_path or None,
             "precision": current_settings.ephemeris.precision,
+        },
+        atlas={
+            "offline_enabled": offline_atlas,
+            "data_path": atlas_path_value or None,
+            "online_fallback_enabled": online_fallback,
         },
         perf={
             "qcache_size": qcache_size,

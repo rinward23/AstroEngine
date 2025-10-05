@@ -331,7 +331,17 @@ class SwissFallbackProvider:
                 speed = self._lon_speed(name, epoch)
             except KeyError:
                 continue
-            out[name] = {"lon": lon_deg % 360.0, "decl": lat_deg, "speed_lon": speed}
+            position = BodyPosition(
+                lon=lon_deg,
+                lat=lat_deg,
+                dec=lat_deg,
+                speed_lon=speed,
+            )
+            out[name] = {
+                "lon": position.lon,
+                "decl": position.dec,
+                "speed_lon": position.speed_lon,
+            }
         return out
 
     def position(self, body: str, ts_utc: str) -> BodyPosition:

@@ -3,25 +3,32 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
+from astroengine.cache.positions_cache import warm_startup_grid
 from astroengine.config import load_settings
 from astroengine.ephemeris.adapter import EphemerisAdapter, EphemerisConfig
 
 from app.db.session import engine
 from app.observability import configure_observability
 from app.telemetry import setup_tracing
+from astroengine.web.middleware import configure_compression
+
+LOGGER = logging.getLogger(__name__)
 
 from app.routers import (
     aspects_router,
     declinations_router,
     electional_router,
     events_router,
+    doctor_router,
     health_router,
     interpret_router,
     lots_router,
@@ -42,16 +49,27 @@ from app.routers.aspects import (  # re-exported for convenience
     configure_position_provider,
 )
 
+try:  # pragma: no cover - falls back when optional dependency missing
+    from fastapi.responses import ORJSONResponse
+except ImportError:  # pragma: no cover - exercised in environments without orjson
+    DEFAULT_RESPONSE_CLASS = JSONResponse
+else:
+    DEFAULT_RESPONSE_CLASS = ORJSONResponse
+
 SAFE_MODE = os.getenv("SAFE_MODE") == "1"
 DEV_MODE_ENABLED = os.getenv("DEV_MODE")
 
-app = FastAPI(title="AstroEngine Plus API")
+app = FastAPI(
+    title="AstroEngine Plus API", default_response_class=DEFAULT_RESPONSE_CLASS
+)
+configure_compression(app)
 configure_observability(app)
 setup_tracing(app, sqlalchemy_engine=engine)
 app.include_router(aspects_router)
 app.include_router(declinations_router)
 app.include_router(electional_router)
 app.include_router(events_router)
+app.include_router(doctor_router)
 app.include_router(transits_router)
 app.include_router(policies_router)
 app.include_router(lots_router)
@@ -104,6 +122,15 @@ def _init_singletons() -> None:
                 app.state.loaded_plugins = []
                 app.state.loaded_providers = []
     app.state.dev_mode_enabled = bool(DEV_MODE_ENABLED)
+
+    try:
+        warmed_entries = warm_startup_grid()
+    except Exception:  # pragma: no cover - defensive guard
+        LOGGER.exception("Startup cache warm failed")
+        app.state.startup_cache_warm_entries = 0
+    else:
+        app.state.startup_cache_warm_entries = warmed_entries
+        LOGGER.debug("Warmed %s JD/body entries during startup", warmed_entries)
 
 
 @app.middleware("http")
