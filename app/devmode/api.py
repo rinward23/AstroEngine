@@ -5,15 +5,20 @@ from __future__ import annotations
 import os
 import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from .gitops import GitOps
 from .history import Entry, append_changelog, append_history, read_history
-from .security import is_allowed, is_blocked, is_protected
+from .security import is_allowed, is_blocked, is_protected, require_dev_pin
 from .validate import pipeline
 
-router = APIRouter(prefix="/v1/dev", tags=["dev"], include_in_schema=False)
+router = APIRouter(
+    prefix="/v1/dev",
+    tags=["dev"],
+    include_in_schema=False,
+    dependencies=[Depends(require_dev_pin)],
+)
 
 CONFIRM_PHRASE = os.environ.get(
     "DEV_CORE_EDIT_CONFIRM", "I UNDERSTAND THIS MAY BREAK THE APP"

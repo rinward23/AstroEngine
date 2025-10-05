@@ -10,12 +10,34 @@ import streamlit as st
 
 st.set_page_config(page_title="Dev Mode", layout="wide")
 API_ROOT = os.getenv("ASTROENGINE_API", "http://127.0.0.1:8000").rstrip("/")
+PIN_SESSION_KEY = "dev_mode_pin"
+PIN_HEADER = "X-Dev-Pin"
 
 if not os.getenv("DEV_MODE"):
     st.error("Dev mode is disabled. Set DEV_MODE=1 and restart the API server.")
     st.stop()
 
 st.title("🛠️ Dev Mode — Safe Patching")
+
+if PIN_SESSION_KEY not in st.session_state:
+    st.session_state[PIN_SESSION_KEY] = os.getenv("DEV_PIN", "")
+
+st.text_input(
+    "Developer PIN",
+    value=st.session_state[PIN_SESSION_KEY],
+    type="password",
+    key=PIN_SESSION_KEY,
+    help="Required to authorise /v1/dev API requests.",
+)
+
+
+def _auth_headers() -> dict[str, str]:
+    """Return the developer PIN header when available."""
+
+    pin = st.session_state.get(PIN_SESSION_KEY) or ""
+    if not pin:
+        return {}
+    return {PIN_HEADER: pin}
 
 CONFIRM_PHRASE = os.environ.get(
     "DEV_CORE_EDIT_CONFIRM", "I UNDERSTAND THIS MAY BREAK THE APP"
@@ -32,7 +54,11 @@ with validate_tab:
     st.subheader("Run validation pipeline")
     if st.button("Run compile/lint/tests", key="run-validation"):
         try:
-            response = requests.post(f"{API_ROOT}/v1/dev/validate", timeout=180)
+            response = requests.post(
+                f"{API_ROOT}/v1/dev/validate",
+                timeout=180,
+                headers=_auth_headers(),
+            )
             response.raise_for_status()
             st.json(response.json())
         except requests.RequestException as exc:
@@ -75,7 +101,10 @@ with apply_tab:
             payload["confirm_phrase"] = typed_phrase
         try:
             response = requests.post(
-                f"{API_ROOT}/v1/dev/apply", json=payload, timeout=180
+                f"{API_ROOT}/v1/dev/apply",
+                json=payload,
+                timeout=180,
+                headers=_auth_headers(),
             )
             st.json(response.json())
         except requests.RequestException as exc:
@@ -85,7 +114,11 @@ with apply_tab:
 with history_tab:
     st.subheader("Version history & restore")
     try:
-        response = requests.get(f"{API_ROOT}/v1/dev/history", timeout=30)
+        response = requests.get(
+            f"{API_ROOT}/v1/dev/history",
+            timeout=30,
+            headers=_auth_headers(),
+        )
         response.raise_for_status()
         history_items = response.json()
     except requests.RequestException as exc:
@@ -118,6 +151,7 @@ with history_tab:
                                 f"{API_ROOT}/v1/dev/restore",
                                 json={"commit": entry.get("commit")},
                                 timeout=60,
+                                headers=_auth_headers(),
                             )
                             st.json(restore_resp.json())
                         except requests.RequestException as exc:

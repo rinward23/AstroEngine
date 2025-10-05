@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import os
+
 from pathlib import Path
 from typing import Iterable
+
+from fastapi import Header, HTTPException, status
 
 # Editable (same as before)
 WHITELIST = [
@@ -93,3 +97,24 @@ def is_protected(path: str) -> bool:
     """Return True when editing *path* requires explicit confirmation."""
 
     return _match_any(path, PROTECTED)
+
+
+def require_dev_pin(pin: str | None = Header(None, alias="X-Dev-Pin")) -> None:
+    """Validate the developer PIN provided via the ``X-Dev-Pin`` header."""
+
+    expected = os.getenv("DEV_PIN")
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Developer PIN not configured",
+        )
+    if not pin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Developer PIN required",
+        )
+    if pin != expected:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid developer PIN",
+        )
