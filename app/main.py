@@ -59,6 +59,11 @@ async def security_headers(
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault(
+        "Permissions-Policy", "geolocation=(), microphone=()"
+    )
+    if request.method == "GET":
+        response.headers.setdefault("Cache-Control", "public, max-age=60")
     return response
 
 
