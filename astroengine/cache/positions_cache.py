@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Iterable
+
 import numpy as np
 
 from ..ephemeris import SwissEphemerisAdapter
 from ..infrastructure.home import ae_home
+from ..infrastructure.storage.sqlite import apply_default_pragmas
 
 CACHE_DIR = ae_home() / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -51,8 +53,7 @@ CREATE INDEX IF NOT EXISTS ix_positions_daily_day_body
 
 def _connect():
     con = sqlite3.connect(str(DB))
-    con.execute("PRAGMA journal_mode=WAL;")
-    con.execute("PRAGMA synchronous=NORMAL;")
+    apply_default_pragmas(con)
     con.executescript(_SQL["init"])
     con.commit()
     return con

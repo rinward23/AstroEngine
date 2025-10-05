@@ -10,11 +10,20 @@ from typing import Any, Literal, Protocol
 _SQLITE_IMPORT_ERROR: ModuleNotFoundError | None = None
 
 try:  # pragma: no cover - optional storage dependency
-    from .infrastructure.storage.sqlite import ensure_sqlite_schema
+    from .infrastructure.storage.sqlite import (
+        apply_default_pragmas,
+        ensure_sqlite_schema,
+    )
 except ModuleNotFoundError as exc:  # pragma: no cover - allows lightweight imports
     _SQLITE_IMPORT_ERROR = exc
 
     def ensure_sqlite_schema(*_args, **_kwargs):  # type: ignore
+
+        raise RuntimeError(
+            "SQLite storage support unavailable"
+        ) from _SQLITE_IMPORT_ERROR
+
+    def apply_default_pragmas(*_args, **_kwargs):  # type: ignore
 
         raise RuntimeError(
             "SQLite storage support unavailable"
@@ -334,6 +343,7 @@ def sqlite_write_canonical(
 
     ensure_sqlite_schema(db_path)
     con = sqlite3.connect(db_path)
+    apply_default_pragmas(con)
     try:
         cur = con.cursor()
         cur.executemany(
@@ -365,6 +375,7 @@ def sqlite_read_canonical(
     ensure_sqlite_schema(db_path)
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
+    apply_default_pragmas(con)
     try:
         query = (
 

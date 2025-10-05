@@ -4,10 +4,11 @@ import sqlite3
 import time
 from pathlib import Path
 
+from astroengine.infrastructure.storage.sqlite import apply_default_pragmas
+
 DB_PATH = Path("./.astroengine/queue.sqlite")
 
 DDL = """
-PRAGMA journal_mode=WAL;
 CREATE TABLE IF NOT EXISTS jobs (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL,
@@ -34,6 +35,7 @@ def connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
+    apply_default_pragmas(con)
     con.executescript(DDL)
     return con
 
