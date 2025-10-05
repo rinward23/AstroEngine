@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 from logging import LoggerAdapter
 from time import perf_counter
 from typing import Callable
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -107,6 +108,38 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class ETagMiddleware(BaseHTTPMiddleware):
+    """Attach weak ETag headers for cacheable GET responses."""
+
+    async def dispatch(self, request: Request, call_next: Callable):  # type: ignore[override]
+        response = await call_next(request)
+
+        if request.method != "GET" or not (200 <= response.status_code < 300):
+            return response
+
+        if any(header.lower() == "etag" for header in response.headers.keys()):
+            return response
+
+        body: bytes
+        if hasattr(response, "body_iterator") and response.body_iterator is not None:
+            chunks = [chunk async for chunk in response.body_iterator]
+            body = b"".join(chunks)
+            response.body_iterator = iter([body])
+        else:
+            # ``Response.body`` may be ``None`` for streaming responses; coerce to bytes.
+            body = response.body or b""
+            response.body = body
+
+        tag = hashlib.sha1(body).hexdigest()
+        etag = f'W/"{tag}"'
+        response.headers["ETag"] = etag
+
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers={"ETag": etag})
+
+        return response
+
+
 def install_middleware(app: FastAPI, settings: ServiceSettings) -> None:
     app.add_middleware(GZipMiddleware, minimum_size=settings.gzip_minimum_size)
     app.add_middleware(
@@ -119,6 +152,7 @@ def install_middleware(app: FastAPI, settings: ServiceSettings) -> None:
     rate_limiter = RateLimiter(settings.rate_limit_per_minute, settings.redis_url)
     app.add_middleware(BodyLimitMiddleware, max_bytes=settings.request_max_bytes)
     app.add_middleware(RequestContextMiddleware, rate_limiter=rate_limiter)
+    app.add_middleware(ETagMiddleware)
 
 
-__all__ = ["install_middleware", "RequestLogger"]
+__all__ = ["install_middleware", "RequestLogger", "ETagMiddleware"]
