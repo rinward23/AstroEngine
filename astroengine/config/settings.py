@@ -617,6 +617,7 @@ class AtlasCfg(BaseModel):
 
     offline_enabled: bool = False
     data_path: Optional[str] = None
+    online_fallback_enabled: bool = False
 
 
 class ObservabilityCfg(BaseModel):
