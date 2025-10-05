@@ -48,6 +48,7 @@ from .settings import (
     delete_user_narrative_profile,
     list_narrative_profiles,
     load_narrative_profile_overlay,
+    apply_narrative_profile_overlay,
     VoidOfCourseCfg,
     ZodiacCfg,
     config_path,
