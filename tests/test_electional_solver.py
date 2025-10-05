@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from astroengine.electional import ElectionalSearchParams, search_constraints
 from astroengine.electional.solver import SampleContext
 from astroengine.ephemeris import BodyPosition
@@ -82,3 +84,80 @@ def test_search_constraints_basic_match():
     assert results[0].ts == t0
     assert results[0].score > 0
     assert all(ev.passed for ev in results[0].evaluations)
+
+
+def test_search_constraints_finds_weighted_solutions_with_tolerance():
+    t0 = datetime(2026, 3, 20, tzinfo=timezone.utc)
+    t1 = t0 + timedelta(minutes=30)
+    t2 = t1 + timedelta(minutes=30)
+
+    def ctx(ts: datetime, venus: float, mars: float, sun: float) -> SampleContext:
+        iso = ts.isoformat().replace("+00:00", "Z")
+        return SampleContext(
+            ts=ts,
+            iso=iso,
+            positions={
+                "Venus": _body("Venus", venus),
+                "Mars": _body("Mars", mars),
+                "Sun": _body("Sun", sun),
+            },
+            axes={
+                "asc": 30.0,
+                "desc": 210.0,
+                "mc": 120.0,
+                "ic": 300.0,
+            },
+        )
+
+    contexts = {
+        t0: ctx(t0, venus=30.0, mars=150.0, sun=150.0),
+        t1: ctx(t1, venus=30.3, mars=150.2, sun=150.4),
+        t2: ctx(t2, venus=31.0, mars=152.0, sun=152.0),
+    }
+
+    provider = StubProvider(contexts)
+
+    params = ElectionalSearchParams(
+        start=t0,
+        end=t2,
+        step_minutes=30,
+        constraints=[
+            {
+                "aspect": {
+                    "body": "sun",
+                    "target": "asc",
+                    "type": "trine",
+                    "max_orb": 0.5,
+                }
+            },
+            {
+                "antiscia": {
+                    "body": "venus",
+                    "target": "mars",
+                    "type": "antiscia",
+                    "axis": "cancer_capricorn",
+                    "max_orb": 0.5,
+                }
+            },
+        ],
+        latitude=0.0,
+        longitude=0.0,
+        limit=3,
+    )
+
+    results = search_constraints(params, provider=provider)
+    assert [candidate.ts for candidate in results] == [t0, t1]
+
+    first = results[0]
+    aspect_eval = next(ev for ev in first.evaluations if ev.constraint == "aspect")
+    antiscia_eval = next(ev for ev in first.evaluations if ev.constraint == "antiscia")
+    assert aspect_eval.detail["orb"] == pytest.approx(0.0, abs=1e-9)
+    assert antiscia_eval.detail["orb"] == pytest.approx(0.0, abs=1e-9)
+    assert first.score > 0
+
+    second = results[1]
+    aspect_eval = next(ev for ev in second.evaluations if ev.constraint == "aspect")
+    antiscia_eval = next(ev for ev in second.evaluations if ev.constraint == "antiscia")
+    assert 0.0 < aspect_eval.detail["orb"] <= 0.5
+    assert 0.0 < antiscia_eval.detail["orb"] <= 0.5
+    assert second.score > 0
