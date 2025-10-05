@@ -13,13 +13,9 @@ def create_app() -> FastAPI:
     from .routers import plus as plus_router
     from .routers import scan as scan_router
     from .routers import synastry as synastry_router
-
-    from .routers import vedic as vedic_router
-
-
     from .routers import topocentric as topocentric_router
+    from .routers import transit_overlay as transit_overlay_router
     from .routers import vedic as vedic_router
-
 
     app = FastAPI(title="AstroEngine API")
     app.include_router(plus_router.router)
@@ -27,8 +23,8 @@ def create_app() -> FastAPI:
     app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])
     app.include_router(synastry_router.router, prefix="/v1/synastry", tags=["synastry"])
     app.include_router(vedic_router.router)
-
     app.include_router(topocentric_router.router, prefix="/v1", tags=["topocentric"])
+    app.include_router(transit_overlay_router.router)
     app.include_router(vedic_router.router)
 
     return app
