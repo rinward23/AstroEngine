@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 from typing import Awaitable, Callable
@@ -10,12 +11,15 @@ from typing import Awaitable, Callable
 from fastapi import FastAPI, Request
 from starlette.responses import Response
 
+from astroengine.cache.positions_cache import warm_startup_grid
 from astroengine.config import load_settings
 from astroengine.ephemeris.adapter import EphemerisAdapter, EphemerisConfig
 
 from app.db.session import engine
 from app.observability import configure_observability
 from app.telemetry import setup_tracing
+
+LOGGER = logging.getLogger(__name__)
 
 from app.routers import (
     aspects_router,
@@ -104,6 +108,15 @@ def _init_singletons() -> None:
                 app.state.loaded_plugins = []
                 app.state.loaded_providers = []
     app.state.dev_mode_enabled = bool(DEV_MODE_ENABLED)
+
+    try:
+        warmed_entries = warm_startup_grid()
+    except Exception:  # pragma: no cover - defensive guard
+        LOGGER.exception("Startup cache warm failed")
+        app.state.startup_cache_warm_entries = 0
+    else:
+        app.state.startup_cache_warm_entries = warmed_entries
+        LOGGER.debug("Warmed %s JD/body entries during startup", warmed_entries)
 
 
 @app.middleware("http")
