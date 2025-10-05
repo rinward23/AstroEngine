@@ -14,6 +14,8 @@ if [[ -f "${PROJECT_ROOT}/requirements-dev.txt" ]]; then
 fi
 
 if [[ -f "${PROJECT_ROOT}/pyproject.toml" ]] || [[ -f "${PROJECT_ROOT}/setup.py" ]]; then
-  pip install -e "${PROJECT_ROOT}" || true
+  pushd "${PROJECT_ROOT}" >/dev/null
+  pip install -e ".[api,providers,ui]" || pip install -e .
+  popd >/dev/null
 fi
 
