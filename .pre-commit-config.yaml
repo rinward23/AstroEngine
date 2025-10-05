@@ -12,6 +12,12 @@ repos:
     hooks:
       - id: black
         language_version: python3
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (python)
+        args: ["--profile", "black"]
   - repo: https://github.com/pycqa/ruff-pre-commit
     rev: v0.6.9
     hooks:
@@ -42,4 +48,14 @@ repos:
         entry: python scripts/validators/validate_registry.py
         language: system
         files: '^registry/'
+      - id: mypy
+        name: mypy (strict subset)
+        entry: mypy --cache-dir=.mypy_cache --config-file mypy.ini
+        language: system
+        pass_filenames: false
+      - id: pytest-quick
+        name: pytest quick checks
+        entry: pytest -q -m quick
+        language: system
+        pass_filenames: false
 # >>> AUTO-GEN END: Pre-commit Hooks v1.0

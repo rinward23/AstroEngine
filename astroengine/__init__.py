@@ -12,11 +12,15 @@ except ImportError:  # pragma: no cover - fallback for Python <3.8 environments
     from importlib_metadata import PackageNotFoundError, version as _get_version
 
 try:
-    __version__ = _get_version("astroengine")
-except PackageNotFoundError:  # pragma: no cover - metadata may be unavailable in editable installs
-    # When running from source without installed metadata (e.g., editable installs),
-    # surface an explicit unknown version to avoid implying a prerelease build.
-    __version__ = "0+unknown"
+    from ._version import version as __version__
+except ImportError:  # pragma: no cover - setuptools-scm has not generated _version yet
+    try:
+        __version__ = _get_version("astroengine")
+    except PackageNotFoundError:  # pragma: no cover - metadata may be unavailable in editable installs
+        # When running from source without installed metadata (e.g., editable installs),
+        # fall back to the neutral base version so release artefacts never expose
+        # the ``0+unknown`` marker.
+        __version__ = "0.0.0"
 
 
 def get_version() -> str:

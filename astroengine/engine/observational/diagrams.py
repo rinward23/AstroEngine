@@ -511,12 +511,12 @@ def _draw_altitude_labels(
 
 
 def _draw_polar(
-    draw: PILImageDraw.ImageDraw,
+    draw: ImageDraw.ImageDraw,
     samples: Sequence[AltAzSample],
     cx: float,
     cy: float,
     radius: float,
-    font: PILImageFont.ImageFont,
+    font: ImageFont.ImageFont,
 ) -> None:
     for alt in (90, 60, 30, 0):
         r = _polar_radius(alt, radius)
