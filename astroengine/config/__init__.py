@@ -83,6 +83,8 @@ __all__ = [
     "BodiesCfg",
     "AspectsCfg",
     "ChartsCfg",
+    "MidpointsCfg",
+    "MidpointTreeCfg",
     "NarrativeCfg",
     "RenderingCfg",
     "EphemerisCfg",

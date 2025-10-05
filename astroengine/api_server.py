@@ -25,6 +25,7 @@ if app:
     from fastapi.middleware.gzip import GZipMiddleware
 
     from .api.errors import install_error_handlers
+    from .api.routers.analysis import router as analysis_router
     from .api.routers.interpret import router as interpret_router
     from .api.routers.natals import router as natals_router
     from .api.routers.plus import router as plus_router
@@ -35,6 +36,7 @@ if app:
     install_error_handlers(app)
 
     app.include_router(plus_router)
+    app.include_router(analysis_router)
     app.include_router(interpret_router)
     app.include_router(natals_router)
     app.include_router(scan_router, prefix="/v1/scan", tags=["scan"])
