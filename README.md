@@ -19,6 +19,10 @@ can be indexed safely without losing any modules during future edits.
 make setup    # or follow docs/DEV_ENV.md
 make doctor   # environment sanity (strict)
 make test     # run unit tests
+make migrate  # apply latest alembic migrations to your local DB
+make cache-warm  # populate ephemeris cache with verified data
+make run-api  # start the FastAPI service on http://127.0.0.1:8000
+make run-ui   # launch the Streamlit workspace on http://127.0.0.1:8501
 export SE_EPHE_PATH=/path/to/se/data   # optional for precision; falls back if missing
 ```
 
@@ -36,13 +40,14 @@ See `docs/DIAGNOSTICS.md`, `docs/SWISS_EPHEMERIS.md`, and `docs/QUALITY_GATE.md`
 
 ```bash
 export DATABASE_URL="sqlite+pysqlite:///${PWD}/dev.db" SE_EPHE_PATH="$HOME/.sweph/ephe"
-(uvicorn app.relationship_api:create_app --factory --host 0.0.0.0 --port 8000 & streamlit run ui/streamlit/pages/05_Synastry_Composite.py)
+make run-api
+make run-ui
 ```
 
-The first command pins the SQLite dev database (`dev.db` in the repo root) and
-points Swiss Ephemeris to your local data so neither service falls back to the
-reduced-precision providers. The subshell then launches the FastAPI service and
-Streamlit playground together so the UI can call the freshly started API.
+The environment exports pin the SQLite dev database (`dev.db` in the repo root)
+and point Swiss Ephemeris to your local data so neither service falls back to
+reduced-precision providers. Separate terminals running `make run-api` and
+`make run-ui` mimic the production topology while staying entirely data-backed.
 
 ### Docker Compose workflow
 
