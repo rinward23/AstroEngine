@@ -22,6 +22,7 @@ from app.routers import (
     declinations_router,
     electional_router,
     events_router,
+    doctor_router,
     health_router,
     interpret_router,
     lots_router,
@@ -52,6 +53,7 @@ app.include_router(aspects_router)
 app.include_router(declinations_router)
 app.include_router(electional_router)
 app.include_router(events_router)
+app.include_router(doctor_router)
 app.include_router(transits_router)
 app.include_router(policies_router)
 app.include_router(lots_router)

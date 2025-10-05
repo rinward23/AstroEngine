@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .doctor import DoctorCheck, run_system_doctor
 from .metrics import (
     EPHEMERIS_CACHE_COMPUTE_DURATION,
     EPHEMERIS_CACHE_HITS,
@@ -14,4 +15,6 @@ __all__ = [
     "EPHEMERIS_CACHE_MISSES",
     "EPHEMERIS_CACHE_COMPUTE_DURATION",
     "ensure_metrics_registered",
+    "DoctorCheck",
+    "run_system_doctor",
 ]
