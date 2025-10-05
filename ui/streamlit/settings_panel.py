@@ -118,6 +118,23 @@ orbs_global = st.slider(
     "Global Orb (deg)", 1.0, 12.0, float(current_settings.aspects.orbs_global), 0.5
 )
 
+st.subheader("Mirror Contacts")
+col_mirror_toggle, col_mirror_orb = st.columns(2)
+with col_mirror_toggle:
+    antiscia_enabled = st.toggle(
+        "Enable antiscia / contra-antiscia",
+        value=current_settings.antiscia.enabled,
+        help="Include solstitial mirror contacts in scans when supported.",
+    )
+with col_mirror_orb:
+    antiscia_orb = st.slider(
+        "Antiscia Orb (deg)",
+        0.1,
+        5.0,
+        float(current_settings.antiscia.orb),
+        0.1,
+    )
+
 st.subheader("Chart Types & Techniques")
 chart_flags = current_settings.charts.enabled.copy()
 cols_charts = st.columns(4)
@@ -175,13 +192,30 @@ length = st.selectbox(
 )
 language = st.text_input("Language (IETF)", current_settings.narrative.language)
 
+fixed_star_enabled = st.toggle(
+    "Show fixed star hits in aspectarian",
+    value=current_settings.fixed_stars.enabled,
+    help="Highlight close fixed-star contacts when available in charts.",
+)
+fixed_star_orb = st.slider(
+    "Fixed star orb (deg)",
+    min_value=0.1,
+    max_value=5.0,
+    value=float(current_settings.fixed_stars.orb_deg),
+    step=0.1,
+    disabled=not fixed_star_enabled,
+)
+
 render_layers = current_settings.rendering.layers.copy()
+render_layers.setdefault("antiscia_overlay", current_settings.antiscia.show_overlay)
+layer_labels = {"antiscia_overlay": "Antiscia points/lines"}
 layer_columns = st.columns(3)
 for idx, key in enumerate(list(render_layers.keys())):
+    label = layer_labels.get(key, key.replace("_", " ").title())
     with layer_columns[idx % 3]:
         render_layers[key] = st.toggle(
-            key.replace("_", " ").title(),
-            value=render_layers[key],
+            label,
+            value=render_layers.get(key, False),
             key=f"r_{key}",
         )
 
@@ -226,6 +260,11 @@ if st.button("💾 Save Settings", type="primary"):
             "use_moiety": current_settings.aspects.use_moiety,
             "show_applying": current_settings.aspects.show_applying,
         },
+        antiscia={
+            "enabled": antiscia_enabled,
+            "orb": antiscia_orb,
+            "show_overlay": render_layers.get("antiscia_overlay", False),
+        },
         charts={"enabled": chart_flags},
         narrative={
             "library": library,
@@ -238,6 +277,11 @@ if st.button("💾 Save Settings", type="primary"):
             "layers": render_layers,
             "theme": current_settings.rendering.theme,
             "glyph_set": current_settings.rendering.glyph_set,
+        },
+        fixed_stars={
+            "enabled": fixed_star_enabled,
+            "orb_deg": fixed_star_orb,
+            "catalog": current_settings.fixed_stars.catalog,
         },
         ephemeris={
             "source": ephemeris_source,

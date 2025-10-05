@@ -1,17 +1,7 @@
-"""High-level analytical helpers exposed by :mod:`astroengine`."""
+"""Analysis utilities including midpoint calculations."""
 
 from __future__ import annotations
 
-from .returns import (
-    ReturnComputationError,
-    aries_ingress_year,
-    lunar_return_datetimes,
-    solar_return_datetime,
-)
+from .midpoints import compute_midpoints, get_midpoint_settings, midpoint_longitude
 
-__all__ = [
-    "ReturnComputationError",
-    "aries_ingress_year",
-    "lunar_return_datetimes",
-    "solar_return_datetime",
-]
+__all__ = ["compute_midpoints", "get_midpoint_settings", "midpoint_longitude"]
