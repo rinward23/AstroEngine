@@ -13,6 +13,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from ...chart.natal import DEFAULT_BODIES
 from ...core.aspects_plus.harmonics import BASE_ASPECTS
 from ...synastry.orchestrator import SynHit, compute_synastry
+from .._time import UtcDateTime, ensure_utc_datetime
 
 
 router = APIRouter()
@@ -27,24 +28,18 @@ class NatalPayload(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    ts: datetime = Field(validation_alias=AliasChoices("ts", "datetime"))
+    ts: UtcDateTime = Field(validation_alias=AliasChoices("ts", "datetime"))
     lat: float
     lon: float
 
     @field_validator("ts", mode="before")
     def _coerce_timestamp(cls, value: Any) -> datetime:
 
-        if isinstance(value, datetime):
-            return value.astimezone(UTC)
-        if isinstance(value, str):
-            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
         if isinstance(value, dict):
-            ts = value.get("ts") or value.get("utc")
-            if ts:
-                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
-                return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
-        raise TypeError("expected ISO-8601 timestamp")
+            candidate = value.get("ts") or value.get("utc") or value.get("datetime")
+            if candidate is not None:
+                return ensure_utc_datetime(candidate)
+        return ensure_utc_datetime(value)
 
     @field_validator("lat", "lon", mode="before")
     def _coerce_float(cls, value: Any) -> float:
