@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
+pytest.importorskip(
+    "PIL",
+    reason="Pillow not installed; install extras with `pip install -e .[ui,reports]`.",
+)
+
 from astroengine.api.nlp import NLPAPI, NLPRequest
 from astroengine.engine.nlp.correlate import EventSample, NoteSample
 

@@ -1,6 +1,11 @@
 from datetime import UTC, datetime
 
-import swisseph as swe
+import pytest
+
+swe = pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `.[providers]`",
+)
 
 from astroengine.core.time import TimeConversion, ensure_utc, to_tt
 

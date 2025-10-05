@@ -3,6 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
+pytest.importorskip(
+    "jinja2",
+    reason="jinja2 not installed; install extras with `pip install -e .[narrative,reports]`.",
+)
+
 from astroengine.interpret.engine import evaluate
 from astroengine.interpret.loader import load_rulepack
 from astroengine.interpret.templates import get_renderer

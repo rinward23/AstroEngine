@@ -22,6 +22,11 @@ except Exception:  # pragma: no cover - defensive fallback
 
 SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
 
+pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `pip install -e .[ephem,providers]`.",
+)
+
 pytestmark = pytest.mark.skipif(
     not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
 )

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 from io import BytesIO
 import math
 from typing import Iterable, Sequence
 
-from PIL import Image, ImageDraw, ImageFont
-
 from ...ephemeris.adapter import EphemerisAdapter, ObserverLocation
+from ...core.dependencies import require_dependency
 from .events import rise_set_times, transit_time
 from .topocentric import MetConditions, horizontal_from_equatorial, topocentric_equatorial
 
@@ -20,6 +20,31 @@ except ModuleNotFoundError:  # pragma: no cover
     swe = None
 
 _SUN_ID = getattr(swe, "SUN", 0)
+
+
+@lru_cache(maxsize=1)
+def _pillow_modules():
+    """Return Pillow modules required for PNG rendering."""
+
+    image = require_dependency(
+        "PIL.Image",
+        package="Pillow",
+        extras=("reports", "ui"),
+        purpose="render observational diagrams as PNG",
+    )
+    image_draw = require_dependency(
+        "PIL.ImageDraw",
+        package="Pillow",
+        extras=("reports", "ui"),
+        purpose="render observational diagrams as PNG",
+    )
+    image_font = require_dependency(
+        "PIL.ImageFont",
+        package="Pillow",
+        extras=("reports", "ui"),
+        purpose="render observational diagrams as PNG",
+    )
+    return image, image_draw, image_font
 
 
 @dataclass(frozen=True)
@@ -268,6 +293,8 @@ def _render_png(
     start: datetime,
     end: datetime,
 ) -> bytes:
+    image_module, image_draw_module, image_font_module = _pillow_modules()
+
     width = 900
     height = 580
     margin_left = 70
@@ -275,9 +302,9 @@ def _render_png(
     plot_width = width - margin_left - 40
     plot_height = 260
 
-    img = Image.new("RGBA", (width, height), "#0b1021")
-    draw = ImageDraw.Draw(img)
-    font = ImageFont.load_default()
+    img = image_module.new("RGBA", (width, height), "#0b1021")
+    draw = image_draw_module.Draw(img)
+    font = image_font_module.load_default()
 
     if not samples:
         buffer = BytesIO()

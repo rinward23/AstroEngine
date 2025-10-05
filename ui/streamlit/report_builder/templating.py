@@ -4,15 +4,38 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 from importlib import resources
-from typing import Any, Dict, Iterable, List, Mapping
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping
 
 import pandas as pd
-from jinja2 import Environment, StrictUndefined, select_autoescape
+
+from astroengine.core.dependencies import require_dependency
 
 from . import sections
 
+if TYPE_CHECKING:  # pragma: no cover - import for type checking only
+    from jinja2 import Environment as JinjaEnvironment
+else:  # pragma: no cover - fallback when jinja2 is absent at runtime
+    JinjaEnvironment = Any  # type: ignore[misc,assignment]
+
+
 TEMPLATE_PACKAGE = "ui.streamlit.report_builder.templates"
+
+
+@lru_cache(maxsize=1)
+def _jinja_primitives():
+    """Return the Jinja environment factory and helpers."""
+
+    module = require_dependency(
+        "jinja2",
+        extras=("narrative", "reports", "streamlit", "ui", "all"),
+        purpose="render Streamlit report templates",
+    )
+    environment = getattr(module, "Environment")
+    strict_undefined = getattr(module, "StrictUndefined")
+    select_autoescape = getattr(module, "select_autoescape")
+    return environment, strict_undefined, select_autoescape
 
 
 @dataclass(slots=True)
@@ -35,14 +58,15 @@ def _load_template_source(template_id: str) -> str:
         raise ValueError(f"Unknown template: {template_id}") from exc
 
 
-def _build_environment() -> Environment:
-    env = Environment(autoescape=select_autoescape([]), undefined=StrictUndefined)
+def _build_environment() -> JinjaEnvironment:
+    environment_cls, strict_undefined_cls, select_autoescape = _jinja_primitives()
+    env = environment_cls(autoescape=select_autoescape([]), undefined=strict_undefined_cls)
     env.filters["deg"] = lambda value: f"{float(value):.2f}°"  # type: ignore[arg-type]
     env.filters["round"] = lambda value, ndigits=2: round(float(value), ndigits)  # type: ignore[arg-type]
     return env
 
 
-def _prepare_findings(ctx: ReportContext, env: Environment) -> List[Dict[str, Any]]:
+def _prepare_findings(ctx: ReportContext, env: JinjaEnvironment) -> List[Dict[str, Any]]:
     prepared: List[Dict[str, Any]] = []
     for finding in ctx.findings:
         snippet = sections.render_snippet(finding, env)

@@ -4,6 +4,11 @@ from datetime import datetime, timezone
 
 import pytest
 
+pytest.importorskip(
+    "pyarrow",
+    reason="pyarrow not installed; install extras with `pip install -e .[exporters,providers]`.",
+)
+
 from astroengine.engine.minorplanets import builtins
 
 

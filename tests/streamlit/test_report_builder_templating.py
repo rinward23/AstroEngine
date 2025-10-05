@@ -4,6 +4,13 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
+pytest.importorskip(
+    "jinja2",
+    reason="jinja2 not installed; install extras with `pip install -e .[narrative,reports,ui,streamlit]`.",
+)
+
 from ui.streamlit.report_builder.templating import ReportContext, render_markdown
 
 

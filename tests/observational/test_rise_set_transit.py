@@ -4,7 +4,19 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from astroengine.engine.observational import EventOptions, MetConditions, horizontal_from_equatorial, rise_set_times, topocentric_equatorial, transit_time
+pytest.importorskip(
+    "PIL",
+    reason="Pillow not installed; install extras with `pip install -e .[ui,reports]`.",
+)
+
+from astroengine.engine.observational import (
+    EventOptions,
+    MetConditions,
+    horizontal_from_equatorial,
+    rise_set_times,
+    topocentric_equatorial,
+    transit_time,
+)
 from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
 
 swe = pytest.importorskip("swisseph")

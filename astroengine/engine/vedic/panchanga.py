@@ -6,11 +6,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Final
 
-import swisseph as swe
-
 from ...detectors.lunations import find_lunations
 from ...events import LunationEvent
-from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
+from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter, get_swisseph
 from .chart import VedicChartContext
 
 __all__ = ["LunarMonth", "lunar_month"]
@@ -121,6 +119,12 @@ def _surrounding_new_moons(jd_ut: float) -> tuple[LunationEvent, LunationEvent]:
 
 
 def _sun_sign(adapter: SwissEphemerisAdapter, jd_ut: float) -> tuple[int, str]:
+    try:
+        swe = get_swisseph()
+    except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency guard
+        raise RuntimeError(
+            "Swiss Ephemeris is required for panchanga calculations. Install astroengine[ephem]."
+        ) from exc
     position = adapter.body_position(jd_ut, swe.SUN, body_name="Sun")
     idx = _sign_index(position.longitude)
     return idx, _SIDEREAL_SIGNS[idx]

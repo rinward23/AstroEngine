@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
+
+pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `pip install -e .[ephem,providers]`.",
+)
+
 from astroengine.engine.vedic import (
     AshtakavargaSet,
     Bhinnashtakavarga,

@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
+
+pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `pip install -e .[ephem,providers]`.",
+)
+
 from astroengine.chart.config import ChartConfig
 from astroengine.chart.natal import ChartLocation, compute_natal_chart
 from astroengine.engine.horary.hour_ruler import GeoLocation, planetary_hour

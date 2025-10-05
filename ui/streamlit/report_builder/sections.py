@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Sequence
 
-from jinja2 import Environment
+if TYPE_CHECKING:  # pragma: no cover - typing helper only
+    from jinja2 import Environment as JinjaEnvironment
+else:  # pragma: no cover - runtime fallback when jinja2 is absent
+    JinjaEnvironment = Any  # type: ignore[misc,assignment]
 
 DEFAULT_GROUP = "uncategorized"
 
@@ -47,7 +50,7 @@ def group_by_primary_tag(findings: Iterable[Dict[str, Any]]) -> List[FindingGrou
     return groups
 
 
-def render_snippet(finding: Dict[str, Any], env: Environment) -> str | None:
+def render_snippet(finding: Dict[str, Any], env: JinjaEnvironment) -> str | None:
     """Derive a concise snippet for a finding if possible."""
 
     snippet = finding.get("snippet")

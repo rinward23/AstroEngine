@@ -23,8 +23,6 @@ if _SwissAdapter is not None:
 else:  # pragma: no cover - ensures attribute exists for typing tools
     SwissEphemerisAdapter = None  # type: ignore[assignment]
 
-import swisseph as swe
-
 from ...core.time import julian_day
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from ...ritual.timing import PLANETARY_HOUR_TABLE

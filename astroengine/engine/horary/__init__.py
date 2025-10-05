@@ -6,10 +6,9 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Any, Mapping
 
-import swisseph as swe
-
 from ...chart.config import ChartConfig
 from ...chart.natal import ChartLocation, compute_natal_chart, DEFAULT_BODIES
+from ...ephemeris.swisseph_adapter import get_swisseph
 from .aspects_logic import aspect_between, find_collection, find_prohibition, find_translation
 from .hour_ruler import GeoLocation, planetary_hour
 from .judgement import score_testimonies
@@ -33,6 +32,12 @@ __all__ = ["evaluate_case", "GeoLocation", "get_profile"]
 
 def _horary_bodies() -> Mapping[str, int]:
     bodies = dict(DEFAULT_BODIES)
+    try:
+        swe = get_swisseph()
+    except ModuleNotFoundError as exc:  # pragma: no cover - runtime dependency guard
+        raise RuntimeError(
+            "Horary profiles require pyswisseph. Install astroengine[ephem] to enable them."
+        ) from exc
     bodies.setdefault("True Node", int(getattr(swe, "TRUE_NODE")))
     bodies.setdefault("Mean Node", int(getattr(swe, "MEAN_NODE")))
     return bodies
