@@ -236,6 +236,7 @@ class TraditionalRun(ModuleScopeMixin, TimestampMixin, Base):
     __tablename__ = "traditional_runs"
     __table_args__ = _table_args(
         Index("ix_traditional_runs_kind", "kind"),
+        Index("ix_traditional_runs_kind_name", "kind", "name"),
         UniqueConstraint(
             "module",
             "submodule",
