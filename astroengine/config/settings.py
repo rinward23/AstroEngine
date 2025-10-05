@@ -357,6 +357,7 @@ class Settings(BaseModel):
     houses: HousesCfg = Field(default_factory=HousesCfg)
     bodies: BodiesCfg = Field(default_factory=BodiesCfg)
     aspects: AspectsCfg = Field(default_factory=AspectsCfg)
+    declinations: DeclinationsCfg = Field(default_factory=DeclinationsCfg)
     charts: ChartsCfg = Field(default_factory=ChartsCfg)
     narrative: NarrativeCfg = Field(default_factory=NarrativeCfg)
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)

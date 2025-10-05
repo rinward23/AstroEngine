@@ -106,6 +106,16 @@ class APIClient:
             raise RuntimeError("Unexpected response payload from /aspects/search")
         return data
 
+    def declination_aspects(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Invoke the declination aspects endpoint and return the JSON payload."""
+
+        data = self._post_json("/declinations/aspects", payload, timeout=30)
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError(
+                "Unexpected response payload from /declinations/aspects"
+            )
+        return data
+
     # ---- OrbPolicy CRUD ----------------------------------------------------
     def list_policies(self, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
         r = requests.get(
