@@ -7,7 +7,12 @@ from typing import Tuple
 
 try:  # pragma: no cover - optional dependency in some environments
     import swisseph as swe
-except Exception:  # pragma: no cover
+except ImportError:
+    logger.info(
+        "pyswisseph not installed",
+        extra={"err_code": "SWISSEPH_IMPORT"},
+        exc_info=True,
+    )
     swe = None
 
 from ..core.bodies import canonical_name
