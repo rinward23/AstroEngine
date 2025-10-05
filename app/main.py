@@ -9,6 +9,7 @@ import os
 from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
 from astroengine.cache.positions_cache import warm_startup_grid
@@ -18,6 +19,7 @@ from astroengine.ephemeris.adapter import EphemerisAdapter, EphemerisConfig
 from app.db.session import engine
 from app.observability import configure_observability
 from app.telemetry import setup_tracing
+from astroengine.web.middleware import configure_compression
 
 LOGGER = logging.getLogger(__name__)
 
@@ -47,10 +49,20 @@ from app.routers.aspects import (  # re-exported for convenience
     configure_position_provider,
 )
 
+try:  # pragma: no cover - falls back when optional dependency missing
+    from fastapi.responses import ORJSONResponse
+except ImportError:  # pragma: no cover - exercised in environments without orjson
+    DEFAULT_RESPONSE_CLASS = JSONResponse
+else:
+    DEFAULT_RESPONSE_CLASS = ORJSONResponse
+
 SAFE_MODE = os.getenv("SAFE_MODE") == "1"
 DEV_MODE_ENABLED = os.getenv("DEV_MODE")
 
-app = FastAPI(title="AstroEngine Plus API")
+app = FastAPI(
+    title="AstroEngine Plus API", default_response_class=DEFAULT_RESPONSE_CLASS
+)
+configure_compression(app)
 configure_observability(app)
 setup_tracing(app, sqlalchemy_engine=engine)
 app.include_router(aspects_router)
