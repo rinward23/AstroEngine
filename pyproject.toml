@@ -186,7 +186,12 @@ select = ["E","F","I","UP","B"]
 target-version = "py311"
 extend-exclude = [
     "apps",
+    "datasets",
+    "db",
     "generated",
+    "profiles",
+    "registry",
+    "rulesets",
     "scripts",
     ".github",
     "astroengine/modules",
