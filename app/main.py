@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from app.observability import configure_observability
+
 from app.routers import (
     aspects_router,
     electional_router,
@@ -22,6 +24,7 @@ from app.routers.aspects import (  # re-exported for convenience
 )
 
 app = FastAPI(title="AstroEngine Plus API")
+configure_observability(app)
 app.include_router(aspects_router)
 app.include_router(electional_router)
 app.include_router(events_router)
