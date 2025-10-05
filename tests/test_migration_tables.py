@@ -45,6 +45,6 @@ def test_tables_exist_after_upgrade(tmp_path) -> None:
     tables_after_upgrade = _introspect_tables(database_url)
     assert EXPECTED_TABLES.issubset(tables_after_upgrade)
 
-    command.downgrade(cfg, "-1")
+    command.downgrade(cfg, "base")
     tables_after_downgrade = _introspect_tables(database_url)
     assert EXPECTED_TABLES.isdisjoint(tables_after_downgrade)
