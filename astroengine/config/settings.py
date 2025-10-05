@@ -161,6 +161,18 @@ class PerfCfg(BaseModel):
     max_scan_days: int = 365
 
 
+class ForecastStackCfg(BaseModel):
+    """Toggle inclusion of predictive techniques in the forecast stack."""
+
+    components: Dict[str, bool] = Field(
+        default_factory=lambda: {
+            "transits": True,
+            "progressions": True,
+            "solar_arc": True,
+        }
+    )
+
+
 class Settings(BaseModel):
     """Top-level settings model persisted on disk."""
 
@@ -180,6 +192,7 @@ class Settings(BaseModel):
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
+    forecast_stack: ForecastStackCfg = Field(default_factory=ForecastStackCfg)
 
 
 # -------------------- I/O Helpers --------------------
