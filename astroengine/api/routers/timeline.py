@@ -6,6 +6,7 @@ from dataclasses import asdict
 from functools import lru_cache
 from typing import Any, Iterable, Literal
 
+from datetime import UTC, datetime
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -169,6 +170,19 @@ def timeline(
     end_dt = ensure_utc_datetime(to)
     if end_dt <= start_dt:
         raise HTTPException(status_code=400, detail="'to' must be after 'from'")
+
+    swiss_caps = getattr(settings, "swiss_caps", None)
+    min_year = getattr(swiss_caps, "min_year", 1800)
+    max_year = getattr(swiss_caps, "max_year", 2200)
+    min_boundary = datetime(int(min_year), 1, 1, tzinfo=UTC)
+    max_boundary = datetime(int(max_year) + 1, 1, 1, tzinfo=UTC)
+    if start_dt < min_boundary or end_dt >= max_boundary:
+        detail = (
+            "Timeline window exceeds Swiss Ephemeris coverage "
+            f"({int(min_year)}–{int(max_year)}). Adjust the requested dates or install "
+            "additional Swiss ephemeris files and update settings.swiss_caps.*."
+        )
+        raise HTTPException(status_code=400, detail=detail)
 
     requested: set[str]
     if types:
