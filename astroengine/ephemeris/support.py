@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Iterable, List
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SupportIssue:
     """Represents an unsupported body probe against a provider."""
 

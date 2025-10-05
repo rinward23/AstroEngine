@@ -9,7 +9,7 @@ K = TypeVar("K", bound=Hashable)
 V = TypeVar("V")
 
 
-@dataclass
+@dataclass(slots=True)
 class _Entry(Generic[V]):
     value: V
     expires_at: float

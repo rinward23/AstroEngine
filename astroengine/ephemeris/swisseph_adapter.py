@@ -139,7 +139,7 @@ def _rise_transit_events() -> Mapping[str, int]:
     }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class BodyPosition:
     """Structured ephemeris output for a single body."""
 
@@ -155,7 +155,7 @@ class BodyPosition:
     speed_declination: float
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class EquatorialPosition:
     """Right ascension and declination details for a body."""
 
@@ -165,7 +165,7 @@ class EquatorialPosition:
     speed_declination: float
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SolarCycleEvents:
     """Sunrise, sunset, and transit metadata for a single day."""
 
@@ -188,7 +188,7 @@ class SolarCycleEvents:
         return payload
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class VariantConfig:
     """Per-run variant selection for lunar nodes and Black Moon Lilith."""
 
@@ -202,7 +202,7 @@ class VariantConfig:
         return "true" if self.lilith_variant.lower() == "true" else "mean"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class HousePositions:
     """Container for house cusps, angles, and provenance metadata."""
 
@@ -240,7 +240,7 @@ class HousePositions:
         return payload
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FixedStarPosition:
     """Computed coordinates for a fixed star via Swiss Ephemeris."""
 
@@ -256,7 +256,7 @@ class FixedStarPosition:
     computation_flags: int
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RiseTransitResult:
     """Rise/set/transit metadata returned by Swiss Ephemeris."""
 
