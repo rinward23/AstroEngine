@@ -94,6 +94,10 @@ pip install -e .[ui]
 streamlit run apps/streamlit_transit_scanner.py
 ```
 
+> **Tip:** a ``streamlit/`` testing shim exists for unit exercises. Launch UI
+> scripts with ``streamlit run`` rather than invoking them with ``python`` so the
+> real Streamlit package is imported first.
+
 If you installed AstroEngine with the ``streamlit`` extra you can also launch
 the Aspect Search dashboard directly:
 
