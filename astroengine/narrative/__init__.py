@@ -14,6 +14,7 @@ from typing import Any
 from ..domains import rollup_domain_scores
 from ..infrastructure.paths import profiles_dir
 from ..utils import load_json_document
+from ..utils.i18n import translate
 from .gpt_api import GPTNarrativeClient
 from .profiles import render_profile, timelord_outline
 from .prompts import build_summary_prompt, build_template_summary
@@ -48,13 +49,25 @@ _DEFAULT_TEMPLATE = """
 
 
 def _render_simple_template(title: str, events: Mapping[str, Any]) -> str:
-    lines = [str(title).strip()]
+    lines = [translate("narrative.template.title", title=str(title).strip())]
     for key, value in events.items():
         if isinstance(value, Mapping):
             value_repr = ", ".join(f"{k}={v}" for k, v in value.items())
-            lines.append(f"- {key}: {value_repr}")
+            lines.append(
+                translate(
+                    "narrative.simple.mapping_line",
+                    key=key,
+                    value=value_repr,
+                )
+            )
         else:
-            lines.append(f"- {key}: {value}")
+            lines.append(
+                translate(
+                    "narrative.simple.mapping_line",
+                    key=key,
+                    value=value,
+                )
+            )
     return "\n".join(lines).strip()
 
 
@@ -202,17 +215,23 @@ class NarrativeBundle:
         }
 
 
-_CATEGORY_LABELS = {
-    "aspects": "Aspect Contacts",
-    "declinations": "Declination Alignments",
-    "antiscia": "Mirror Contacts",
-    "stations": "Planetary Stations",
-    "returns": "Return Windows",
-    "progressions": "Progressions",
-    "directions": "Directions",
-    "timelords": "Timelord Triggers",
-    "other": "Additional Highlights",
+_CATEGORY_LABEL_KEYS = {
+    "aspects": "narrative.category.aspects",
+    "declinations": "narrative.category.declinations",
+    "antiscia": "narrative.category.antiscia",
+    "stations": "narrative.category.stations",
+    "returns": "narrative.category.returns",
+    "progressions": "narrative.category.progressions",
+    "directions": "narrative.category.directions",
+    "timelords": "narrative.category.timelords",
+    "other": "narrative.category.other",
 }
+
+
+def _category_label(key: str) -> str:
+    default = key.replace("_", " ").title()
+    translation_key = _CATEGORY_LABEL_KEYS.get(key, "narrative.category.other")
+    return translate(translation_key, default=default)
 
 
 def render_simple(title: str, events: Mapping[str, Any]) -> str:
@@ -237,7 +256,7 @@ def summarize_top_events(
 
     events_list = list(events)
     if not events_list:
-        return "No events available for narrative summary."
+        return translate("narrative.no_events")
 
     sorted_events = sorted(events_list, key=_event_score, reverse=True)
     top_events = sorted_events[: max(top_n, 1)]
@@ -283,10 +302,7 @@ def compose_narrative(
     """Return a :class:`NarrativeBundle` describing the supplied events."""
 
     if mode == "llm":
-        raise RuntimeError(
-            "LLM narrative mode requested but no LLM backend is configured. "
-            "Provide a custom composer via astroengine.narrative_llm to enable this mode."
-        )
+        raise RuntimeError(translate("narrative.llm_unavailable"))
     return _compose_template(events, top_n=top_n, generated_at=generated_at)
 
 
@@ -308,23 +324,30 @@ def _render_template_markdown(context: Mapping[str, Any]) -> str:
     def spacer(count: int = 1) -> None:
         blank(count)
 
-    add("# AstroEngine Narrative Summary")
-    add(f"Generated at {context['generated_at']}")
+    add(translate("narrative.markdown.title"))
+    add(translate("narrative.markdown.generated", timestamp=context["generated_at"]))
     blank(2)
 
-    add("## Event Highlights")
+    add(translate("narrative.markdown.highlights"))
     blank()
 
     if categories:
         for index, category in enumerate(categories):
-            add(f"### {category['label']} (score {category['score']})")
+            add(
+                translate(
+                    "narrative.markdown.category_header",
+                    label=category["label"],
+                    score=category["score"],
+                )
+            )
             blank()
 
             events = list(category.get("events", []))
             if events:
                 for event in events:
                     add(
-                        "- **{title}** — {summary} ({timestamp}, score {score})".format(
+                        translate(
+                            "narrative.markdown.highlight_line",
                             title=event["title"],
                             summary=event["summary"],
                             timestamp=event["timestamp"],
@@ -333,55 +356,63 @@ def _render_template_markdown(context: Mapping[str, Any]) -> str:
                     )
                     blank()
             else:
-                add("- _No individual highlights available._")
+                add(translate("narrative.category.empty_event"))
                 blank()
 
             if index != len(categories) - 1:
                 blank()
     else:
-        add("_No high-score events available for the requested window._")
+        add(translate("narrative.category.empty"))
         blank()
 
     blank(4)
 
-    add("## Dominant Domains")
+    add(translate("narrative.domain.header"))
     blank()
 
     if domains:
         for index, domain in enumerate(domains):
-            add(f"- {domain['name']} (score {domain['score']})")
+            add(
+                translate(
+                    "narrative.domain.line",
+                    name=domain["name"],
+                    score=domain["score"],
+                )
+            )
             spacer(2)
 
             channels = list(domain.get("channels") or [])
             if channels:
                 for channel in channels:
                     add(
-                        "    - {name}: {score}".format(
+                        translate(
+                            "narrative.domain.channel",
                             name=channel.get("name", ""),
                             score=channel.get("score", ""),
                         )
                     )
                     spacer()
             else:
-                add("    - _No channel activity recorded._")
+                add(translate("narrative.domain.channel_empty"))
                 spacer()
 
             spacer()
             if index != len(domains) - 1:
                 blank()
     else:
-        add("_No domain emphasis detected from the supplied events._")
+        add(translate("narrative.domain.empty"))
         blank()
 
     blank(4)
 
-    add("## Timelord Periods")
+    add(translate("narrative.timelord.header"))
     blank()
 
     if timelords:
         for index, tl in enumerate(timelords):
             add(
-                "- {name} — {description} (intensity {weight})".format(
+                translate(
+                    "narrative.timelord.line",
                     name=tl["name"],
                     description=tl["description"],
                     weight=tl["weight"],
@@ -390,7 +421,7 @@ def _render_template_markdown(context: Mapping[str, Any]) -> str:
             if index != len(timelords) - 1:
                 blank()
     else:
-        add("_No active timelords were detected for this window._")
+        add(translate("narrative.timelord.empty"))
 
     return "\n".join(lines).strip()
 
@@ -566,7 +597,7 @@ def _make_highlight(
     event: object, *, score: float, timestamp: str
 ) -> NarrativeHighlight:
     category = _categorise_event(event)
-    category_label = _CATEGORY_LABELS.get(category, category.replace("_", " ").title())
+    category_label = _category_label(category)
     moving = _event_attr(event, "moving")
     target = _event_attr(event, "target")
     kind = _format_kind(_event_attr(event, "kind"))
@@ -642,7 +673,7 @@ def _build_categories(
     categories: list[NarrativeCategory] = []
     for key, items in buckets.items():
         total = sum(item.score for item in items)
-        label = _CATEGORY_LABELS.get(key, key.replace("_", " ").title())
+        label = _category_label(key)
         ordered = sorted(items, key=lambda item: (-item.score, item.title))
         categories.append(
             NarrativeCategory(key=key, label=label, score=total, events=ordered)

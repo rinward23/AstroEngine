@@ -25,6 +25,7 @@ _VALID_SCOPES = {"charts", "settings"}
 def _chart_to_payload(chart: Chart) -> Mapping[str, object | None]:
     return {
         "id": chart.id,
+        "name": chart.name,
         "chart_key": chart.chart_key,
         "profile_key": chart.profile_key,
         "kind": chart.kind,
@@ -34,6 +35,15 @@ def _chart_to_payload(chart: Chart) -> Mapping[str, object | None]:
         "location_name": chart.location_name,
         "timezone": chart.timezone,
         "source": chart.source,
+        "tags": chart.tags,
+        "notes": chart.memo,
+        "gender": chart.gender,
+        "narrative_profile": chart.narrative_profile,
+        "settings_snapshot": chart.settings_snapshot,
+        "bodies": chart.bodies,
+        "houses": chart.houses,
+        "aspects": chart.aspects,
+        "patterns": chart.patterns,
         "module": chart.module,
         "submodule": chart.submodule,
         "channel": chart.channel,
@@ -51,6 +61,20 @@ def _parse_datetime(value: str | None) -> datetime | None:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid datetime value: {value}") from exc
+
+
+def _as_mapping(value: object) -> dict[str, object]:
+    if isinstance(value, Mapping):
+        return dict(value)
+    return {}
+
+
+def _as_list(value: object) -> list[object]:
+    if isinstance(value, list):
+        return list(value)
+    if isinstance(value, tuple):
+        return list(value)
+    return []
 
 
 def _normalize_chart_payload(record: Mapping[str, object]) -> dict[str, object | None]:
@@ -71,6 +95,11 @@ def _normalize_chart_payload(record: Mapping[str, object]) -> dict[str, object |
     payload["profile_key"] = str(profile_key) if profile_key is not None else "default"
     kind = record.get("kind")
     payload["kind"] = str(kind) if kind is not None else None
+    payload["name"] = record.get("name")
+    payload["tags"] = record.get("tags")
+    payload["memo"] = record.get("notes") if record.get("notes") is not None else record.get("memo")
+    payload["gender"] = record.get("gender")
+    payload["narrative_profile"] = record.get("narrative_profile")
     payload["lat"] = _as_float(record.get("lat"), "lat")
     payload["lon"] = _as_float(record.get("lon"), "lon")
     payload["location_name"] = record.get("location_name")
@@ -80,7 +109,12 @@ def _normalize_chart_payload(record: Mapping[str, object]) -> dict[str, object |
         value = record.get(scope_field)
         payload[scope_field] = str(value) if value is not None else None
     data = record.get("data")
-    payload["data"] = dict(data) if isinstance(data, Mapping) else {}
+    payload["data"] = _as_mapping(data)
+    payload["settings_snapshot"] = _as_mapping(record.get("settings_snapshot"))
+    payload["bodies"] = _as_mapping(record.get("bodies"))
+    payload["houses"] = _as_mapping(record.get("houses"))
+    payload["aspects"] = _as_list(record.get("aspects"))
+    payload["patterns"] = _as_list(record.get("patterns"))
     dt_raw = record.get("dt_utc")
     payload["dt_utc"] = _parse_datetime(dt_raw) if isinstance(dt_raw, str) else None
     tags_raw = record.get("tags")

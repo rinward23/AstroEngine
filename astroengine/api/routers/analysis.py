@@ -82,17 +82,19 @@ def _parse_longitudes_payload(value: str | None) -> dict[str, float]:
     return parsed
 
 
-def _chart_config_from_settings(include_nodes: bool) -> tuple[ChartConfig, dict[str, int]]:
+def _chart_config_from_settings(
+    include_nodes: bool, base_config: ChartConfig | None = None
+) -> tuple[ChartConfig, dict[str, int]]:
     settings = get_midpoint_settings()
-    base_config = ChartConfig()
+    chart_config = base_config or ChartConfig()
     bodies = dict(DEFAULT_BODIES)
     if include_nodes:
-        node_variant = base_config.nodes_variant
+        node_variant = chart_config.nodes_variant
         node_code = SE_TRUE_NODE if node_variant == "true" else SE_MEAN_NODE
         label = "True Node" if node_variant == "true" else "Mean Node"
         bodies.setdefault(label, node_code)
         bodies.setdefault("South Node", node_code)
-    return base_config, bodies
+    return chart_config, bodies
 
 
 def _load_natal_longitudes(natal_id: str, include_nodes: bool) -> dict[str, float]:
@@ -121,7 +123,7 @@ def _load_natal_longitudes(natal_id: str, include_nodes: bool) -> dict[str, floa
     else:
         moment = moment.astimezone(timezone.utc)
 
-    config, body_map = _chart_config_from_settings(include_nodes)
+    config, body_map = _chart_config_from_settings(include_nodes, record.chart_config())
     chart = compute_natal_chart(
         moment,
         ChartLocation(latitude=float(record.lat), longitude=float(record.lon)),

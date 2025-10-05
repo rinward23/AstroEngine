@@ -21,6 +21,7 @@ __all__ = [
     "expander",
     "number_input",
     "plotly_chart",
+    "toast",
     "radio",
     "spinner",
     "set_runtime",
@@ -290,6 +291,18 @@ def warning(*_args: Any, **_kwargs: Any) -> None:
 
 def error(*_args: Any, **_kwargs: Any) -> None:
     pass
+
+
+class _ToastStub:
+    def caption(self, *_args: Any, **_kwargs: Any) -> None:
+        pass
+
+    def code(self, *_args: Any, **_kwargs: Any) -> None:
+        pass
+
+
+def toast(*_args: Any, **_kwargs: Any) -> _ToastStub:
+    return _ToastStub()
 
 
 def code(*_args: Any, **_kwargs: Any) -> None:

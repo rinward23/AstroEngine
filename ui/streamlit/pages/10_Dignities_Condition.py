@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from ui.streamlit.api import APIClient
+from ui.streamlit.data_cache import load_dignities_table
 
 st.set_page_config(page_title="Dignities & Condition", page_icon="⚖️", layout="wide")
 st.title("Dignities & Planetary Condition ⚖️")
@@ -101,3 +102,27 @@ for planet, info in planets.items():
             st.dataframe(acc_df, use_container_width=True, hide_index=True)
         if not essential_components and not accidental_components:
             st.write("No dignity data available for this body.")
+
+with st.expander("Essential dignities catalog (cached)", expanded=False):
+    records = load_dignities_table()
+    if records:
+        table = (
+            pd.DataFrame(records)
+            .sort_values(["planet", "sign", "dignity_type", "start_deg"], na_position="last")
+            .reset_index(drop=True)
+        )
+        columns = [
+            "planet",
+            "sign",
+            "dignity_type",
+            "sect",
+            "start_deg",
+            "end_deg",
+            "modifier",
+            "source",
+        ]
+        display_cols = [col for col in columns if col in table.columns]
+        st.dataframe(table[display_cols], use_container_width=True, hide_index=True)
+        st.caption("Loaded once per session via st.cache_data to avoid repeated disk reads.")
+    else:
+        st.info("Dignities table unavailable.")

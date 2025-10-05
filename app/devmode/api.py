@@ -10,6 +10,15 @@ from pydantic import BaseModel
 
 from .gitops import GitOps
 from .history import Entry, append_changelog, append_history, read_history
+from .backups import (
+    cancel_backup_schedule,
+    create_backup_zip,
+    list_backups,
+    restore_backup_zip,
+    schedule_backups,
+    schedule_status,
+)
+from astroengine.infrastructure import retention
 from .security import is_allowed, is_blocked, is_protected
 from .validate import pipeline
 
@@ -30,6 +39,20 @@ class PatchRequest(BaseModel):
 
 class RestoreRequest(BaseModel):
     commit: str
+
+
+class BackupScheduleRequest(BaseModel):
+    interval_hours: float
+    start_in_hours: float | None = None
+
+
+class BackupRestoreRequest(BaseModel):
+    archive_path: str
+
+
+class RetentionRequest(BaseModel):
+    temporary_derivatives_days: int | None = None
+    run_purge: bool | None = True
 
 
 @router.get("/history")
@@ -150,3 +173,87 @@ async def dev_restore(req: RestoreRequest) -> dict:
     if not ok:
         raise HTTPException(status_code=400, detail=f"restore failed: {message}")
     return {"status": "restored", "commit": req.commit}
+
+
+@router.get("/backups")
+async def dev_backups() -> dict[str, object]:
+    if not os.getenv("DEV_MODE"):
+        raise HTTPException(status_code=403, detail="Dev mode disabled")
+    schedule = schedule_status()
+    backups = list_backups()
+    retention_policy = retention.load_policy()
+    retention_preview = retention.purge_temporary_derivatives(dry_run=True)
+    return {
+        "schedule": schedule,
+        "backups": backups,
+        "retention_policy": retention_policy,
+        "retention_preview": retention_preview,
+    }
+
+
+@router.post("/backups/run")
+async def dev_run_backup() -> dict[str, object]:
+    if not os.getenv("DEV_MODE"):
+        raise HTTPException(status_code=403, detail="Dev mode disabled")
+    archive = create_backup_zip(".")
+    return {"status": "created", "archive": str(archive)}
+
+
+@router.post("/backups/schedule")
+async def dev_schedule_backup(req: BackupScheduleRequest) -> dict[str, object]:
+    if not os.getenv("DEV_MODE"):
+        raise HTTPException(status_code=403, detail="Dev mode disabled")
+    start_at: float | None = None
+    if req.start_in_hours is not None and req.start_in_hours > 0:
+        start_at = time.time() + (req.start_in_hours * 3600)
+    schedule = schedule_backups(
+        interval_hours=req.interval_hours,
+        root=".",
+        start_at=start_at,
+    )
+    if schedule.get("status") == "canceled":
+        return schedule
+    return {"status": "scheduled", "schedule": schedule}
+
+
+@router.post("/backups/restore")
+async def dev_restore_backup(req: BackupRestoreRequest) -> dict[str, object]:
+    if not os.getenv("DEV_MODE"):
+        raise HTTPException(status_code=403, detail="Dev mode disabled")
+    try:
+        restored = restore_backup_zip(req.archive_path, ".")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "restored", "files": restored}
+
+
+@router.delete("/backups/schedule")
+async def dev_cancel_backup_schedule() -> dict[str, object]:
+    if not os.getenv("DEV_MODE"):
+        raise HTTPException(status_code=403, detail="Dev mode disabled")
+    return cancel_backup_schedule()
+
+
+@router.get("/retention")
+async def dev_retention_status() -> dict[str, object]:
+    if not os.getenv("DEV_MODE"):
+        raise HTTPException(status_code=403, detail="Dev mode disabled")
+    policy = retention.load_policy()
+    preview = retention.purge_temporary_derivatives(dry_run=True)
+    return {"policy": policy, "preview": preview}
+
+
+@router.post("/retention")
+async def dev_update_retention(req: RetentionRequest) -> dict[str, object]:
+    if not os.getenv("DEV_MODE"):
+        raise HTTPException(status_code=403, detail="Dev mode disabled")
+    policy = retention.load_policy()
+    if req.temporary_derivatives_days is not None:
+        policy["temporary_derivatives_days"] = req.temporary_derivatives_days
+        retention.save_policy(policy)
+    summary = None
+    if req.run_purge:
+        summary = retention.purge_temporary_derivatives()
+    return {"policy": policy, "summary": summary}

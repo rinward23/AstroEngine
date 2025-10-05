@@ -6,12 +6,13 @@ import logging
 import os
 import importlib
 import importlib.util
+from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from functools import lru_cache
-from typing import TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, ClassVar, Final, Optional
 from types import ModuleType
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ from .sidereal import (
 )
 from .utils import get_se_ephe_path
 from ..core.bodies import canonical_name
+from ..observability import EPHEMERIS_SWE_CACHE_HIT_RATIO
 
 if TYPE_CHECKING:  # pragma: no cover - runtime import avoided for typing only
 
@@ -60,6 +62,28 @@ __all__ = [
     "resolve_house_code",
     "get_swisseph",
 ]
+
+
+_SWE_CALC_CACHE_SIZE: Final[int] = 4096
+
+
+_SweCalcKey = tuple[float, int, int, bool]
+_SweCalcValue = tuple[tuple[float, ...], int, str]
+
+
+_swe_calc_cache: OrderedDict[_SweCalcKey, _SweCalcValue] = OrderedDict()
+_swe_calc_hits: int = 0
+_swe_calc_misses: int = 0
+
+
+def _update_swe_cache_hit_ratio() -> None:
+    """Update the exported hit ratio gauge for the swe_calc cache."""
+
+    total = _swe_calc_hits + _swe_calc_misses
+    if not total:
+        EPHEMERIS_SWE_CACHE_HIT_RATIO.set(0.0)
+        return
+    EPHEMERIS_SWE_CACHE_HIT_RATIO.set(_swe_calc_hits / total)
 
 
 HOUSE_CODE_BY_NAME: Mapping[str, str] = {
@@ -217,6 +241,8 @@ class HousePositions:
     cusps: tuple[float, ...]
     ascendant: float
     midheaven: float
+    vertex: float | None = None
+    antivertex: float | None = None
     system_name: str | None = None
 
     requested_system: str | None = None
@@ -232,6 +258,10 @@ class HousePositions:
             "ascendant": self.ascendant,
             "midheaven": self.midheaven,
         }
+        if self.vertex is not None:
+            payload["vertex"] = self.vertex
+        if self.antivertex is not None:
+            payload["antivertex"] = self.antivertex
         if self.system_name is not None:
             payload["system_name"] = self.system_name
 
@@ -674,6 +704,8 @@ class SwissEphemerisAdapter:
     ) -> BodyPosition:
         """Compute longitude/latitude/speed data for a single body."""
 
+        adapter_label = self.__class__.__name__
+        start = perf_counter()
         override_code, derived = self._variant_override(body_name)
         effective_code = override_code if override_code is not None else body_code
 
@@ -681,63 +713,152 @@ class SwissEphemerisAdapter:
         swe = _swe()
         flags = self._calc_flags
         try:
-            xx, _, serr = swe_calc(
-                jd_ut=jd_ut, planet_index=effective_code, flag=flags
-            )
-        except RuntimeError:
-            flags = self._fallback_flags
-            xx, _, serr = swe_calc(
-                jd_ut=jd_ut, planet_index=effective_code, flag=flags
-            )
-        if serr:
-            raise RuntimeError(serr)
-
-        lon, lat, dist, speed_lon, speed_lat, speed_dist = xx
-
-        if derived:
-            lon = (lon + 180.0) % 360.0
-            lat = -lat
-            speed_lat = -speed_lat
-
-        equatorial = self.body_equatorial(jd_ut, effective_code)
-
-
-        try:
-            eq_xx, _, serr = swe_calc(
-                jd_ut=jd_ut,
-                planet_index=effective_code,
-                flag=flags | swe.FLG_EQUATORIAL,
-            )
-            _decl, _speed_decl = eq_xx[1], eq_xx[4]
-        except RuntimeError:
-            _decl, _speed_decl = float("nan"), float("nan")
-        else:
+            try:
+                xx, _, serr = swe_calc(
+                    jd_ut=jd_ut, planet_index=effective_code, flag=flags
+                )
+            except RuntimeError:
+                flags = self._fallback_flags
+                xx, _, serr = swe_calc(
+                    jd_ut=jd_ut, planet_index=effective_code, flag=flags
+                )
             if serr:
                 raise RuntimeError(serr)
 
+            lon, lat, dist, speed_lon, speed_lat, speed_dist = xx
 
-        return BodyPosition(
-            body=body_name or str(effective_code),
-            julian_day=jd_ut,
-            longitude=lon % 360.0,
-            latitude=lat,
-            distance_au=dist,
-            speed_longitude=speed_lon,
-            speed_latitude=speed_lat,
-            speed_distance=speed_dist,
-            declination=equatorial.declination,
-            speed_declination=equatorial.speed_declination,
-        )
+            if derived:
+                lon = (lon + 180.0) % 360.0
+                lat = -lat
+                speed_lat = -speed_lat
+
+            equatorial = self.body_equatorial(jd_ut, effective_code)
+
+            try:
+                eq_xx, _, serr = swe_calc(
+                    jd_ut=jd_ut,
+                    planet_index=effective_code,
+                    flag=flags | swe.FLG_EQUATORIAL,
+                )
+                _decl, _speed_decl = eq_xx[1], eq_xx[4]
+            except RuntimeError:
+                _decl, _speed_decl = float("nan"), float("nan")
+            else:
+                if serr:
+                    raise RuntimeError(serr)
+
+            return BodyPosition(
+                body=body_name or str(effective_code),
+                julian_day=jd_ut,
+                longitude=lon % 360.0,
+                latitude=lat,
+                distance_au=dist,
+                speed_longitude=speed_lon,
+                speed_latitude=speed_lat,
+                speed_distance=speed_dist,
+                declination=equatorial.declination,
+                speed_declination=equatorial.speed_declination,
+            )
+        except Exception as exc:
+            COMPUTE_ERRORS.labels(
+                component="ephemeris_body",
+                error=exc.__class__.__name__,
+            ).inc()
+            raise
+        finally:
+            duration = perf_counter() - start
+            EPHEMERIS_BODY_COMPUTE_DURATION.labels(
+                adapter=adapter_label,
+                operation="single",
+            ).observe(duration)
+
+    def compute_bodies_many(
+        self, jd_ut: float, bodies: Mapping[str, int]
+    ) -> dict[str, BodyPosition]:
+        """Return body positions for ``bodies`` using shared Swiss calls."""
+
+        if not bodies:
+            return {}
+
+        self._apply_sidereal_mode()
+        swe = _swe()
+        calc_flags = self._calc_flags
+        fallback_flags = self._fallback_flags
+        equatorial_flag = swe.FLG_EQUATORIAL
+
+        body_specs: list[tuple[str, int, bool]] = []
+        unique_codes: set[int] = set()
+        for name, raw_code in bodies.items():
+            override_code, derived = self._variant_override(name)
+            effective = int(override_code if override_code is not None else raw_code)
+            body_specs.append((name, effective, derived))
+            unique_codes.add(effective)
+
+        ecliptic_data: dict[int, tuple[float, ...]] = {}
+        equatorial_data: dict[int, tuple[float, ...]] = {}
+        for code in unique_codes:
+            try:
+                xx, _, serr = swe_calc(
+                    jd_ut=jd_ut, planet_index=code, flag=calc_flags
+                )
+            except RuntimeError:
+                xx, _, serr = swe_calc(
+                    jd_ut=jd_ut, planet_index=code, flag=fallback_flags
+                )
+            if serr:
+                raise RuntimeError(serr)
+            ecliptic_data[code] = xx
+
+            try:
+                eq_xx, _, serr_eq = swe_calc(
+                    jd_ut=jd_ut,
+                    planet_index=code,
+                    flag=calc_flags | equatorial_flag,
+                )
+            except RuntimeError:
+                eq_xx, _, serr_eq = swe_calc(
+                    jd_ut=jd_ut,
+                    planet_index=code,
+                    flag=fallback_flags | equatorial_flag,
+                )
+            if serr_eq:
+                raise RuntimeError(serr_eq)
+            equatorial_data[code] = eq_xx
+
+        positions: dict[str, BodyPosition] = {}
+        for name, effective_code, derived in body_specs:
+            lon, lat, dist, speed_lon, speed_lat, speed_dist = ecliptic_data[
+                effective_code
+            ]
+            if derived:
+                lon = (lon + 180.0) % 360.0
+                lat = -lat
+                speed_lat = -speed_lat
+
+            eq_xx = equatorial_data[effective_code]
+            _, decl, _, _, speed_decl, _ = eq_xx
+
+            positions[name] = BodyPosition(
+                body=name,
+                julian_day=jd_ut,
+                longitude=lon % 360.0,
+                latitude=lat,
+                distance_au=dist,
+                speed_longitude=speed_lon,
+                speed_latitude=speed_lat,
+                speed_distance=speed_dist,
+                declination=decl,
+                speed_declination=speed_decl,
+            )
+
+        return positions
 
     def body_positions(
         self, jd_ut: float, bodies: Mapping[str, int]
     ) -> dict[str, BodyPosition]:
         """Return positions for each body keyed by canonical name."""
 
-        return {
-            name: self.body_position(jd_ut, code, body_name=name)
-            for name, code in bodies.items()
-        }
+        return self.compute_bodies_many(jd_ut, bodies)
 
 
     @staticmethod
@@ -887,21 +1008,25 @@ class SwissEphemerisAdapter:
         canonical = canonical_name(original)
 
         node_variant = self._variant_config.normalized_nodes()
-        if lowered == "true_node":
+        if lowered in {"true_node", "true node"}:
             node_variant = "true"
-        elif lowered == "mean_node":
+        elif lowered in {"mean_node", "mean node"}:
+            node_variant = "mean"
+        elif lowered in {"true south node", "south node (true)"}:
+            node_variant = "true"
+        elif lowered in {"mean south node", "south node (mean)"}:
             node_variant = "mean"
         if canonical in {"mean_node", "true_node"} or lowered in {"node", "north_node", "nn"}:
             return _node_variant_codes()[node_variant], False
-        if canonical == "south_node" or lowered in {"south_node", "sn"}:
+        if canonical == "south_node" or lowered in {"south_node", "sn", "mean south node", "true south node", "south node (true)", "south node (mean)"}:
             return _node_variant_codes()[node_variant], True
 
         lilith_variant = self._variant_config.normalized_lilith()
-        if lowered == "true_lilith":
+        if lowered in {"true_lilith", "true lilith"}:
             lilith_variant = "true"
-        elif lowered == "mean_lilith":
+        elif lowered in {"mean_lilith", "mean lilith"}:
             lilith_variant = "mean"
-        if canonical in {"mean_lilith", "true_lilith"} or lowered in {"lilith", "black_moon_lilith"}:
+        if canonical in {"mean_lilith", "true_lilith"} or lowered in {"lilith", "black_moon_lilith", "black moon lilith", "black moon lilith (mean)", "black moon lilith (true)"}:
             return _lilith_variant_codes()[lilith_variant], False
 
         return None, False
@@ -951,14 +1076,22 @@ class SwissEphemerisAdapter:
                 raise
 
 
+        raw_vertex: float | None = None
+        if len(angles) >= 4:
+            raw_vertex = float(angles[3])
+
         if self._is_sidereal:
             ayan = self.ayanamsa(jd_ut)
             cusps = tuple((c - ayan) % 360.0 for c in cusps)
             ascendant = (angles[0] - ayan) % 360.0
             midheaven = (angles[1] - ayan) % 360.0
+            vertex = ((raw_vertex - ayan) % 360.0) if raw_vertex is not None else None
         else:
             ascendant = angles[0]
             midheaven = angles[1]
+            vertex = (raw_vertex % 360.0) if raw_vertex is not None else None
+
+        antivertex = ((vertex + 180.0) % 360.0) if vertex is not None else None
 
 
         if isinstance(used_code, (bytes, bytearray)):
@@ -1000,6 +1133,8 @@ class SwissEphemerisAdapter:
             cusps=tuple(cusps),
             ascendant=ascendant,
             midheaven=midheaven,
+            vertex=vertex,
+            antivertex=antivertex,
             system_name=used_name,
 
             requested_system=requested_key,
@@ -1054,7 +1189,24 @@ def swe_calc(
 ) -> tuple[tuple[float, ...], int, str]:
     """Invoke Swiss Ephemeris core calculation with normalized arguments."""
 
+    global _swe_calc_hits, _swe_calc_misses
+
     swe = _swe()
+
+    cache_key: _SweCalcKey | None
+    if _SWE_CALC_CACHE_SIZE > 0:
+        cache_key = (jd_ut, planet_index, flag, use_tt)
+        try:
+            cached = _swe_calc_cache[cache_key]
+        except KeyError:
+            cached = None
+        else:
+            _swe_calc_hits += 1
+            _swe_calc_cache.move_to_end(cache_key)
+            _update_swe_cache_hit_ratio()
+            return cached
+    else:
+        cache_key = None
 
     try:
         calc_fn = swe.calc if use_tt else swe.calc_ut
@@ -1074,5 +1226,15 @@ def swe_calc(
         serr = f"Swiss ephemeris returned error code {ret_flag}"
         raise RuntimeError(serr)
     serr = ""
-    return tuple(xx), ret_flag, serr
+    result: _SweCalcValue = (tuple(xx), ret_flag, serr)
+
+    if cache_key is not None:
+        _swe_calc_misses += 1
+        _swe_calc_cache[cache_key] = result
+        _swe_calc_cache.move_to_end(cache_key)
+        if len(_swe_calc_cache) > _SWE_CALC_CACHE_SIZE:
+            _swe_calc_cache.popitem(last=False)
+        _update_swe_cache_hit_ratio()
+
+    return result
 

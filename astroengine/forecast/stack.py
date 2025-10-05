@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Iterable, Mapping, Sequence
@@ -82,6 +83,23 @@ def _isoformat(value: datetime) -> str:
 def _aspect_name(angle: float) -> str:
     rounded = int(round(angle))
     return _ASPECT_LABELS.get(rounded % 360, f"{angle:g}°")
+
+
+def _chunk_window(window: ForecastWindow, max_days: float | None) -> list[tuple[datetime, datetime]]:
+    if max_days is None or max_days <= 0:
+        return [(window.start, window.end)]
+    chunk = timedelta(days=max_days)
+    if chunk <= timedelta(0):
+        return [(window.start, window.end)]
+    segments: list[tuple[datetime, datetime]] = []
+    cursor = window.start
+    while cursor < window.end:
+        segment_end = min(window.end, cursor + chunk)
+        segments.append((cursor, segment_end))
+        if segment_end >= window.end:
+            break
+        cursor = segment_end
+    return segments
 
 
 def _resolve_transit_aspects(settings: Settings) -> list[str]:
@@ -181,16 +199,47 @@ def _transit_events(
     if not aspects:
         return []
     orb_allow = float(settings.aspects.orbs_global)
-    hits = scan_transits(
-        natal_ts=natal_iso,
-        start_ts=start_iso,
-        end_ts=end_iso,
-        aspects=aspects,
-        orb_deg=orb_allow,
-        bodies=None,
-        targets=None,
-        step_days=1.0,
-    )
+    perf_cfg = getattr(settings, "perf", None)
+    raw_max_days = getattr(perf_cfg, "max_scan_days", None) if perf_cfg is not None else None
+    try:
+        max_days = float(raw_max_days) if raw_max_days is not None else None
+    except (TypeError, ValueError):
+        max_days = None
+    if max_days is not None and max_days <= 0:
+        max_days = None
+
+    raw_workers = getattr(perf_cfg, "workers", 1) if perf_cfg is not None else 1
+    try:
+        worker_count = int(raw_workers)
+    except (TypeError, ValueError):
+        worker_count = 1
+
+    chunks = _chunk_window(chart.window, max_days)
+
+    def _scan_chunk(bounds: tuple[datetime, datetime]) -> list[AspectHit]:
+        chunk_start, chunk_end = bounds
+        return scan_transits(
+            natal_ts=natal_iso,
+            start_ts=_isoformat(chunk_start),
+            end_ts=_isoformat(chunk_end),
+            aspects=aspects,
+            orb_deg=orb_allow,
+            bodies=None,
+            targets=None,
+            step_days=1.0,
+        )
+
+    hits: list[AspectHit] = []
+    if worker_count > 1 and len(chunks) > 1:
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            futures = [executor.submit(_scan_chunk, bounds) for bounds in chunks]
+            for future in futures:
+                hits.extend(future.result())
+    else:
+        for bounds in chunks:
+            hits.extend(_scan_chunk(bounds))
+
+    hits.sort(key=lambda item: getattr(item, "when_iso", ""))
     scanner = TransitScanner()
     events: list[ForecastEvent] = []
     for hit in hits:

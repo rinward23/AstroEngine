@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Dict
 from datetime import timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.schemas.electional import (
     ElectionalSearchRequest,
@@ -13,6 +13,7 @@ from app.schemas.electional import (
     InstantViolation,
 )
 from app.schemas.aspects import TimeWindow
+from astroengine.api.rate_limit import heavy_endpoint_rate_limiter
 
 from core.electional_plus.engine import (
     ElectionalRules,
@@ -70,8 +71,16 @@ def _resolve_policy(inline, pid) -> Dict[str, Any]:
     response_model=ElectionalSearchResponse,
     summary="Search best electional windows",
     description="Sliding‑window optimizer that ranks time windows by rules (required/forbidden aspects, VoC avoidance, time filters).",
+    dependencies=[
+        Depends(
+            heavy_endpoint_rate_limiter(
+                "electional_search",
+                message="Electional search requests are temporarily limited to keep results accurate for everyone.",
+            )
+        )
+    ],
 )
-def electional_search(req: ElectionalSearchRequest):
+def electional_search(req: ElectionalSearchRequest, request: Request):
     provider = aspects_module._get_provider()
     policy = _resolve_policy(req.orb_policy_inline, req.orb_policy_id)
 
@@ -88,7 +97,28 @@ def electional_search(req: ElectionalSearchRequest):
         forbidden_aspects=[ForbiddenRule(**r.model_dump()) for r in req.forbidden_aspects],
     )
 
-    results = search_best_windows(rules, provider)
+    settings = getattr(request.app.state, "settings", None)
+    perf_cfg = getattr(settings, "perf", None)
+    raw_max_days = getattr(perf_cfg, "max_scan_days", None) if perf_cfg is not None else None
+    try:
+        max_scan_days = float(raw_max_days) if raw_max_days is not None else None
+    except (TypeError, ValueError):
+        max_scan_days = None
+    if max_scan_days is not None and max_scan_days <= 0:
+        max_scan_days = None
+
+    raw_workers = getattr(perf_cfg, "workers", 1) if perf_cfg is not None else 1
+    try:
+        worker_count = int(raw_workers)
+    except (TypeError, ValueError):
+        worker_count = 1
+
+    results = search_best_windows(
+        rules,
+        provider,
+        max_scan_days=max_scan_days,
+        workers=worker_count,
+    )
 
     def _map_instant(I) -> InstantOut:
         if isinstance(I, dict):

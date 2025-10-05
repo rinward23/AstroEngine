@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from .profiles import ResonanceWeights
+from .utils.i18n import translate
 
 __all__ = [
     "NarrativeOverlay",
@@ -55,10 +56,10 @@ def format_confidence_band(confidence: float) -> str:
 
     c = max(0.0, min(confidence, 1.0))
     if c >= 0.75:
-        return f"Confidence high ({c:.2f})"
+        return translate("narrative.overlay.confidence.high", value=c)
     if c >= 0.45:
-        return f"Confidence moderate ({c:.2f})"
-    return f"Confidence exploratory ({c:.2f})"
+        return translate("narrative.overlay.confidence.moderate", value=c)
+    return translate("narrative.overlay.confidence.low", value=c)
 
 
 def apply_resonance_overlay(
@@ -86,11 +87,11 @@ def apply_resonance_overlay(
     phrases = list(base_phrases or [])
     phrases.append(format_confidence_band(confidence))
     if focus == "spirit":
-        phrases.append("Lean into meaning-making and long-range themes.")
+        phrases.append(translate("narrative.overlay.focus.spirit"))
     elif focus == "body":
-        phrases.append("Track concrete circumstances and tangible shifts.")
+        phrases.append(translate("narrative.overlay.focus.body"))
     else:
-        phrases.append("Notice thought patterns and decision points.")
+        phrases.append(translate("narrative.overlay.focus.mind"))
     return NarrativeOverlay(
         focus=focus, confidence=confidence, emphasis=emphasis, phrases=phrases
     )

@@ -5,12 +5,15 @@ from __future__ import annotations
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Mapping, Optional, Sequence, Tuple
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from astroengine.plugins.registry import apply_plugin_settings
+
+
+CURRENT_SETTINGS_SCHEMA_VERSION = 2
 
 # -------------------- Settings Schema --------------------
 
@@ -63,9 +66,15 @@ class BodiesCfg(BaseModel):
             "modern": True,
             "dwarf": False,
             "centaurs": False,
+            "chiron": False,
             "asteroids_major": False,
             "asteroids_extended": False,
             "hypothetical": False,
+            "nodes_mean": False,
+            "nodes_true": False,
+            "lilith_mean": False,
+            "lilith_true": False,
+            "vertex": False,
         }
     )
     custom_asteroids: List[int] = Field(default_factory=list)
@@ -520,12 +529,12 @@ class ForecastStackCfg(BaseModel):
     """Forecast stack component toggles."""
 
     enabled: bool = True
-    components: List[str] = Field(
-        default_factory=lambda: [
-            "transits",
-            "secondary_progressions",
-            "solar_arc",
-        ]
+    components: Dict[str, bool] = Field(
+        default_factory=lambda: {
+            "transits": True,
+            "progressions": True,
+            "solar_arc": True,
+        }
     )
     exactness_deg: float = 0.5
     consolidate_hours: int = 24
@@ -541,6 +550,15 @@ class ForecastStackCfg(BaseModel):
     @classmethod
     def _cap_consolidate_hours(cls, value: int) -> int:
         return max(1, min(168, int(value)))
+
+    @field_validator("components", mode="before")
+    @classmethod
+    def _coerce_components(cls, value):  # type: ignore[override]
+        if isinstance(value, Mapping):
+            return dict(value)
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+            return {str(item): True for item in value}
+        return {}
 
 
 class SynastryCfg(BaseModel):
@@ -614,6 +632,7 @@ class AtlasCfg(BaseModel):
 
     offline_enabled: bool = False
     data_path: Optional[str] = None
+    online_fallback_enabled: bool = False
 
 
 class ObservabilityCfg(BaseModel):
@@ -657,6 +676,11 @@ class ChatCfg(BaseModel):
 class Settings(BaseModel):
     """Top-level settings model persisted on disk."""
 
+    schema_version: int = Field(
+        default=CURRENT_SETTINGS_SCHEMA_VERSION,
+        ge=1,
+        description="Version marker for persisted configuration payloads.",
+    )
     preset: Literal[
         "modern_western",
         "traditional_western",
@@ -676,6 +700,7 @@ class Settings(BaseModel):
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     swiss_caps: SwissCapsCfg = Field(default_factory=SwissCapsCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
+    observability: ObservabilityCfg = Field(default_factory=ObservabilityCfg)
     astrocartography: AstroCartoCfg = Field(default_factory=AstroCartoCfg)
     midpoints: MidpointsCfg = Field(default_factory=MidpointsCfg)
     fixed_stars: FixedStarsCfg = Field(default_factory=FixedStarsCfg)
@@ -891,6 +916,42 @@ def save_settings(settings: Settings, path: Optional[Path] = None) -> Path:
     return target_path
 
 
+def _coerce_schema_version(raw: object) -> int:
+    """Return a normalised schema version value with sane bounds."""
+
+    try:
+        value = int(raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 1
+    return max(1, value)
+
+
+def _upgrade_settings_payload(
+    data: dict[str, object], *, schema_version: int
+) -> tuple[dict[str, object], bool]:
+    """Apply in-place upgrades required for older settings payloads."""
+
+    upgraded = deepcopy(data)
+    version = max(1, schema_version)
+    changed = False
+
+    if version < 2:
+        # v2 introduces the explicit schema version marker. No structural
+        # adjustments are required; we simply record the new version.
+        version = 2
+        changed = True
+
+    if version < CURRENT_SETTINGS_SCHEMA_VERSION:
+        version = CURRENT_SETTINGS_SCHEMA_VERSION
+        changed = True
+
+    if upgraded.get("schema_version") != version:
+        upgraded["schema_version"] = version
+        changed = True
+
+    return upgraded, changed
+
+
 def load_settings(path: Optional[Path] = None) -> Settings:
     """Load settings from disk, creating defaults if missing."""
 
@@ -900,8 +961,14 @@ def load_settings(path: Optional[Path] = None) -> Settings:
         save_settings(settings, source_path)
         return settings
     with source_path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle) or {}
+        raw = yaml.safe_load(handle) or {}
+    if not isinstance(raw, dict):
+        raw = {}
+    schema_version = _coerce_schema_version(raw.get("schema_version"))
+    data, upgraded = _upgrade_settings_payload(raw, schema_version=schema_version)
     settings = Settings(**data)
+    if upgraded:
+        save_settings(settings, source_path)
     apply_plugin_settings(settings)
     return settings
 

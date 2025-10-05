@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 import importlib
@@ -33,8 +34,68 @@ else:
 
 
 Policy = Literal["earliest", "latest", "shift_forward", "raise"]
+"""Deprecated compatibility alias for callers expecting the legacy policy name."""
+
+FoldPolicy = Literal["earliest", "latest", "raise", "flag"]
+GapPolicy = Literal["post", "pre", "raise"]
+
+
+@dataclass(frozen=True, slots=True)
+class LocalTimeResolution:
+    """Snapshot describing how a naive local time maps onto UTC.
+
+    Attributes
+    ----------
+    input:
+        Original naive datetime supplied by the caller.
+    tzid:
+        Olson timezone identifier resolved from the provided coordinates.
+    local:
+        Timezone-aware datetime after applying the disambiguation policy.
+    utc:
+        UTC datetime corresponding to :attr:`local`.
+    fold:
+        Value assigned to :pyattr:`datetime.datetime.fold` when the instant was
+        ambiguous. ``0`` selects the first occurrence, ``1`` selects the second.
+    ambiguous:
+        ``True`` when the input overlapped a DST fall-back transition.
+    ambiguous_policy:
+        Policy applied for ambiguous instants (``earliest``, ``latest``,
+        ``flag`` or ``raise``).
+    ambiguous_flagged:
+        Indicates that ``ambiguous_policy`` was ``flag``. Callers should surface
+        this state in UIs so operators know manual confirmation may be needed.
+    nonexistent:
+        ``True`` when the input fell inside a DST spring-forward gap.
+    nonexistent_policy:
+        Policy applied for nonexistent instants (``pre``, ``post`` or
+        ``raise``).
+    gap:
+        Width of the DST gap as a positive :class:`~datetime.timedelta` when the
+        instant was nonexistent. ``None`` otherwise.
+    """
+
+    input: datetime
+    tzid: str
+    local: datetime
+    utc: datetime
+    fold: int
+    ambiguous: bool
+    ambiguous_policy: FoldPolicy
+    ambiguous_flagged: bool
+    nonexistent: bool
+    nonexistent_policy: GapPolicy
+    gap: timedelta | None = None
+
+    def as_utc(self) -> datetime:
+        """Return the UTC datetime for convenience."""
+
+        return self.utc
 
 __all__ = [
+    "GapPolicy",
+    "FoldPolicy",
+    "LocalTimeResolution",
     "Policy",
 
     "from_utc",
@@ -102,37 +163,66 @@ def to_utc(
     lat: float,
     lon: float,
     *,
-    policy: Policy = "earliest",
-) -> datetime:
+    ambiguous: FoldPolicy = "earliest",
+    nonexistent: GapPolicy = "post",
+) -> LocalTimeResolution:
 
-    """Convert a naive local timestamp into a timezone-aware UTC datetime."""
+    """Resolve a naive local timestamp into UTC with explicit DST policies."""
 
-    if policy not in {"earliest", "latest", "shift_forward", "raise"}:
-        raise ValueError(f"Unsupported policy: {policy}")
+    if ambiguous not in {"earliest", "latest", "raise", "flag"}:
+        raise ValueError(f"Unsupported ambiguous policy: {ambiguous}")
+    if nonexistent not in {"post", "pre", "raise"}:
+        raise ValueError(f"Unsupported nonexistent policy: {nonexistent}")
     if local_naive.tzinfo is not None:
         raise ValueError("local_naive must be timezone-naive")
+
     tzid = tzid_for(lat, lon)
     zone = ZoneInfo(tzid)
 
-    if is_ambiguous(local_naive, tzid):
-        if policy == "raise":
+    ambiguous_state = is_ambiguous(local_naive, tzid)
+    nonexistent_state = is_nonexistent(local_naive, tzid)
+
+    fold = 0
+    flagged = False
+    effective_naive = local_naive
+    gap: timedelta | None = None
+
+    if ambiguous_state:
+        if ambiguous == "raise":
             raise ValueError("Ambiguous local time due to DST transition")
-        fold = 0 if policy in {"earliest", "shift_forward"} else 1
-        return _attach(local_naive, zone, fold).astimezone(timezone.utc)
+        if ambiguous == "latest":
+            fold = 1
+        elif ambiguous == "flag":
+            fold = 0
+            flagged = True
+        else:  # earliest
+            fold = 0
 
-    if is_nonexistent(local_naive, tzid):
-        if policy == "raise":
+    if nonexistent_state:
+        gap = _dst_gap(local_naive, zone)
+        if nonexistent == "raise":
             raise ValueError("Nonexistent local time due to DST transition")
+        if nonexistent == "post":
+            effective_naive = local_naive + gap
+        elif nonexistent == "pre":
+            effective_naive = local_naive - gap
 
-        if policy == "shift_forward":
-            gap = _dst_gap(local_naive, zone)
-            adjusted = local_naive + gap
-            return adjusted.replace(tzinfo=zone).astimezone(timezone.utc)
+    local_aware = effective_naive.replace(tzinfo=zone, fold=fold)
+    utc_dt = local_aware.astimezone(timezone.utc)
 
-        return _attach(local_naive, zone, 0).astimezone(timezone.utc)
-
-
-    return local_naive.replace(tzinfo=zone).astimezone(timezone.utc)
+    return LocalTimeResolution(
+        input=local_naive,
+        tzid=tzid,
+        local=local_aware,
+        utc=utc_dt,
+        fold=fold,
+        ambiguous=ambiguous_state,
+        ambiguous_policy=ambiguous,
+        ambiguous_flagged=flagged,
+        nonexistent=nonexistent_state,
+        nonexistent_policy=nonexistent,
+        gap=gap,
+    )
 
 
 def from_utc(utc_dt: datetime, lat: float, lon: float) -> datetime:

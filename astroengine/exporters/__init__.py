@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any as _TypingAny
 
 from ..canonical import parquet_write_canonical, sqlite_write_canonical
+from ..infrastructure.storage.sqlite import apply_default_pragmas
 
 try:  # pragma: no cover - optional dependency
     import sqlite3
@@ -94,7 +95,9 @@ class SQLiteExporter:
 
     def _connect(self):  # pragma: no cover - trivial wrapper
         assert sqlite3 is not None
-        return sqlite3.connect(self.path)
+        connection = sqlite3.connect(self.path)
+        apply_default_pragmas(connection)
+        return connection
 
     def _ensure_schema(self) -> None:
         con = self._connect()

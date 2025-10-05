@@ -67,21 +67,14 @@ class APIClient:
         except ValueError as exc:  # pragma: no cover - streamlit UI only
             raise RuntimeError("API returned a non-JSON response") from exc
 
-    # ---- Profiles ----------------------------------------------------------
-    def list_profiles(self) -> Dict[str, list[str]]:
-        response = requests.get(f"{self.base}/v1/profiles", timeout=15)
-        response.raise_for_status()
-        data = response.json()
-        if not isinstance(data, dict):  # pragma: no cover - defensive
-            raise RuntimeError("Unexpected response payload from /v1/profiles")
-        return data
+    def system_doctor(self) -> Dict[str, Any]:
+        """Return the diagnostics payload from the /v1/doctor endpoint."""
 
-    def get_profile_settings(self, name: str) -> Dict[str, Any]:
-        response = requests.get(f"{self.base}/v1/profiles/{name}", timeout=15)
+        response = requests.get(f"{self.base}/v1/doctor", timeout=30)
         response.raise_for_status()
         data = response.json()
         if not isinstance(data, dict):  # pragma: no cover - defensive
-            raise RuntimeError(f"Unexpected response payload from /v1/profiles/{name}")
+            raise RuntimeError("Unexpected response payload from /v1/doctor")
         return data
 
     # ---- Natals ------------------------------------------------------------

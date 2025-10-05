@@ -11,12 +11,19 @@ from .catalog import (
     register_lot,
     unregister_lot,
 )
+from .parser import (
+    FormulaSyntaxError,
+    extract_symbols,
+    parse_formula,
+    validate_formula,
+)
 
 __all__ = [
     "eval_formula",
     "norm360",
     "deg_add",
     "deg_sub",
+    "FormulaSyntaxError",
     "LotDef",
     "Sect",
     "BUILTIN",
@@ -25,4 +32,7 @@ __all__ = [
     "compute_lots",
     "register_lot",
     "unregister_lot",
+    "extract_symbols",
+    "parse_formula",
+    "validate_formula",
 ]

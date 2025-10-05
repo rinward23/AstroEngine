@@ -21,10 +21,11 @@ CONFIRM_PHRASE = os.environ.get(
     "DEV_CORE_EDIT_CONFIRM", "I UNDERSTAND THIS MAY BREAK THE APP"
 )
 
-validate_tab, apply_tab, history_tab = st.tabs([
+validate_tab, apply_tab, history_tab, backups_tab = st.tabs([
     "Validate",
     "Apply Patch",
     "History & Restore",
+    "Backups & Retention",
 ])
 
 
@@ -127,3 +128,132 @@ with history_tab:
                     st.code(entry.get("snapshot", ""), language="text")
                 with cols[2]:
                     st.caption("Changelog is updated in CHANGELOG.md")
+
+
+with backups_tab:
+    st.subheader("Scheduled backups")
+    try:
+        data = requests.get(f"{API_ROOT}/v1/dev/backups", timeout=30)
+        data.raise_for_status()
+        backup_data = data.json()
+    except requests.RequestException as exc:
+        st.error(f"Unable to load backup status: {exc}")
+        backup_data = {}
+
+    schedule_info = backup_data.get("schedule") or {}
+    backup_items = backup_data.get("backups") or []
+    retention_policy = backup_data.get("retention_policy") or {}
+    retention_preview = backup_data.get("retention_preview") or {}
+
+    cols = st.columns(2)
+    with cols[0]:
+        if schedule_info:
+            st.metric(
+                "Next run",
+                schedule_info.get("next_run_iso") or "unscheduled",
+                delta=f"Last: {schedule_info.get('last_run_iso', 'never')}",
+            )
+            st.caption(f"Job state: {schedule_info.get('job_state', 'n/a')}")
+        else:
+            st.info("No automated backup schedule configured.")
+    with cols[1]:
+        if st.button("Create backup now", key="run-backup-now"):
+            try:
+                resp = requests.post(f"{API_ROOT}/v1/dev/backups/run", timeout=120)
+                resp.raise_for_status()
+                st.success(resp.json())
+            except requests.RequestException as exc:
+                st.error(f"Backup request failed: {exc}")
+
+    with st.form("schedule-backups-form"):
+        st.write("Update backup cadence")
+        interval_default = float(schedule_info.get("interval_seconds", 86400)) / 3600.0
+        interval_hours = st.number_input(
+            "Run every (hours)",
+            min_value=0.0,
+            value=max(interval_default, 0.0),
+            step=1.0,
+        )
+        start_in = st.number_input(
+            "Delay first run (hours)",
+            min_value=0.0,
+            value=0.0,
+            step=1.0,
+        )
+        submitted = st.form_submit_button("Save schedule")
+        if submitted:
+            payload: dict[str, float] = {"interval_hours": float(interval_hours)}
+            if start_in > 0:
+                payload["start_in_hours"] = float(start_in)
+            try:
+                resp = requests.post(
+                    f"{API_ROOT}/v1/dev/backups/schedule",
+                    json=payload,
+                    timeout=30,
+                )
+                resp.raise_for_status()
+                st.success(resp.json())
+            except requests.RequestException as exc:
+                st.error(f"Unable to update schedule: {exc}")
+
+    if st.button("Cancel scheduled backups", key="cancel-backup-schedule"):
+        try:
+            resp = requests.delete(f"{API_ROOT}/v1/dev/backups/schedule", timeout=30)
+            resp.raise_for_status()
+            st.warning(resp.json())
+        except requests.RequestException as exc:
+            st.error(f"Failed to cancel schedule: {exc}")
+
+    st.markdown("---")
+    st.subheader("Backup archives")
+    if not backup_items:
+        st.info("No backups recorded yet.")
+    else:
+        for item in backup_items:
+            with st.container(border=True):
+                st.write(f"**{item.get('name', 'backup')}** — {item.get('modified_iso', 'unknown')}")
+                st.caption(f"Size: {item.get('size', 0)} bytes")
+                path = item.get("path")
+                if path:
+                    if st.button("Restore from this ZIP", key=f"restore-zip-{path}"):
+                        try:
+                            resp = requests.post(
+                                f"{API_ROOT}/v1/dev/backups/restore",
+                                json={"archive_path": path},
+                                timeout=120,
+                            )
+                            resp.raise_for_status()
+                            st.success(resp.json())
+                        except requests.RequestException as exc:
+                            st.error(f"Restore failed: {exc}")
+
+    st.markdown("---")
+    st.subheader("Retention policy")
+    retention_days = int(retention_policy.get("temporary_derivatives_days", 7) or 0)
+    st.caption(
+        "Temporary derivatives include ad-hoc transit runs and cached exports stored under"
+        " the AstroEngine home directory."
+    )
+    with st.form("retention-policy-form"):
+        new_days = st.number_input(
+            "Keep temporary derivatives for N days", min_value=0, value=retention_days, step=1
+        )
+        run_purge = st.checkbox("Purge old derivatives immediately", value=True)
+        submitted = st.form_submit_button("Update retention policy")
+        if submitted:
+            payload = {"temporary_derivatives_days": int(new_days), "run_purge": run_purge}
+            try:
+                resp = requests.post(
+                    f"{API_ROOT}/v1/dev/retention", json=payload, timeout=120
+                )
+                resp.raise_for_status()
+                st.success(resp.json())
+            except requests.RequestException as exc:
+                st.error(f"Unable to update retention policy: {exc}")
+
+    if retention_preview:
+        st.caption(
+            "Preview: "
+            + f"{retention_preview.get('eligible', 0)} files older than cutoff "
+            + f"{retention_preview.get('cutoff')} (dry-run)."
+        )

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 from ...chart import ChartLocation, compute_natal_chart
+from ...chart.natal import expansions_from_groups
 from ...config.settings import Settings, load_settings
 from ...forecast import ForecastChart, ForecastWindow, build_forecast_stack
 from ...userdata.vault import load_natal
@@ -103,13 +104,17 @@ def get_forecast_stack(
             detail={"code": "NATAL_NOT_FOUND", "message": f"Natal '{natal_id}' was not found."},
         ) from exc
 
-    location = ChartLocation(latitude=natal.lat, longitude=natal.lon)
+    location = ChartLocation(latitude=float(natal.lat), longitude=float(natal.lon))
     natal_moment = datetime.fromisoformat(natal.utc.replace("Z", "+00:00"))
     if natal_moment.tzinfo is None:
         natal_moment = natal_moment.replace(tzinfo=UTC)
     natal_moment = natal_moment.astimezone(UTC)
 
-    natal_chart = compute_natal_chart(natal_moment, location)
+    natal_chart = compute_natal_chart(
+        natal_moment,
+        location,
+        config=natal.chart_config(),
+    )
     window = ForecastWindow(start=start, end=end)
     chart = ForecastChart(natal_chart=natal_chart, window=window)
 
