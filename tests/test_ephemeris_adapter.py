@@ -2,10 +2,9 @@ from datetime import UTC, datetime
 
 import pytest
 
-try:  # pragma: no cover - exercised via runtime availability
-    import swisseph as swe
-except Exception:  # pragma: no cover - fallback when pyswisseph missing
-    swe = None  # type: ignore[assignment]
+swe = pytest.importorskip(
+    "swisseph", reason="Install with `.[providers]` or set SE_EPHE_PATH"
+)
 
 from astroengine.core.angles import DeltaLambdaTracker
 from astroengine.core.time import to_tt
@@ -46,7 +45,6 @@ def test_topocentric_longitude_delta_within_bounds() -> None:
     assert abs(topocentric.declination - geocentric.declination) < 1.0
 
 
-@pytest.mark.skipif(swe is None, reason="pyswisseph unavailable")
 def test_sidereal_mode_configures_swiss_backend() -> None:
     moment = datetime(2000, 4, 13, 11, 52, 10, 808741, tzinfo=UTC)
     adapter = EphemerisAdapter(

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 from logging import LoggerAdapter
 from time import perf_counter
 from typing import Callable
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -115,26 +116,35 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         return response
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Attach security hardening headers to each response."""
-
-    def __init__(self, app: ASGIApp, *, enable_hsts: bool, hsts_max_age: int) -> None:
-        super().__init__(app)
-        self.enable_hsts = enable_hsts
-        self.hsts_max_age = max(0, hsts_max_age)
+class ETagMiddleware(BaseHTTPMiddleware):
+    """Attach weak ETag headers for cacheable GET responses."""
 
     async def dispatch(self, request: Request, call_next: Callable):  # type: ignore[override]
         response = await call_next(request)
-        headers = response.headers
-        headers.setdefault("X-Content-Type-Options", "nosniff")
-        headers.setdefault("X-Frame-Options", "DENY")
-        headers.setdefault("Referrer-Policy", "no-referrer")
-        headers.setdefault("Permissions-Policy", "geolocation=(), microphone=()")
-        if self.enable_hsts:
-            policy = f"max-age={self.hsts_max_age}"
-            if self.hsts_max_age:
-                policy = policy + "; includeSubDomains"
-            headers.setdefault("Strict-Transport-Security", policy)
+
+        if request.method != "GET" or not (200 <= response.status_code < 300):
+            return response
+
+        if any(header.lower() == "etag" for header in response.headers.keys()):
+            return response
+
+        body: bytes
+        if hasattr(response, "body_iterator") and response.body_iterator is not None:
+            chunks = [chunk async for chunk in response.body_iterator]
+            body = b"".join(chunks)
+            response.body_iterator = iter([body])
+        else:
+            # ``Response.body`` may be ``None`` for streaming responses; coerce to bytes.
+            body = response.body or b""
+            response.body = body
+
+        tag = hashlib.sha1(body).hexdigest()
+        etag = f'W/"{tag}"'
+        response.headers["ETag"] = etag
+
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers={"ETag": etag})
+
         return response
 
 
@@ -155,6 +165,7 @@ def install_middleware(app: FastAPI, settings: ServiceSettings) -> None:
     rate_limiter = RateLimiter(settings.rate_limit_per_minute, settings.redis_url)
     app.add_middleware(BodyLimitMiddleware, max_bytes=settings.request_max_bytes)
     app.add_middleware(RequestContextMiddleware, rate_limiter=rate_limiter)
+    app.add_middleware(ETagMiddleware)
 
 
-__all__ = ["install_middleware", "RequestLogger", "SecurityHeadersMiddleware"]
+__all__ = ["install_middleware", "RequestLogger", "ETagMiddleware"]
