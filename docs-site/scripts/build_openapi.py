@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
 SCRIPT_PATH = Path(__file__).resolve()
@@ -255,7 +256,10 @@ def main() -> None:
     core_client = TestClient(core_app)
     specs_core = build_specs(core_client, args.output, prefix="core-")
 
-    plus_app = FastAPI(title="AstroEngine Relationship Plus API")
+    plus_app = FastAPI(
+        title="AstroEngine Relationship Plus API",
+        default_response_class=ORJSONResponse,
+    )
     plus_app.include_router(plus_relationship_router)
     plus_app.include_router(plus_interpret_router)
     plus_client = TestClient(plus_app)

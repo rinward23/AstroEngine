@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 
 _APP_INSTANCE: FastAPI | None = None
 
@@ -21,7 +22,7 @@ def create_app() -> FastAPI:
     from .routers import vedic as vedic_router
 
 
-    app = FastAPI(title="AstroEngine API")
+    app = FastAPI(title="AstroEngine API", default_response_class=ORJSONResponse)
     app.include_router(plus_router.router)
     app.include_router(lots_router.router, prefix="/v1", tags=["lots"])
     app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])

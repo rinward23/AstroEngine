@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 
 from app.routers import (
     aspects_router,
@@ -21,7 +22,7 @@ from app.routers.aspects import (  # re-exported for convenience
     configure_position_provider,
 )
 
-app = FastAPI(title="AstroEngine Plus API")
+app = FastAPI(title="AstroEngine Plus API", default_response_class=ORJSONResponse)
 app.include_router(aspects_router)
 app.include_router(electional_router)
 app.include_router(events_router)

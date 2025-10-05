@@ -5,6 +5,7 @@ import pytest
 pytest.importorskip("fastapi")
 
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
 from app.routers.transits import router as transits_router
@@ -24,7 +25,7 @@ class LinearEphemeris:
 
 
 def build_app(provider):
-    app = FastAPI()
+    app = FastAPI(default_response_class=ORJSONResponse)
     aspects_module.position_provider = provider
     app.include_router(transits_router)
     return app

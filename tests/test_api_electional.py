@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
 from app.routers.electional import router as electional_router
@@ -17,7 +18,7 @@ class LinearEphemeris:
 
 
 def build_app(provider=None):
-    app = FastAPI()
+    app = FastAPI(default_response_class=ORJSONResponse)
     if provider is not None:
         aspects_module.position_provider = provider
         if hasattr(aspects_module, "_cached"):

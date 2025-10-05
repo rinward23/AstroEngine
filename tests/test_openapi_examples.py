@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
 from app.routers.aspects import router as aspects_router
@@ -7,7 +8,7 @@ from app.routers.transits import router as transits_router
 
 
 def build_app() -> FastAPI:
-    app = FastAPI()
+    app = FastAPI(default_response_class=ORJSONResponse)
     app.include_router(aspects_router)
     app.include_router(transits_router)
     app.include_router(policies_router)

@@ -1,5 +1,32 @@
 from __future__ import annotations
-from typing import Dict, Any
+from dataclasses import dataclass
+from typing import Any, Dict, Mapping
+
+
+@dataclass(frozen=True)
+class PreparedOrbPolicy:
+    """Normalized, ready-to-use view of an orb policy."""
+
+    per_object: Dict[str, float]
+    per_aspect: Dict[str, float]
+    adaptive_rules: Dict[str, Any]
+
+
+def prepare_policy(policy: Mapping[str, Any] | None) -> PreparedOrbPolicy:
+    """Return a :class:`PreparedOrbPolicy` with consistent mapping defaults."""
+
+    if isinstance(policy, PreparedOrbPolicy):
+        return policy
+
+    source: Mapping[str, Any] = policy or {}
+    per_object = dict((source.get("per_object") or {}).items())
+    per_aspect = dict((source.get("per_aspect") or {}).items())
+    adaptive_rules = dict((source.get("adaptive_rules") or {}).items())
+    return PreparedOrbPolicy(
+        per_object=per_object,
+        per_aspect=per_aspect,
+        adaptive_rules=adaptive_rules,
+    )
 
 # Built-in aspect defaults (deg). Adjust later via policy.per_aspect.
 ASPECT_DEFAULTS: Dict[str, float] = {
@@ -68,5 +95,20 @@ def orb_limit(object_a: str, object_b: str, aspect_name: str, policy: Dict[str, 
     mult = _adaptive_multiplier(object_a, object_b, aspect_name, rules)
 
     # Ensure positive and reasonable
+    final = max(0.1, start * mult)
+    return float(final)
+
+
+def orb_limit_prepared(
+    object_a: str,
+    object_b: str,
+    aspect_name: str,
+    policy: PreparedOrbPolicy,
+) -> float:
+    """Specialized orb computation for pre-normalized policies."""
+
+    base = _base_orb(aspect_name, policy.per_aspect)
+    start = _object_orb(object_a, object_b, base, policy.per_object)
+    mult = _adaptive_multiplier(object_a, object_b, aspect_name, policy.adaptive_rules)
     final = max(0.1, start * mult)
     return float(final)

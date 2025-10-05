@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
 from astroengine.api.routers.interpret import router as interpret_router
@@ -13,7 +14,7 @@ def api_client(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setenv("AE_RULEPACK_DIR", str(tmp_path / "rulepacks"))
     monkeypatch.delenv("AE_RULEPACK_ALLOW_MUTATIONS", raising=False)
     get_rulepack_store.cache_clear()
-    app = FastAPI()
+    app = FastAPI(default_response_class=ORJSONResponse)
     app.include_router(interpret_router)
     return TestClient(app)
 

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 try:  # pragma: no cover - optional dependency
     from fastapi import FastAPI
+    from fastapi.responses import ORJSONResponse
 except Exception:  # pragma: no cover
     app = None  # type: ignore[assignment]
 else:
-    app = FastAPI(title="AstroEngine API")
+    app = FastAPI(title="AstroEngine API", default_response_class=ORJSONResponse)
 
 if app:
     from .api.routers.plus import router as plus_router
