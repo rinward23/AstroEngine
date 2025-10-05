@@ -5,7 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Iterable, Mapping, Sequence
+from typing import Iterable, Mapping, Protocol, Sequence
 
 from ..chart import NatalChart, TransitScanner
 from ..chart.natal import DEFAULT_BODIES
@@ -21,6 +21,23 @@ __all__ = [
     "ForecastChart",
     "build_forecast_stack",
 ]
+
+
+class ProgressionResolver(Protocol):
+    """Callable resolving progressed or solar-arc aspect hits."""
+
+    def __call__(
+        self,
+        natal_ts: str,
+        start_ts: str,
+        end_ts: str,
+        *,
+        aspects: Sequence[int],
+        orb_deg: float,
+        bodies: Sequence[str] | None = ...,  # noqa: D401 - delegated to resolver
+        step_days: float = ...,
+    ) -> Sequence[AspectHit]:
+        ...
 
 
 @dataclass(frozen=True)
@@ -266,7 +283,7 @@ def _progression_events(
     end_iso: str,
     window: ForecastWindow,
     technique: str,
-    resolver,
+    resolver: ProgressionResolver,
     aspects: Sequence[int],
 ) -> Iterable[ForecastEvent]:
     if not aspects:

@@ -41,6 +41,20 @@ output is an acceptable substitute. Commit the updated lockfile alongside releas
 tags so downstream images resolve the same versions recorded in Solar Fire
 comparison artefacts.
 
+## CI/CD automation
+
+- `.github/workflows/release.yml` executes a Python 3.11 build matrix on
+  `ubuntu-latest` and `windows-latest` whenever a `v*` tag is pushed. Each job
+  installs the provider extras, runs the pytest suite, builds the sdist/wheel
+  set, and (on Windows) packages the new PyInstaller portal bundle that targets
+  `ui/streamlit/main_portal.py` with bundled ephemeris data. The resulting
+  artifacts are published to a draft GitHub release for review.
+- `.github/workflows/nightly-smoke-bench.yml` runs daily and records the timing
+  of deterministic electional searches and forecast stack builds using the
+  Swiss ephemeris stub. The JSON trend file is stored under
+  `observability/trends/nightly-metrics.json` and uploaded as a workflow
+  artifact so regressions can be tracked over time.
+
 ## Registry compatibility snapshot
 
 The default registry currently exposes the following modules:

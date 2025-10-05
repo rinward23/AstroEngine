@@ -1,47 +1,116 @@
-name: ci-release
+name: release
+
 on:
   push:
-    branches: [ main ]
-    tags: [ "v*" ]
-  pull_request:
+    tags:
+      - "v*"
+  workflow_dispatch:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  build:
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -e .[dev,api,providers]
-      - run: pytest -q
-  publish:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install build tooling
+
+      - name: Install dependencies
+        shell: bash
         run: |
           python -m pip install --upgrade pip
-          pip install build twine
-      - name: Build distribution artifacts
-        run: python -m build
-      - name: Upload to internal index
-        if: ${{ secrets.INTERNAL_INDEX_URL != '' }}
-        env:
-          TWINE_USERNAME: ${{ secrets.INTERNAL_INDEX_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.INTERNAL_INDEX_PASSWORD }}
-          TWINE_REPOSITORY_URL: ${{ secrets.INTERNAL_INDEX_URL }}
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          python -m pip install -e ".[api,providers,ui]"
+          python -m pip install build pyinstaller
+
+      - name: Prepare ephemeris dataset
+        shell: bash
         run: |
-          if [ -z "${TWINE_USERNAME}" ] || [ -z "${TWINE_PASSWORD}" ]; then
-            echo "Internal index credentials missing; skipping upload."
-            exit 0
-          fi
-          twine upload --repository-url "${TWINE_REPOSITORY_URL}" dist/*
-      - uses: pypa/gh-action-pypi-publish@release/v1
+          python - <<'PY'
+          import os, shutil
+          from pathlib import Path
+
+          target = Path.home() / ".astroengine" / "ephemeris"
+          target.mkdir(parents=True, exist_ok=True)
+          source = Path("datasets") / "swisseph_stub"
+          if source.exists():
+              for entry in source.iterdir():
+                  destination = target / entry.name
+                  if entry.is_dir():
+                      if destination.exists():
+                          shutil.rmtree(destination)
+                      shutil.copytree(entry, destination)
+                  else:
+                      shutil.copy2(entry, destination)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as fh:
+              fh.write(f"SE_EPHE_PATH={target}\n")
+          PY
+
+      - name: Run tests
+        shell: bash
+        run: pytest -q
+
+      - name: Build distributions
+        shell: bash
+        run: python -m build --outdir dist/${{ matrix.os }}
+
+      - name: Build Streamlit portal bundle
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: pyinstaller packaging/astroengine_portal.spec --noconfirm
+
+      - name: Package portal bundle
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        env:
+          OS_NAME: ${{ matrix.os }}
+        run: |
+          python - <<'PY'
+          import os, shutil
+          from pathlib import Path
+
+          os_name = os.environ["OS_NAME"]
+          src = Path("dist") / "AstroEnginePortal"
+          target_dir = Path("dist") / os_name
+          target_dir.mkdir(parents=True, exist_ok=True)
+          if src.exists():
+              shutil.make_archive(str(target_dir / "AstroEnginePortal"), "zip", src)
+          PY
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          name: release-${{ matrix.os }}
+          path: dist/${{ matrix.os }}
+          if-no-files-found: error
+
+  draft-release:
+    name: Draft release
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          generate_release_notes: true
+          files: release-artifacts/**/*

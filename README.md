@@ -97,6 +97,10 @@ Key behaviour:
 * **Observability helpers.** Diagnostics, `/healthz`, `/metrics`, and log
   viewers are available from the menus, and a one-click issue report bundles an
   anonymised diagnostics snapshot for support.
+* **Bundled portal launcher.** CI publishes a PyInstaller build generated from
+  `packaging/astroengine_portal.spec`. The executable ships the Streamlit
+  `main_portal.py` experience with the Swiss ephemeris stub baked in and keeps
+  user data under `%LOCALAPPDATA%/AstroEngine`.
 * **ChatGPT copilot.** The dockable copilot panel can tail logs, run
   diagnostics, summarise API errors, and explain endpoints. Provide an OpenAI
   API key and model in Settings to enable remote completions; otherwise the

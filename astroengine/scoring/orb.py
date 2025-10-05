@@ -15,9 +15,10 @@ from typing import Mapping, Sequence
 
 # Optional: integrate with project body classification if available
 try:  # pragma: no cover - fallback for minimal installs
-    from astroengine.core.bodies import body_class  # type: ignore import
+    from astroengine.core.bodies import body_class as _body_class
 except Exception:  # pragma: no cover
-    def body_class(name: str) -> str:
+
+    def _body_class(name: str) -> str:
         n = (name or "").lower()
         luminaries = {"sun", "moon"}
         personals = {"mercury", "venus", "mars"}
@@ -30,6 +31,12 @@ except Exception:  # pragma: no cover
 
             return "social"
         return "outer"
+
+
+def body_class(name: str) -> str:
+    """Return the configured classification for ``name``."""
+
+    return _body_class(name)
 
 
 def _normalize_name(name: str) -> str:
