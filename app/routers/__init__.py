@@ -16,6 +16,8 @@ __all__ = [
     "interpret_router",
     "reports_router",
     "health_router",
+    "transits_router",
+    "settings_router",
     "configure_position_provider",
     "clear_position_provider",
 ]
@@ -65,6 +67,10 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .reports import router as reports_router
 
         return reports_router
+    if name == "settings_router":
+        from .settings import router as settings_router
+
+        return settings_router
     if name == "policies_router":
         from .policies import router as policies_router
 
