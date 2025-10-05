@@ -20,6 +20,7 @@ from core.lots_plus.catalog import (
     compute_lots,
     register_lot,
 )
+from core.lots_plus.parser import FormulaSyntaxError, parse_formula
 
 router = APIRouter(prefix="", tags=["Plus"])
 
@@ -57,6 +58,12 @@ def _persist_custom_lots(custom_lots: List[LotDefIn]) -> Dict[str, LotDef]:
                 status_code=400,
                 detail="custom_lots entries require name/day/night",
             )
+        try:
+            parse_formula(c.day)
+            parse_formula(c.night)
+        except FormulaSyntaxError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
         definition = LotDef(
             name=c.name,
             day=c.day,
