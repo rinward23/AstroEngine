@@ -43,6 +43,31 @@ The first command pins the SQLite dev database (`dev.db` in the repo root) and
 points Swiss Ephemeris to your local data so neither service falls back to the
 reduced-precision providers. The subshell then launches the FastAPI service and
 Streamlit playground together so the UI can call the freshly started API.
+
+### Docker Compose workflow
+
+The repository now ships a compose bundle that launches the API on `:8000` and
+the Streamlit UI on `:8501` while sharing the host `./data` directory.
+
+1. Populate `./data` with any required assets:
+   ```bash
+   mkdir -p data/ephe
+   cp /path/to/dev.db data/dev.db            # optional, created automatically if missing
+   cp /path/to/sweph/* data/ephe/            # optional Swiss Ephemeris files
+   ```
+
+2. Build and start the API:
+   ```bash
+   docker compose up --build api
+   ```
+
+3. In a separate shell, build and start the UI (Compose will reuse the running API container or start one if needed):
+   ```bash
+   docker compose up --build ui
+   ```
+
+The containers mount `./data` at `/app/data`, so database migrations and
+ephemeris files persist between restarts and remain available to both services.
 # >>> AUTO-GEN END: README Quick Start v1.1
 
 ### First transit sanity check
