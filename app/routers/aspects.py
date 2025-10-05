@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict
 
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from app.schemas.aspects import (
     AspectHit,
@@ -153,9 +153,14 @@ def _resolve_orb_policy(req: AspectSearchRequest) -> Dict[str, Any]:
     ),
     operation_id="plus_aspects_search",
 )
-def aspects_search(req: AspectSearchRequest):
+def aspects_search(req: AspectSearchRequest, request: Request):
     provider = _get_provider()
     policy = _resolve_orb_policy(req)
+
+    settings = getattr(request.app.state, "settings", None)
+    antiscia_cfg = getattr(settings, "antiscia", None) if settings is not None else None
+    antiscia_enabled = bool(getattr(antiscia_cfg, "enabled", False)) if antiscia_cfg else False
+    antiscia_orb = getattr(antiscia_cfg, "orb", None) if antiscia_cfg else None
 
     start = req.window.start.astimezone(timezone.utc)
     end = req.window.end.astimezone(timezone.utc)
@@ -170,6 +175,8 @@ def aspects_search(req: AspectSearchRequest):
         orb_policy=policy,
         pairs=req.pairs,
         step_minutes=req.step_minutes,
+        include_antiscia=antiscia_enabled,
+        antiscia_orb=antiscia_orb,
     )
 
     ranked = rank_hits(hits, profile=None, order_by=req.order_by)
