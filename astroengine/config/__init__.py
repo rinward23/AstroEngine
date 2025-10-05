@@ -80,6 +80,7 @@ __all__ = [
     "AtlasCfg",
     "VoidOfCourseCfg",
     "Settings",
+    "AtlasCfg",
     "ZodiacCfg",
     "HousesCfg",
     "DignitiesCfg",
