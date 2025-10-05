@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
+from ...chart.config import ChartConfig
 from ...userdata.vault import BASE as NATAL_BASE
 from ...userdata.vault import Natal, list_natals, load_natal, save_natal
 from ..errors import ErrorEnvelope
@@ -26,6 +27,56 @@ def _coerce_datetime(value: datetime | str) -> datetime:
     raise TypeError("UTC timestamp must be an ISO-8601 string or datetime instance")
 
 
+class HouseSettings(BaseModel):
+    """Pydantic model encapsulating house system preferences."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    system: str = Field(default="placidus", description="Canonical house system name or alias.")
+
+    @field_validator("system", mode="before")
+    @classmethod
+    def _normalize_system(cls, value: Any) -> str:
+        if isinstance(value, str):
+            normalized = value.strip()
+            if not normalized:
+                raise ValueError("house system must not be empty")
+            return normalized
+        raise TypeError("house system must be a string")
+
+
+class ZodiacSettings(BaseModel):
+    """Pydantic model encapsulating zodiac configuration."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    type: str = Field(default="tropical", description="Zodiac type (tropical or sidereal).")
+    ayanamsa: str | None = Field(
+        default=None,
+        description="Sidereal ayanamsa identifier when the zodiac type is sidereal.",
+    )
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _normalize_type(cls, value: Any) -> str:
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if not normalized:
+                raise ValueError("zodiac type must not be empty")
+            return normalized
+        raise TypeError("zodiac type must be a string")
+
+    @field_validator("ayanamsa", mode="before")
+    @classmethod
+    def _normalize_ayanamsa(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            return normalized or None
+        raise TypeError("ayanamsa must be a string or null")
+
+
 class NatalPayload(BaseModel):
     """Incoming payload used to create or update a natal record."""
 
@@ -40,6 +91,8 @@ class NatalPayload(BaseModel):
                     "lon": -80.60433,
                     "tz": "UTC",
                     "place": "Launch Complex 39A, Kennedy Space Center",
+                    "houses": {"system": "placidus"},
+                    "zodiac": {"type": "tropical"},
                 }
             ]
         },
@@ -51,6 +104,14 @@ class NatalPayload(BaseModel):
     lon: float = Field(description="Longitude in decimal degrees.")
     tz: str | None = Field(default=None, description="Original timezone identifier, if known.")
     place: str | None = Field(default=None, description="Birth location description.")
+    houses: "HouseSettings" = Field(
+        default_factory=HouseSettings,
+        description="House system preferences for derived charts.",
+    )
+    zodiac: "ZodiacSettings" = Field(
+        default_factory=ZodiacSettings,
+        description="Zodiac framework applied to derived charts.",
+    )
 
     @field_validator("utc", mode="before")
     @classmethod
@@ -83,6 +144,7 @@ class NatalRecord(NatalPayload):
 
     @classmethod
     def from_dataclass(cls, natal_id: str, record: Natal) -> "NatalRecord":
+        config = record.chart_config()
         return cls(
             natal_id=natal_id,
             name=record.name,
@@ -91,6 +153,8 @@ class NatalRecord(NatalPayload):
             lon=record.lon,
             tz=record.tz,
             place=record.place,
+            houses=HouseSettings(system=config.house_system),
+            zodiac=ZodiacSettings(type=config.zodiac, ayanamsa=config.ayanamsha),
         )
 
 
@@ -114,6 +178,8 @@ class NatalCollection(BaseModel):
                         "lon": -80.60433,
                         "tz": "UTC",
                         "place": "Launch Complex 39A, Kennedy Space Center",
+                        "houses": {"system": "placidus"},
+                        "zodiac": {"type": "tropical"},
                     }
                 ],
                 "total": 1,
@@ -198,6 +264,8 @@ def get_natal_endpoint(
                                 "lon": -80.60433,
                                 "tz": "UTC",
                                 "place": "Launch Complex 39A, Kennedy Space Center",
+                                "houses": {"system": "placidus"},
+                                "zodiac": {"type": "tropical"},
                             },
                         }
                     }
@@ -212,6 +280,20 @@ def upsert_natal_endpoint(
     natal_id: str = Path(..., description="Identifier to assign to the natal chart."),
 ) -> NatalRecord:
     created = not (NATAL_BASE / f"{natal_id}.json").exists()
+    try:
+        chart_config = ChartConfig(
+            zodiac=payload.zodiac.type,
+            ayanamsha=payload.zodiac.ayanamsa,
+            house_system=payload.houses.system,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "INVALID_CHART_CONFIGURATION",
+                "message": str(exc),
+            },
+        ) from exc
     record = Natal(
         natal_id=natal_id,
         name=payload.name,
@@ -220,6 +302,9 @@ def upsert_natal_endpoint(
         lon=float(payload.lon),
         tz=payload.tz,
         place=payload.place,
+        house_system=chart_config.house_system,
+        zodiac=chart_config.zodiac,
+        ayanamsa=chart_config.ayanamsha,
     )
     save_natal(record)
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
