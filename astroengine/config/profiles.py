@@ -10,6 +10,57 @@ from .settings import Settings, get_config_home
 
 PROFILES_DIRNAME = "profiles"
 
+USE_CASE_PRESETS: tuple[str, ...] = (
+    "horary_strict",
+    "electional_strict",
+    "counseling_modern",
+    "minimalist",
+)
+
+PROFILE_LABELS: Dict[str, str] = {
+    "modern_western": "Modern Western (default)",
+    "traditional_western": "Traditional Western",
+    "hellenistic": "Hellenistic",
+    "vedic": "Vedic",
+    "horary": "Horary (legacy)",
+    "horary_strict": "Horary — strict judgement",
+    "electional": "Electional (legacy)",
+    "electional_strict": "Electional — strict timing",
+    "counseling_modern": "Counseling — modern psychological",
+    "minimalist": "Minimalist essentials",
+}
+
+PROFILE_DESCRIPTIONS: Dict[str, str] = {
+    "horary_strict": (
+        "Regiomontanus houses, classical planets only, and moiety-based orbs "
+        "for traditional horary judgement."
+    ),
+    "electional_strict": (
+        "Minute-by-minute scanning with strong benefic/void-of-course weights "
+        "for rigorous electional filtering."
+    ),
+    "counseling_modern": (
+        "Modern psychological framing with outer planets, minor aspects, and "
+        "a teaching tone for client work."
+    ),
+    "minimalist": (
+        "Luminaries and classical planets only with essential aspects for a "
+        "focused chart read."
+    ),
+}
+
+
+def profile_label(name: str) -> str:
+    """Return a human-readable label for ``name``."""
+
+    return PROFILE_LABELS.get(name, name.replace("_", " ").title())
+
+
+def profile_description(name: str) -> str | None:
+    """Return a short description for ``name`` if one is available."""
+
+    return PROFILE_DESCRIPTIONS.get(name)
+
 
 def built_in_profiles() -> Dict[str, dict]:
     """Return overlays describing the built-in settings profiles."""
@@ -124,6 +175,50 @@ def built_in_profiles() -> Dict[str, dict]:
             },
             "forecast_stack": {"exactness_deg": 0.25, "min_orb_deg": 0.25},
         },
+        "electional_strict": {
+            "preset": "modern_western",
+            "bodies": {
+                "groups": {
+                    "luminaries": True,
+                    "classical": True,
+                    "modern": True,
+                    "dwarf": False,
+                    "centaurs": False,
+                    "asteroids_major": False,
+                }
+            },
+            "aspects": {
+                "sets": {"ptolemaic": True, "minor": False, "harmonics": False},
+                "detect_patterns": False,
+                "orbs_global": 4.0,
+                "orbs_by_aspect": {
+                    "conjunction": 6.0,
+                    "opposition": 6.0,
+                    "trine": 5.0,
+                    "square": 5.0,
+                    "sextile": 3.5,
+                },
+                "orbs_by_body": {"sun": 9.0, "moon": 7.5},
+            },
+            "forecast_stack": {
+                "exactness_deg": 0.2,
+                "min_orb_deg": 0.2,
+                "consolidate_hours": 6,
+            },
+            "electional": {
+                "enabled": True,
+                "step_minutes": 2,
+                "weights": {
+                    "benefic_on_angles": 7,
+                    "malefic_on_angles": -7,
+                    "moon_void": -9,
+                    "dignity_bonus": 4,
+                    "retrograde_penalty": -5,
+                    "combustion_penalty": -5,
+                    "cazimi_bonus": 5,
+                },
+            },
+        },
         "minimalist": {
             "preset": "minimalist",
             "bodies": {
@@ -139,6 +234,123 @@ def built_in_profiles() -> Dict[str, dict]:
                 "sets": {"ptolemaic": True, "minor": False},
                 "detect_patterns": False,
             },
+        },
+        "horary_strict": {
+            "preset": "traditional_western",
+            "houses": {"system": "regiomontanus"},
+            "bodies": {
+                "groups": {
+                    "luminaries": True,
+                    "classical": True,
+                    "modern": False,
+                    "dwarf": False,
+                    "centaurs": False,
+                    "asteroids_major": False,
+                }
+            },
+            "aspects": {
+                "sets": {"ptolemaic": True, "minor": False, "harmonics": False},
+                "detect_patterns": False,
+                "orbs_global": 3.5,
+                "orbs_by_aspect": {
+                    "conjunction": 5.0,
+                    "opposition": 5.0,
+                    "trine": 4.0,
+                    "square": 4.0,
+                    "sextile": 3.0,
+                },
+                "orbs_by_body": {
+                    "sun": 7.0,
+                    "moon": 6.0,
+                    "mercury": 4.0,
+                    "venus": 4.0,
+                    "mars": 4.0,
+                    "jupiter": 3.5,
+                    "saturn": 3.5,
+                },
+                "use_moiety": True,
+            },
+            "declinations": {"enabled": True, "orb_deg": 0.3},
+            "dignities": {
+                "scoring": "lilly",
+                "weights": {
+                    "domicile": 5,
+                    "exaltation": 4,
+                    "triplicity": 3,
+                    "term": 2,
+                    "face": 1,
+                    "detriment": -5,
+                    "fall": -4,
+                    "angular": 5,
+                    "succedent": 2,
+                    "cadent": -2,
+                    "retrograde": -6,
+                    "combustion": -6,
+                    "cazimi": 6,
+                    "under_beams": -3,
+                    "peregrine": -2,
+                },
+            },
+            "timeline_ui": {"show_exact_only": True},
+        },
+        "counseling_modern": {
+            "preset": "modern_western",
+            "bodies": {
+                "groups": {
+                    "luminaries": True,
+                    "classical": True,
+                    "modern": True,
+                    "dwarf": True,
+                    "centaurs": False,
+                    "asteroids_major": True,
+                }
+            },
+            "aspects": {
+                "sets": {"ptolemaic": True, "minor": True, "harmonics": False},
+                "detect_patterns": True,
+                "orbs_global": 6.5,
+                "orbs_by_body": {
+                    "sun": 10.0,
+                    "moon": 9.0,
+                    "mercury": 7.0,
+                    "venus": 7.0,
+                    "mars": 6.0,
+                    "jupiter": 6.5,
+                    "saturn": 6.5,
+                },
+                "weights_by_aspect": {
+                    "conjunction": 5,
+                    "opposition": 4,
+                    "trine": 4,
+                    "square": 3,
+                    "sextile": 3,
+                    "quincunx": 2,
+                    "semisextile": 1,
+                    "sesquisquare": 1,
+                    "quintile": 1,
+                    "biquintile": 1,
+                },
+            },
+            "narrative": {
+                "mode": "modern_psychological",
+                "library": "western_basic",
+                "tone": "teaching",
+                "length": "medium",
+                "verbosity": 0.7,
+                "sources": {
+                    "transits": True,
+                    "progressions": True,
+                    "midpoints": True,
+                    "timelords": False,
+                },
+                "frameworks": {
+                    "psychological": True,
+                    "data_driven": True,
+                    "jungian": False,
+                },
+                "disclaimers": True,
+            },
+            "reports": {"pdf_enabled": True, "template": "classic"},
         },
     }
 

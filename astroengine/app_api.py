@@ -6,6 +6,7 @@ import inspect
 import os
 import re
 from collections.abc import Iterable, Mapping, Sequence
+from contextlib import nullcontext
 from dataclasses import asdict, is_dataclass
 from typing import Any
 
@@ -20,6 +21,14 @@ except Exception:  # pragma: no cover
 
 ScanCandidate = tuple[str, str]  # (module, function)
 ScanSpec = ScanCandidate | str
+
+try:  # pragma: no cover - optional OpenTelemetry dependency
+    from opentelemetry import trace as _scan_trace
+    from opentelemetry.trace import Status, StatusCode
+except Exception:  # pragma: no cover - otel not installed
+    _scan_trace = None
+    Status = None  # type: ignore[assignment]
+    StatusCode = None  # type: ignore[assignment]
 SCAN_ENTRYPOINT_ENV = "ASTROENGINE_SCAN_ENTRYPOINTS"
 DEFAULT_SCAN_ENTRYPOINTS: tuple[ScanCandidate, ...] = (
     ("astroengine.core.transit_engine", "scan_window"),
@@ -27,6 +36,31 @@ DEFAULT_SCAN_ENTRYPOINTS: tuple[ScanCandidate, ...] = (
     ("astroengine.engine", "scan_window"),
     ("astroengine.engine", "scan_contacts"),
 )
+
+
+def _scan_tracer():
+    if _scan_trace is None:
+        return None
+    return _scan_trace.get_tracer("astroengine.app.scan")
+
+
+def _start_scan_span(name: str, attributes: dict[str, Any] | None = None):
+    tracer = _scan_tracer()
+    if tracer is None:
+        return nullcontext(None)
+    return tracer.start_as_current_span(name, attributes=attributes or {})
+
+
+def _record_span_error(span: Any, exc: Exception) -> None:
+    if span is None:
+        return
+    if hasattr(span, "record_exception"):
+        span.record_exception(exc)
+    if Status is not None and StatusCode is not None:
+        try:
+            span.set_status(Status(StatusCode.ERROR, str(exc)))
+        except Exception:  # pragma: no cover - defensive guard
+            pass
 
 
 def _parse_entrypoint_spec(spec: str) -> ScanCandidate | None:
@@ -252,49 +286,130 @@ def run_scan_or_raise(
     events.
     """
 
+    moving_list = list(moving)
+    target_list = list(targets)
+    detectors_list = list(detectors) if detectors else []
+    target_frames_list = list(target_frames) if target_frames else []
+    candidates = _candidate_order(entrypoints)
     errors: list[str] = []
-    for mod, fn_name in _candidate_order(entrypoints):
-        try:
-            module = importlib.import_module(mod)
-        except Exception as exc:  # pragma: no cover - import failure surfaces in UI
-            errors.append(f"{mod}.{fn_name}: import failed ({exc})")
-            continue
-        fn = getattr(module, fn_name, None)
-        if not callable(fn):
-            errors.append(f"{mod}.{fn_name}: attribute is not callable")
-            continue
-        kwargs: dict[str, Any] = dict(
-            start_utc=start_utc,
-            end_utc=end_utc,
-            moving=list(moving),
-            targets=list(targets),
-            provider=provider,
-            step_minutes=step_minutes,
-            zodiac=zodiac,
-            ayanamsha=ayanamsha,
-        )
-        optional_kwargs: dict[str, Any] = {}
-        if profile_id is not None:
-            optional_kwargs["profile_id"] = profile_id
-        if detectors:
-            optional_kwargs["detectors"] = list(detectors)
-        if target_frames:
-            optional_kwargs["target_frames"] = list(target_frames)
-        if sidereal is not None:
-            optional_kwargs["sidereal"] = bool(sidereal)
-        if ayanamsha:
-            optional_kwargs["ayanamsha"] = ayanamsha
-        kwargs.update(optional_kwargs)
-        call_kwargs = _filter_kwargs_for(fn, kwargs)
-        try:
-            result = fn(**call_kwargs)  # type: ignore[arg-type]
-        except Exception as exc:
-            errors.append(f"{mod}.{fn_name}: {exc}")
-            continue
-        events = _normalize_result_payload(result)
-        if events is not None:
-            return (events, (mod, fn_name)) if return_used_entrypoint else events
-        errors.append(f"{mod}.{fn_name}: returned no events")
+
+    run_attrs: dict[str, Any] = {
+        "astroengine.scan.entrypoint_count": len(candidates),
+        "astroengine.scan.moving_count": len(moving_list),
+        "astroengine.scan.target_count": len(target_list),
+    }
+    if provider:
+        run_attrs["astroengine.scan.provider"] = provider
+    if profile_id:
+        run_attrs["astroengine.scan.profile_id"] = profile_id
+    if sidereal is not None:
+        run_attrs["astroengine.scan.sidereal"] = bool(sidereal)
+    if ayanamsha:
+        run_attrs["astroengine.scan.ayanamsha"] = ayanamsha
+    if detectors_list:
+        run_attrs["astroengine.scan.detector_count"] = len(detectors_list)
+    if target_frames_list:
+        run_attrs["astroengine.scan.target_frame_count"] = len(target_frames_list)
+
+    with _start_scan_span("astroengine.scan.run", run_attrs) as run_span:
+        for mod, fn_name in candidates:
+            try:
+                module = importlib.import_module(mod)
+            except Exception as exc:  # pragma: no cover - import failure surfaces in UI
+                errors.append(f"{mod}.{fn_name}: import failed ({exc})")
+                if run_span is not None and hasattr(run_span, "add_event"):
+                    run_span.add_event(
+                        "astroengine.scan.import_failed",
+                        {
+                            "module": mod,
+                            "function": fn_name,
+                            "error": str(exc),
+                        },
+                    )
+                continue
+            fn = getattr(module, fn_name, None)
+            if not callable(fn):
+                errors.append(f"{mod}.{fn_name}: attribute is not callable")
+                if run_span is not None and hasattr(run_span, "add_event"):
+                    run_span.add_event(
+                        "astroengine.scan.invalid_entrypoint",
+                        {"module": mod, "function": fn_name},
+                    )
+                continue
+            kwargs: dict[str, Any] = dict(
+                start_utc=start_utc,
+                end_utc=end_utc,
+                moving=list(moving_list),
+                targets=list(target_list),
+                provider=provider,
+                step_minutes=step_minutes,
+                zodiac=zodiac,
+                ayanamsha=ayanamsha,
+            )
+            optional_kwargs: dict[str, Any] = {}
+            if profile_id is not None:
+                optional_kwargs["profile_id"] = profile_id
+            if detectors_list:
+                optional_kwargs["detectors"] = list(detectors_list)
+            if target_frames_list:
+                optional_kwargs["target_frames"] = list(target_frames_list)
+            if sidereal is not None:
+                optional_kwargs["sidereal"] = bool(sidereal)
+            if ayanamsha:
+                optional_kwargs["ayanamsha"] = ayanamsha
+            kwargs.update(optional_kwargs)
+            call_kwargs = _filter_kwargs_for(fn, kwargs)
+            entry_attrs: dict[str, Any] = {
+                "astroengine.scan.entrypoint": f"{mod}.{fn_name}",
+                "astroengine.scan.call_arg_count": len(call_kwargs),
+            }
+            if detectors_list:
+                entry_attrs["astroengine.scan.detector_count"] = len(detectors_list)
+            if target_frames_list:
+                entry_attrs["astroengine.scan.target_frame_count"] = len(
+                    target_frames_list
+                )
+            with _start_scan_span(
+                "astroengine.scan.entrypoint", entry_attrs
+            ) as entry_span:
+                try:
+                    result = fn(**call_kwargs)  # type: ignore[arg-type]
+                except Exception as exc:
+                    errors.append(f"{mod}.{fn_name}: {exc}")
+                    _record_span_error(entry_span, exc)
+                    if run_span is not None and hasattr(run_span, "add_event"):
+                        run_span.add_event(
+                            "astroengine.scan.entrypoint_error",
+                            {
+                                "module": mod,
+                                "function": fn_name,
+                                "error": str(exc),
+                            },
+                        )
+                    continue
+            events = _normalize_result_payload(result)
+            if events is not None:
+                event_count = len(events)
+                if entry_span is not None and hasattr(entry_span, "set_attribute"):
+                    entry_span.set_attribute("astroengine.scan.event_count", event_count)
+                if run_span is not None and hasattr(run_span, "set_attribute"):
+                    run_span.set_attribute(
+                        "astroengine.scan.used_entrypoint",
+                        f"{mod}.{fn_name}",
+                    )
+                    run_span.set_attribute("astroengine.scan.event_count", event_count)
+                return (events, (mod, fn_name)) if return_used_entrypoint else events
+            errors.append(f"{mod}.{fn_name}: returned no events")
+            if entry_span is not None:
+                if hasattr(entry_span, "set_attribute"):
+                    entry_span.set_attribute("astroengine.scan.event_count", 0)
+                if hasattr(entry_span, "add_event"):
+                    entry_span.add_event(
+                        "astroengine.scan.no_events",
+                        {"module": mod, "function": fn_name},
+                    )
+        if run_span is not None and hasattr(run_span, "set_attribute"):
+            run_span.set_attribute("astroengine.scan.error_count", len(errors))
     raise RuntimeError(_format_run_failure(errors))
 
 

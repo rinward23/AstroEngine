@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from time import perf_counter
 from typing import Optional
 
 from ..chart.config import ChartConfig
@@ -12,6 +13,7 @@ from ..chart.progressions import compute_secondary_progressed_chart
 from ..core.angles import normalize_degrees, signed_delta
 from ..detectors_aspects import AspectHit
 from ..ephemeris import SwissEphemerisAdapter
+from ..observability import ASPECT_COMPUTE_DURATION, COMPUTE_ERRORS
 
 __all__ = ["progressed_natal_aspects"]
 
@@ -120,103 +122,115 @@ def progressed_natal_aspects(
 ) -> list[AspectHit]:
     """Return progressed→natal aspect hits within ``[start_ts, end_ts]``."""
 
-    start = _parse_iso(start_ts)
-    end = _parse_iso(end_ts)
-    if end <= start:
-        return []
+    method_label = "progressed_natal_aspects"
+    start_time = perf_counter()
+    try:
+        start = _parse_iso(start_ts)
+        end = _parse_iso(end_ts)
+        if end <= start:
+            return []
 
-    if step_days <= 0:
-        raise ValueError("step_days must be positive for progressed aspect scans")
+        if step_days <= 0:
+            raise ValueError("step_days must be positive for progressed aspect scans")
 
-    target_names = _resolve_body_names(bodies)
-    body_codes = {name: DEFAULT_BODIES[name] for name in target_names}
+        target_names = _resolve_body_names(bodies)
+        body_codes = {name: DEFAULT_BODIES[name] for name in target_names}
 
-    chart_config = ChartConfig()
-    adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
-    natal_moment = _parse_iso(natal_ts)
+        chart_config = ChartConfig()
+        adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
+        natal_moment = _parse_iso(natal_ts)
 
-    natal_chart = compute_natal_chart(
-        natal_moment,
-        _DEFAULT_LOCATION,
-        bodies=body_codes,
-        config=chart_config,
-        adapter=adapter,
-    )
-
-    natal_longitudes = {
-        name: normalize_degrees(position.longitude)
-        for name, position in natal_chart.positions.items()
-    }
-
-    aspect_angles = sorted(float(angle) for angle in aspects)
-    motion_history: dict[tuple[str, str, float], float] = {}
-    lon_cache: dict[str, float] = {}
-    time_cache: dict[str, datetime] = {}
-
-    hits: list[AspectHit] = []
-    step = timedelta(days=step_days)
-    current = start
-    while current <= end:
-        progressed = compute_secondary_progressed_chart(
-            natal_chart,
-            current,
+        natal_chart = compute_natal_chart(
+            natal_moment,
+            _DEFAULT_LOCATION,
             bodies=body_codes,
             config=chart_config,
             adapter=adapter,
         )
-        iso_when = _isoformat(current)
-        for moving, position in progressed.chart.positions.items():
-            lon_moving = normalize_degrees(position.longitude)
-            speed = _update_speed(
-                lon_cache,
-                time_cache,
-                moving,
-                lon_moving,
-                current,
-                getattr(position, "speed_longitude", 0.0),
-            )
-            retrograde = speed < 0
-            for target, natal_lon in natal_longitudes.items():
-                if moving == target:
-                    continue
-                separation = _smallest_separation(lon_moving, natal_lon)
-                delta_lambda = normalize_degrees(lon_moving - natal_lon)
-                for angle in aspect_angles:
-                    offset = separation - angle
-                    orb_abs = abs(offset)
-                    if orb_abs <= orb_deg + 1e-9:
-                        phase = _update_motion_state(
-                            motion_history,
-                            moving,
-                            target,
-                            angle,
-                            orb_abs,
-                            offset,
-                        )
-                        hits.append(
-                            AspectHit(
-                                kind="progressed_natal_aspect",
-                                when_iso=iso_when,
-                                moving=moving,
-                                target=target,
-                                angle_deg=float(angle),
-                                lon_moving=float(lon_moving),
-                                lon_target=float(natal_lon),
-                                delta_lambda_deg=float(delta_lambda),
-                                offset_deg=float(offset),
-                                orb_abs=float(orb_abs),
-                                orb_allow=float(orb_deg),
-                                is_partile=orb_abs <= _PARTILE_THRESHOLD_DEG,
-                                applying_or_separating=phase,
-                                family="progressed-natal",
-                                corridor_width_deg=None,
-                                corridor_profile=None,
-                                speed_deg_per_day=float(speed),
-                                retrograde=retrograde,
-                            )
-                        )
-        current += step
 
-    hits.sort(key=lambda hit: (hit.when_iso, hit.moving, hit.target, hit.angle_deg))
-    return hits
+        natal_longitudes = {
+            name: normalize_degrees(position.longitude)
+            for name, position in natal_chart.positions.items()
+        }
+
+        aspect_angles = sorted(float(angle) for angle in aspects)
+        motion_history: dict[tuple[str, str, float], float] = {}
+        lon_cache: dict[str, float] = {}
+        time_cache: dict[str, datetime] = {}
+
+        hits: list[AspectHit] = []
+        step = timedelta(days=step_days)
+        current = start
+        while current <= end:
+            progressed = compute_secondary_progressed_chart(
+                natal_chart,
+                current,
+                bodies=body_codes,
+                config=chart_config,
+                adapter=adapter,
+            )
+            iso_when = _isoformat(current)
+            for moving, position in progressed.chart.positions.items():
+                lon_moving = normalize_degrees(position.longitude)
+                speed = _update_speed(
+                    lon_cache,
+                    time_cache,
+                    moving,
+                    lon_moving,
+                    current,
+                    getattr(position, "speed_longitude", 0.0),
+                )
+                retrograde = speed < 0
+                for target, natal_lon in natal_longitudes.items():
+                    if moving == target:
+                        continue
+                    separation = _smallest_separation(lon_moving, natal_lon)
+                    delta_lambda = normalize_degrees(lon_moving - natal_lon)
+                    for angle in aspect_angles:
+                        offset = separation - angle
+                        orb_abs = abs(offset)
+                        if orb_abs <= orb_deg + 1e-9:
+                            phase = _update_motion_state(
+                                motion_history,
+                                moving,
+                                target,
+                                angle,
+                                orb_abs,
+                                offset,
+                            )
+                            hits.append(
+                                AspectHit(
+                                    kind="progressed_natal_aspect",
+                                    when_iso=iso_when,
+                                    moving=moving,
+                                    target=target,
+                                    angle_deg=float(angle),
+                                    lon_moving=float(lon_moving),
+                                    lon_target=float(natal_lon),
+                                    delta_lambda_deg=float(delta_lambda),
+                                    offset_deg=float(offset),
+                                    orb_abs=float(orb_abs),
+                                    orb_allow=float(orb_deg),
+                                    is_partile=orb_abs <= _PARTILE_THRESHOLD_DEG,
+                                    applying_or_separating=phase,
+                                    family="progressed-natal",
+                                    corridor_width_deg=None,
+                                    corridor_profile=None,
+                                    speed_deg_per_day=float(speed),
+                                    retrograde=retrograde,
+                                )
+                            )
+            current += step
+
+        hits.sort(key=lambda hit: (hit.when_iso, hit.moving, hit.target, hit.angle_deg))
+        return hits
+    except Exception as exc:
+        COMPUTE_ERRORS.labels(
+            component=f"aspect:{method_label}",
+            error=exc.__class__.__name__,
+        ).inc()
+        raise
+    finally:
+        duration = perf_counter() - start_time
+        ASPECT_COMPUTE_DURATION.labels(method=method_label).observe(duration)
 

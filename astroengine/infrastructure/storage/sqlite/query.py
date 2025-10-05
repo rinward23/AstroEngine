@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from .engine import ensure_sqlite_schema
+from .pragmas import apply_default_pragmas
 
 __all__ = ["top_events_by_score"]
 
@@ -27,6 +28,7 @@ def top_events_by_score(
     ensure_sqlite_schema(db_path)
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
+    apply_default_pragmas(con)
     try:
         query = (
             "SELECT ts, moving, target, aspect, score, profile_id, natal_id, event_year, meta_json "

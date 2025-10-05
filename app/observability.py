@@ -17,6 +17,12 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 
 from astroengine.observability import ensure_metrics_registered
+from app.telemetry import resolve_observability_config, setup_tracing
+
+try:  # pragma: no cover - optional dependency
+    from opentelemetry import trace as _otel_trace
+except Exception:  # pragma: no cover - otel not installed
+    _otel_trace = None
 
 
 _LOGGER = logging.getLogger("astroengine.app")
@@ -68,6 +74,8 @@ class JSONLogFormatter(logging.Formatter):
                 continue
             payload[key] = value
 
+        payload.update(_trace_log_fields())
+
         return json.dumps(payload, default=str)
 
 
@@ -77,6 +85,8 @@ class RequestContextLoggerAdapter(logging.LoggerAdapter):
     def process(self, msg: str, kwargs: Any) -> tuple[str, dict[str, Any]]:
         extra = kwargs.setdefault("extra", {})
         for key, value in self.extra.items():
+            extra.setdefault(key, value)
+        for key, value in _trace_log_fields().items():
             extra.setdefault(key, value)
         return msg, kwargs
 
@@ -110,6 +120,13 @@ def _configure_opentelemetry(app: FastAPI) -> None:
     if getattr(app.state, "_otel_configured", False):
         return
 
+    cfg = resolve_observability_config(app)
+    app.state._observability_cfg = cfg
+
+    if cfg is None or not cfg.otel_enabled:
+        app.state._otel_configured = True
+        return
+
     try:  # pragma: no cover - instrumentation exercised in integration tests
         from opentelemetry import metrics
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
@@ -126,9 +143,7 @@ def _configure_opentelemetry(app: FastAPI) -> None:
         app.state._otel_configured = True
         return
 
-    from app.telemetry import setup_tracing
-
-    setup_tracing(app)
+    setup_tracing(app, sampling_ratio=cfg.sampling_ratio, enabled=cfg.otel_enabled)
 
     resource = Resource.create({"service.name": "astroengine-api"})
     metric_reader = PeriodicExportingMetricReader(OTLPMetricExporter())
@@ -175,6 +190,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
                 "path": request.url.path,
                 "length": request.headers.get("content-length", "0"),
                 "user_agent": user_agent,
+                **_trace_log_fields(),
             },
         )
         start = perf_counter()
@@ -210,9 +226,14 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
                     "path": request.url.path,
                     "duration_ms": round(duration_ms, 2),
                     "status_code": status_code,
+                    **_trace_log_fields(),
                 },
             )
         response.headers.setdefault("X-Request-ID", request_id)
+        trace_meta = _trace_log_fields()
+        trace_id = trace_meta.get("trace_id")
+        if trace_id:
+            response.headers.setdefault("X-Trace-ID", trace_id)
         return response
 
 
@@ -288,3 +309,28 @@ def configure_observability(app: FastAPI) -> None:
 
 __all__ = ["configure_observability", "RequestIdMiddleware", "MetricsMiddleware"]
 
+def _trace_log_fields() -> dict[str, str]:
+    """Return trace correlation identifiers when OpenTelemetry is active."""
+
+    if _otel_trace is None:
+        return {}
+
+    span = _otel_trace.get_current_span()
+    if not span:
+        return {}
+
+    context = span.get_span_context()
+    if context is None:
+        return {}
+
+    is_valid_attr = getattr(context, "is_valid", None)
+    if callable(is_valid_attr):
+        is_valid = bool(is_valid_attr())
+    else:
+        is_valid = bool(is_valid_attr)
+    if not is_valid:
+        return {}
+
+    trace_id = format(context.trace_id, "032x")
+    span_id = format(context.span_id, "016x")
+    return {"trace_id": trace_id, "span_id": span_id}

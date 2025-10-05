@@ -12,6 +12,7 @@ from core.viz_plus.wheel_svg import WheelOptions, build_aspect_hits, render_char
 from core.viz_plus.aspect_grid import aspect_grid_symbols, render_aspect_grid
 from core.aspects_plus.harmonics import BASE_ASPECTS
 from ui.streamlit.api import APIClient
+from ui.streamlit.data_cache import load_fixed_star_catalog
 
 st.set_page_config(page_title="Chart Wheel & Aspectarian", page_icon="🎡", layout="wide")
 st.title("Chart Wheel & Aspectarian 🎡")
@@ -471,3 +472,19 @@ with aspectarian_tab:
 
         if not grid and not symbol_grid:
             st.caption("Grid empty — no aspects matched.")
+
+    with st.expander("Fixed star catalog (cached)", expanded=False):
+        catalog_rows = load_fixed_star_catalog()
+        if catalog_rows:
+            star_df = (
+                pd.DataFrame(catalog_rows)
+                .sort_values("mag")
+                .reset_index(drop=True)
+            )
+            cols = [col for col in ("name", "lon_deg", "lat_deg", "mag") if col in star_df.columns]
+            st.dataframe(star_df[cols], use_container_width=True, hide_index=True)
+            st.caption(
+                "Catalog results are cached with st.cache_data to keep large CSV reads fast during reruns."
+            )
+        else:
+            st.info("Fixed star catalog unavailable.")
