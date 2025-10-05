@@ -35,7 +35,8 @@ RUN set -eux; \
 # Runtime env
 ENV DATABASE_URL="sqlite:///./dev.db" \
     ASTROENGINE_HOME="/app/.astroengine" \
-    AE_QCACHE_SIZE=4096 AE_QCACHE_SEC=1.0
+    AE_QCACHE_SIZE=4096 \
+    AE_QCACHE_SEC=1.0
 
 # Create cache directory
 RUN mkdir -p "$ASTROENGINE_HOME"
