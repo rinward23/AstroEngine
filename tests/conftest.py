@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+import st_shim as _st_shim
+
 
 def _flag_enabled(name: str) -> bool:
     """Return True when the boolean-like environment flag is enabled."""
@@ -40,6 +42,9 @@ try:
 except Exception:
     # If astroengine is not importable here, let pytest show the normal error later.
     pass
+
+# Provide compatibility alias for the legacy ``streamlit`` shim used in tests.
+sys.modules.setdefault("streamlit", _st_shim)
 # >>> AUTO-GEN END: AliasGeneratedToAstroengine v1.0
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

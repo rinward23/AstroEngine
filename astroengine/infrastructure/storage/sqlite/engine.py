@@ -40,16 +40,22 @@ class SQLiteMigrator:
         return get_sqlite_config(self.db_path)
 
     def upgrade(self, revision: str = "head") -> None:
+        """Apply migrations up to ``revision`` using Alembic's upgrade command."""
+
         from alembic import command
 
         command.upgrade(self._config(), revision)
 
     def downgrade(self, revision: str = "base") -> None:
+        """Revert migrations down to ``revision`` using Alembic's downgrade command."""
+
         from alembic import command
 
         command.downgrade(self._config(), revision)
 
     def current(self) -> str | None:
+        """Return the current Alembic revision recorded in the SQLite database."""
+
         from sqlalchemy import create_engine
         from sqlalchemy.pool import NullPool
         from alembic.runtime.migration import MigrationContext

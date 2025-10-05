@@ -7,6 +7,47 @@ from alembic import op
 from sqlalchemy.engine.reflection import Inspector
 
 
+def _create_unique(table: str, name: str, columns: list[str]) -> None:
+    """Create a unique rule portably (index on SQLite, constraint elsewhere)."""
+
+    bind = op.get_bind()
+    dialect = bind.dialect.name
+    if dialect == "sqlite":
+        op.create_index(name, table, columns, unique=True)
+    else:
+        op.create_unique_constraint(name, table, columns)
+
+
+def _drop_unique(table: str, name: str, columns: list[str]) -> None:
+    """Drop the unique rule portably, tolerating name differences on SQLite."""
+
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    dialect = bind.dialect.name
+
+    if dialect == "sqlite":
+        try:
+            op.drop_index(name, table_name=table)
+            return
+        except Exception:  # pragma: no cover - fallback handling
+            pass
+
+        wanted = [column.lower() for column in columns]
+        for idx in insp.get_indexes(table):
+            if idx.get("unique") and [col.lower() for col in idx["column_names"]] == wanted:
+                op.drop_index(idx["name"], table_name=table)
+                return
+        return
+
+    try:
+        op.drop_constraint(name, table_name=table, type_="unique")
+    except Exception:  # pragma: no cover - backend-specific fallback
+        for idx in insp.get_indexes(table):
+            if idx["name"] == name and idx.get("unique"):
+                op.drop_index(name, table_name=table)
+                break
+
+
 def _events_time_column(inspector: Inspector) -> str:
     columns = {column["name"] for column in inspector.get_columns("events")}
     return "event_time" if "event_time" in columns else "start_ts"
@@ -92,11 +133,11 @@ def upgrade() -> None:
         "ruleset_versions",
         ["created_at"],
     )
-    with op.batch_alter_table("ruleset_versions", schema=None) as batch:
-        batch.create_unique_constraint(
-            "uq_ruleset_versions_scope_key_version",
-            ["module", "submodule", "channel", "subchannel", "ruleset_key", "version"],
-        )
+    _create_unique(
+        "ruleset_versions",
+        "uq_ruleset_versions_scope_key_version",
+        ["module", "submodule", "channel", "subchannel", "key", "version"],
+    )
 
     event_time_column = _events_time_column(inspector)
     op.create_index(
@@ -172,11 +213,11 @@ def downgrade() -> None:
     op.drop_index("ix_events_event_time_scope", table_name="events")
     op.drop_index("ix_events_scope_full", table_name="events")
 
-    with op.batch_alter_table("ruleset_versions", schema=None) as batch:
-        batch.drop_constraint(
-            "uq_ruleset_versions_scope_key_version",
-            type_="unique",
-        )
+    _drop_unique(
+        "ruleset_versions",
+        "uq_ruleset_versions_scope_key_version",
+        ["module", "submodule", "channel", "subchannel", "key", "version"],
+    )
     op.drop_index("ix_ruleset_versions_created_at", table_name="ruleset_versions")
     op.drop_index("ix_ruleset_versions_scope_full", table_name="ruleset_versions")
 

@@ -1,11 +1,4 @@
-import pytest
-
-pytest.importorskip(
-    "swisseph",
-    reason="pyswisseph not installed; install extras with `.[providers]`",
-)
-
-from streamlit.testing.v1 import AppTest
+from st_shim.testing.v1 import AppTest
 
 
 def test_streamlit_scan_caches_results(monkeypatch):
