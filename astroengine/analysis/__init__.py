@@ -1,17 +1,7 @@
-"""Analysis helpers for generating astrology timelines."""
+"""Analysis utilities including midpoint calculations."""
 
-from .timeline import (
-    VoidOfCourseEvent,
-    find_eclipses,
-    find_lunations,
-    find_stations,
-    void_of_course_moon,
-)
+from __future__ import annotations
 
-__all__ = [
-    "find_lunations",
-    "find_eclipses",
-    "find_stations",
-    "void_of_course_moon",
-    "VoidOfCourseEvent",
-]
+from .midpoints import compute_midpoints, get_midpoint_settings, midpoint_longitude
+
+__all__ = ["compute_midpoints", "get_midpoint_settings", "midpoint_longitude"]
