@@ -64,3 +64,12 @@ run-api: install-optional
 run-ui: install-optional
 	streamlit run ui/streamlit/altaz_app.py --server.port 8501 --server.address 0.0.0.0
 # >>> AUTO-GEN END: Makefile v1.2
+
+# Custom operational helpers
+.PHONY: migrate cache-warm
+
+migrate:
+	.venv/bin/alembic upgrade head
+
+cache-warm:
+	python -m astroengine.pipeline.cache_warm
