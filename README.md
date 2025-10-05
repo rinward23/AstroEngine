@@ -333,8 +333,12 @@ Pass `--check` to verify whether the tracked files already match the
 
 # >>> AUTO-GEN BEGIN: AE README Providers Addendum v1.2
 ### Optional providers & catalogs
-Use the helper script to install the complete optional stack, including the
-patched flatlib workflow that keeps `pyswisseph` at 2.10.3.2:
+The core package now installs the previously optional exporters, narrative, CLI,
+UI, and reporting stacks by default so Solar Fire derived datasets and
+rendering workflows work out of the box. Use the helper script to install the
+complete optional stack, including the
+patched flatlib workflow that keeps the mandatory `pyswisseph` runtime at
+2.10.3.2:
 
 ```bash
 make install-optional
@@ -358,13 +362,15 @@ astroengine scan --start-utc 2024-01-01T00:00:00Z --end-utc 2024-01-02T00:00:00Z
 
 > **Licensing note:** Swiss Ephemeris is AGPL/commercial for distribution. Keep data files outside the wheel; users should provide `SWE_EPH_PATH/SE_EPHE_PATH`.
 
-When `pyswisseph` is unavailable the engine automatically registers a
-**Swiss fallback provider** powered by PyMeeus analytical series.  The
-fallback keeps the Swiss handle usable inside this repository’s test
+`pyswisseph==2.10.3.2` now ships with the core package, ensuring Swiss
+Ephemeris integrations are present for every install. If the binding cannot
+load (for example, due to missing system libraries) the engine automatically
+registers a **Swiss fallback provider** powered by PyMeeus analytical series.
+The fallback keeps the Swiss handle usable inside this repository’s test
 environment while still producing real geocentric ecliptic longitudes,
-latitudes, and longitudinal speeds for the visible planets and Pluto.
-Install `pyswisseph` alongside the official ephemeris files for
-production deployments to regain full Swiss Ephemeris precision.
+latitudes, and longitudinal speeds for the visible planets and Pluto. Install
+the official Swiss ephemeris data files for production deployments to regain
+full Swiss precision.
 
 # External integrations registry
 

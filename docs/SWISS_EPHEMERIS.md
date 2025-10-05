@@ -1,12 +1,17 @@
 # >>> AUTO-GEN BEGIN: Swiss Ephemeris Setup v1.0
 # Swiss Ephemeris — Setup
 
-AstroEngine can use `pyswisseph` (Swiss Ephemeris). Without data files, it will fall back to the built-in Moshier model (lower precision but fine for CI/dev).
+AstroEngine ships with `pyswisseph==2.10.3.2` (Swiss Ephemeris). Without data files, it will fall back to the built-in Moshier model (lower precision but fine for CI/dev).
+
+Every wheel now bundles an empty `astroengine/datasets/swisseph_stub/` directory so
+`SE_EPHE_PATH` can always point somewhere deterministic even outside the source tree.
+Replace its contents with the proprietary `.se1` files when you have a licensed copy
+of the data pack.
 
 ## Install the library
-```bash
-pip install pyswisseph
-```
+The core package already declares the dependency, so a standard
+`pip install astroengine` (or `pip install -e .`) pulls the wheel
+automatically. Reinstall manually only when testing alternative builds.
 
 ## Data files (optional, for high precision)
 

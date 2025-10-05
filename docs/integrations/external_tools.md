@@ -8,10 +8,10 @@ deterministic ephemeris or chart data.
 
 - **Swiss Ephemeris (`sweph` / `pyswisseph`)** – the core Swiss ephemeris C
   library is available from AstroDienst and ships with the Swiss Ephemeris
-  Public License.  The Python bindings exposed on PyPI (`pyswisseph`) provide
-  access to the same algorithms and load the canonical ephemeris files shipped
-  in `datasets/swisseph_stub`.  See <https://www.astro.com/swisseph/> and
-  <https://pypi.org/project/pyswisseph/> for installation instructions.
+  Public License.  The Python bindings exposed on PyPI (`pyswisseph`) now ship
+  with the core AstroEngine package, providing access to the same algorithms
+  and loading the canonical ephemeris files shipped in `datasets/swisseph_stub`.
+  See <https://www.astro.com/swisseph/> for data licensing details.
 - **Skyfield + JPL kernels** – Skyfield queries the official DE ephemerides and
   relies on the `jplephem` package for compressed kernel access.  The
   `astroengine.providers.skyfield_kernels` helper documents the DE440s cache

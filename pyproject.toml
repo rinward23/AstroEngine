@@ -18,12 +18,15 @@ classifiers = [
   "License :: Other/Proprietary License",
 ]
 
-# Core runtime deps kept lean. Everything else under extras.
+# Core runtime deps kept lean while ensuring Swiss Ephemeris support ships by default.
 dependencies = [
   "numpy>=1.26",
   "pandas>=2.2",
   "python-dateutil>=2.8",
   "pydantic>=2.11,<3",
+
+  "pyswisseph==2.10.3.2; python_version < \"3.12\"",
+  "pymeeus>=0.5.12",
 
   "PyYAML>=6.0",
 
@@ -34,6 +37,8 @@ dependencies = [
   "SQLAlchemy>=2.0",
   "alembic>=1.13",
   "duckdb>=0.10",
+  "ics>=0.7",
+  "astroquery>=0.4",
   "timezonefinder>=8.1",
   "tzdata>=2024.1",
   "pluggy>=1.5",
@@ -41,11 +46,28 @@ dependencies = [
   "jplephem>=2.21",
   "fastapi>=0.117,<0.118",
   "httpx>=0.28,<0.29",
+  "uvicorn>=0.37,<0.38",
   "orjson>=3.10",
   "redis>=5.0",
+  "pyarrow>=16",
+  "jinja2>=3.1",
+  "numba>=0.58",
+  "click>=8.1",
+  "rich>=13.7",
+  "pypdf>=4.2",
+  "weasyprint>=62",
+  "python-docx>=1.1",
+  "playwright>=1.45",
+  "pypandoc>=1.12",
+  "mdit-py-plugins>=0.5",
+  "streamlit>=1.35",
+  "plotly>=5.20",
+  "Pillow>=10.0",
+  "icalendar>=6",
   "cachetools>=5.3",
   "zstandard>=0.22",
   "prometheus-client>=0.20",
+  "pytest-benchmark>=4.0",
 ]
 
 [project.optional-dependencies]
@@ -157,7 +179,10 @@ astroengine-api = "astroengine.api_server:run"  # guarded import; only works wit
 astroengine-streamlit = "astroengine.ux.streamlit.cli:main"
 
 [tool.setuptools.package-data]
-astroengine = ["py.typed"]
+astroengine = [
+  "py.typed",
+  "datasets/swisseph_stub/*",
+]
 
 [project.entry-points."astroengine.plugins"]
 # name = "module:function"

@@ -15,7 +15,6 @@ astroquery>=0.4
 
 # [exporters]
 pyarrow>=16
-ics>=0.7
 
 # [narrative]
 jinja2>=3.1
