@@ -95,7 +95,7 @@
     {
       "name": "Natal Upsert",
       "request": {
-        "method": "POST",
+        "method": "PUT",
         "header": [
           {
             "key": "Content-Type",
@@ -103,11 +103,12 @@
           }
         ],
         "url": {
-          "raw": "{{baseUrl}}/natals/sample",
+          "raw": "{{baseUrl}}/v1/natals/sample",
           "host": [
             "{{baseUrl}}"
           ],
           "path": [
+            "v1",
             "natals",
             "sample"
           ]

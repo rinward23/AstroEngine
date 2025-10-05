@@ -23,7 +23,10 @@ def test_rulepacks_list(api_client: TestClient) -> None:
     response = api_client.get("/v1/interpret/rulepacks")
     assert response.status_code == 200
     payload = response.json()
-    assert any(item["id"] == "relationship_basic" for item in payload)
+    assert payload["page"] == 1
+    assert payload["page_size"] >= 1
+    assert payload["total"] >= len(payload["items"])
+    assert any(item["id"] == "relationship_basic" for item in payload["items"])
 
 
 def test_relationship_findings_with_default_rulepack(api_client: TestClient) -> None:
@@ -114,3 +117,6 @@ def test_rulepack_lint(api_client: TestClient) -> None:
 def test_delete_rulepack_guarded(api_client: TestClient) -> None:
     response = api_client.delete("/v1/interpret/rulepacks/relationship_basic")
     assert response.status_code == 403
+    error = response.json()
+    assert error["code"] == "FORBIDDEN"
+    assert error["message"]
