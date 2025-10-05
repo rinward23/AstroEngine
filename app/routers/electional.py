@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Dict
 from datetime import timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.schemas.electional import (
     ElectionalSearchRequest,
@@ -13,6 +13,7 @@ from app.schemas.electional import (
     InstantViolation,
 )
 from app.schemas.aspects import TimeWindow
+from astroengine.api.rate_limit import heavy_endpoint_rate_limiter
 
 from core.electional_plus.engine import (
     ElectionalRules,
@@ -70,6 +71,14 @@ def _resolve_policy(inline, pid) -> Dict[str, Any]:
     response_model=ElectionalSearchResponse,
     summary="Search best electional windows",
     description="Sliding‑window optimizer that ranks time windows by rules (required/forbidden aspects, VoC avoidance, time filters).",
+    dependencies=[
+        Depends(
+            heavy_endpoint_rate_limiter(
+                "electional_search",
+                message="Electional search requests are temporarily limited to keep results accurate for everyone.",
+            )
+        )
+    ],
 )
 def electional_search(req: ElectionalSearchRequest):
     provider = aspects_module._get_provider()
