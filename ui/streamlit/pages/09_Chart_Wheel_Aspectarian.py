@@ -5,12 +5,15 @@ from typing import Dict, List
 import pandas as pd
 import streamlit as st
 
+from ui.streamlit.api import APIClient
 from core.viz_plus.wheel_svg import WheelOptions, build_aspect_hits, render_chart_wheel
 from core.viz_plus.aspect_grid import aspect_grid_symbols, render_aspect_grid
 from core.aspects_plus.harmonics import BASE_ASPECTS
 
 st.set_page_config(page_title="Chart Wheel & Aspectarian", page_icon="🎡", layout="wide")
 st.title("Chart Wheel & Aspectarian 🎡")
+
+api = APIClient()
 
 # --------------------------- Defaults --------------------------------------
 DEFAULT_POSITIONS = {
@@ -73,6 +76,101 @@ with st.sidebar:
             houses = None
 
     st.divider()
+    st.header("Chart Actions")
+
+    chart_id_input = st.text_input("Chart ID", value="")
+
+    def _parse_chart_id(raw: str) -> int | None:
+        raw = raw.strip()
+        if not raw:
+            return None
+        try:
+            value = int(raw)
+        except ValueError:
+            return None
+        return value if value > 0 else None
+
+    chart_id = _parse_chart_id(chart_id_input)
+    note_text = st.text_area("Note", value="", height=80)
+    tags_input = st.text_input("Tags (comma separated)", value="")
+    tags = [tag.strip() for tag in tags_input.split(",") if tag.strip()]
+
+    if st.button("Save note", use_container_width=True):
+        if chart_id is None:
+            st.warning("Provide a valid chart ID before saving a note.")
+        elif not note_text.strip():
+            st.warning("Enter note text before saving.")
+        else:
+            try:
+                api.create_note(chart_id, note_text.strip(), tags)
+                st.success("Note saved")
+                st.session_state["_chart_notes_cache"] = None
+            except Exception as exc:  # pragma: no cover - streamlit UI only
+                st.error(f"Failed to save note: {exc}")
+
+    if st.button("Export", use_container_width=True):
+        try:
+            st.session_state["_export_bundle"] = api.export_bundle()
+            st.success("Export ready")
+        except Exception as exc:  # pragma: no cover - streamlit UI only
+            st.error(f"Export failed: {exc}")
+
+    export_bytes = st.session_state.get("_export_bundle")
+    if isinstance(export_bytes, (bytes, bytearray)):
+        st.download_button(
+            "Download export",
+            data=export_bytes,
+            file_name="astroengine_export.zip",
+            mime="application/zip",
+            use_container_width=True,
+        )
+
+    pdf_enabled = True
+    try:
+        settings_payload = api.fetch_settings()
+        pdf_enabled = bool(settings_payload.get("reports", {}).get("pdf_enabled", True))
+    except Exception as exc:  # pragma: no cover - streamlit UI only
+        st.info(f"Settings unavailable: {exc}")
+
+    if pdf_enabled and chart_id is not None:
+        if st.button("Generate PDF", use_container_width=True):
+            try:
+                st.session_state["_chart_pdf"] = api.generate_chart_pdf(chart_id)
+                st.success("PDF generated")
+            except Exception as exc:  # pragma: no cover - streamlit UI only
+                st.error(f"PDF generation failed: {exc}")
+    elif not pdf_enabled:
+        st.caption("PDF generation disabled in settings.")
+
+    pdf_bytes = st.session_state.get("_chart_pdf")
+    if isinstance(pdf_bytes, (bytes, bytearray)):
+        st.download_button(
+            "Download PDF",
+            data=pdf_bytes,
+            file_name=f"chart_{chart_id or 'report'}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+
+    notes_records = []
+    if chart_id is not None:
+        cache_key = "_chart_notes_cache"
+        cached = st.session_state.get(cache_key)
+        if cached is None:
+            try:
+                cached = api.list_notes(chart_id)
+            except Exception as exc:  # pragma: no cover - streamlit UI only
+                st.warning(f"Unable to load notes: {exc}")
+                cached = []
+            st.session_state[cache_key] = cached
+        notes_records = cached
+
+    if notes_records:
+        with st.expander("Recent notes", expanded=False):
+            for item in notes_records:
+                created = item.get("created_at", "")
+                tags_fmt = ", ".join(item.get("tags", []))
+                st.markdown(f"**{created}** — {item.get('text')}" + (f" _(tags: {tags_fmt})_" if tags_fmt else ""))
     st.header("Aspects & Orbs")
     aspects = st.multiselect(
         "Aspect set",

@@ -222,6 +222,12 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
 
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    weights: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    modifiers: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    events: Mapped[list["Event"]] = relationship(back_populates="severity_profile")
 
 
 class TraditionalRun(ModuleScopeMixin, TimestampMixin, Base):
@@ -262,9 +268,6 @@ class TraditionalRun(ModuleScopeMixin, TimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     profile_key = synonym("name")
-
-    events: Mapped[list["Event"]] = relationship(back_populates="severity_profile")
-
 
     def __init__(self, **kwargs: Any) -> None:
         profile_key = kwargs.pop("profile_key", None)
@@ -334,6 +337,9 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     events: Mapped[list["Event"]] = relationship(
         back_populates="chart", cascade="all, delete-orphan"
     )
+    notes: Mapped[list["ChartNote"]] = relationship(
+        back_populates="chart", cascade="all, delete-orphan"
+    )
 
 
     def __init__(self, **kwargs: Any) -> None:
@@ -367,6 +373,27 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     @dt_utc.setter
     def dt_utc(self, value: datetime | None) -> None:
         self._dt_utc = _ensure_utc(value) if value is not None else None
+
+
+class ChartNote(Base):
+    """Free-form annotations linked to stored charts."""
+
+    __tablename__ = "notes"
+    __table_args__ = _table_args(
+        Index("ix_notes_chart_id", "chart_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chart_id: Mapped[int] = mapped_column(
+        ForeignKey("charts.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+
+    chart: Mapped[Chart] = relationship(back_populates="notes")
 
 
 class RulesetVersion(ModuleScopeMixin, TimestampMixin, Base):

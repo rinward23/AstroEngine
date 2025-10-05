@@ -18,6 +18,9 @@ __all__ = [
     "health_router",
     "transits_router",
     "settings_router",
+    "notes_router",
+    "data_router",
+    "charts_router",
     "configure_position_provider",
     "clear_position_provider",
 ]
@@ -71,6 +74,18 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .settings import router as settings_router
 
         return settings_router
+    if name == "notes_router":
+        from .notes import router as notes_router
+
+        return notes_router
+    if name == "data_router":
+        from .data_io import router as data_router
+
+        return data_router
+    if name == "charts_router":
+        from .charts import router as charts_router
+
+        return charts_router
     if name == "policies_router":
         from .policies import router as policies_router
 

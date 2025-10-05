@@ -122,3 +122,23 @@ step-by-step examples in ``docs/recipes/``:
 Each recipe introduces one additional module (profiles, progressions,
 fast scans) so a new user can build confidence without needing informal
 help.
+
+## 8. Generate the sample PDF report
+
+The reporting pipeline ships with an executable helper that renders a
+real natal chart summary into ``generated/reports/sample_chart_report.pdf``.
+Run the script after installing the ``reports`` dependencies to
+reproduce the artifact without committing binary files:
+
+```bash
+pip install -e .[reports]
+pip install pyswisseph
+python scripts/generate_sample_pdf.py
+```
+
+The chart data comes from a real June 1987 birth moment in San
+Francisco. The resulting PDF uses the same rendering code exercised by
+the API endpoint and includes the default legal disclaimers defined in
+``config.yaml``. If ``pyswisseph`` is unavailable the helper exits with a
+clear message so the generated artifact is always derived from genuine
+ephemeris data.

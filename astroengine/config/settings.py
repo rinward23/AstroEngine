@@ -161,6 +161,18 @@ class PerfCfg(BaseModel):
     max_scan_days: int = 365
 
 
+class ReportsCfg(BaseModel):
+    """Reporting-related feature flags and defaults."""
+
+    pdf_enabled: bool = True
+    disclaimers: List[str] = Field(
+        default_factory=lambda: [
+            "Astrological interpretations are reflective tools, not certainties.",
+            "Use this report for personal insight and not as a substitute for professional advice.",
+        ]
+    )
+
+
 class Settings(BaseModel):
     """Top-level settings model persisted on disk."""
 
@@ -180,6 +192,7 @@ class Settings(BaseModel):
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
+    reports: ReportsCfg = Field(default_factory=ReportsCfg)
 
 
 # -------------------- I/O Helpers --------------------

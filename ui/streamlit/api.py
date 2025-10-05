@@ -67,6 +67,74 @@ class APIClient:
         except ValueError as exc:  # pragma: no cover - streamlit UI only
             raise RuntimeError("API returned a non-JSON response") from exc
 
+    def _get_bytes(self, path: str, *, params: Dict[str, Any] | None = None, timeout: int = 30) -> bytes:
+        if not path.startswith("/"):
+            path = f"/{path}"
+        url = f"{self.base}{path}"
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+            response.raise_for_status()
+        except requests.HTTPError as exc:  # pragma: no cover - streamlit UI only
+            message = _extract_error_message(exc.response) or str(exc)
+            raise RuntimeError(message) from exc
+        except requests.RequestException as exc:  # pragma: no cover - streamlit UI only
+            raise RuntimeError(str(exc)) from exc
+        return response.content
+
+    # ---- Settings ---------------------------------------------------------
+    def fetch_settings(self) -> Dict[str, Any]:
+        try:
+            response = requests.get(f"{self.base}/v1/settings", timeout=15)
+            response.raise_for_status()
+        except requests.HTTPError as exc:  # pragma: no cover - streamlit UI only
+            message = _extract_error_message(exc.response) or str(exc)
+            raise RuntimeError(message) from exc
+        except requests.RequestException as exc:  # pragma: no cover - streamlit UI only
+            raise RuntimeError(str(exc)) from exc
+        return response.json()
+
+    # ---- Notes ------------------------------------------------------------
+    def list_notes(self, chart_id: int | None = None) -> list[Dict[str, Any]]:
+        params = {"chart_id": chart_id} if chart_id is not None else None
+        try:
+            response = requests.get(f"{self.base}/v1/notes", params=params, timeout=15)
+            response.raise_for_status()
+        except requests.HTTPError as exc:  # pragma: no cover - streamlit UI only
+            message = _extract_error_message(exc.response) or str(exc)
+            raise RuntimeError(message) from exc
+        except requests.RequestException as exc:  # pragma: no cover - streamlit UI only
+            raise RuntimeError(str(exc)) from exc
+        return response.json()
+
+    def create_note(self, chart_id: int, text: str, tags: Iterable[str] | None = None) -> Dict[str, Any]:
+        payload = {"chart_id": chart_id, "text": text, "tags": list(tags or [])}
+        try:
+            response = requests.post(f"{self.base}/v1/notes", json=payload, timeout=15)
+            response.raise_for_status()
+        except requests.HTTPError as exc:  # pragma: no cover - streamlit UI only
+            message = _extract_error_message(exc.response) or str(exc)
+            raise RuntimeError(message) from exc
+        except requests.RequestException as exc:  # pragma: no cover - streamlit UI only
+            raise RuntimeError(str(exc)) from exc
+        return response.json()
+
+    def delete_note(self, note_id: int) -> None:
+        try:
+            response = requests.delete(f"{self.base}/v1/notes/{note_id}", timeout=15)
+            response.raise_for_status()
+        except requests.HTTPError as exc:  # pragma: no cover - streamlit UI only
+            message = _extract_error_message(exc.response) or str(exc)
+            raise RuntimeError(message) from exc
+        except requests.RequestException as exc:  # pragma: no cover - streamlit UI only
+            raise RuntimeError(str(exc)) from exc
+
+    # ---- Data I/O ---------------------------------------------------------
+    def export_bundle(self, scope: str = "charts,settings") -> bytes:
+        return self._get_bytes("/v1/export", params={"scope": scope}, timeout=60)
+
+    def generate_chart_pdf(self, chart_id: int) -> bytes:
+        return self._get_bytes(f"/v1/charts/{chart_id}/pdf", timeout=60)
+
     # ---- Aspects -----------------------------------------------------------
     def aspects_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Call the aspect search endpoint and return the parsed JSON body."""

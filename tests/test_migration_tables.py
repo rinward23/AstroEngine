@@ -12,6 +12,7 @@ EXPECTED_TABLES = {
     "orb_policies",
     "severity_profiles",
     "charts",
+    "notes",
     "ruleset_versions",
     "events",
     "asteroid_meta",
