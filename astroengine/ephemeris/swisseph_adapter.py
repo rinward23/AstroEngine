@@ -729,15 +729,93 @@ class SwissEphemerisAdapter:
             speed_declination=equatorial.speed_declination,
         )
 
+    def compute_bodies_many(
+        self, jd_ut: float, bodies: Mapping[str, int]
+    ) -> dict[str, BodyPosition]:
+        """Return body positions for ``bodies`` using shared Swiss calls."""
+
+        if not bodies:
+            return {}
+
+        self._apply_sidereal_mode()
+        swe = _swe()
+        calc_flags = self._calc_flags
+        fallback_flags = self._fallback_flags
+        equatorial_flag = swe.FLG_EQUATORIAL
+
+        body_specs: list[tuple[str, int, bool]] = []
+        unique_codes: set[int] = set()
+        for name, raw_code in bodies.items():
+            override_code, derived = self._variant_override(name)
+            effective = int(override_code if override_code is not None else raw_code)
+            body_specs.append((name, effective, derived))
+            unique_codes.add(effective)
+
+        ecliptic_data: dict[int, tuple[float, ...]] = {}
+        equatorial_data: dict[int, tuple[float, ...]] = {}
+        for code in unique_codes:
+            try:
+                xx, _, serr = swe_calc(
+                    jd_ut=jd_ut, planet_index=code, flag=calc_flags
+                )
+            except RuntimeError:
+                xx, _, serr = swe_calc(
+                    jd_ut=jd_ut, planet_index=code, flag=fallback_flags
+                )
+            if serr:
+                raise RuntimeError(serr)
+            ecliptic_data[code] = xx
+
+            try:
+                eq_xx, _, serr_eq = swe_calc(
+                    jd_ut=jd_ut,
+                    planet_index=code,
+                    flag=calc_flags | equatorial_flag,
+                )
+            except RuntimeError:
+                eq_xx, _, serr_eq = swe_calc(
+                    jd_ut=jd_ut,
+                    planet_index=code,
+                    flag=fallback_flags | equatorial_flag,
+                )
+            if serr_eq:
+                raise RuntimeError(serr_eq)
+            equatorial_data[code] = eq_xx
+
+        positions: dict[str, BodyPosition] = {}
+        for name, effective_code, derived in body_specs:
+            lon, lat, dist, speed_lon, speed_lat, speed_dist = ecliptic_data[
+                effective_code
+            ]
+            if derived:
+                lon = (lon + 180.0) % 360.0
+                lat = -lat
+                speed_lat = -speed_lat
+
+            eq_xx = equatorial_data[effective_code]
+            _, decl, _, _, speed_decl, _ = eq_xx
+
+            positions[name] = BodyPosition(
+                body=name,
+                julian_day=jd_ut,
+                longitude=lon % 360.0,
+                latitude=lat,
+                distance_au=dist,
+                speed_longitude=speed_lon,
+                speed_latitude=speed_lat,
+                speed_distance=speed_dist,
+                declination=decl,
+                speed_declination=speed_decl,
+            )
+
+        return positions
+
     def body_positions(
         self, jd_ut: float, bodies: Mapping[str, int]
     ) -> dict[str, BodyPosition]:
         """Return positions for each body keyed by canonical name."""
 
-        return {
-            name: self.body_position(jd_ut, code, body_name=name)
-            for name, code in bodies.items()
-        }
+        return self.compute_bodies_many(jd_ut, bodies)
 
 
     @staticmethod
