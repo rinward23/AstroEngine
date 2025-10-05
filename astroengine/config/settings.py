@@ -90,6 +90,14 @@ class AspectsCfg(BaseModel):
     show_applying: bool = True
 
 
+class AntisciaCfg(BaseModel):
+    """Configuration for antiscia/contra-antiscia mirror detection."""
+
+    enabled: bool = False
+    orb: float = 2.0
+    show_overlay: bool = False
+
+
 class ChartsCfg(BaseModel):
     """Toggle availability of chart techniques exposed by the engine."""
 
@@ -180,6 +188,7 @@ class Settings(BaseModel):
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
+    antiscia: AntisciaCfg = Field(default_factory=AntisciaCfg)
 
 
 # -------------------- I/O Helpers --------------------

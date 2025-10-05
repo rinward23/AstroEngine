@@ -12,6 +12,7 @@ from .features import (
 )
 from .settings import (
     AspectsCfg,
+    AntisciaCfg,
     BodiesCfg,
     ChartsCfg,
     EphemerisCfg,
@@ -42,6 +43,7 @@ __all__ = [
     "HousesCfg",
     "BodiesCfg",
     "AspectsCfg",
+    "AntisciaCfg",
     "ChartsCfg",
     "NarrativeCfg",
     "RenderingCfg",
