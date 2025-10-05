@@ -10,6 +10,8 @@ from typing import Awaitable, Callable
 from fastapi import FastAPI, Request
 from starlette.responses import Response
 
+from astroengine.ephemeris.adapter import EphemerisAdapter, EphemerisConfig
+
 from app.observability import configure_observability
 
 from app.routers import (
@@ -60,5 +62,10 @@ async def security_headers(
     return response
 
 
-__all__ = ["app", "configure_position_provider", "clear_position_provider"]
+__all__ = [
+    "app",
+    "configure_position_provider",
+    "clear_position_provider",
+    "get_adapter",
+]
 
