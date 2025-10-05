@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# Multi-purpose image: CLI + API + (optional) UI
 FROM python:3.11-slim AS base
 
 ARG EXTRA_GROUPS="api,providers"
@@ -9,14 +9,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     AE_QCACHE_SEC=0.25 \
     AE_QCACHE_SIZE=16384
 
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# System deps (build tools for any native wheels)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential curl ca-certificates && \
+    build-essential curl ca-certificates git && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY pyproject.toml README.md ./
-COPY astroengine ./astroengine
-COPY app ./app
 
 # Install requested extras (defaults to API + providers)
 RUN set -eux; \
@@ -30,16 +32,15 @@ RUN set -eux; \
         pip install "uvicorn[standard]"; \
     fi
 
-# Optional: ship Swiss ephemeris files in-image
-# COPY eph/ /opt/eph/
-# ENV SE_EPHE_PATH=/opt/eph
+# Runtime env
+ENV DB_URL="sqlite:///./dev.db" \
+    ASTROENGINE_HOME="/app/.astroengine" \
+    AE_QCACHE_SIZE=4096 AE_QCACHE_SEC=1.0
 
-# Non-root user
-RUN useradd -r -u 10001 astro && chown -R astro:astro /app
-USER astro
+# Create cache directory
+RUN mkdir -p "$ASTROENGINE_HOME"
 
+# Expose API port
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:8000/health/plus || exit 1
 
 CMD ["python", "-m", "app.uvicorn_runner"]

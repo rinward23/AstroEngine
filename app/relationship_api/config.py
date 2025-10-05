@@ -50,18 +50,20 @@ class ServiceSettings(BaseModel):
 
     @classmethod
     def from_env(cls) -> "ServiceSettings":
+        """Construct settings using the process environment."""
+
         redis_url = os.getenv("RELATIONSHIP_REDIS_URL") or os.getenv("REDIS_URL")
-        rate_limit = int(os.getenv("RELATIONSHIP_RATE_LIMIT", "60"))
-        gzip_min_size = int(os.getenv("RELATIONSHIP_GZIP_MIN", "512"))
-        request_max = int(os.getenv("RELATIONSHIP_REQUEST_MAX", "1000000"))
+        rate_limit = max(1, int(os.getenv("RELATIONSHIP_RATE_LIMIT", "60")))
+        gzip_min_size = max(128, int(os.getenv("RELATIONSHIP_GZIP_MIN", "512")))
+        request_max = max(32_768, int(os.getenv("RELATIONSHIP_REQUEST_MAX", "1000000")))
         enable_etag = os.getenv("RELATIONSHIP_DISABLE_ETAG") not in {"1", "true", "TRUE"}
         environment = os.getenv("ENV", "dev")
         settings = cls(
             cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS"),
             rate_limit_per_minute=max(1, rate_limit),
             redis_url=redis_url,
-            gzip_minimum_size=max(128, gzip_min_size),
-            request_max_bytes=max(32_768, request_max),
+            gzip_minimum_size=gzip_min_size,
+            request_max_bytes=request_max,
             enable_etag=enable_etag,
             environment=environment,
         )
