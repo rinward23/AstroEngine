@@ -44,7 +44,22 @@ except Exception:
     pass
 
 # Provide compatibility alias for the legacy ``streamlit`` shim used in tests.
-sys.modules.setdefault("streamlit", _st_shim)
+_disable_shim = os.getenv("ASTROENGINE_DISABLE_STREAMLIT_SHIM", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+if _disable_shim:
+    try:
+        import streamlit as _streamlit_module  # type: ignore
+    except ModuleNotFoundError:
+        sys.modules.setdefault("streamlit", _st_shim)
+    else:
+        sys.modules.setdefault("streamlit", _streamlit_module)
+else:
+    sys.modules.setdefault("streamlit", _st_shim)
 # >>> AUTO-GEN END: AliasGeneratedToAstroengine v1.0
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
