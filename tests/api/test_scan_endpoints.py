@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -65,6 +66,41 @@ def test_scan_progressions_endpoint(client: TestClient, monkeypatch: pytest.Monk
     assert data["hits"][0]["metadata"]["speed_deg_per_day"] == pytest.approx(0.92)
 
 
+def test_scan_progressions_streaming(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _base_payload("progressions")
+
+    def stub_progressed(**_kwargs):
+        yield {
+            "when_iso": "2024-03-01T00:00:00Z",
+            "moving": "Venus",
+            "target": "natal_Mars",
+            "aspect": 90,
+            "orb": 0.25,
+        }
+        yield {
+            "when_iso": "2024-06-01T00:00:00Z",
+            "moving": "Mars",
+            "target": "natal_Sun",
+            "aspect": 120,
+            "orb": 0.5,
+        }
+
+    monkeypatch.setattr(
+        "astroengine.api.routers.scan.progressed_natal_aspects",
+        stub_progressed,
+    )
+
+    response = client.post("/v1/scan/progressions?stream=true", json=payload)
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/x-ndjson")
+    lines = [json.loads(line) for line in response.text.strip().splitlines() if line.strip()]
+    assert lines[0]["event"] == "metadata"
+    assert lines[1]["event"] == "hit"
+    assert lines[1]["data"]["moving"] == "Venus"
+    assert lines[-1]["event"] == "summary"
+    assert lines[-1]["count"] == 2
+
+
 def test_scan_directions_endpoint(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     payload = _base_payload("directions")
 
@@ -91,6 +127,20 @@ def test_scan_directions_endpoint(client: TestClient, monkeypatch: pytest.Monkey
     assert body["method"] == "directions"
     assert body["count"] == 1
     assert body["hits"][0]["aspect"] == 120
+
+
+def test_scan_streaming_rejects_export(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _base_payload("progressions")
+    payload["export"] = {"path": "out.json", "format": "json"}
+
+    monkeypatch.setattr(
+        "astroengine.api.routers.scan.progressed_natal_aspects",
+        lambda **_kwargs: [],
+    )
+
+    response = client.post("/v1/scan/progressions?stream=true", json=payload)
+    assert response.status_code == 400
+    assert response.json()["detail"] == "streaming responses do not support export payloads"
 
 
 def test_scan_transits_not_implemented(client: TestClient) -> None:

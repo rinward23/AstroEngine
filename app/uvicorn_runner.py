@@ -44,6 +44,8 @@ def main() -> None:
         host=host,
         port=port,
         workers=determine_worker_count(),
+        loop="uvloop",
+        http="httptools",
     )
 
 
