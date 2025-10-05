@@ -80,7 +80,7 @@ def _resolve_policy(inline, pid) -> Dict[str, Any]:
         )
     ],
 )
-def electional_search(req: ElectionalSearchRequest):
+def electional_search(req: ElectionalSearchRequest, request: Request):
     provider = aspects_module._get_provider()
     policy = _resolve_policy(req.orb_policy_inline, req.orb_policy_id)
 
@@ -97,7 +97,28 @@ def electional_search(req: ElectionalSearchRequest):
         forbidden_aspects=[ForbiddenRule(**r.model_dump()) for r in req.forbidden_aspects],
     )
 
-    results = search_best_windows(rules, provider)
+    settings = getattr(request.app.state, "settings", None)
+    perf_cfg = getattr(settings, "perf", None)
+    raw_max_days = getattr(perf_cfg, "max_scan_days", None) if perf_cfg is not None else None
+    try:
+        max_scan_days = float(raw_max_days) if raw_max_days is not None else None
+    except (TypeError, ValueError):
+        max_scan_days = None
+    if max_scan_days is not None and max_scan_days <= 0:
+        max_scan_days = None
+
+    raw_workers = getattr(perf_cfg, "workers", 1) if perf_cfg is not None else 1
+    try:
+        worker_count = int(raw_workers)
+    except (TypeError, ValueError):
+        worker_count = 1
+
+    results = search_best_windows(
+        rules,
+        provider,
+        max_scan_days=max_scan_days,
+        workers=worker_count,
+    )
 
     def _map_instant(I) -> InstantOut:
         if isinstance(I, dict):

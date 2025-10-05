@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Mapping, Optional, Sequence, Tuple
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -523,12 +523,12 @@ class ForecastStackCfg(BaseModel):
     """Forecast stack component toggles."""
 
     enabled: bool = True
-    components: List[str] = Field(
-        default_factory=lambda: [
-            "transits",
-            "secondary_progressions",
-            "solar_arc",
-        ]
+    components: Dict[str, bool] = Field(
+        default_factory=lambda: {
+            "transits": True,
+            "progressions": True,
+            "solar_arc": True,
+        }
     )
     exactness_deg: float = 0.5
     consolidate_hours: int = 24
@@ -544,6 +544,15 @@ class ForecastStackCfg(BaseModel):
     @classmethod
     def _cap_consolidate_hours(cls, value: int) -> int:
         return max(1, min(168, int(value)))
+
+    @field_validator("components", mode="before")
+    @classmethod
+    def _coerce_components(cls, value):  # type: ignore[override]
+        if isinstance(value, Mapping):
+            return dict(value)
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+            return {str(item): True for item in value}
+        return {}
 
 
 class SynastryCfg(BaseModel):
