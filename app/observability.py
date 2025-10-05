@@ -111,20 +111,13 @@ def _configure_opentelemetry(app: FastAPI) -> None:
         return
 
     try:  # pragma: no cover - instrumentation exercised in integration tests
-        from opentelemetry import metrics, trace
+        from opentelemetry import metrics
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
             OTLPMetricExporter,
         )
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
-            OTLPSpanExporter,
-        )
-        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-        from opentelemetry.instrumentation.requests import RequestsInstrumentor
         from opentelemetry.sdk.metrics import MeterProvider
         from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
         from opentelemetry.sdk.resources import Resource
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
     except ImportError:  # pragma: no cover - optional dependency
         _LOGGER.warning(
             "observability.opentelemetry_missing",
@@ -133,19 +126,14 @@ def _configure_opentelemetry(app: FastAPI) -> None:
         app.state._otel_configured = True
         return
 
+    from app.telemetry import setup_tracing
+
+    setup_tracing(app)
+
     resource = Resource.create({"service.name": "astroengine-api"})
-
-    tracer_provider = TracerProvider(resource=resource)
-    tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
-    trace.set_tracer_provider(tracer_provider)
-
     metric_reader = PeriodicExportingMetricReader(OTLPMetricExporter())
     meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
     metrics.set_meter_provider(meter_provider)
-
-    excluded = r"/(metrics|healthz|readyz)"
-    FastAPIInstrumentor.instrument_app(app, excluded_urls=excluded)
-    RequestsInstrumentor().instrument()
 
     app.state._otel_configured = True
 
