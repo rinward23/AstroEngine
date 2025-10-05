@@ -345,7 +345,14 @@ def _render_png(
     _draw_time_labels(draw, start, end, margin_left, plot_width, margin_top + plot_height + 10, font)
     _draw_altitude_labels(draw, min_alt, max_alt, margin_left - 40, margin_top, plot_height, font)
 
-    _draw_polar(draw, samples, margin_left + plot_width / 2, margin_top + plot_height + 220, 160)
+    _draw_polar(
+        draw,
+        samples,
+        margin_left + plot_width / 2,
+        margin_top + plot_height + 220,
+        160,
+        font,
+    )
 
     buffer = BytesIO()
     img.save(buffer, format="PNG")
@@ -482,7 +489,14 @@ def _draw_altitude_labels(draw: ImageDraw.ImageDraw, min_alt: float, max_alt: fl
         draw.text((x, pos - 7), f"{alt}°", fill="#ffffff80", font=font)
 
 
-def _draw_polar(draw: ImageDraw.ImageDraw, samples: Sequence[AltAzSample], cx: float, cy: float, radius: float) -> None:
+def _draw_polar(
+    draw: ImageDraw.ImageDraw,
+    samples: Sequence[AltAzSample],
+    cx: float,
+    cy: float,
+    radius: float,
+    font: ImageFont.ImageFont,
+) -> None:
     for alt in (90, 60, 30, 0):
         r = _polar_radius(alt, radius)
         draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline="#ffffff30")
@@ -491,10 +505,10 @@ def _draw_polar(draw: ImageDraw.ImageDraw, samples: Sequence[AltAzSample], cx: f
         x = cx + radius * math.sin(theta)
         y = cy - radius * math.cos(theta)
         draw.line([cx, cy, x, y], fill="#ffffff20")
-    draw.text((cx - 5, cy - radius - 20), "N", fill="#ffffff", font=ImageFont.load_default())
-    draw.text((cx + radius + 5, cy - 5), "E", fill="#ffffff", font=ImageFont.load_default())
-    draw.text((cx - 5, cy + radius + 5), "S", fill="#ffffff", font=ImageFont.load_default())
-    draw.text((cx - radius - 20, cy - 5), "W", fill="#ffffff", font=ImageFont.load_default())
+    draw.text((cx - 5, cy - radius - 20), "N", fill="#ffffff", font=font)
+    draw.text((cx + radius + 5, cy - 5), "E", fill="#ffffff", font=font)
+    draw.text((cx - 5, cy + radius + 5), "S", fill="#ffffff", font=font)
+    draw.text((cx - radius - 20, cy - 5), "W", fill="#ffffff", font=font)
     path = []
     for s in samples:
         r = _polar_radius(s.altitude_deg, radius)
