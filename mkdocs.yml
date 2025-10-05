@@ -17,5 +17,7 @@ nav:
       - Daily planner: recipes/daily_planner.md
       - Electional window: recipes/electional_window.md
       - Transit-to-progressed synastry: recipes/transit_to_progressed_synastry.md
+  - Reference:
+      - Knowledge base: reference/knowledge_base.md
   - Repos: repos.md
 # >>> AUTO-GEN END: MkDocs Config v1.0

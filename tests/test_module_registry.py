@@ -1,4 +1,9 @@
 from astroengine import DEFAULT_REGISTRY, serialize_vca_ruleset
+from astroengine.modules.reference.catalog import (
+    GLOSSARY,
+    CHART_TYPES,
+    FRAMEWORKS,
+)
 
 
 def test_vca_module_registered():
@@ -39,3 +44,26 @@ def test_integrations_module_catalogues_external_tooling():
     vedic = module.get_submodule("vedic_workflows")
     desktop = vedic.get_channel("desktop_suites")
     assert "maitreya" in desktop.subchannels
+
+
+def test_reference_module_exposes_catalogued_entries():
+    module = DEFAULT_REGISTRY.get_module("reference")
+    assert module.metadata["description"].startswith("Knowledge base")
+
+    glossary = module.get_submodule("glossary")
+    definitions = glossary.get_channel("definitions")
+    for key, entry in GLOSSARY.items():
+        payload = definitions.get_subchannel(key).describe()["payload"]
+        assert payload["summary"] == entry.summary
+        assert payload["sources"] == [source.as_payload() for source in entry.sources]
+
+    charts = module.get_submodule("charts")
+    types_channel = charts.get_channel("types")
+    for key, entry in CHART_TYPES.items():
+        data = types_channel.get_subchannel(key).describe()
+        assert data["metadata"]["term"] == entry.term
+
+    frameworks = module.get_submodule("frameworks")
+    systems = frameworks.get_channel("systems")
+    for key, entry in FRAMEWORKS.items():
+        assert systems.get_subchannel(key).metadata["term"] == entry.term
