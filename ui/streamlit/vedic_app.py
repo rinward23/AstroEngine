@@ -25,6 +25,8 @@ from astroengine.engine.vedic import (
 )
 from astroengine.engine.vedic.dasha_yogini import YoginiOptions
 
+from .components import location_picker
+
 
 def _serialize_period(period) -> dict[str, Any]:
     return {
@@ -139,8 +141,18 @@ with st.sidebar:
     st.header("Inputs")
     date_value = st.date_input("Date", datetime(1990, 5, 4).date())
     time_value = st.time_input("Time (UTC)", datetime(1990, 5, 4, 12, 30).time())
-    lat = st.number_input("Latitude", value=40.7128, format="%.4f")
-    lon = st.number_input("Longitude", value=-74.0060, format="%.4f")
+    location_picker(
+        "Birth location",
+        default_query="New York, United States",
+        state_prefix="vedic_location",
+        help="Atlas-backed lookup populates the coordinates and timezone context.",
+    )
+    lat_default = float(st.session_state.get("vedic_location_lat", 40.7128))
+    lon_default = float(st.session_state.get("vedic_location_lon", -74.0060))
+    lat = st.number_input("Latitude", value=lat_default, format="%.4f")
+    lon = st.number_input("Longitude", value=lon_default, format="%.4f")
+    st.session_state["vedic_location_lat"] = float(lat)
+    st.session_state["vedic_location_lon"] = float(lon)
     ayanamsa = st.selectbox("Ayanamsa", AYANAMSA_CHOICES, index=0)
     house_system = st.selectbox("House system", ["whole_sign", "placidus", "koch"], index=0)
     node_variant_index = NODE_VARIANT_CHOICES.index("mean") if "mean" in NODE_VARIANT_CHOICES else 0

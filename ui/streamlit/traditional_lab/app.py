@@ -29,6 +29,8 @@ from ...engine.traditional import (
 from ...engine.traditional.models import ChartCtx, LifeProfile
 from ...engine.traditional.zr import SIGN_ORDER
 
+from ..components import location_picker
+
 
 def _parse_iso(value: str) -> datetime:
     try:
@@ -181,8 +183,18 @@ def render() -> None:
     with st.sidebar:
         st.header("Natal Configuration")
         birth_iso = st.text_input("Birth moment (ISO)", "1990-01-01T12:00:00+00:00")
-        latitude = st.number_input("Latitude", value=40.7128, format="%.4f")
-        longitude = st.number_input("Longitude", value=-74.0060, format="%.4f")
+        location_picker(
+            "Birth location",
+            default_query="New York, United States",
+            state_prefix="traditional_lab_location",
+            help="Atlas lookup pre-populates coordinates and shows timezone daylight status.",
+        )
+        lat_default = float(st.session_state.get("traditional_lab_location_lat", 40.7128))
+        lon_default = float(st.session_state.get("traditional_lab_location_lon", -74.0060))
+        latitude = st.number_input("Latitude", value=lat_default, format="%.4f")
+        longitude = st.number_input("Longitude", value=lon_default, format="%.4f")
+        st.session_state["traditional_lab_location_lat"] = float(latitude)
+        st.session_state["traditional_lab_location_lon"] = float(longitude)
         house_system = st.selectbox("House system", options=["whole_sign", "placidus", "koch"], index=0)
         range_start_iso = st.text_input("Timeline start", "2023-01-01T00:00:00+00:00")
         range_end_iso = st.text_input("Timeline end", "2025-01-01T00:00:00+00:00")

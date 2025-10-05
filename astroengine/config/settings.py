@@ -161,6 +161,13 @@ class PerfCfg(BaseModel):
     max_scan_days: int = 365
 
 
+class AtlasCfg(BaseModel):
+    """Atlas and geocoding configuration."""
+
+    offline_enabled: bool = False
+    data_path: Optional[str] = None
+
+
 class Settings(BaseModel):
     """Top-level settings model persisted on disk."""
 
@@ -180,6 +187,7 @@ class Settings(BaseModel):
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
+    atlas: AtlasCfg = Field(default_factory=AtlasCfg)
 
 
 # -------------------- I/O Helpers --------------------

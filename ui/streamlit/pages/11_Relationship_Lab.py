@@ -21,6 +21,8 @@ HOUSE_SYSTEMS = {
 
 from ui.streamlit.api import APIClient
 
+from ..components import location_picker
+
 st.set_page_config(page_title="Relationship Lab", page_icon="💞", layout="wide")
 st.title("Relationship Lab 💞")
 api = APIClient()
@@ -278,12 +280,52 @@ with TAB_COMP:
     c1, c2 = st.columns(2)
     with c1:
         eventA_dt = st.datetime_input("A — Date/Time (UTC)", value=datetime(1990, 1, 1, 12, tzinfo=timezone.utc))
-        eventA_lat = st.number_input("A — Latitude (°)", -90.0, 90.0, 40.0, 0.1)
-        eventA_lon = st.number_input("A — Longitude East (°)", -180.0, 180.0, -74.0, 0.1)
+        location_picker(
+            "Composite A location",
+            default_query="New York, United States",
+            state_prefix="relationship_comp_a_location",
+            help="Atlas lookup can prefill Chart A coordinates and timezone hints.",
+        )
+        eventA_lat = st.number_input(
+            "A — Latitude (°)",
+            -90.0,
+            90.0,
+            float(st.session_state.get("relationship_comp_a_location_lat", 40.0)),
+            0.1,
+        )
+        eventA_lon = st.number_input(
+            "A — Longitude East (°)",
+            -180.0,
+            180.0,
+            float(st.session_state.get("relationship_comp_a_location_lon", -74.0)),
+            0.1,
+        )
+        st.session_state["relationship_comp_a_location_lat"] = float(eventA_lat)
+        st.session_state["relationship_comp_a_location_lon"] = float(eventA_lon)
     with c2:
         eventB_dt = st.datetime_input("B — Date/Time (UTC)", value=datetime(1992, 6, 10, 6, tzinfo=timezone.utc))
-        eventB_lat = st.number_input("B — Latitude (°)", -90.0, 90.0, 34.0, 0.1)
-        eventB_lon = st.number_input("B — Longitude East (°)", -180.0, 180.0, -118.0, 0.1)
+        location_picker(
+            "Composite B location",
+            default_query="Los Angeles, United States",
+            state_prefix="relationship_comp_b_location",
+            help="Atlas lookup can prefill Chart B coordinates and timezone hints.",
+        )
+        eventB_lat = st.number_input(
+            "B — Latitude (°)",
+            -90.0,
+            90.0,
+            float(st.session_state.get("relationship_comp_b_location_lat", 34.0)),
+            0.1,
+        )
+        eventB_lon = st.number_input(
+            "B — Longitude East (°)",
+            -180.0,
+            180.0,
+            float(st.session_state.get("relationship_comp_b_location_lon", -118.0)),
+            0.1,
+        )
+        st.session_state["relationship_comp_b_location_lat"] = float(eventB_lat)
+        st.session_state["relationship_comp_b_location_lon"] = float(eventB_lon)
 
     if st.button("Compute Composite"):
         try:
@@ -345,11 +387,51 @@ with TAB_DAV:
 
     c1, c2 = st.columns(2)
     with c1:
-        latA = st.number_input("A — Latitude (°)", -90.0, 90.0, 10.0, 0.1)
-        lonA = st.number_input("A — Longitude East (°)", -180.0, 180.0, 20.0, 0.1)
+        location_picker(
+            "Davison A location",
+            default_query="Lisbon, Portugal",
+            state_prefix="relationship_davison_a_location",
+            help="Atlas lookup can prefill Chart A Davison coordinates.",
+        )
+        latA = st.number_input(
+            "A — Latitude (°)",
+            -90.0,
+            90.0,
+            float(st.session_state.get("relationship_davison_a_location_lat", 10.0)),
+            0.1,
+        )
+        lonA = st.number_input(
+            "A — Longitude East (°)",
+            -180.0,
+            180.0,
+            float(st.session_state.get("relationship_davison_a_location_lon", 20.0)),
+            0.1,
+        )
+        st.session_state["relationship_davison_a_location_lat"] = float(latA)
+        st.session_state["relationship_davison_a_location_lon"] = float(lonA)
     with c2:
-        latB = st.number_input("B — Latitude (°)", -90.0, 90.0, -10.0, 0.1)
-        lonB = st.number_input("B — Longitude East (°)", -180.0, 180.0, 40.0, 0.1)
+        location_picker(
+            "Davison B location",
+            default_query="Tokyo, Japan",
+            state_prefix="relationship_davison_b_location",
+            help="Atlas lookup can prefill Chart B Davison coordinates.",
+        )
+        latB = st.number_input(
+            "B — Latitude (°)",
+            -90.0,
+            90.0,
+            float(st.session_state.get("relationship_davison_b_location_lat", -10.0)),
+            0.1,
+        )
+        lonB = st.number_input(
+            "B — Longitude East (°)",
+            -180.0,
+            180.0,
+            float(st.session_state.get("relationship_davison_b_location_lon", 40.0)),
+            0.1,
+        )
+        st.session_state["relationship_davison_b_location_lat"] = float(latB)
+        st.session_state["relationship_davison_b_location_lon"] = float(lonB)
 
     bodies_txt = st.text_input(
         "Bodies (comma-sep, optional)", value="Sun, Moon, Mercury, Venus, Mars"

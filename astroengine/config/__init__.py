@@ -11,6 +11,7 @@ from .features import (
     is_enabled,
 )
 from .settings import (
+    AtlasCfg,
     AspectsCfg,
     BodiesCfg,
     ChartsCfg,
@@ -38,6 +39,7 @@ __all__ = [
     "experimental_modalities_from_env",
     "is_enabled",
     "Settings",
+    "AtlasCfg",
     "ZodiacCfg",
     "HousesCfg",
     "BodiesCfg",

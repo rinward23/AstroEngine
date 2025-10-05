@@ -183,6 +183,18 @@ max_scan_days = st.number_input(
     value=int(current_settings.perf.max_scan_days),
 )
 
+st.subheader("Atlas & Geocoding")
+offline_atlas = st.toggle(
+    "Use offline atlas dataset",
+    value=current_settings.atlas.offline_enabled,
+    help="Enable lookups against a bundled SQLite atlas instead of online geocoding.",
+)
+atlas_path = st.text_input(
+    "Offline atlas SQLite path",
+    value=current_settings.atlas.data_path or "",
+    help="Path to an atlas database with a 'places' table and search_name index.",
+)
+
 if st.button("💾 Save Settings", type="primary"):
     updated = Settings(
         preset=preset,
@@ -220,6 +232,10 @@ if st.button("💾 Save Settings", type="primary"):
             "qcache_size": qcache_size,
             "qcache_sec": qcache_seconds,
             "max_scan_days": max_scan_days,
+        },
+        atlas={
+            "offline_enabled": offline_atlas,
+            "data_path": atlas_path or None,
         },
     )
     save_settings(updated)
