@@ -1,6 +1,14 @@
 # Multi-purpose image: CLI + API + (optional) UI
 FROM python:3.11-slim AS base
 
+ARG EXTRA_GROUPS="api,providers"
+ENV ASTROENGINE_EXTRAS="${EXTRA_GROUPS}"
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    AE_QCACHE_SEC=0.25 \
+    AE_QCACHE_SIZE=16384
+
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -12,19 +20,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Pre-copy only deps metadata to leverage layer cache
-COPY pyproject.toml* setup.cfg* setup.py* requirements*.txt ./.
-
-# Install runtime/dev deps if present (best effort)
-RUN python -m pip install -U pip setuptools wheel && \
-    if [ -f requirements.txt ]; then pip install -r requirements.txt; fi && \
-    if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt || true; fi
-
-# Now copy source
-COPY . .
-
-# Install package with extras (fallback to core)
-RUN pip install -e ".[api,providers,ui]" || pip install -e .
+# Install requested extras (defaults to API + providers)
+RUN set -eux; \
+    pip install -U pip; \
+    if [ -n "${ASTROENGINE_EXTRAS}" ]; then \
+        pip install ".[${ASTROENGINE_EXTRAS}]"; \
+    else \
+        pip install .; \
+    fi; \
+    if printf '%s' "${ASTROENGINE_EXTRAS}" | grep -q "api"; then \
+        pip install "uvicorn[standard]"; \
+    fi
 
 # Runtime env
 ENV DB_URL="sqlite:///./dev.db" \
@@ -37,5 +43,4 @@ RUN mkdir -p "$ASTROENGINE_HOME"
 # Expose API port
 EXPOSE 8000
 
-# Default command runs API; override for CLI/UI as needed
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["python", "-m", "app.uvicorn_runner"]

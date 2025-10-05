@@ -1,29 +1,17 @@
-SHELL := /bin/bash
-PY_BIN ?= python3.11
-VENV := .venv
-PIP := $(VENV)/bin/pip
-PY := $(VENV)/bin/python
-UVICORN := $(VENV)/bin/uvicorn
-STREAMLIT := $(VENV)/bin/streamlit
-RUFF := $(VENV)/bin/ruff
-BLACK := $(VENV)/bin/black
-ISORT := $(VENV)/bin/isort
-MYPY := $(VENV)/bin/mypy
-PYTEST := $(VENV)/bin/pytest
-ALEMBIC := $(VENV)/bin/alembic
+# >>> AUTO-GEN BEGIN: Makefile v1.2
+.PHONY: help setup install-optional hooks fmt lint lint-code test doctor clean deepclean fullcheck repair build run-cli run-api run-ui
 
-APP_MODULE ?= app.main:app
-UI_ENTRY ?= ui/streamlit/vedic_app.py
-DB_URL ?= sqlite:///./dev.db
-ASTROENGINE_HOME ?= ./.astroengine
-SE_EPHE_PATH ?=
-AE_WARM_BODIES ?= sun,moon,mercury,venus,mars,jupiter,saturn
-AE_WARM_START ?= 2000-01-01
-AE_WARM_END ?= 2030-12-31
+help:
+	@echo "Targets: setup, install-optional, hooks, fmt, lint, lint-code, test, doctor, clean, deepclean, fullcheck, repair, build, run-cli, run-api, run-ui"
 
-export DB_URL ASTROENGINE_HOME SE_EPHE_PATH AE_WARM_BODIES AE_WARM_START AE_WARM_END
+setup:
+	python -m pip install --upgrade pip
+	@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+	@if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e . || true; fi
+	python -m astroengine.diagnostics --strict || true
 
-.PHONY: all venv install dev compile lint typecheck test migrate cache-warm doctor run-cli run-api run-ui clean deepclean
+install-optional:
+	python scripts/install_optional_dependencies.py
 
 all: install compile lint test
 
@@ -88,5 +76,24 @@ $(STREAMLIT) run $(UI_ENTRY)
 clean:
 rm -rf $(ASTROENGINE_HOME) .pytest_cache .mypy_cache **/__pycache__ build dist *.egg-info
 
-deepclean: clean
-rm -rf $(VENV)
+build:
+	python -m astroengine.maint --with-build || true
+
+run-cli: install-optional
+	python -m astroengine --help
+
+run-api: install-optional
+	uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+run-ui: install-optional
+	streamlit run ui/streamlit/altaz_app.py --server.port 8501 --server.address 0.0.0.0
+# >>> AUTO-GEN END: Makefile v1.2
+
+# Custom operational helpers
+.PHONY: migrate cache-warm
+
+migrate:
+	.venv/bin/alembic upgrade head
+
+cache-warm:
+	python -m astroengine.pipeline.cache_warm

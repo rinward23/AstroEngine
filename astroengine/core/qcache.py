@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from math import floor
 from typing import Any, Hashable, Optional, Tuple
 
-# Quantization size in seconds (default 1s). Tune via env if needed.
-DEFAULT_QSEC = float(os.getenv("AE_QCACHE_SEC", "1.0"))
+# Quantization size in seconds (default 0.25s). Tune via env if needed.
+DEFAULT_QSEC = float(os.getenv("AE_QCACHE_SEC", "0.25"))
 
 
 def qbin(jd_tt: float, qsec: float = DEFAULT_QSEC) -> int:
@@ -28,7 +28,7 @@ class QCache:
 
     __slots__ = ("maxsize", "_data")
 
-    def __init__(self, maxsize: int = 4096) -> None:
+    def __init__(self, maxsize: int = 16384) -> None:
         self.maxsize = maxsize
         self._data: "OrderedDict[Tuple[Hashable, ...], _Entry]" = OrderedDict()
 
@@ -51,4 +51,4 @@ class QCache:
 
 
 # Module-global cache (per process)
-qcache = QCache(maxsize=int(os.getenv("AE_QCACHE_SIZE", "4096")))
+qcache = QCache(maxsize=int(os.getenv("AE_QCACHE_SIZE", "16384")))

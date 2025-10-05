@@ -5,6 +5,7 @@
 - PagerDuty: https://pagerduty.com/astroengine
 - Grafana Dashboards: https://grafana.astroengine.com
 - Incident Doc Template: https://docs.astroengine.com/incidents/template
+- [Troubleshooting Quick Fixes](troubleshooting.md)
 
 ## Triage Checklist
 

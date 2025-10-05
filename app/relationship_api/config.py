@@ -3,27 +3,20 @@
 from __future__ import annotations
 
 import os
-from typing import Iterable, Sequence
+from typing import Iterable, Iterator
 
 from pydantic import BaseModel, Field, field_validator
 
 
-def _parse_origins(raw: str | Sequence[str] | None) -> tuple[str, ...]:
-    """Normalize comma-separated CORS origin declarations."""
+def _iter_items(value: str | Iterable[str]) -> Iterator[str]:
+    """Yield individual comma-separated items from user-provided origin values."""
 
-    if raw is None:
-        return tuple()
-    if isinstance(raw, str):
-        candidates = (segment.strip() for segment in raw.split(","))
+    if isinstance(value, str):
+        for chunk in value.split(","):
+            yield chunk.strip()
     else:
-        candidates = (str(segment).strip() for segment in raw)
-    normalized: list[str] = []
-    seen: set[str] = set()
-    for candidate in candidates:
-        if candidate and candidate not in seen:
-            normalized.append(candidate)
-            seen.add(candidate)
-    return tuple(normalized)
+        for item in value:
+            yield str(item).strip()
 
 
 class ServiceSettings(BaseModel):
@@ -39,8 +32,21 @@ class ServiceSettings(BaseModel):
 
     @field_validator("cors_allow_origins", mode="before")
     @classmethod
-    def _parse_csv(cls, value: str | Sequence[str] | None) -> tuple[str, ...]:
-        return _parse_origins(value)
+    def _parse_csv(cls, value: str | Iterable[str] | None) -> tuple[str, ...]:
+        if value is None:
+            return tuple()
+        if isinstance(value, str):
+            items = (item.strip() for item in value.split(","))
+        else:
+            items = (str(item).strip() for item in value)
+        normalized: list[str] = []
+        seen: set[str] = set()
+        normalised: list[str] = []
+        for item in _iter_items(value):
+            if item and item not in seen:
+                normalised.append(item)
+                seen.add(item)
+        return tuple(normalized)
 
     @classmethod
     def from_env(cls) -> "ServiceSettings":
@@ -52,11 +58,9 @@ class ServiceSettings(BaseModel):
         request_max = max(32_768, int(os.getenv("RELATIONSHIP_REQUEST_MAX", "1000000")))
         enable_etag = os.getenv("RELATIONSHIP_DISABLE_ETAG") not in {"1", "true", "TRUE"}
         environment = os.getenv("ENV", "dev")
-        cors_allow_origins = _parse_origins(os.getenv("CORS_ALLOW_ORIGINS"))
-
         settings = cls(
-            cors_allow_origins=cors_allow_origins,
-            rate_limit_per_minute=rate_limit,
+            cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS"),
+            rate_limit_per_minute=max(1, rate_limit),
             redis_url=redis_url,
             gzip_minimum_size=gzip_min_size,
             request_max_bytes=request_max,
@@ -67,7 +71,7 @@ class ServiceSettings(BaseModel):
             settings = settings.model_copy(update={"cors_allow_origins": ("*",)})
         return settings
 
-    def cors_origin_list(self) -> Iterable[str]:
+    def cors_origin_list(self) -> tuple[str, ...]:
         if self.cors_allow_origins:
             return self.cors_allow_origins
         if self.environment == "dev":
