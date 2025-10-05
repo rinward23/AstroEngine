@@ -24,8 +24,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install build
-      - run: python -m build
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+      - name: Build distribution artifacts
+        run: python -m build
+      - name: Upload to internal index
+        if: ${{ secrets.INTERNAL_INDEX_URL != '' }}
+        env:
+          TWINE_USERNAME: ${{ secrets.INTERNAL_INDEX_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.INTERNAL_INDEX_PASSWORD }}
+          TWINE_REPOSITORY_URL: ${{ secrets.INTERNAL_INDEX_URL }}
+        run: |
+          if [ -z "${TWINE_USERNAME}" ] || [ -z "${TWINE_PASSWORD}" ]; then
+            echo "Internal index credentials missing; skipping upload."
+            exit 0
+          fi
+          twine upload --repository-url "${TWINE_REPOSITORY_URL}" dist/*
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}

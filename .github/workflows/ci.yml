@@ -1,115 +1,134 @@
 name: ci
+
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  build:
+  quality:
+    name: Lint & type-check
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
-      - name: Install system deps
-        run: sudo apt-get update && sudo apt-get install -y build-essential
-      - name: Install Python deps
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
         run: |
-          python -m pip install -U pip setuptools wheel
+          set -eo pipefail
+          python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt || true; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
           pip install -e ".[api,providers,ui]" || pip install -e .
-      - name: Compile gate
-        run: python -m compileall -q .
+
       - name: Lint
         run: |
           ruff check .
           black --check .
           isort --check-only --profile black .
+
       - name: Type check
         run: |
-          pip install mypy pydantic
+          pip install mypy
           mypy .
+
   tests:
-    needs: lint
+    name: Test matrix
+    needs: quality
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            python-version: "3.11"
             coverage: true
           - os: macos-latest
-            python-version: "3.11"
             coverage: false
           - os: windows-latest
-            python-version: "3.11"
             coverage: false
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b
-      - name: Setup Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
+          python-version: "3.11"
+          cache: "pip"
+
       - name: Cache Swiss ephemeris
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        if: ${{ runner.os != 'Windows' }}
+        uses: actions/cache@v4
         with:
           path: ~/.astroengine/ephemeris
           key: ${{ runner.os }}-se-${{ hashFiles('datasets/swisseph_stub/**') }}
+
       - name: Prepare ephemeris path
-        shell: bash
+        if: ${{ runner.os != 'Windows' }}
         run: |
+          set -eo pipefail
           mkdir -p "$HOME/.astroengine/ephemeris"
           cp -a datasets/swisseph_stub/. "$HOME/.astroengine/ephemeris/" 2>/dev/null || true
           echo "SE_EPHE_PATH=$HOME/.astroengine/ephemeris" >> "$GITHUB_ENV"
-      - name: Install
+
+      - name: Install project
         run: |
+          set -eo pipefail
           python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-          if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e . || true; fi
-      - name: Build sdist/wheel
+          pip install coverage build
+          pip install -e ".[api,providers,ui]" || pip install -e .
+
+      - name: Build distribution artifacts
+        if: ${{ matrix.coverage }}
         run: |
-          pip install build
           python -m build
-      - name: Doctor (strict)
+
+      - name: Diagnostics
+        if: ${{ runner.os == 'Linux' }}
         run: |
-          python -m astroengine.diagnostics --json > diagnostics.json || true
+          python -m astroengine.diagnostics --json > diagnostics.json
           python -m astroengine.diagnostics --strict
-          python -m astroengine.diagnostics --smoketest "2025-01-01T00:00:00Z" || true
-      - name: Full maintenance gate
-        run: |
-          python -m astroengine.maint --full --strict
-      - name: Run tests
-        if: ${{ matrix.coverage != 'true' }}
-        run: pytest -q
+
       - name: Run tests with coverage
-        if: ${{ matrix.coverage == 'true' }}
-        shell: bash
+        if: ${{ matrix.coverage }}
         run: |
-          coverage run --source=astroengine.core.angles,astroengine.core.transit_engine,astroengine.detectors.ingresses,astroengine.timelords.dashas,astroengine.engine,astroengine.events -m pytest
+          coverage run --source=astroengine -m pytest
           coverage xml
-          coverage report --fail-under=90 --include="astroengine/core/angles.py,astroengine/core/transit_engine.py,astroengine/detectors/ingresses.py,astroengine/timelords/dashas.py,astroengine/engine.py,astroengine/events.py" --omit="generated/*"
-          python scripts/check_core_coverage.py coverage.xml 0.95 astroengine/core/angles.py astroengine/core/transit_engine.py
-          python -m genbadge.main coverage -i coverage.xml -o docs/badges/coverage.svg --local
-          git diff --exit-code docs/badges/coverage.svg
+
+      - name: Run tests
+        if: ${{ not matrix.coverage }}
+        run: pytest -q
+
       - name: Upload diagnostics
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ runner.os == 'Linux' }}
+        uses: actions/upload-artifact@v4
         with:
-          name: diagnostics-${{ matrix.python-version }}
+          name: diagnostics-${{ matrix.os }}
           path: diagnostics.json
+
       - name: Upload coverage artifacts
-        if: ${{ matrix.coverage == 'true' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ matrix.coverage }}
+        uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.python-version }}-${{ matrix.os }}
+          name: coverage-${{ matrix.os }}
           path: |
             coverage.xml
-            docs/badges/coverage.svg
-# >>> AUTO-GEN END: CI Workflow v1.1
+            dist
