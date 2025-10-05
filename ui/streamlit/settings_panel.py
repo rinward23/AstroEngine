@@ -22,6 +22,7 @@ st.set_page_config(page_title="AstroEngine Settings", layout="wide")
 
 st.title("⚙️ AstroEngine Settings")
 st.page_link("ui/streamlit/profiles_manager.py", label="Open Profiles & Presets →")
+st.page_link("ui/streamlit/narrative_profiles_manager.py", label="Narrative Profiles →")
 
 current_settings = load_settings()
 st.sidebar.success(f"Profile: {config_path()}")

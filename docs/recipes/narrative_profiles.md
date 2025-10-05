@@ -5,6 +5,23 @@ can blend in active time-lord stacks. The same offline templates power the
 CLI and Python APIs, ensuring deterministic output that references real
 event data.
 
+## High-level narrative overlays
+
+The ``astroengine.config`` module now exposes a dedicated narrative profile
+registry. Built-ins such as ``data_minimal``, ``traditional_classical``,
+``modern_psychological``, ``vedic_parashari``, ``jungian_archetypal`` and the
+opt-in esoteric overlays adjust only the ``settings.narrative`` section while
+preserving the rest of the configuration. Use the FastAPI endpoints under
+``/v1/narrative-profiles`` to list, preview, and apply them, or persist new
+overlays by POSTing a ``NarrativeCfg`` payload. Profiles are stored beneath
+``~/.astroengine/profiles/narrative`` so they can be versioned or synced like
+other project assets.
+
+When running the Streamlit dashboard, open the **Narrative Profiles** page to
+toggle which data sources, frameworks, and esoteric layers a persona may draw
+from. Saving through the UI writes an identical YAML overlay that the API and
+CLI can reuse.
+
 ## Sidereal / ayanāṁśa summaries
 
 Use the ``sidereal`` profile to highlight ayanāṁśa-specific context when
