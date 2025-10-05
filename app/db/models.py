@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Mapping
 from uuid import uuid4
 
 
@@ -312,6 +312,7 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
         ),
         Index("ix_charts_dt_utc", "dt_utc"),
         Index("ix_charts_created_at", "created_at"),
+        Index("ix_charts_kind_name", "kind", "name"),
     )
 
 
@@ -322,8 +323,10 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
         String(32), nullable=False, default=ChartKind.natal.value, server_default=text("'natal'")
 
     )
-    profile_key: Mapped[str] = mapped_column(String(64), nullable=False)
-    kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    tags: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    memo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(32), nullable=True)
     _dt_utc: Mapped[datetime | None] = mapped_column(
         "dt_utc", DateTime(timezone=True), nullable=True
     )
@@ -333,7 +336,14 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     location_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     source: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    location_label: Mapped[str | None] = synonym("location_name")
     data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    settings_snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    narrative_profile: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    bodies: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    houses: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    aspects: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    patterns: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
 
     events: Mapped[list["Event"]] = relationship(
         back_populates="chart", cascade="all, delete-orphan"
@@ -364,6 +374,44 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
 
         data = kwargs.pop("data", None)
         kwargs.setdefault("data", data or {})
+
+        snapshot = kwargs.pop("settings_snapshot", None)
+        if snapshot is not None:
+            if hasattr(snapshot, "model_dump"):
+                kwargs["settings_snapshot"] = snapshot.model_dump()  # type: ignore[attr-defined]
+            elif isinstance(snapshot, Mapping):
+                kwargs["settings_snapshot"] = dict(snapshot)
+            else:
+                kwargs["settings_snapshot"] = {}
+
+        bodies = kwargs.pop("bodies", None)
+        if bodies is not None:
+            if isinstance(bodies, Mapping):
+                kwargs["bodies"] = dict(bodies)
+            else:
+                kwargs["bodies"] = dict(bodies or {})  # type: ignore[arg-type]
+
+        houses = kwargs.pop("houses", None)
+        if houses is not None:
+            if isinstance(houses, Mapping):
+                kwargs["houses"] = dict(houses)
+            else:
+                kwargs["houses"] = dict(houses or {})  # type: ignore[arg-type]
+
+        aspects = kwargs.pop("aspects", None)
+        if aspects is not None:
+            if isinstance(aspects, Mapping):
+                kwargs["aspects"] = [dict(aspects)]
+            else:
+                kwargs["aspects"] = list(aspects)  # type: ignore[arg-type]
+
+        patterns = kwargs.pop("patterns", None)
+        if patterns is not None:
+            kwargs["patterns"] = list(patterns)  # type: ignore[arg-type]
+
+        narrative_profile = kwargs.pop("narrative_profile", None)
+        if narrative_profile is not None:
+            kwargs["narrative_profile"] = str(narrative_profile)
 
         super().__init__(**kwargs)
 

@@ -17,6 +17,11 @@ __all__ = [
 ]
 
 
+def _canonical_payload(lon: float, lat: float, decl: float, speed_lon: float) -> dict[str, float]:
+    position = BodyPosition(lon=lon, lat=lat, dec=decl, speed_lon=speed_lon)
+    return position.as_mapping()
+
+
 class TargetFrameResolver:
     """Resolve target body positions for alternate reference frames."""
 
@@ -166,7 +171,7 @@ class TargetFrameResolver:
         if body_lower not in self._static_positions:
             return None
         lon = self._static_positions[body_lower]
-        return {"lon": lon, "lat": 0.0, "decl": 0.0, "speed_lon": 0.0}
+        return _canonical_payload(lon, 0.0, 0.0, 0.0)
 
     def position_dict(self, iso_ts: str, body: str) -> Mapping[str, float]:
         frame = self.frame
@@ -177,12 +182,12 @@ class TargetFrameResolver:
             natal = self._natal_body(body)
             if natal is None:
                 raise KeyError(f"Body '{body}' not present in natal chart")
-            return {
-                "lon": natal.longitude % 360.0,
-                "lat": natal.latitude,
-                "decl": natal.declination,
-                "speed_lon": natal.speed_longitude,
-            }
+            return _canonical_payload(
+                natal.longitude,
+                natal.latitude,
+                natal.declination,
+                natal.speed_longitude,
+            )
 
         if frame == "progressed":
             progressed = self._progressed_for(iso_ts).chart
@@ -190,12 +195,12 @@ class TargetFrameResolver:
             pos = progressed.positions.get(name)
             if pos is None:
                 raise KeyError(f"Body '{body}' not present in progressed chart")
-            return {
-                "lon": pos.longitude % 360.0,
-                "lat": pos.latitude,
-                "decl": pos.declination,
-                "speed_lon": pos.speed_longitude,
-            }
+            return _canonical_payload(
+                pos.longitude,
+                pos.latitude,
+                pos.declination,
+                pos.speed_longitude,
+            )
 
         if frame == "directed":
             directed = self._directed_for(iso_ts)
@@ -206,7 +211,7 @@ class TargetFrameResolver:
             natal = self._natal_body(body)
             lat = natal.latitude if natal is not None else 0.0
             decl = natal.declination if natal is not None else 0.0
-            return {"lon": lon % 360.0, "lat": lat, "decl": decl, "speed_lon": 0.0}
+            return _canonical_payload(lon, lat, decl, 0.0)
 
         if frame == "composite":
             if self.composite_chart is None:
@@ -215,12 +220,12 @@ class TargetFrameResolver:
             pos = self.composite_chart.positions.get(name)
             if pos is None:
                 raise KeyError(f"Body '{body}' not present in composite chart")
-            return {
-                "lon": pos.midpoint_longitude % 360.0,
-                "lat": pos.latitude,
-                "decl": pos.declination,
-                "speed_lon": pos.speed_longitude,
-            }
+            return _canonical_payload(
+                pos.midpoint_longitude,
+                pos.latitude,
+                pos.declination,
+                pos.speed_longitude,
+            )
 
         raise ValueError(f"Unsupported target frame '{self.frame}'")
 

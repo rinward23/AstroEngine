@@ -12,6 +12,9 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from astroengine.plugins.registry import apply_plugin_settings
 
+
+CURRENT_SETTINGS_SCHEMA_VERSION = 2
+
 # -------------------- Settings Schema --------------------
 
 
@@ -614,6 +617,7 @@ class AtlasCfg(BaseModel):
 
     offline_enabled: bool = False
     data_path: Optional[str] = None
+    online_fallback_enabled: bool = False
 
 
 class ObservabilityCfg(BaseModel):
@@ -657,6 +661,11 @@ class ChatCfg(BaseModel):
 class Settings(BaseModel):
     """Top-level settings model persisted on disk."""
 
+    schema_version: int = Field(
+        default=CURRENT_SETTINGS_SCHEMA_VERSION,
+        ge=1,
+        description="Version marker for persisted configuration payloads.",
+    )
     preset: Literal[
         "modern_western",
         "traditional_western",
@@ -891,6 +900,42 @@ def save_settings(settings: Settings, path: Optional[Path] = None) -> Path:
     return target_path
 
 
+def _coerce_schema_version(raw: object) -> int:
+    """Return a normalised schema version value with sane bounds."""
+
+    try:
+        value = int(raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 1
+    return max(1, value)
+
+
+def _upgrade_settings_payload(
+    data: dict[str, object], *, schema_version: int
+) -> tuple[dict[str, object], bool]:
+    """Apply in-place upgrades required for older settings payloads."""
+
+    upgraded = deepcopy(data)
+    version = max(1, schema_version)
+    changed = False
+
+    if version < 2:
+        # v2 introduces the explicit schema version marker. No structural
+        # adjustments are required; we simply record the new version.
+        version = 2
+        changed = True
+
+    if version < CURRENT_SETTINGS_SCHEMA_VERSION:
+        version = CURRENT_SETTINGS_SCHEMA_VERSION
+        changed = True
+
+    if upgraded.get("schema_version") != version:
+        upgraded["schema_version"] = version
+        changed = True
+
+    return upgraded, changed
+
+
 def load_settings(path: Optional[Path] = None) -> Settings:
     """Load settings from disk, creating defaults if missing."""
 
@@ -900,8 +945,14 @@ def load_settings(path: Optional[Path] = None) -> Settings:
         save_settings(settings, source_path)
         return settings
     with source_path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle) or {}
+        raw = yaml.safe_load(handle) or {}
+    if not isinstance(raw, dict):
+        raw = {}
+    schema_version = _coerce_schema_version(raw.get("schema_version"))
+    data, upgraded = _upgrade_settings_payload(raw, schema_version=schema_version)
     settings = Settings(**data)
+    if upgraded:
+        save_settings(settings, source_path)
     apply_plugin_settings(settings)
     return settings
 

@@ -3,12 +3,71 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
 import streamlit as st
 from zoneinfo import ZoneInfo
 
 from astroengine.geo import geocode
+
+
+def _offset_signature(zone: ZoneInfo, moment: datetime) -> Tuple[timedelta, timedelta]:
+    local = moment.astimezone(zone)
+    offset = local.utcoffset() or timedelta(0)
+    dst = local.dst() or timedelta(0)
+    return offset, dst
+
+
+def _refine_transition(
+    zone: ZoneInfo,
+    start: datetime,
+    end: datetime,
+    start_signature: Tuple[timedelta, timedelta],
+) -> datetime:
+    current_start = start
+    current_signature = start_signature
+    while (end - current_start) > timedelta(minutes=1):
+        midpoint = current_start + (end - current_start) / 2
+        mid_signature = _offset_signature(zone, midpoint)
+        if mid_signature == current_signature:
+            current_start = midpoint
+            current_signature = mid_signature
+        else:
+            end = midpoint
+    return end
+
+
+def _collect_dst_transitions(zone: ZoneInfo, reference: datetime) -> List[Dict[str, Any]]:
+    window_start = reference - timedelta(days=730)
+    window_end = reference + timedelta(days=365)
+    step = timedelta(days=30)
+    transitions: List[Dict[str, Any]] = []
+
+    current = window_start
+    previous_signature = _offset_signature(zone, current)
+    while current < window_end:
+        next_point = min(current + step, window_end)
+        next_signature = _offset_signature(zone, next_point)
+        if next_signature != previous_signature:
+            transition_instant = _refine_transition(zone, current, next_point, previous_signature)
+            transitions.append(
+                {
+                    "instant": transition_instant,
+                    "offset": next_signature[0],
+                    "is_dst": bool(next_signature[1] and next_signature[1] != timedelta(0)),
+                }
+            )
+            previous_signature = next_signature
+        current = next_point
+
+    return transitions
+
+
+def _format_transition(zone: ZoneInfo, entry: Dict[str, Any]) -> str:
+    local_instant = entry["instant"].astimezone(zone)
+    offset_hours = entry["offset"].total_seconds() / 3600.0
+    status = "DST active" if entry["is_dst"] else "Standard time"
+    return f"- {local_instant.strftime('%Y-%m-%d %H:%M')} — {status} (UTC{offset_hours:+.1f})"
 
 
 def location_picker(
@@ -87,6 +146,27 @@ def location_picker(
             container.caption(
                 f"{selection['name']} — {tzid} (UTC{offset_hours:+.1f}) • DST {'active' if dst_active else 'inactive'}"
             )
+            transitions = _collect_dst_transitions(zone, now_utc)
+            if transitions:
+                history_lines: List[str] = []
+                past_lines = [
+                    _format_transition(zone, entry)
+                    for entry in transitions
+                    if entry["instant"] <= now_utc
+                ][-3:]
+                upcoming_lines = [
+                    _format_transition(zone, entry)
+                    for entry in transitions
+                    if entry["instant"] > now_utc
+                ][:2]
+                if past_lines:
+                    history_lines.append("**Recent DST transitions**")
+                    history_lines.extend(past_lines)
+                if upcoming_lines:
+                    history_lines.append("**Upcoming DST transitions**")
+                    history_lines.extend(upcoming_lines)
+                if history_lines:
+                    container.markdown("\n".join(history_lines))
         else:
             container.caption(f"{selection['name']} — {tzid or 'Unknown timezone'}")
 

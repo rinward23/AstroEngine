@@ -35,6 +35,7 @@ st.markdown(
 )
 
 st.title("🌌 AstroEngine — Main Portal")
+st.page_link("ui/streamlit/chart_library.py", label="Open Chart Library →")
 
 
 def _api_base() -> str:
