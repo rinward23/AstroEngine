@@ -59,6 +59,17 @@ def _ensure_utc(dt: datetime | None) -> datetime | None:
     return dt
 
 
+def _normalize_tags(tags: Iterable[str] | None) -> list[str]:
+    normalized: list[str] = []
+    if not tags:
+        return normalized
+    for tag in tags:
+        value = str(tag).strip().lower()
+        if value and value not in normalized:
+            normalized.append(value)
+    return normalized
+
+
 def _uuid_hex() -> str:
     """Return a random UUID4 hex string."""
 
@@ -373,7 +384,12 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
         kwargs.setdefault("profile_key", str(profile_key or "default"))
 
         data = kwargs.pop("data", None)
+        tags = kwargs.pop("tags", None)
+        deleted_at = kwargs.pop("deleted_at", None)
         kwargs.setdefault("data", data or {})
+        kwargs.setdefault("tags", _normalize_tags(tags))
+        if deleted_at is not None:
+            kwargs.setdefault("deleted_at", _ensure_utc(deleted_at))
 
         snapshot = kwargs.pop("settings_snapshot", None)
         if snapshot is not None:

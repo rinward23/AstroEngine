@@ -2,13 +2,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from ui.streamlit.api import APIClient
 from core.charts_plus.progressions import (
     secondary_progressed_datetime,
     secondary_progressed_positions,
@@ -40,9 +41,71 @@ class LinearEphemeris:
 st.set_page_config(page_title="Progressions & Returns", page_icon="🌀", layout="wide")
 st.title("Progressions & Returns 🌀")
 
+api = APIClient()
+
+
+@st.cache_data(show_spinner=False)
+def _profile_catalog() -> dict[str, list[str]]:
+    try:
+        return api.list_profiles()
+    except Exception:  # pragma: no cover - network/path issues
+        return {"built_in": [], "user": []}
+
+
+def _objects_from_settings(settings: dict[str, Any]) -> list[str]:
+    groups = settings.get("bodies", {}).get("groups", {})
+    mapping = {
+        "luminaries": ["Sun", "Moon"],
+        "classical": ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"],
+        "modern": ["Uranus", "Neptune", "Pluto"],
+    }
+    preferred: list[str] = []
+    for group, bodies in mapping.items():
+        if groups.get(group, False):
+            for body in bodies:
+                if body in ALL_OBJECTS and body not in preferred:
+                    preferred.append(body)
+    if not preferred:
+        return ["Sun", "Moon", "Mercury", "Venus", "Mars"]
+    ordered = [body for body in ALL_OBJECTS if body in preferred]
+    return ordered or preferred
+
+
+def _apply_profile_defaults(profile_name: str) -> None:
+    try:
+        settings = api.get_profile_settings(profile_name)
+    except Exception as exc:  # pragma: no cover - network/path issues
+        st.sidebar.error(f"Unable to load profile '{profile_name}': {exc}")
+        return
+    defaults = _objects_from_settings(settings)
+    st.session_state["progressions_objects"] = defaults
+    st.session_state["progressions_profile"] = profile_name
+    st.experimental_rerun()
+
 st.caption("This page uses the pure-Python engines (no external ephemeris required) with a configurable linear demo provider. Swap in your real provider later.")
 
 # ------------------------------ Provider config -----------------------------
+profiles = _profile_catalog()
+profile_options = ["—"] + profiles.get("built_in", []) + profiles.get("user", [])
+
+with st.sidebar:
+    st.subheader("Profiles")
+    selected_profile = st.selectbox(
+        "Apply profile defaults",
+        profile_options,
+        index=profile_options.index(st.session_state.get("progressions_profile", "—"))
+        if st.session_state.get("progressions_profile", "—") in profile_options
+        else 0,
+        help="Uses a profile from the API to populate the body list.",
+        key="progressions_profile_select",
+    )
+    if selected_profile != "—" and st.button("Apply profile", key="progressions_apply"):
+        _apply_profile_defaults(selected_profile)
+    if st.session_state.get("progressions_profile"):
+        st.caption(
+            f"Default bodies sourced from: {st.session_state['progressions_profile']}"
+        )
+
 st.sidebar.header("Ephemeris (demo)")
 now = datetime.now(timezone.utc)
 
@@ -96,7 +159,16 @@ provider = LinearEphemeris(
 
 # Common controls
 ALL_OBJECTS = list(default_base.keys())
-sel_objects: List[str] = st.multiselect("Objects", ALL_OBJECTS, default=["Sun","Moon","Mercury","Venus","Mars"])  # shared between tabs
+default_objects = st.session_state.get("progressions_objects")
+if not default_objects:
+    default_objects = ["Sun", "Moon", "Mercury", "Venus", "Mars"]
+    st.session_state["progressions_objects"] = default_objects
+sel_objects: List[str] = st.multiselect(
+    "Objects",
+    ALL_OBJECTS,
+    default=default_objects,
+    key="progressions_objects",
+)  # shared between tabs
 
 # ============================== Tabs =======================================
 TAB1, TAB2 = st.tabs(["Progressions", "Returns"])

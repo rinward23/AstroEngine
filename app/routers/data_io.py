@@ -49,6 +49,8 @@ def _chart_to_payload(chart: Chart) -> Mapping[str, object | None]:
         "channel": chart.channel,
         "subchannel": chart.subchannel,
         "data": chart.data,
+        "tags": chart.tags,
+        "deleted_at": chart.deleted_at.isoformat() if chart.deleted_at else None,
     }
 
 
@@ -115,6 +117,20 @@ def _normalize_chart_payload(record: Mapping[str, object]) -> dict[str, object |
     payload["patterns"] = _as_list(record.get("patterns"))
     dt_raw = record.get("dt_utc")
     payload["dt_utc"] = _parse_datetime(dt_raw) if isinstance(dt_raw, str) else None
+    tags_raw = record.get("tags")
+    if isinstance(tags_raw, (list, tuple)):
+        payload["tags"] = [
+            str(tag).strip().lower()
+            for tag in tags_raw
+            if isinstance(tag, (str, bytes)) and str(tag).strip()
+        ]
+    else:
+        payload["tags"] = []
+    deleted_raw = record.get("deleted_at")
+    if isinstance(deleted_raw, str):
+        payload["deleted_at"] = _parse_datetime(deleted_raw)
+    else:
+        payload["deleted_at"] = None
     return payload
 
 

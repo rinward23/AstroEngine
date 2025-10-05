@@ -61,6 +61,7 @@ from .settings import (
     save_user_narrative_profile,
     save_settings,
     compose_narrative_from_mix,
+    apply_narrative_profile_overlay,
     save_mix_as_user_narrative_profile,
     apply_narrative_profile_overlay,
 )

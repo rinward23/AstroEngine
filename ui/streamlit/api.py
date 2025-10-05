@@ -204,6 +204,59 @@ class APIClient:
         r.raise_for_status()
         return r.text
 
+    # ---- Charts ------------------------------------------------------------
+    def search_charts(
+        self,
+        *,
+        query: str | None = None,
+        tags: Sequence[str] | None = None,
+        created_from: str | None = None,
+        created_to: str | None = None,
+    ) -> list[Dict[str, Any]]:
+        params: Dict[str, Any] = {}
+        if query:
+            params["q"] = query
+        if tags:
+            params["tag"] = list(tags)
+        if created_from:
+            params["created_from"] = created_from
+        if created_to:
+            params["created_to"] = created_to
+        response = requests.get(f"{self.base}/v1/charts", params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, list):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/charts")
+        return data
+
+    def list_deleted_charts(self) -> list[Dict[str, Any]]:
+        response = requests.get(f"{self.base}/v1/charts/deleted", timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, list):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/charts/deleted")
+        return data
+
+    def update_chart_tags(self, chart_id: int, tags: Sequence[str]) -> Dict[str, Any]:
+        response = requests.patch(
+            f"{self.base}/v1/charts/{chart_id}/tags",
+            json={"tags": list(tags)},
+            timeout=15,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def soft_delete_chart(self, chart_id: int) -> None:
+        response = requests.delete(f"{self.base}/v1/charts/{chart_id}", timeout=15)
+        if response.status_code == 404:  # pragma: no cover - defensive
+            raise RuntimeError("Chart not found")
+        response.raise_for_status()
+
+    def restore_chart(self, chart_id: int) -> Dict[str, Any]:
+        response = requests.post(f"{self.base}/v1/charts/{chart_id}/restore", timeout=15)
+        response.raise_for_status()
+        return response.json()
+
     # ---- Synastry & Composites --------------------------------------------
     def synastry_compute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         data = self._post_json("/synastry/compute", payload, timeout=60)

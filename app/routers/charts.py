@@ -19,8 +19,9 @@ from astroengine.config import (
 )
 from astroengine.report import render_chart_pdf
 from astroengine.report.builders import build_chart_report_context
-from app.db.models import Chart
 from app.db.session import session_scope
+from app.repo.charts import ChartRepo
+from app.schemas.charts import ChartSummary, ChartTagsUpdate
 
 
 router = APIRouter(prefix="/v1/charts", tags=["charts"])
@@ -428,8 +429,9 @@ def chart_pdf(chart_id: int) -> Response:
         raise HTTPException(status_code=403, detail="PDF reports are disabled")
 
     with session_scope() as db:
-        chart = db.execute(select(Chart).where(Chart.id == chart_id)).scalar_one_or_none()
-        if chart is None:
+        repo = ChartRepo()
+        chart = repo.get(db, chart_id, include_deleted=True)
+        if chart is None or chart.deleted_at is not None:
             raise HTTPException(status_code=404, detail="Chart not found")
         if chart.dt_utc is None or chart.lat is None or chart.lon is None:
             raise HTTPException(status_code=400, detail="Chart is missing birth data")
@@ -461,3 +463,4 @@ def chart_pdf(chart_id: int) -> Response:
 
 
 __all__ = ["router"]
+

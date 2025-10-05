@@ -59,6 +59,7 @@ class MultiWheelOptions:
     declination_orb: float = 1.0
     background: str = "#0f1115"
     palette: Sequence[str] = ("#f5f5f5", "#ffe082", "#80cbc4")
+    theme: str | None = None
 
 
 @dataclass(slots=True)
@@ -152,11 +153,32 @@ _ROMAN = (
 
 
 _ASPECT_COLORS = {
-    "conjunction": "#ffab91",
-    "opposition": "#90caf9",
-    "square": "#ef9a9a",
-    "trine": "#a5d6a7",
-    "sextile": "#ce93d8",
+    "conjunction": "#0072B2",
+    "opposition": "#D55E00",
+    "square": "#E69F00",
+    "trine": "#009E73",
+    "sextile": "#CC79A7",
+    "quincunx": "#F0E442",
+    "default": "#9e9e9e",
+}
+
+
+def _aspect_color(aspect: str, theme: str | None) -> str:
+    palette = (
+        _HIGH_CONTRAST_ASPECT_COLORS
+        if theme == "high_contrast"
+        else _ASPECT_COLORS
+    )
+    return palette.get(aspect, palette.get("default", "#9e9e9e"))
+
+_HIGH_CONTRAST_ASPECT_COLORS = {
+    "conjunction": "#ffffff",
+    "opposition": "#ff6b6b",
+    "square": "#ffd166",
+    "trine": "#06d6a0",
+    "sextile": "#118ab2",
+    "quincunx": "#ef476f",
+    "default": "#f1f1f1",
 }
 
 
@@ -204,9 +226,23 @@ def _resolve_options(
         decl_orb = syn.declination_orb if syn.declination_orb is not None else decl_orb
         if syn.house_overlay is not None:
             show_house_overlay = show_house_overlay and syn.house_overlay
+    render_theme: str | None = None
+    if settings is not None:
+        rendering_cfg = getattr(settings, "rendering", None)
+        if rendering_cfg is not None:
+            render_theme = getattr(rendering_cfg, "theme", None)
+
     palette = base.palette
+    background = base.background
     if cfg and cfg.palette:
         palette = tuple(cfg.palette)
+    if render_theme == "light":
+        background = "#f7f7f7"
+        palette = ("#303030", "#455a64", "#6d4c41")
+    elif render_theme == "high_contrast":
+        background = "#000000"
+        palette = ("#ffffff", "#ffd166", "#00c2ff")
+
     policy = base.orb_policy
     if cfg and cfg.orb_policy:
         policy = cfg.orb_policy
@@ -216,7 +252,9 @@ def _resolve_options(
         show_house_overlay=show_house_overlay,
         show_declination_synastry=show_decl,
         declination_orb=float(decl_orb),
+        background=background,
         palette=palette,
+        theme=render_theme or base.theme,
         orb_policy=policy,
     )
     return resolved
@@ -515,7 +553,7 @@ def render_multiwheel_svg(
     # Aspect lines
     if result.aspects:
         for link in result.aspects:
-            color = _ASPECT_COLORS.get(link.aspect, "#9e9e9e")
+            color = _aspect_color(link.aspect, options.theme)
             x1, y1 = link.point_a
             x2, y2 = link.point_b
             svg.append(
@@ -643,7 +681,7 @@ def render_multiwheel_png(
 
     if result.aspects:
         for link in result.aspects:
-            color = _ASPECT_COLORS.get(link.aspect, "#9e9e9e")
+            color = _aspect_color(link.aspect, options.theme)
             x1, y1 = link.point_a
             x2, y2 = link.point_b
             draw.line(

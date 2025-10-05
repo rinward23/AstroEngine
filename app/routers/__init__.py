@@ -3,10 +3,16 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import Any
 
 __all__ = [
     "aspects_router",
+    "charts_router",
+    "clear_position_provider",
+    "configure_position_provider",
+    "data_router",
+    "declinations_router",
     "electional_router",
     "events_router",
 
@@ -15,11 +21,14 @@ __all__ = [
 
     "policies_router",
     "lots_router",
+    "narrative_mix_router",
+    "narrative_profiles_router",
+    "notes_router",
+    "policies_router",
+    "profiles_router",
     "relationship_router",
-    "interpret_router",
+    "rel_router",
     "reports_router",
-    "health_router",
-    "transits_router",
     "settings_router",
     "notes_router",
     "data_router",
@@ -31,6 +40,29 @@ __all__ = [
     "clear_position_provider",
 ]
 
+_LAZY_ATTRS: dict[str, tuple[str, str]] = {
+    "aspects_router": ("aspects", "router"),
+    "charts_router": ("charts", "router"),
+    "clear_position_provider": ("aspects", "clear_position_provider"),
+    "configure_position_provider": ("aspects", "configure_position_provider"),
+    "data_router": ("data_io", "router"),
+    "declinations_router": ("declinations", "router"),
+    "electional_router": ("electional", "router"),
+    "events_router": ("events", "router"),
+    "health_router": ("health", "router"),
+    "interpret_router": ("interpret", "router"),
+    "lots_router": ("lots", "router"),
+    "narrative_mix_router": ("narrative_mix", "router"),
+    "narrative_profiles_router": ("narrative_profiles", "router"),
+    "notes_router": ("notes", "router"),
+    "policies_router": ("policies", "router"),
+    "profiles_router": ("profiles", "router"),
+    "relationship_router": ("relationship", "router"),
+    "rel_router": ("rel", "router"),
+    "reports_router": ("reports", "router"),
+    "settings_router": ("settings", "router"),
+    "transits_router": ("transits", "router"),
+}
 
 def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampoline
     if name == "aspects_router":
@@ -95,52 +127,16 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
     if name == "reports_router":
         from .reports import router as reports_router
 
-        return reports_router
-    if name == "settings_router":
-        from .settings import router as settings_router
+def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampoline
+    try:
+        module_name, attr_name = _LAZY_ATTRS[name]
+    except KeyError as exc:  # pragma: no cover - defensive branch
+        raise AttributeError(name) from exc
 
-        return settings_router
-    if name == "notes_router":
-        from .notes import router as notes_router
-
-        return notes_router
-    if name == "data_router":
-        from .data_io import router as data_router
-
-        return data_router
-    if name == "charts_router":
-        from .charts import router as charts_router
-
-        return charts_router
-    if name == "policies_router":
-        from .policies import router as policies_router
-
-        return policies_router
-    if name == "configure_position_provider":
-        from .aspects import configure_position_provider as _configure
-
-        return _configure
-    if name == "clear_position_provider":
-        from .aspects import clear_position_provider as _clear
-
-        return _clear
-    if name == "rel_router":
-        from .rel import router as rel_router
-
-        return rel_router
-    if name == "transits_router":
-        from .transits import router as transits_router
-
-        return transits_router
-    if name == "configure_position_provider":
-        from .aspects import configure_position_provider
-
-        return configure_position_provider
-    if name == "clear_position_provider":
-        from .aspects import clear_position_provider
-
-        return clear_position_provider
-    raise AttributeError(name)
+    module = import_module(f".{module_name}", __name__)
+    value = getattr(module, attr_name)
+    globals()[name] = value
+    return value
 
 
 def __dir__() -> list[str]:  # pragma: no cover - introspection helper

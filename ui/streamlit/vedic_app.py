@@ -25,6 +25,7 @@ from astroengine.engine.vedic import (
 )
 from astroengine.engine.vedic.dasha_yogini import YoginiOptions
 
+from ui.streamlit.api import APIClient
 from .components import location_picker
 
 
@@ -39,6 +40,35 @@ def _serialize_period(period) -> dict[str, Any]:
     }
 
 st.set_page_config(page_title="AstroEngine Vedic Viewer", layout="wide")
+
+api = APIClient()
+
+
+@st.cache_data(show_spinner=False)
+def _profile_catalog() -> dict[str, list[str]]:
+    try:
+        return api.list_profiles()
+    except Exception:  # pragma: no cover - network/path issues
+        return {"built_in": [], "user": []}
+
+
+def _apply_profile_defaults(profile_name: str) -> None:
+    try:
+        settings = api.get_profile_settings(profile_name)
+    except Exception as exc:  # pragma: no cover - network/path issues
+        st.error(f"Unable to load profile '{profile_name}': {exc}")
+        return
+    st.session_state["vedic_profile_defaults"] = settings
+    zodiac = settings.get("zodiac", {})
+    houses = settings.get("houses", {})
+    if "type" in zodiac:
+        st.session_state["vedic_zodiac_type"] = str(zodiac.get("type", "tropical"))
+    if "ayanamsa" in zodiac:
+        st.session_state["vedic_ayanamsa"] = str(zodiac.get("ayanamsa", "lahiri"))
+    if "system" in houses:
+        st.session_state["vedic_house_system"] = str(houses.get("system", "whole_sign"))
+    st.session_state["vedic_profile_applied"] = profile_name
+    st.experimental_rerun()
 
 AYANAMSA_CHOICES = [
     "lahiri",
@@ -137,6 +167,26 @@ def _dasha_dataframe(periods) -> pd.DataFrame:
 
 st.title("Vedic Astrology Dashboard")
 
+profiles = _profile_catalog()
+profile_options = ["—"] + profiles.get("built_in", []) + profiles.get("user", [])
+with st.sidebar:
+    st.subheader("Profiles")
+    selected_profile = st.selectbox(
+        "Apply profile defaults",
+        profile_options,
+        index=profile_options.index(st.session_state.get("vedic_profile_applied", "—"))
+        if st.session_state.get("vedic_profile_applied", "—") in profile_options
+        else 0,
+        help="Fetches settings from the Profiles API and applies them to this form.",
+        key="vedic_profile_choice",
+    )
+    if selected_profile != "—" and st.button("Apply profile", type="secondary"):
+        _apply_profile_defaults(selected_profile)
+    if st.session_state.get("vedic_profile_applied"):
+        st.caption(
+            f"Defaults sourced from profile: {st.session_state['vedic_profile_applied']}"
+        )
+
 with st.sidebar:
     st.header("Inputs")
     date_value = st.date_input("Date", datetime(1990, 5, 4).date())
@@ -153,8 +203,38 @@ with st.sidebar:
     lon = st.number_input("Longitude", value=lon_default, format="%.4f")
     st.session_state["vedic_location_lat"] = float(lat)
     st.session_state["vedic_location_lon"] = float(lon)
-    ayanamsa = st.selectbox("Ayanamsa", AYANAMSA_CHOICES, index=0)
-    house_system = st.selectbox("House system", ["whole_sign", "placidus", "koch"], index=0)
+    zodiac_options = ["tropical", "sidereal"]
+    default_zodiac = st.session_state.get("vedic_zodiac_type", zodiac_options[0])
+    if default_zodiac not in zodiac_options:
+        default_zodiac = zodiac_options[0]
+        st.session_state["vedic_zodiac_type"] = default_zodiac
+    zodiac_type = st.selectbox(
+        "Zodiac",
+        zodiac_options,
+        index=zodiac_options.index(default_zodiac),
+        key="vedic_zodiac_type",
+    )
+    default_ayanamsa = st.session_state.get("vedic_ayanamsa", AYANAMSA_CHOICES[0])
+    if default_ayanamsa not in AYANAMSA_CHOICES:
+        default_ayanamsa = AYANAMSA_CHOICES[0]
+        st.session_state["vedic_ayanamsa"] = default_ayanamsa
+    ayanamsa = st.selectbox(
+        "Ayanamsa",
+        AYANAMSA_CHOICES,
+        index=AYANAMSA_CHOICES.index(default_ayanamsa),
+        key="vedic_ayanamsa",
+    )
+    house_options = ["whole_sign", "placidus", "koch"]
+    default_house = st.session_state.get("vedic_house_system", house_options[0])
+    if default_house not in house_options:
+        default_house = house_options[0]
+        st.session_state["vedic_house_system"] = default_house
+    house_system = st.selectbox(
+        "House system",
+        house_options,
+        index=house_options.index(default_house),
+        key="vedic_house_system",
+    )
     node_variant_index = NODE_VARIANT_CHOICES.index("mean") if "mean" in NODE_VARIANT_CHOICES else 0
     nodes_variant = st.selectbox(
         "Lunar node variant",
