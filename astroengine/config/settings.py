@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Tuple
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -197,15 +197,28 @@ class ChartsCfg(BaseModel):
     )
 
 
+class NarrativeEsotericCfg(BaseModel):
+    """Optional esoteric add-ons that influence narrative tone."""
+
+    tarot_enabled: bool = False
+    tarot_deck: str = "rws"
+    numerology_enabled: bool = False
+    numerology_system: str = "pythagorean"
+
+
 class NarrativeCfg(BaseModel):
     """Narrative rendering preferences for interpretive output."""
 
+    mode: str = "modern_psychological"
     library: Literal["western_basic", "hellenistic", "vedic", "none"] = "western_basic"
     tone: Literal["neutral", "teaching", "brief"] = "neutral"
     length: Literal["short", "medium", "long"] = "medium"
     language: str = "en"
     disclaimers: bool = True
     verbosity: float = 0.5
+    sources: Dict[str, bool] = Field(default_factory=dict)
+    frameworks: Dict[str, bool] = Field(default_factory=dict)
+    esoteric: NarrativeEsotericCfg = Field(default_factory=NarrativeEsotericCfg)
 
     @field_validator("verbosity", mode="before")
     @classmethod
@@ -213,6 +226,35 @@ class NarrativeCfg(BaseModel):
         numeric = float(value)
         return max(0.0, min(1.0, numeric))
 
+
+class NarrativeMixCfg(BaseModel):
+    """Weighted blend of narrative profiles."""
+
+    enabled: bool = False
+    profiles: Dict[str, float] = Field(default_factory=dict)
+    normalize: bool = True
+
+    @field_validator("profiles", mode="before")
+    @classmethod
+    def _coerce_weights(cls, value: object) -> Dict[str, float]:
+        if isinstance(value, dict):
+            items = value.items()
+        else:
+            try:
+                mapping = dict(value or {})  # type: ignore[arg-type]
+            except Exception:
+                return {}
+            items = mapping.items()
+        capped: Dict[str, float] = {}
+        for key, weight in items:
+            try:
+                numeric = float(weight)
+            except (TypeError, ValueError):
+                continue
+            if numeric < 0:
+                numeric = 0.0
+            capped[key] = min(numeric, 1_000_000.0)
+        return capped
 
 class RenderingCfg(BaseModel):
     """Chart rendering options."""
@@ -655,6 +697,154 @@ class Settings(BaseModel):
     reports: ReportsCfg = Field(default_factory=ReportsCfg)
     atlas: AtlasCfg = Field(default_factory=AtlasCfg)
     plugins: PluginCfg = Field(default_factory=PluginCfg)
+    narrative_mix: NarrativeMixCfg = Field(default_factory=NarrativeMixCfg)
+
+
+# -------------------- Narrative Mixing Helpers --------------------
+
+
+def _normalize_weights(weights: Dict[str, float]) -> Dict[str, float]:
+    total = sum(weights.values())
+    if total <= 0:
+        return {name: 0.0 for name in weights}
+    return {name: (value / total) for name, value in weights.items()}
+
+
+_TONE_ORDER: Tuple[str, ...] = ("brief", "neutral", "teaching")
+_LENGTH_ORDER: Tuple[str, ...] = ("short", "medium", "long")
+
+
+def _vote_enum(values: List[str], weights: List[float], order: Tuple[str, ...]) -> str:
+    if not order:
+        return ""
+    scores = {choice: 0.0 for choice in order}
+    for value, weight in zip(values, weights):
+        if value in scores:
+            scores[value] += weight
+    return max(scores.items(), key=lambda item: item[1])[0]
+
+
+def _merge_bool_maps(
+    maps: List[Dict[str, bool]],
+    weights: List[float],
+    *,
+    threshold: float = 0.5,
+) -> Dict[str, bool]:
+    keys = set()
+    for mapping in maps:
+        keys.update(mapping.keys())
+    result: Dict[str, bool] = {}
+    for key in sorted(keys):
+        score = 0.0
+        for mapping, weight in zip(maps, weights):
+            if mapping.get(key, False):
+                score += weight
+        result[key] = score >= threshold
+    return result
+
+
+def compose_narrative_from_mix(base: Settings, mix: NarrativeMixCfg) -> NarrativeCfg:
+    """Blend narrative overlays declared in ``mix`` onto ``base``."""
+
+    if not mix.enabled or not mix.profiles:
+        return base.narrative
+
+    positive = {name: float(weight) for name, weight in mix.profiles.items() if weight > 0}
+    if not positive:
+        return base.narrative
+
+    from .narrative_profiles import load_narrative_profile_overlay
+
+    entries: List[Tuple[str, float, NarrativeCfg]] = []
+    for name, weight in positive.items():
+        try:
+            overlay = load_narrative_profile_overlay(name)
+        except FileNotFoundError:
+            continue
+        block = overlay.get("narrative") or overlay
+        try:
+            merged = {**base.narrative.model_dump(), **block}
+            cfg = NarrativeCfg(**merged)
+        except Exception:
+            continue
+        entries.append((name, weight, cfg))
+
+    if not entries:
+        return base.narrative
+
+    names = [name for name, _, _ in entries]
+    weights = [weight for _, weight, _ in entries]
+    if mix.normalize:
+        normalized = _normalize_weights(dict(zip(names, weights)))
+        weights = [normalized[name] for name in names]
+
+    narratives = [cfg for _, _, cfg in entries]
+    top_index = max(range(len(weights)), key=lambda idx: weights[idx])
+    top_narrative = narratives[top_index]
+
+    tones = [cfg.tone for cfg in narratives]
+    lengths = [cfg.length for cfg in narratives]
+    verb = sum((cfg.verbosity or 0.0) * weight for cfg, weight in zip(narratives, weights))
+
+    sources = _merge_bool_maps([cfg.sources for cfg in narratives], weights)
+    frameworks = _merge_bool_maps([cfg.frameworks for cfg in narratives], weights)
+
+    tarot_enabled_score = sum(
+        (1.0 if cfg.esoteric.tarot_enabled else 0.0) * weight
+        for cfg, weight in zip(narratives, weights)
+    )
+    numerology_enabled_score = sum(
+        (1.0 if cfg.esoteric.numerology_enabled else 0.0) * weight
+        for cfg, weight in zip(narratives, weights)
+    )
+
+    sorted_entries = sorted(
+        zip(narratives, weights), key=lambda item: item[1], reverse=True
+    )
+    tarot_deck = base.narrative.esoteric.tarot_deck
+    numerology_system = base.narrative.esoteric.numerology_system
+    for cfg, weight in sorted_entries:
+        if cfg.esoteric.tarot_enabled:
+            tarot_deck = cfg.esoteric.tarot_deck
+            break
+    for cfg, weight in sorted_entries:
+        if cfg.esoteric.numerology_enabled:
+            numerology_system = cfg.esoteric.numerology_system
+            break
+
+    payload = base.narrative.model_dump()
+    payload.update(
+        {
+            "mode": "mixed",
+            "library": top_narrative.library,
+            "tone": _vote_enum(tones, weights, _TONE_ORDER),
+            "length": _vote_enum(lengths, weights, _LENGTH_ORDER),
+            "verbosity": max(0.0, min(1.0, verb)),
+            "sources": sources,
+            "frameworks": frameworks,
+            "esoteric": {
+                "tarot_enabled": tarot_enabled_score >= 0.5,
+                "tarot_deck": tarot_deck,
+                "numerology_enabled": numerology_enabled_score >= 0.5,
+                "numerology_system": numerology_system,
+            },
+            "disclaimers": bool(
+                base.narrative.disclaimers
+                or any(cfg.disclaimers for cfg in narratives)
+            ),
+        }
+    )
+    return NarrativeCfg(**payload)
+
+
+def save_mix_as_user_narrative_profile(
+    name: str, base: Settings, mix: NarrativeMixCfg
+) -> Path:
+    from .narrative_profiles import save_user_narrative_profile
+
+    narrative = compose_narrative_from_mix(base, mix)
+    return save_user_narrative_profile(name, narrative)
+
 
 
 # -------------------- I/O Helpers --------------------

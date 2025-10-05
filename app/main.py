@@ -28,6 +28,7 @@ from app.routers import (
     narrative_profiles_router,
     policies_router,
     profiles_router,
+    narrative_mix_router,
     settings_router,
     reports_router,
     relationship_router,
