@@ -39,6 +39,9 @@ from app.routers.aspects import (  # re-exported for convenience
     configure_position_provider,
 )
 
+SAFE_MODE = os.getenv("SAFE_MODE") == "1"
+DEV_MODE_ENABLED = os.getenv("DEV_MODE")
+
 app = FastAPI(title="AstroEngine Plus API")
 configure_observability(app)
 setup_tracing(app, sqlalchemy_engine=engine)
@@ -57,6 +60,10 @@ app.include_router(settings_router)
 app.include_router(notes_router)
 app.include_router(data_router)
 app.include_router(charts_router)
+if DEV_MODE_ENABLED:
+    from app.devmode import router as devmode_router
+
+    app.include_router(devmode_router)
 
 
 @app.on_event("startup")
@@ -65,6 +72,33 @@ def _init_singletons() -> None:
 
     app.state.trust_proxy = os.getenv("TRUST_PROXY", "0").lower() in {"1", "true", "yes"}
     app.state.settings = load_settings()
+    app.state.safe_mode = SAFE_MODE
+    if SAFE_MODE:
+        app.state.plugin_registry = None
+        app.state.loaded_plugins = []
+        app.state.loaded_providers = []
+    else:
+        try:
+            from astroengine.plugins.runtime import (
+                Registry,
+                load_plugins,
+                load_providers,
+            )
+        except ImportError:  # pragma: no cover - optional dependency missing
+            app.state.plugin_registry = None
+            app.state.loaded_plugins = []
+            app.state.loaded_providers = []
+        else:
+            registry = Registry()
+            app.state.plugin_registry = registry
+            try:
+                app.state.loaded_plugins = load_plugins(registry)
+                app.state.loaded_providers = load_providers(registry)
+            except Exception as exc:  # pragma: no cover - defensive guard
+                app.state.plugin_registry_error = str(exc)
+                app.state.loaded_plugins = []
+                app.state.loaded_providers = []
+    app.state.dev_mode_enabled = bool(DEV_MODE_ENABLED)
 
 
 @app.middleware("http")

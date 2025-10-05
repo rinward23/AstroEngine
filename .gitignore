@@ -23,6 +23,7 @@ Thumbs.db
 diagnostics.json
 dev.db
 generated/reports/*.pdf
+.astroengine/
 # Node / frontend
 node_modules/
 apps/**/.next/
