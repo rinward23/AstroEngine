@@ -18,6 +18,7 @@ from app.routers import (
     aspects_router,
     electional_router,
     events_router,
+    health_router,
     interpret_router,
     lots_router,
     policies_router,
@@ -41,6 +42,7 @@ app.include_router(lots_router)
 app.include_router(relationship_router)
 app.include_router(interpret_router)
 app.include_router(reports_router)
+app.include_router(health_router)
 
 
 @app.on_event("startup")
