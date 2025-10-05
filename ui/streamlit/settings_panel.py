@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 
 from astroengine.config import (
@@ -14,6 +16,7 @@ from astroengine.config import (
 from astroengine.plugins.registry import (
     PLUGIN_DIRECTORY,
     ensure_user_plugins_loaded,
+    get_user_plugin_errors,
     iter_aspect_plugins,
     iter_lot_plugins,
 )
@@ -28,6 +31,16 @@ current_settings = load_settings()
 st.sidebar.success(f"Profile: {config_path()}")
 
 ensure_user_plugins_loaded()
+plugin_errors = get_user_plugin_errors()
+if plugin_errors:
+    warning_lines = [
+        "⚠️ Some plugins failed to load. They will remain disabled until the issues are resolved:",
+    ]
+    warning_lines.extend(
+        f"- {Path(path).name}: {message}" for path, message in plugin_errors
+    )
+    warning_lines.append(f"Check {PLUGIN_DIRECTORY} for the affected files.")
+    st.warning("\n".join(warning_lines), icon="⚠️")
 aspect_plugins = list(iter_aspect_plugins())
 lot_plugins = list(iter_lot_plugins())
 
