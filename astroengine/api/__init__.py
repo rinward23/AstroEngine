@@ -44,6 +44,7 @@ def create_app() -> FastAPI:
     app.include_router(plus_router.router)
     app.include_router(analysis_router.router)
     app.include_router(interpret_router.router)
+    app.include_router(forecast_router.router)
     app.include_router(natals_router.router)
     app.include_router(lots_router.router, prefix="/v1", tags=["lots"])
     app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])

@@ -141,6 +141,59 @@ class APIClient:
         r.raise_for_status()
         return r.json()
 
+    # ---- Natals -----------------------------------------------------------
+    def list_natals(self, limit: int = 250) -> list[Dict[str, Any]]:
+        r = requests.get(
+            f"{self.base}/v1/natals",
+            params={"page_size": limit},
+            timeout=30,
+        )
+        r.raise_for_status()
+        data = r.json()
+        items = data.get("items") if isinstance(data, dict) else None
+        if not isinstance(items, list):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/natals")
+        return items
+
+    # ---- Forecast ---------------------------------------------------------
+    def forecast_stack(
+        self,
+        natal_id: str,
+        start_iso: str,
+        end_iso: str,
+        *,
+        techniques: list[str] | None = None,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"natal_id": natal_id, "from": start_iso, "to": end_iso}
+        if techniques:
+            params["techniques"] = techniques
+        r = requests.get(f"{self.base}/v1/forecast", params=params, timeout=60)
+        r.raise_for_status()
+        data = r.json()
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/forecast")
+        return data
+
+    def forecast_stack_csv(
+        self,
+        natal_id: str,
+        start_iso: str,
+        end_iso: str,
+        *,
+        techniques: list[str] | None = None,
+    ) -> str:
+        params: Dict[str, Any] = {
+            "natal_id": natal_id,
+            "from": start_iso,
+            "to": end_iso,
+            "format": "csv",
+        }
+        if techniques:
+            params["techniques"] = techniques
+        r = requests.get(f"{self.base}/v1/forecast", params=params, timeout=60)
+        r.raise_for_status()
+        return r.text
+
     # ---- Synastry & Composites --------------------------------------------
     def synastry_compute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         data = self._post_json("/synastry/compute", payload, timeout=60)
