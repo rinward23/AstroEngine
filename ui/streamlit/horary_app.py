@@ -10,6 +10,8 @@ from fpdf import FPDF
 from astroengine.engine.horary import GeoLocation, evaluate_case
 from astroengine.engine.horary.profiles import list_profiles
 
+from .components import location_picker
+
 st.set_page_config(page_title="Horary Toolkit", layout="wide")
 
 
@@ -86,19 +88,30 @@ def main() -> None:
         if attachments:
             st.caption(f"Loaded {len(attachments)} attachment(s) for reference.")
 
+    location_picker(
+        "Event location",
+        default_query="London, United Kingdom",
+        state_prefix="horary_location",
+        help="Uses the atlas geocoder; DST status reflects the current date.",
+    )
+    lat_default = float(st.session_state.get("horary_location_lat", 51.5074))
+    lon_default = float(st.session_state.get("horary_location_lon", -0.1278))
+
     with st.form("horary_form"):
         question = st.text_input("Question", "Will I get the job?")
         asked_at = st.datetime_input("Moment of question", datetime.utcnow())
         col1, col2, col3 = st.columns(3)
         with col1:
-            latitude = st.number_input("Latitude", value=51.5074)
+            latitude = st.number_input("Latitude", value=lat_default)
         with col2:
-            longitude = st.number_input("Longitude", value=-0.1278)
+            longitude = st.number_input("Longitude", value=lon_default)
         with col3:
             altitude = st.number_input("Altitude (m)", value=0.0)
         submit = st.form_submit_button("Evaluate")
 
     if submit:
+        st.session_state["horary_location_lat"] = float(latitude)
+        st.session_state["horary_location_lon"] = float(longitude)
         with st.spinner("Casting chart and evaluating testimonies..."):
             result = evaluate_case(
                 question=question,

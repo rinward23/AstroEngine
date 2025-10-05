@@ -1,11 +1,12 @@
 from __future__ import annotations
 import json
-from typing import Dict, List
+from typing import Dict, List, Sequence
 
 import pandas as pd
 import streamlit as st
 
-from ui.streamlit.api import APIClient
+from astroengine.analysis import DeclinationAspect, declination_aspects, get_declinations
+from astroengine.config import load_settings
 from core.viz_plus.wheel_svg import WheelOptions, build_aspect_hits, render_chart_wheel
 from core.viz_plus.aspect_grid import aspect_grid_symbols, render_aspect_grid
 from core.aspects_plus.harmonics import BASE_ASPECTS
@@ -38,6 +39,24 @@ DEFAULT_POLICY = {
 }
 DEFAULT_ASPECTS = ["conjunction", "opposition", "square", "trine", "sextile"]
 AVAILABLE_ASPECTS = sorted(BASE_ASPECTS.keys())
+_APP_SETTINGS = load_settings()
+_DECL_DEFAULT_ENABLED = bool(getattr(_APP_SETTINGS.declinations, "enabled", True))
+_DECL_DEFAULT_ORB = float(getattr(_APP_SETTINGS.declinations, "orb_deg", 0.5))
+
+
+def _overlay_declination_markers(
+    grid: Dict[str, Dict[str, str]], hits: Sequence[DeclinationAspect]
+) -> Dict[str, Dict[str, str]]:
+    """Return a copy of ``grid`` with declination symbols appended per hit."""
+
+    updated: Dict[str, Dict[str, str]] = {a: dict(row) for a, row in grid.items()}
+    for hit in hits:
+        marker = "∥" if hit.kind == "parallel" else "⇅"
+        for first, second in ((hit.body_a, hit.body_b), (hit.body_b, hit.body_a)):
+            cell = updated.setdefault(first, {}).get(second, "")
+            if marker not in cell:
+                updated[first][second] = f"{cell}{marker}" if cell else marker
+    return updated
 
 wheel_tab, aspectarian_tab = st.tabs(["Wheel", "Aspectarian"])
 
@@ -200,6 +219,21 @@ with st.sidebar:
         "adaptive_rules": {},
     }
 
+    st.divider()
+    st.header("Declination Aspects")
+    declination_enabled = st.toggle(
+        "Compute declination aspects",
+        value=_DECL_DEFAULT_ENABLED,
+        help="Detect declination parallels/contraparallels within a configured orb.",
+    )
+    declination_orb = st.number_input(
+        "Declination orb (deg)",
+        min_value=0.1,
+        max_value=5.0,
+        value=float(_DECL_DEFAULT_ORB),
+        step=0.1,
+    )
+
 
 # --------------------------- Wheel Tab -------------------------------------
 with wheel_tab:
@@ -267,6 +301,68 @@ with aspectarian_tab:
             hits=hits,
         )
 
+        declination_hits: list[DeclinationAspect] = []
+        symbol_grid_display = symbol_grid
+        if declination_enabled:
+            declinations = get_declinations(positions)
+            declination_hits = declination_aspects(
+                declinations, orb_deg=float(declination_orb)
+            )
+            st.subheader("Declination Parallels/Contraparallels")
+            if declination_hits:
+                decl_df = pd.DataFrame(
+                    [
+                        {
+                            "Body A": hit.body_a,
+                            "Body B": hit.body_b,
+                            "Kind": "Parallel"
+                            if hit.kind == "parallel"
+                            else "Contraparallel",
+                            "Decl A (°)": hit.declination_a,
+                            "Decl B (°)": hit.declination_b,
+                            "Orb (°)": hit.orb,
+                        }
+                        for hit in declination_hits
+                    ]
+                ).round({"Decl A (°)": 2, "Decl B (°)": 2, "Orb (°)": 3})
+                st.dataframe(decl_df, use_container_width=True, hide_index=True)
+                st.download_button(
+                    "Download Declination Aspects CSV",
+                    decl_df.to_csv(index=False).encode("utf-8"),
+                    file_name="declination_aspects.csv",
+                    mime="text/csv",
+                )
+                st.download_button(
+                    "Download Declination Aspects JSON",
+                    json.dumps([
+                        {
+                            "body_a": hit.body_a,
+                            "body_b": hit.body_b,
+                            "kind": hit.kind,
+                            "declination_a": hit.declination_a,
+                            "declination_b": hit.declination_b,
+                            "orb": hit.orb,
+                            "delta": hit.delta,
+                        }
+                        for hit in declination_hits
+                    ], indent=2).encode("utf-8"),
+                    file_name="declination_aspects.json",
+                    mime="application/json",
+                )
+                overlay_declination = st.toggle(
+                    "Overlay declination markers in aspect grid",
+                    value=True,
+                    key="declination_overlay_toggle",
+                )
+                if overlay_declination:
+                    symbol_grid_display = _overlay_declination_markers(
+                        symbol_grid_display, declination_hits
+                    )
+            else:
+                st.info(
+                    f"No declination parallels or contraparallels within {declination_orb:.2f}°.",
+                )
+
         if grid:
             st.subheader("Aspect Grid (names)")
             grid_names_df = pd.DataFrame(grid).fillna("").T
@@ -278,9 +374,9 @@ with aspectarian_tab:
                 mime="application/json",
             )
 
-        if symbol_grid:
+        if symbol_grid_display:
             st.subheader("Aspect Grid (symbols)")
-            grid_df = pd.DataFrame(symbol_grid).fillna("").T
+            grid_df = pd.DataFrame(symbol_grid_display).fillna("").T
             st.dataframe(grid_df, use_container_width=True)
             st.download_button(
                 "Download Grid CSV",

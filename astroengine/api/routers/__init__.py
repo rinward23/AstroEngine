@@ -4,7 +4,9 @@ from __future__ import annotations
 
 
 __all__ = [
+    "analysis",
     "plus",
+    "electional",
     "scan",
     "synastry",
     "topocentric",
@@ -14,5 +16,6 @@ __all__ = [
     "traditional",
     "lots",
     "transit_overlay",
+    "timeline",
 ]
 

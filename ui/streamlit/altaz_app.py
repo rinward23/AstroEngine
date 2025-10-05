@@ -21,6 +21,8 @@ from astroengine.engine.observational import (
     visibility_windows,
 )
 
+from .components import location_picker
+
 try:
     import swisseph as swe
 except ModuleNotFoundError:  # pragma: no cover - Streamlit app executed manually
@@ -268,78 +270,90 @@ def main() -> None:
 
     params: Dict[str, Any] = dict(st.session_state.altaz_params)
 
-    with st.sidebar.form("altaz-controls"):
-        st.header("Observer")
-        params["lat"] = st.number_input(
-            "Latitude (deg)",
-            value=float(params["lat"]),
-            min_value=-90.0,
-            max_value=90.0,
-            step=0.1,
+    with st.sidebar:
+        location_picker(
+            "Observer location",
+            default_query="New York, United States",
+            state_prefix="altaz_observer",
+            help="Atlas lookup feeds the observer coordinates and shows DST status.",
         )
-        params["lon"] = st.number_input(
-            "Longitude (deg)",
-            value=float(params["lon"]),
-            min_value=-180.0,
-            max_value=180.0,
-            step=0.1,
-        )
-        params["elev"] = st.number_input("Elevation (m)", value=float(params["elev"]), step=1.0)
-        params["temp"] = st.number_input("Temperature (°C)", value=float(params["temp"]), step=1.0)
-        params["press"] = st.number_input("Pressure (hPa)", value=float(params["press"]), step=1.0)
-        params["refraction"] = st.checkbox("Apply refraction", value=bool(params["refraction"]))
+        lat_default = float(st.session_state.get("altaz_observer_lat", params["lat"]))
+        lon_default = float(st.session_state.get("altaz_observer_lon", params["lon"]))
 
-        st.subheader("Target")
-        params["body_label"] = st.selectbox(
-            "Body",
-            list(_BODY_CHOICES.keys()),
-            index=list(_BODY_CHOICES.keys()).index(params["body_label"]),
-        )
-        start_default = params["start"].astimezone(UTC)
-        params["start_date"] = st.date_input("Start date", start_default.date())
-        params["start_time"] = st.time_input("Start time", start_default.time())
-        params["duration_hours"] = st.slider(
-            "Duration (hours)",
-            min_value=1,
-            max_value=24,
-            value=int(params["duration_hours"]),
-            step=1,
-        )
-
-        st.subheader("Visibility Constraints")
-        params["min_alt"] = st.slider(
-            "Minimum altitude (deg)",
-            min_value=0,
-            max_value=45,
-            value=int(params["min_alt"]),
-        )
-        params["sun_alt_max"] = st.slider(
-            "Max Sun altitude (deg)",
-            min_value=-18,
-            max_value=10,
-            value=int(params["sun_alt_max"]),
-        )
-        params["sun_sep"] = st.slider(
-            "Min Sun separation (deg)",
-            min_value=0,
-            max_value=30,
-            value=int(params["sun_sep"]),
-        )
-        params["moon_alt_max"] = st.slider(
-            "Max Moon altitude (deg)",
-            min_value=-10,
-            max_value=90,
-            value=int(params["moon_alt_max"]),
-        )
-
-        if st.form_submit_button("Apply inputs", type="secondary"):
-            params["start"] = datetime.combine(
-                params.pop("start_date"),
-                params.pop("start_time"),
-                tzinfo=UTC,
+        with st.form("altaz-controls"):
+            st.header("Observer")
+            params["lat"] = st.number_input(
+                "Latitude (deg)",
+                value=lat_default,
+                min_value=-90.0,
+                max_value=90.0,
+                step=0.1,
             )
-            st.session_state.altaz_params.update(params)
-            st.success("Inputs updated. Use 'Run visibility scan' to compute results.")
+            params["lon"] = st.number_input(
+                "Longitude (deg)",
+                value=lon_default,
+                min_value=-180.0,
+                max_value=180.0,
+                step=0.1,
+            )
+            params["elev"] = st.number_input("Elevation (m)", value=float(params["elev"]), step=1.0)
+            params["temp"] = st.number_input("Temperature (°C)", value=float(params["temp"]), step=1.0)
+            params["press"] = st.number_input("Pressure (hPa)", value=float(params["press"]), step=1.0)
+            params["refraction"] = st.checkbox("Apply refraction", value=bool(params["refraction"]))
+
+            st.subheader("Target")
+            params["body_label"] = st.selectbox(
+                "Body",
+                list(_BODY_CHOICES.keys()),
+                index=list(_BODY_CHOICES.keys()).index(params["body_label"]),
+            )
+            start_default = params["start"].astimezone(UTC)
+            params["start_date"] = st.date_input("Start date", start_default.date())
+            params["start_time"] = st.time_input("Start time", start_default.time())
+            params["duration_hours"] = st.slider(
+                "Duration (hours)",
+                min_value=1,
+                max_value=24,
+                value=int(params["duration_hours"]),
+                step=1,
+            )
+
+            st.subheader("Visibility Constraints")
+            params["min_alt"] = st.slider(
+                "Minimum altitude (deg)",
+                min_value=0,
+                max_value=45,
+                value=int(params["min_alt"]),
+            )
+            params["sun_alt_max"] = st.slider(
+                "Max Sun altitude (deg)",
+                min_value=-18,
+                max_value=10,
+                value=int(params["sun_alt_max"]),
+            )
+            params["sun_sep"] = st.slider(
+                "Min Sun separation (deg)",
+                min_value=0,
+                max_value=30,
+                value=int(params["sun_sep"]),
+            )
+            params["moon_alt_max"] = st.slider(
+                "Max Moon altitude (deg)",
+                min_value=-10,
+                max_value=90,
+                value=int(params["moon_alt_max"]),
+            )
+
+            if st.form_submit_button("Apply inputs", type="secondary"):
+                params["start"] = datetime.combine(
+                    params.pop("start_date"),
+                    params.pop("start_time"),
+                    tzinfo=UTC,
+                )
+                st.session_state.altaz_params.update(params)
+                st.session_state["altaz_observer_lat"] = float(params["lat"])
+                st.session_state["altaz_observer_lon"] = float(params["lon"])
+                st.success("Inputs updated. Use 'Run visibility scan' to compute results.")
 
     # Use latest persisted parameters for computation.
     params = dict(st.session_state.altaz_params)

@@ -209,6 +209,7 @@ astroengine-streamlit = "astroengine.ux.streamlit.cli:main"
 astroengine = [
   "py.typed",
   "datasets/swisseph_stub/*",
+  "data/*.csv",
 ]
 
 [project.entry-points."astroengine.plugins"]

@@ -9,6 +9,8 @@ from typing import Dict, List, Literal, Optional
 import yaml
 from pydantic import BaseModel, Field
 
+from astroengine.plugins.registry import apply_plugin_settings
+
 # -------------------- Settings Schema --------------------
 
 
@@ -90,6 +92,14 @@ class AspectsCfg(BaseModel):
     show_applying: bool = True
 
 
+class AntisciaCfg(BaseModel):
+    """Configuration for antiscia/contra-antiscia mirror detection."""
+
+    enabled: bool = False
+    orb: float = 2.0
+    show_overlay: bool = False
+
+
 class ChartsCfg(BaseModel):
     """Toggle availability of chart techniques exposed by the engine."""
 
@@ -145,12 +155,30 @@ class RenderingCfg(BaseModel):
     glyph_set: Literal["default", "classic", "modern"] = "default"
 
 
+class FixedStarsCfg(BaseModel):
+    """Fixed star visibility and orb defaults."""
+
+    enabled: bool = False
+    orb_deg: float = 1.0
+    catalog: str = "robson"
+
+
 class EphemerisCfg(BaseModel):
     """Ephemeris source configuration."""
 
     source: Literal["swiss", "approx"] = "swiss"
     path: Optional[str] = None
     precision: Literal["normal", "high"] = "normal"
+
+
+class ReturnsIngressCfg(BaseModel):
+    """Feature toggles for return charts and ingress lookups."""
+
+    solar_return: bool = True
+    lunar_return: bool = True
+    aries_ingress: bool = True
+    lunar_count: int = Field(12, ge=1, le=36)
+    timezone: Optional[str] = None
 
 
 class PerfCfg(BaseModel):
@@ -161,16 +189,170 @@ class PerfCfg(BaseModel):
     max_scan_days: int = 365
 
 
-class ReportsCfg(BaseModel):
-    """Reporting-related feature flags and defaults."""
+class AstroCartoCfg(BaseModel):
+    """Astrocartography rendering controls."""
 
-    pdf_enabled: bool = True
-    disclaimers: List[str] = Field(
+    enabled: bool = False
+    show_parans: bool = False
+
+
+class MidpointTreeCfg(BaseModel):
+    """Tree settings for midpoint expansion."""
+
+    enabled: bool = False
+    max_depth: int = 2
+
+
+class MidpointsCfg(BaseModel):
+    """Midpoint feature toggles."""
+
+    enabled: bool = True
+    tree: MidpointTreeCfg = Field(default_factory=MidpointTreeCfg)
+
+
+class FixedStarsCfg(BaseModel):
+    """Configuration for fixed star inclusion."""
+
+    enabled: bool = False
+    catalog: Literal["robson", "brady"] = "robson"
+    orb_deg: float = 1.0
+
+
+class AntisciaCfg(BaseModel):
+    """Antiscia and contra-antiscia toggles."""
+
+    enabled: bool = False
+    include_contra: bool = True
+
+
+class DignitiesCfg(BaseModel):
+    """Dignity scoring options."""
+
+    enabled: bool = True
+    scoring: Literal["lilly", "ptolemy", "custom"] = "lilly"
+
+
+class ArabicPartCustomCfg(BaseModel):
+    """Custom arabic part formula definition."""
+
+    name: str
+    day_formula: str
+    night_formula: str
+
+
+class ArabicPartsCfg(BaseModel):
+    """Arabic parts presets and custom definitions."""
+
+    enabled: bool = True
+    presets: List[str] = Field(default_factory=lambda: ["fortune", "spirit"])
+    custom: List[ArabicPartCustomCfg] = Field(default_factory=list)
+
+
+class DeclinationAspectsCfg(BaseModel):
+    """Declination aspect toggles."""
+
+    parallel: bool = True
+    contraparallel: bool = True
+
+
+class DeclinationsCfg(BaseModel):
+    """Declination analysis toggles."""
+
+    enabled: bool = False
+    aspects: DeclinationAspectsCfg = Field(default_factory=DeclinationAspectsCfg)
+    orb_deg: float = 0.5
+
+
+class EclipseFinderCfg(BaseModel):
+    """Eclipse and lunation search configuration."""
+
+    enabled: bool = False
+    orb_days: int = 3
+
+
+class VoidOfCourseCfg(BaseModel):
+    """Void of course detection toggle."""
+
+    enabled: bool = False
+
+
+class StationsCfg(BaseModel):
+    """Planetary station discovery configuration."""
+
+    enabled: bool = True
+    void_of_course: VoidOfCourseCfg = Field(default_factory=VoidOfCourseCfg)
+
+
+class PrimaryDirectionsCfg(BaseModel):
+    """Primary directions configuration."""
+
+    enabled: bool = False
+    key: Literal["placidean", "regiomontanus"] = "placidean"
+    zodiacal: bool = False
+
+
+class MultiWheelCfg(BaseModel):
+    """Multiwheel rendering controls."""
+
+    enabled: bool = True
+    max_wheels: int = 3
+
+
+class ForecastStackCfg(BaseModel):
+    """Forecast stack component toggles."""
+
+    enabled: bool = True
+    components: List[str] = Field(
         default_factory=lambda: [
-            "Astrological interpretations are reflective tools, not certainties.",
-            "Use this report for personal insight and not as a substitute for professional advice.",
+            "transits",
+            "secondary_progressions",
+            "solar_arc",
         ]
     )
+
+
+class SynastryCfg(BaseModel):
+    """Synastry depth controls."""
+
+    declination: bool = False
+    house_overlays: bool = True
+    progressed_composite: bool = False
+
+
+class ElectionalCfg(BaseModel):
+    """Electional search constraints."""
+
+    enabled: bool = False
+    constraints: List[Dict[str, object]] = Field(default_factory=list)
+
+
+class ReturnsIngressCfg(BaseModel):
+    """Return and ingress toggles."""
+
+    solar_return: bool = True
+    lunar_return: bool = True
+    aries_ingress: bool = False
+
+
+class TimelineUICfg(BaseModel):
+    """Timeline UI behaviour toggles."""
+
+    show_exact_only: bool = False
+    max_events: int = 2000
+
+
+class ReportsCfg(BaseModel):
+    """Report generation preferences."""
+
+    pdf_enabled: bool = False
+    template: Literal["classic", "minimal"] = "classic"
+
+
+class AtlasCfg(BaseModel):
+    """Atlas availability configuration."""
+
+    offline_enabled: bool = False
+    data_path: Optional[str] = None
 
 
 class Settings(BaseModel):
@@ -187,12 +369,33 @@ class Settings(BaseModel):
     houses: HousesCfg = Field(default_factory=HousesCfg)
     bodies: BodiesCfg = Field(default_factory=BodiesCfg)
     aspects: AspectsCfg = Field(default_factory=AspectsCfg)
+    declinations: DeclinationsCfg = Field(default_factory=DeclinationsCfg)
     charts: ChartsCfg = Field(default_factory=ChartsCfg)
     narrative: NarrativeCfg = Field(default_factory=NarrativeCfg)
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
+    fixed_stars: FixedStarsCfg = Field(default_factory=FixedStarsCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
+    astrocartography: AstroCartoCfg = Field(default_factory=AstroCartoCfg)
+    midpoints: MidpointsCfg = Field(default_factory=MidpointsCfg)
+    fixed_stars: FixedStarsCfg = Field(default_factory=FixedStarsCfg)
+    antiscia: AntisciaCfg = Field(default_factory=AntisciaCfg)
+    dignities: DignitiesCfg = Field(default_factory=DignitiesCfg)
+    arabic_parts: ArabicPartsCfg = Field(default_factory=ArabicPartsCfg)
+    declinations: DeclinationsCfg = Field(default_factory=DeclinationsCfg)
+    eclipse_finder: EclipseFinderCfg = Field(default_factory=EclipseFinderCfg)
+    stations: StationsCfg = Field(default_factory=StationsCfg)
+    primary_directions: PrimaryDirectionsCfg = Field(
+        default_factory=PrimaryDirectionsCfg
+    )
+    multiwheel: MultiWheelCfg = Field(default_factory=MultiWheelCfg)
+    forecast_stack: ForecastStackCfg = Field(default_factory=ForecastStackCfg)
+    synastry: SynastryCfg = Field(default_factory=SynastryCfg)
+    electional: ElectionalCfg = Field(default_factory=ElectionalCfg)
+    returns_ingress: ReturnsIngressCfg = Field(default_factory=ReturnsIngressCfg)
+    timeline_ui: TimelineUICfg = Field(default_factory=TimelineUICfg)
     reports: ReportsCfg = Field(default_factory=ReportsCfg)
+    atlas: AtlasCfg = Field(default_factory=AtlasCfg)
 
 
 # -------------------- I/O Helpers --------------------
@@ -235,6 +438,7 @@ def save_settings(settings: Settings, path: Optional[Path] = None) -> Path:
     data = settings.model_dump()
     with target_path.open("w", encoding="utf-8") as handle:
         yaml.safe_dump(data, handle, sort_keys=False, allow_unicode=True)
+    apply_plugin_settings(settings)
     return target_path
 
 
@@ -248,7 +452,9 @@ def load_settings(path: Optional[Path] = None) -> Settings:
         return settings
     with source_path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
-    return Settings(**data)
+    settings = Settings(**data)
+    apply_plugin_settings(settings)
+    return settings
 
 
 def ensure_default_config() -> Path:

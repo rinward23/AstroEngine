@@ -29,6 +29,8 @@ except Exception:  # pragma: no cover
     SwissWrapper = None
     HAVE_SWE = False
 
+from .components import location_picker
+
 st.set_page_config(page_title="Arabic Lots Builder", layout="wide")
 st.title("Arabic Lots Builder")
 
@@ -72,8 +74,18 @@ with builder_tab:
             height=220,
         )
         is_day = st.selectbox("Sect", ["Auto", "Day", "Night"], index=0)
-        latitude = st.number_input("Latitude", value=0.0)
-        longitude = st.number_input("Longitude", value=0.0)
+        location_picker(
+            "Chart location",
+            default_query="London, United Kingdom",
+            state_prefix="lots_location",
+            help="Atlas lookup provides coordinates and timezone context for evaluation.",
+        )
+        lat_default = float(st.session_state.get("lots_location_lat", 0.0))
+        lon_default = float(st.session_state.get("lots_location_lon", 0.0))
+        latitude = st.number_input("Latitude", value=lat_default)
+        longitude = st.number_input("Longitude", value=lon_default)
+        st.session_state["lots_location_lat"] = float(latitude)
+        st.session_state["lots_location_lon"] = float(longitude)
         moment = st.text_input(
             "Moment (ISO UTC)",
             value=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
