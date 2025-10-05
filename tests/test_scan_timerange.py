@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from astroengine.core.aspects_plus.scan import (
     AspectSpec,
     TimeWindow,
@@ -57,6 +59,12 @@ def test_find_single_sextile_with_bisection():
     expected = t0 + timedelta(days=87.5)
     assert abs((h0.exact_time - expected).total_seconds()) <= 30
     assert h0.orb <= 1e-3
+
+
+def test_timewindow_requires_timezone():
+    t0 = datetime(2025, 1, 1)
+    with pytest.raises(ValueError, match="timezone-aware"):
+        TimeWindow(start=t0, end=t0 + timedelta(days=1))
 
 
 def test_multi_pair_scan_wrapper():

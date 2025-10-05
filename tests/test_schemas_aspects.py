@@ -1,5 +1,7 @@
 from datetime import datetime
-from datetime import datetime
+
+import pytest
+from pydantic import ValidationError
 
 from app.schemas.aspects import (
     AspectSearchRequest,
@@ -52,3 +54,11 @@ def test_response_example_shape():
     )
     js = resp.model_dump_json()
     assert "hits" in js and "paging" in js
+
+
+def test_timewindow_requires_timezone():
+    with pytest.raises(ValidationError, match="timezone-aware"):
+        TimeWindow(
+            start=datetime(2025, 1, 1, 0, 0, 0),
+            end=datetime(2025, 1, 2, 0, 0, 0),
+        )
