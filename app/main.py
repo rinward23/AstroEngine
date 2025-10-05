@@ -3,7 +3,10 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from typing import Awaitable, Callable
+
+from fastapi import FastAPI, Request
+from starlette.responses import Response
 
 from app.routers import (
     aspects_router,
@@ -31,6 +34,18 @@ app.include_router(lots_router)
 app.include_router(relationship_router)
 app.include_router(interpret_router)
 app.include_router(reports_router)
+
+
+@app.middleware("http")
+async def security_headers(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """Apply default security headers to every HTTP response."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    return response
 
 
 __all__ = ["app", "configure_position_provider", "clear_position_provider"]
