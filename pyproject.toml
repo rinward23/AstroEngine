@@ -35,7 +35,7 @@ dependencies = [
   "ics>=0.7",
   "astroquery>=0.4",
   "timezonefinder>=8.1",
-  "tzdata>=2024.1",
+  "tzdata==2024.1",
   "pluggy>=1.5",
   "skyfield>=1.49",
   "jplephem>=2.21",
@@ -125,7 +125,7 @@ api = [
 providers = [
   "pyswisseph>=2.10.3; python_version < \"3.12\"",
   "timezonefinder>=8.1",
-  "tzdata>=2024.1",
+  "tzdata==2024.1",
 ]
 dev = [
   "pytest",
@@ -156,7 +156,7 @@ all = [
   "icalendar>=6",
   "httpx>=0.28,<0.29",
   "timezonefinder>=8.1",
-  "tzdata>=2024.1",
+  "tzdata==2024.1",
   "pypdf>=4.2",
   "weasyprint>=62",
   "python-docx>=1.1",

@@ -7,6 +7,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from ._time import UtcDateTime
+
 
 class ObserverModel(BaseModel):
     latitude_deg: float = Field(..., ge=-90.0, le=90.0)
@@ -21,7 +23,7 @@ class MetModel(BaseModel):
 
 class TopocentricPositionRequest(BaseModel):
     body: int
-    moment: datetime
+    moment: UtcDateTime
     observer: ObserverModel
     refraction: bool = True
     met: MetModel | None = None
@@ -41,7 +43,7 @@ class TopocentricPositionResponse(BaseModel):
 
 class EventsRequest(BaseModel):
     body: int
-    date: datetime
+    date: UtcDateTime
     observer: ObserverModel
     h0_deg: float = Field(default=-0.5667)
     refraction: bool = True
@@ -70,8 +72,8 @@ class VisibilityConstraintsModel(BaseModel):
 
 class VisibilityRequest(BaseModel):
     body: int
-    start: datetime
-    end: datetime
+    start: UtcDateTime
+    end: UtcDateTime
     observer: ObserverModel
     constraints: VisibilityConstraintsModel
 
@@ -104,8 +106,8 @@ class HeliacalProfileModel(BaseModel):
 
 class HeliacalRequest(BaseModel):
     body: int
-    start: datetime
-    end: datetime
+    start: UtcDateTime
+    end: UtcDateTime
     observer: ObserverModel
     profile: HeliacalProfileModel
 
@@ -116,8 +118,8 @@ class HeliacalResponse(BaseModel):
 
 class DiagramRequest(BaseModel):
     body: int
-    start: datetime
-    end: datetime
+    start: UtcDateTime
+    end: UtcDateTime
     observer: ObserverModel
     refraction: bool = True
     met: MetModel | None = None

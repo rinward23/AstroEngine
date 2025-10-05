@@ -47,7 +47,7 @@ class ChartInput(BaseModel):
     angles: dict[str, float] | None = None
     is_day: bool | None = None
     sun_altitude: float | None = None
-    moment: datetime | None = None
+    moment: UtcDateTime | None = None
     latitude: float | None = None
     longitude: float | None = None
     zodiac: str | None = None
@@ -96,8 +96,8 @@ class EventScanRequest(BaseModel):
     lot_name: str
     lot_longitude: float
     bodies: list[str]
-    start: datetime
-    end: datetime
+    start: UtcDateTime
+    end: UtcDateTime
     harmonics: list[int] = Field(default_factory=lambda: [1, 2])
     policy: dict[str, Any] | None = None
     step_hours: float | None = None

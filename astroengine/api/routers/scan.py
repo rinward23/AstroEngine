@@ -38,8 +38,7 @@ def _to_iso(dt: datetime) -> str:
 
 
 def _parse_iso(value: str) -> datetime:
-    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
+    return ensure_utc_datetime(value)
 
 
 class ExportOptions(BaseModel):
@@ -63,26 +62,16 @@ class TimeWindow(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    natal: datetime = Field(validation_alias=AliasChoices("natal", "natal_ts"))
-    start: datetime = Field(validation_alias=AliasChoices("start", "start_ts", "from"))
-    end: datetime = Field(validation_alias=AliasChoices("end", "end_ts", "to"))
+    natal: UtcDateTime = Field(validation_alias=AliasChoices("natal", "natal_ts"))
+    start: UtcDateTime = Field(validation_alias=AliasChoices("start", "start_ts", "from"))
+    end: UtcDateTime = Field(validation_alias=AliasChoices("end", "end_ts", "to"))
 
     @field_validator("natal", "start", "end", mode="before")
 
     def _coerce_datetime(cls, value: Any) -> datetime:
-        if isinstance(value, Mapping):
-            value = value.get("ts")
-        if isinstance(value, datetime):
-            return value.astimezone(UTC)
-        if isinstance(value, str):
-            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
-        if isinstance(value, dict):
-            ts = value.get("ts")
-            if ts:
-                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
-                return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
-        raise TypeError("expected ISO-8601 timestamp")
+        if isinstance(value, Mapping) and "ts" in value:
+            value = value["ts"]
+        return ensure_utc_datetime(value)
 
     def iso_tuple(self) -> tuple[str, str, str]:
         return _to_iso(self.natal), _to_iso(self.start), _to_iso(self.end)

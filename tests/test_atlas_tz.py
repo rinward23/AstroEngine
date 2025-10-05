@@ -63,3 +63,17 @@ def test_policy_raise_for_ambiguous():
         to_utc(dt, *NYC, policy="raise")
 
 
+def test_to_utc_ambiguous_golden_values():
+    dt = datetime(2025, 11, 2, 1, 30)
+    earliest = to_utc(dt, *NYC, policy="earliest")
+    latest = to_utc(dt, *NYC, policy="latest")
+    assert earliest == datetime(2025, 11, 2, 5, 30, tzinfo=timezone.utc)
+    assert latest == datetime(2025, 11, 2, 6, 30, tzinfo=timezone.utc)
+
+
+def test_to_utc_shift_forward_golden_value():
+    dt = datetime(2025, 3, 9, 2, 30)
+    shifted = to_utc(dt, *NYC, policy="shift_forward")
+    assert shifted == datetime(2025, 3, 9, 7, 30, tzinfo=timezone.utc)
+
+

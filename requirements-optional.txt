@@ -55,6 +55,6 @@ httpx>=0.28,<0.29
 # [providers]
 pyswisseph>=2.10.3; python_version < "3.12"
 timezonefinder>=8.1
-tzdata>=2024.1
+tzdata==2024.1
 
 # >>> AUTO-GEN END: optional-reqs v1.0
