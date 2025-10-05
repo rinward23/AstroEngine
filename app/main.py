@@ -64,7 +64,13 @@ app = FastAPI(
 )
 configure_compression(app)
 configure_observability(app)
-setup_tracing(app, sqlalchemy_engine=engine)
+_obs_cfg = resolve_observability_config(app)
+setup_tracing(
+    app,
+    sqlalchemy_engine=engine,
+    sampling_ratio=getattr(_obs_cfg, "sampling_ratio", None),
+    enabled=getattr(_obs_cfg, "otel_enabled", None),
+)
 app.include_router(aspects_router)
 app.include_router(declinations_router)
 app.include_router(electional_router)
