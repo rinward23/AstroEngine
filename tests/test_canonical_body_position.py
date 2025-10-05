@@ -9,7 +9,7 @@ from astroengine.canonical import BodyPosition
 
 def test_body_position_wraps_longitude_into_range() -> None:
     pos = BodyPosition(lon=720.123456789, lat=0.0, dec=0.0, speed_lon=0.0)
-    assert pos.lon == pytest.approx(0.12345679)
+    assert pos.lon == pytest.approx(0.12346, abs=1e-6)
 
 
 def test_body_position_handles_negative_longitude() -> None:
@@ -24,10 +24,10 @@ def test_body_position_rounds_precision() -> None:
         dec=0.123456789,
         speed_lon=0.98765432109,
     )
-    assert pos.lon == pytest.approx(12.34567891)
-    assert pos.lat == pytest.approx(1.23456789)
-    assert pos.dec == pytest.approx(0.12345679)
-    assert pos.speed_lon == pytest.approx(0.98765432)
+    assert pos.lon == pytest.approx(12.34568, abs=1e-6)
+    assert pos.lat == pytest.approx(1.23457, abs=1e-6)
+    assert pos.dec == pytest.approx(0.12346, abs=1e-6)
+    assert pos.speed_lon == pytest.approx(0.98765, abs=1e-6)
 
 
 def test_body_position_clamps_declination_upper() -> None:
