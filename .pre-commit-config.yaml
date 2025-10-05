@@ -12,11 +12,24 @@ repos:
     hooks:
       - id: black
         language_version: python3
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
+  - repo: https://github.com/pycqa/ruff-pre-commit
     rev: v0.6.9
     hooks:
       - id: ruff
         args: ["--fix"]
+      - id: ruff-format
+        types_or: [python]
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        args: ["-q", "-r", "astroengine", "app"]
+        exclude: ^tests/
+  - repo: https://github.com/pypa/pip-audit
+    rev: v2.7.3
+    hooks:
+      - id: pip-audit
+        args: ["--require-hashes=false"]
   - repo: local
     hooks:
       - id: validate-fences
