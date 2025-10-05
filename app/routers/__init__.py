@@ -10,6 +10,8 @@ __all__ = [
     "electional_router",
     "events_router",
 
+    "declinations_router",
+
     "policies_router",
     "lots_router",
     "relationship_router",
@@ -47,6 +49,10 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .events import router as events_router
 
         return events_router
+    if name == "declinations_router":
+        from .declinations import router as declinations_router
+
+        return declinations_router
     if name == "health_router":
         from .health import router as health_router
 
