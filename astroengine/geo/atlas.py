@@ -11,6 +11,7 @@ from typing import TypedDict
 
 from astroengine.atlas.tz import tzid_for
 from astroengine.config import Settings, load_settings
+from astroengine.infrastructure.storage.sqlite import apply_default_pragmas
 
 
 class GeocodeResult(TypedDict):
@@ -109,6 +110,7 @@ def _geocode_offline(query: str, db_path: Path) -> GeocodeResult:
     normalized = _normalize(query)
     with sqlite3.connect(str(db_path)) as conn:
         conn.row_factory = sqlite3.Row
+        apply_default_pragmas(conn)
         row = conn.execute(
             """
             SELECT name, latitude, longitude, tzid

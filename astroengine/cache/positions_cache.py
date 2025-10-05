@@ -58,8 +58,7 @@ CREATE INDEX IF NOT EXISTS ix_positions_daily_day_body
 
 def _connect():
     con = sqlite3.connect(str(DB))
-    con.execute("PRAGMA journal_mode=WAL;")
-    con.execute("PRAGMA synchronous=NORMAL;")
+    apply_default_pragmas(con)
     con.executescript(_SQL["init"])
     con.commit()
     return con
