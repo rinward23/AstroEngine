@@ -232,6 +232,26 @@ class APIClient:
             raise RuntimeError("Unexpected response payload from /events/returns")
         return data
 
+    # ---- Data IO -----------------------------------------------------------
+    def export_bundle(self, scope: Sequence[str] | None = None) -> bytes:
+        """Download a ZIP archive of stored charts and configuration."""
+
+        scope_parts = [str(item).strip() for item in (scope or []) if str(item).strip()]
+        scope_value = ",".join(scope_parts) if scope_parts else "charts,settings"
+        try:
+            response = requests.get(
+                f"{self.base}/v1/export",
+                params={"scope": scope_value},
+                timeout=60,
+            )
+            response.raise_for_status()
+        except requests.HTTPError as exc:  # pragma: no cover - streamlit UI only
+            message = _extract_error_message(exc.response) or str(exc)
+            raise RuntimeError(message) from exc
+        except requests.RequestException as exc:  # pragma: no cover - streamlit UI only
+            raise RuntimeError(str(exc)) from exc
+        return response.content
+
     # ---- Timeline ---------------------------------------------------------
     def timeline(
         self,
