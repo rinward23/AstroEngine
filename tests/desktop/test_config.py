@@ -4,8 +4,10 @@ from pathlib import Path
 
 import pytest
 
+from astroengine.config import load_settings
 from astroengine.ux.desktop.config import DesktopConfigManager, DesktopConfigModel
 from astroengine.ux.desktop.copilot import DesktopCopilot
+from astroengine.ux.desktop.wizard import run_first_run_wizard, should_run_wizard
 
 
 class DummyResponse:
@@ -95,3 +97,50 @@ def test_copilot_token_guardrail(tmp_path: Path) -> None:
     assert "OpenAI client" in result.response
     blocked = copilot.send("hello again")
     assert "daily copilot token budget" in blocked.response
+
+
+def test_run_first_run_wizard_creates_settings(tmp_path: Path) -> None:
+    ephe_dir = tmp_path / "ephe"
+    ephe_dir.mkdir()
+    atlas_path = tmp_path / "atlas.sqlite"
+    atlas_path.write_text("", encoding="utf-8")
+
+    responses = iter([
+        str(ephe_dir),
+        "y",
+        str(atlas_path),
+        "vedic",
+    ])
+    prompts: list[str] = []
+    output: list[str] = []
+
+    def fake_input(prompt: str) -> str:
+        prompts.append(prompt)
+        return next(responses)
+
+    settings_path = tmp_path / "settings.yaml"
+    result = run_first_run_wizard(
+        settings_path=settings_path,
+        input_func=fake_input,
+        print_func=output.append,
+    )
+
+    assert settings_path.exists()
+    assert result.ephemeris.path == str(ephe_dir)
+    assert result.atlas.offline_enabled is True
+    assert result.atlas.data_path == str(atlas_path)
+    assert result.preset == "vedic"
+
+    persisted = load_settings(settings_path)
+    assert persisted.preset == "vedic"
+    assert persisted.atlas.offline_enabled is True
+    assert persisted.atlas.data_path == str(atlas_path)
+
+
+def test_should_run_wizard_flags(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    settings_file = tmp_path / "settings.yaml"
+    monkeypatch.setenv("ASTROENGINE_FORCE_WIZARD", "1")
+    assert should_run_wizard(settings_file=settings_file)
+    monkeypatch.delenv("ASTROENGINE_FORCE_WIZARD", raising=False)
+    monkeypatch.setenv("ASTROENGINE_SKIP_WIZARD", "1")
+    assert not should_run_wizard(settings_file=settings_file)

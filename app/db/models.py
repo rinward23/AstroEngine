@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Iterable
 from uuid import uuid4
 
 
@@ -57,6 +57,17 @@ def _ensure_utc(dt: datetime | None) -> datetime | None:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+def _normalize_tags(tags: Iterable[str] | None) -> list[str]:
+    normalized: list[str] = []
+    if not tags:
+        return normalized
+    for tag in tags:
+        value = str(tag).strip().lower()
+        if value and value not in normalized:
+            normalized.append(value)
+    return normalized
 
 
 def _uuid_hex() -> str:
@@ -333,6 +344,10 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     source: Mapped[str | None] = mapped_column(String(128), nullable=True)
     data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     events: Mapped[list["Event"]] = relationship(
         back_populates="chart", cascade="all, delete-orphan"
@@ -362,7 +377,12 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
         kwargs.setdefault("profile_key", str(profile_key or "default"))
 
         data = kwargs.pop("data", None)
+        tags = kwargs.pop("tags", None)
+        deleted_at = kwargs.pop("deleted_at", None)
         kwargs.setdefault("data", data or {})
+        kwargs.setdefault("tags", _normalize_tags(tags))
+        if deleted_at is not None:
+            kwargs.setdefault("deleted_at", _ensure_utc(deleted_at))
 
         super().__init__(**kwargs)
 

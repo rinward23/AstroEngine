@@ -98,6 +98,18 @@ def test_crud_cycle():
         ChartRepo().update(db, ch.id, source="Greenwich")
         assert ChartRepo().get(db, ch.id).source == "Greenwich"
 
+        # Tag editor
+        repo = ChartRepo()
+        repo.update_tags(db, ch.id, ["Natal", "Client", "natal"])
+        assert repo.get(db, ch.id).tags == ["natal", "client"]
+
+        # Soft delete and restore
+        repo.soft_delete(db, ch.id)
+        assert repo.get(db, ch.id) is None
+        assert repo.list_deleted(db)
+        repo.restore(db, ch.id)
+        assert repo.get(db, ch.id) is not None
+
         # Delete
         EventRepo().delete(db, ev.id)
         assert EventRepo().get(db, ev.id) is None

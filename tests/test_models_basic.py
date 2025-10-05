@@ -16,6 +16,8 @@ def test_model_instantiation():
     op = OrbPolicy(profile_key="default", body="Sun", aspect="sextile", orb_degrees=4.0)
     sp = SeverityProfile(profile_key="default", weights={"sextile": 0.5})
     ch = Chart(chart_key="chart-1", profile_key="default", data={"kind": "natal"})
+    assert ch.tags == []
+    assert ch.deleted_at is None
     rs = RulesetVersion(
         ruleset_key="electional_default",
         version="1.0",

@@ -23,7 +23,7 @@ DEFAULT_DB_NAME = "astroengine-desktop.db"
 DEFAULT_LOG_NAME = "astroengine.log"
 
 _VALID_LOG_LEVELS = {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"}
-_VALID_THEMES = {"system", "light", "dark"}
+_VALID_THEMES = {"system", "light", "dark", "high_contrast"}
 
 
 class DesktopConfigModel(BaseModel):
@@ -262,8 +262,18 @@ class DesktopConfigManager:
                 except OSError:  # pragma: no cover - defensive cleanup
                     LOG.debug("Unable to remove %s", self.streamlit_config_path)
             return
-        theme_value = "dark" if theme == "dark" else "light"
-        config_text = "[theme]\nbase = \"{value}\"\n".format(value=theme_value)
+        if theme == "high_contrast":
+            config_text = (
+                "[theme]\n"
+                "base = \"dark\"\n"
+                "primaryColor = \"#ffd166\"\n"
+                "backgroundColor = \"#000000\"\n"
+                "secondaryBackgroundColor = \"#161616\"\n"
+                "textColor = \"#ffffff\"\n"
+            )
+        else:
+            theme_value = "dark" if theme == "dark" else "light"
+            config_text = "[theme]\nbase = \"{value}\"\n".format(value=theme_value)
         self.streamlit_config_path.write_text(config_text, encoding="utf-8")
 
     def _apply_autostart(self, enabled: bool) -> None:

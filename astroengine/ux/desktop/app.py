@@ -534,6 +534,7 @@ body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 1.5rem; backgrou
 form { max-width: 720px; margin: 0 auto; }
 label { display: block; margin-top: 1rem; font-weight: 600; }
 input, select { width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #2d3256; background: #1b2040; color: #f5f6fa; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid #ffd166; outline-offset: 2px; }
 button { margin-top: 1.5rem; padding: 0.6rem 1.2rem; border: none; border-radius: 6px; background: #c9973b; color: #101321; font-weight: 600; cursor: pointer; }
 button.secondary { background: transparent; border: 1px solid #c9973b; color: #c9973b; margin-left: 0.5rem; }
 #status { margin-top: 1rem; min-height: 1.5rem; }
@@ -563,6 +564,7 @@ button.secondary { background: transparent; border: 1px solid #c9973b; color: #c
       <option value=\"system\">System</option>
       <option value=\"light\">Light</option>
       <option value=\"dark\">Dark</option>
+      <option value=\"high_contrast\">High Contrast</option>
     </select>
   </label>
   <label>OpenAI API Key <input name=\"openai_api_key\" type=\"password\" autocomplete=\"off\" /></label>
@@ -578,7 +580,7 @@ button.secondary { background: transparent; border: 1px solid #c9973b; color: #c
     <button class=\"secondary\" id=\"makeBundle\">Create Issue Bundle</button>
   </div>
 </form>
-<div id=\"status\"></div>
+<div id=\"status\" role=\"status\" aria-live=\"polite\"></div>
 <script>
 const form = document.getElementById('settingsForm');
 const statusEl = document.getElementById('status');
