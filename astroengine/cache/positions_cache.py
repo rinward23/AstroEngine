@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from time import perf_counter
 import numpy as np
 
+from ..canonical import canonical_round, normalize_longitude, normalize_speed_per_day
 from ..ephemeris import SwissEphemerisAdapter
 from ..infrastructure.home import ae_home
 from ..core.time import julian_day
@@ -88,9 +89,13 @@ def get_daily_entry(
         row = cur.fetchone()
         if row is not None:
             lon, lat, speed = row
-            lon_f = float(lon)
-            lat_f = None if lat is None else float(lat)
-            speed_f = None if speed is None else float(speed)
+            lon_f = normalize_longitude(float(lon))
+            lat_f = None if lat is None else canonical_round(float(lat))
+            speed_f = (
+                None
+                if speed is None
+                else normalize_speed_per_day(float(speed))
+            )
             return lon_f, lat_f, speed_f
     finally:
         con.close()
@@ -105,9 +110,9 @@ def get_daily_entry(
         raise ValueError(f"Unsupported body '{body}' for daily cache") from exc
     adapter = SwissEphemerisAdapter.get_default_adapter()
     sample = adapter.body_position(float(_day_jd(jd_ut)), code, body_name=body.title())
-    lon = float(sample.longitude)
-    lat = float(sample.latitude)
-    speed = float(sample.speed_longitude)
+    lon = normalize_longitude(float(sample.longitude))
+    lat = canonical_round(float(sample.latitude))
+    speed = normalize_speed_per_day(float(sample.speed_longitude))
     con = _connect()
     try:
         con.execute(
