@@ -217,6 +217,8 @@ class HousePositions:
     cusps: tuple[float, ...]
     ascendant: float
     midheaven: float
+    vertex: float | None = None
+    antivertex: float | None = None
     system_name: str | None = None
 
     requested_system: str | None = None
@@ -232,6 +234,10 @@ class HousePositions:
             "ascendant": self.ascendant,
             "midheaven": self.midheaven,
         }
+        if self.vertex is not None:
+            payload["vertex"] = self.vertex
+        if self.antivertex is not None:
+            payload["antivertex"] = self.antivertex
         if self.system_name is not None:
             payload["system_name"] = self.system_name
 
@@ -887,21 +893,25 @@ class SwissEphemerisAdapter:
         canonical = canonical_name(original)
 
         node_variant = self._variant_config.normalized_nodes()
-        if lowered == "true_node":
+        if lowered in {"true_node", "true node"}:
             node_variant = "true"
-        elif lowered == "mean_node":
+        elif lowered in {"mean_node", "mean node"}:
+            node_variant = "mean"
+        elif lowered in {"true south node", "south node (true)"}:
+            node_variant = "true"
+        elif lowered in {"mean south node", "south node (mean)"}:
             node_variant = "mean"
         if canonical in {"mean_node", "true_node"} or lowered in {"node", "north_node", "nn"}:
             return _node_variant_codes()[node_variant], False
-        if canonical == "south_node" or lowered in {"south_node", "sn"}:
+        if canonical == "south_node" or lowered in {"south_node", "sn", "mean south node", "true south node", "south node (true)", "south node (mean)"}:
             return _node_variant_codes()[node_variant], True
 
         lilith_variant = self._variant_config.normalized_lilith()
-        if lowered == "true_lilith":
+        if lowered in {"true_lilith", "true lilith"}:
             lilith_variant = "true"
-        elif lowered == "mean_lilith":
+        elif lowered in {"mean_lilith", "mean lilith"}:
             lilith_variant = "mean"
-        if canonical in {"mean_lilith", "true_lilith"} or lowered in {"lilith", "black_moon_lilith"}:
+        if canonical in {"mean_lilith", "true_lilith"} or lowered in {"lilith", "black_moon_lilith", "black moon lilith", "black moon lilith (mean)", "black moon lilith (true)"}:
             return _lilith_variant_codes()[lilith_variant], False
 
         return None, False
@@ -951,14 +961,22 @@ class SwissEphemerisAdapter:
                 raise
 
 
+        raw_vertex: float | None = None
+        if len(angles) >= 4:
+            raw_vertex = float(angles[3])
+
         if self._is_sidereal:
             ayan = self.ayanamsa(jd_ut)
             cusps = tuple((c - ayan) % 360.0 for c in cusps)
             ascendant = (angles[0] - ayan) % 360.0
             midheaven = (angles[1] - ayan) % 360.0
+            vertex = ((raw_vertex - ayan) % 360.0) if raw_vertex is not None else None
         else:
             ascendant = angles[0]
             midheaven = angles[1]
+            vertex = (raw_vertex % 360.0) if raw_vertex is not None else None
+
+        antivertex = ((vertex + 180.0) % 360.0) if vertex is not None else None
 
 
         if isinstance(used_code, (bytes, bytearray)):
@@ -1000,6 +1018,8 @@ class SwissEphemerisAdapter:
             cusps=tuple(cusps),
             ascendant=ascendant,
             midheaven=midheaven,
+            vertex=vertex,
+            antivertex=antivertex,
             system_name=used_name,
 
             requested_system=requested_key,

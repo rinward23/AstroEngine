@@ -25,6 +25,7 @@ __all__ = [
     "charts_router",
     "profiles_router",
     "narrative_profiles_router",
+    "narrative_mix_router",
     "configure_position_provider",
     "clear_position_provider",
 ]
@@ -82,6 +83,10 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .narrative_profiles import router as narrative_profiles_router
 
         return narrative_profiles_router
+    if name == "narrative_mix_router":
+        from .narrative_mix import router as narrative_mix_router
+
+        return narrative_mix_router
     if name == "reports_router":
         from .reports import router as reports_router
 

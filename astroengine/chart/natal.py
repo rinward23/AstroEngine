@@ -6,6 +6,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
+import math
+
 from ..ephemeris import BodyPosition, HousePositions, SwissEphemerisAdapter
 from ..scoring import DEFAULT_ASPECTS, OrbCalculator
 from .config import ChartConfig
@@ -16,6 +18,9 @@ __all__ = [
     "NatalChart",
     "DEFAULT_BODIES",
     "compute_natal_chart",
+    "BODY_EXPANSIONS",
+    "build_body_map",
+    "expansions_from_groups",
 ]
 
 # Swiss Ephemeris body indexes (Sun=0 … Pluto=9) remain stable across releases.
@@ -31,6 +36,73 @@ DEFAULT_BODIES: Mapping[str, int] = {
     "Neptune": 8,
     "Pluto": 9,
 }
+
+# Optional expansions keyed by toggle identifiers. Codes follow Swiss ephemeris
+# body IDs where applicable. Points without dedicated body IDs (Vertex) are
+# handled separately after house computations.
+BODY_EXPANSIONS: Mapping[str, Mapping[str, int]] = {
+    "asteroids": {
+        "Ceres": 17,
+        "Pallas": 18,
+        "Juno": 19,
+        "Vesta": 20,
+    },
+    "chiron": {"Chiron": 15},
+    "mean_lilith": {"Black Moon Lilith (Mean)": 12},
+    "true_lilith": {"Black Moon Lilith (True)": 13},
+    "mean_node": {
+        "Mean Node": 10,
+        "Mean South Node": 10,
+    },
+    "true_node": {
+        "True Node": 11,
+        "True South Node": 11,
+    },
+}
+
+_POINT_EXPANSIONS: Mapping[str, tuple[str, ...]] = {
+    "vertex": ("Vertex", "Anti-Vertex"),
+}
+
+
+def build_body_map(
+    expansions: Mapping[str, bool] | None = None,
+    *,
+    base: Mapping[str, int] | None = None,
+) -> dict[str, int]:
+    """Return a body→code mapping with optional expansion groups applied."""
+
+    mapping = dict(base or DEFAULT_BODIES)
+    if not expansions:
+        return mapping
+
+    for key, enabled in expansions.items():
+        if not enabled:
+            continue
+        extra = BODY_EXPANSIONS.get(key)
+        if not extra:
+            continue
+        for name, code in extra.items():
+            mapping.setdefault(name, code)
+    return mapping
+
+
+def expansions_from_groups(
+    groups: Mapping[str, bool] | None,
+) -> dict[str, bool]:
+    """Translate UI/config body groups into ``compute_natal_chart`` expansions."""
+
+    if not groups:
+        return {}
+    return {
+        "asteroids": bool(groups.get("asteroids_major")),
+        "chiron": bool(groups.get("chiron") or groups.get("centaurs")),
+        "mean_lilith": bool(groups.get("lilith_mean")),
+        "true_lilith": bool(groups.get("lilith_true")),
+        "mean_node": bool(groups.get("nodes_mean")),
+        "true_node": bool(groups.get("nodes_true")),
+        "vertex": bool(groups.get("vertex")),
+    }
 
 
 @dataclass(frozen=True)
@@ -110,6 +182,7 @@ def compute_natal_chart(
     location: ChartLocation,
     *,
     bodies: Mapping[str, int] | None = None,
+    body_expansions: Mapping[str, bool] | None = None,
     aspect_angles: Sequence[int] | None = None,
     orb_profile: str = "standard",
     config: ChartConfig | None = None,
@@ -122,12 +195,24 @@ def compute_natal_chart(
     adapter = adapter or SwissEphemerisAdapter.from_chart_config(chart_config)
 
     orb_calculator = orb_calculator or OrbCalculator()
-    body_map = bodies or DEFAULT_BODIES
+    body_map = build_body_map(body_expansions, base=bodies or DEFAULT_BODIES)
     angles = aspect_angles or DEFAULT_ASPECTS
 
     jd_ut = adapter.julian_day(moment)
-    positions = adapter.body_positions(jd_ut, body_map)
+    positions: dict[str, BodyPosition] = dict(
+        adapter.body_positions(jd_ut, body_map)
+    )
     houses = adapter.houses(jd_ut, location.latitude, location.longitude)
+
+    expansions = body_expansions or {}
+    if expansions.get("vertex"):
+        labels = _POINT_EXPANSIONS.get("vertex", ())
+        longitudes = (houses.vertex, houses.antivertex)
+        for label, longitude in zip(labels, longitudes):
+            if longitude is None:
+                continue
+            positions[label] = _point_body_position(label, longitude, jd_ut)
+
     aspects = _compute_aspects(positions, list(angles), orb_calculator, orb_profile)
 
     zodiac = chart_config.zodiac

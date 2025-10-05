@@ -198,6 +198,48 @@ def test_transit_contact_boundaries_match_orb() -> None:
         sun_contact.orb_allow, abs=5e-3
     )
 
+
+def test_body_expansions_toggle_optional_points() -> None:
+    pytest.importorskip(
+        "swisseph",
+        reason="swisseph is required for expansion toggles test",
+    )
+    _, moment, location, *_ = GOLDEN_CHARTS[0]
+    expansions = {
+        "asteroids": True,
+        "chiron": True,
+        "mean_lilith": True,
+        "true_lilith": True,
+        "mean_node": True,
+        "true_node": True,
+        "vertex": True,
+    }
+    chart = compute_natal_chart(
+        moment,
+        location,
+        body_expansions=expansions,
+    )
+
+    expected = {
+        "Ceres",
+        "Pallas",
+        "Juno",
+        "Vesta",
+        "Chiron",
+        "Black Moon Lilith (Mean)",
+        "Black Moon Lilith (True)",
+        "Mean Node",
+        "True Node",
+        "Mean South Node",
+        "True South Node",
+        "Vertex",
+        "Anti-Vertex",
+    }
+    assert expected.issubset(chart.positions.keys())
+    for name in expected:
+        pos = chart.positions[name]
+        assert 0.0 <= pos.longitude < 360.0
+
     assert adapter.julian_day(sun_contact.ingress) == pytest.approx(
         sun_contact.ingress_jd, rel=0, abs=5e-7
     )

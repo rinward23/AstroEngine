@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 from ...chart import ChartLocation, compute_natal_chart
+from ...chart.natal import expansions_from_groups
 from ...config.settings import Settings, load_settings
 from ...forecast import ForecastChart, ForecastWindow, build_forecast_stack
 from ...userdata.vault import load_natal
@@ -109,7 +110,12 @@ def get_forecast_stack(
         natal_moment = natal_moment.replace(tzinfo=UTC)
     natal_moment = natal_moment.astimezone(UTC)
 
-    natal_chart = compute_natal_chart(natal_moment, location)
+    body_expansions = expansions_from_groups(getattr(settings.bodies, "groups", {}))
+    natal_chart = compute_natal_chart(
+        natal_moment,
+        location,
+        body_expansions=body_expansions,
+    )
     window = ForecastWindow(start=start, end=end)
     chart = ForecastChart(natal_chart=natal_chart, window=window)
 

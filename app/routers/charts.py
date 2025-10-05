@@ -7,7 +7,11 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import select
 
-from astroengine.chart.natal import ChartLocation, compute_natal_chart
+from astroengine.chart.natal import (
+    ChartLocation,
+    compute_natal_chart,
+    expansions_from_groups,
+)
 from astroengine.config import load_settings
 from astroengine.report import render_chart_pdf
 from astroengine.report.builders import build_chart_report_context
@@ -36,7 +40,12 @@ def chart_pdf(chart_id: int) -> Response:
             moment = moment.replace(tzinfo=timezone.utc)
 
         location = ChartLocation(latitude=float(chart.lat), longitude=float(chart.lon))
-        natal = compute_natal_chart(moment, location)
+        body_expansions = expansions_from_groups(getattr(settings.bodies, "groups", {}))
+        natal = compute_natal_chart(
+            moment,
+            location,
+            body_expansions=body_expansions,
+        )
 
     context = build_chart_report_context(
         chart_id=chart_id,
