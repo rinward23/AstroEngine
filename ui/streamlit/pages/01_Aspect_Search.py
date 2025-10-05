@@ -18,7 +18,16 @@ api = APIClient()
 st.sidebar.header("Search Parameters")
 
 DEFAULT_OBJECTS = ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn","Uranus","Neptune","Pluto"]
-DEFAULT_ASPECTS = ["conjunction","opposition","square","trine","sextile","quincunx"]
+DEFAULT_ASPECTS = [
+    "conjunction",
+    "opposition",
+    "square",
+    "trine",
+    "sextile",
+    "quincunx",
+    "antiscia",
+    "contra_antiscia",
+]
 
 objects: List[str] = st.sidebar.multiselect("Objects", DEFAULT_OBJECTS, default=["Sun","Moon","Mars","Venus"])
 aspects: List[str] = st.sidebar.multiselect("Aspects", DEFAULT_ASPECTS, default=["sextile","trine","square"])
