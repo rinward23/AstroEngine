@@ -12,6 +12,14 @@ def _events_time_column(inspector: Inspector) -> str:
     return "event_time" if "event_time" in columns else "start_ts"
 
 
+def _index_exists(inspector: Inspector, table: str, name: str) -> bool:
+    return any(index["name"] == name for index in inspector.get_indexes(table))
+
+
+def _unique_constraint_exists(inspector: Inspector, table: str, name: str) -> bool:
+    return any(constraint["name"] == name for constraint in inspector.get_unique_constraints(table))
+
+
 revision = "20241115_0003"
 down_revision = "20241108_0002"
 branch_labels = None

@@ -3,9 +3,20 @@
 from __future__ import annotations
 
 import os
-from typing import Iterable
+from typing import Iterable, Iterator
 
 from pydantic import BaseModel, Field, field_validator
+
+
+def _iter_items(value: str | Iterable[str]) -> Iterator[str]:
+    """Yield individual comma-separated items from user-provided origin values."""
+
+    if isinstance(value, str):
+        for chunk in value.split(","):
+            yield chunk.strip()
+    else:
+        for item in value:
+            yield str(item).strip()
 
 
 class ServiceSettings(BaseModel):
@@ -30,9 +41,10 @@ class ServiceSettings(BaseModel):
             items = (str(item).strip() for item in value)
         normalized: list[str] = []
         seen: set[str] = set()
-        for item in items:
+        normalised: list[str] = []
+        for item in _iter_items(value):
             if item and item not in seen:
-                normalized.append(item)
+                normalised.append(item)
                 seen.add(item)
         return tuple(normalized)
 
@@ -57,7 +69,7 @@ class ServiceSettings(BaseModel):
             settings = settings.model_copy(update={"cors_allow_origins": ("*",)})
         return settings
 
-    def cors_origin_list(self) -> Iterable[str]:
+    def cors_origin_list(self) -> tuple[str, ...]:
         if self.cors_allow_origins:
             return self.cors_allow_origins
         if self.environment == "dev":
