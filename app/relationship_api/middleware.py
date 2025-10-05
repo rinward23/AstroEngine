@@ -13,6 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.gzip import GZipMiddleware
+from starlette.requests import ClientDisconnect
+from starlette.types import ASGIApp
 
 from .config import ServiceSettings
 from .models import ApiError
@@ -86,12 +88,18 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             if not result.allowed:
                 adapter.warning("rate.limit.exceeded", extra={"path": request.url.path})
                 payload = ApiError(code="rate_limited", message="Too many requests").model_dump()
-                headers = {"Retry-After": str(int(result.reset_seconds))}
+                headers = {
+                    "Retry-After": str(int(result.reset_seconds)),
+                    "X-RateLimit-Reason": "token_bucket",
+                }
                 headers.update(rate_headers)
                 headers["X-Request-ID"] = request_id
                 return JSONResponse(status_code=429, content=payload, headers=headers)
         try:
             response = await call_next(request)
+        except ClientDisconnect:
+            adapter.warning("request.client_disconnect", extra={"path": request.url.path})
+            raise
         except Exception as exc:
             adapter.exception("request.error", extra={"error": str(exc)})
             raise
@@ -143,11 +151,16 @@ class ETagMiddleware(BaseHTTPMiddleware):
 def install_middleware(app: FastAPI, settings: ServiceSettings) -> None:
     app.add_middleware(GZipMiddleware, minimum_size=settings.gzip_minimum_size)
     app.add_middleware(
+        SecurityHeadersMiddleware,
+        enable_hsts=settings.enable_hsts and settings.tls_terminates_upstream,
+        hsts_max_age=settings.hsts_max_age,
+    )
+    app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origin_list()),
         allow_credentials=False,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=list(settings.cors_allow_methods),
+        allow_headers=list(settings.cors_allow_headers),
     )
     rate_limiter = RateLimiter(settings.rate_limit_per_minute, settings.redis_url)
     app.add_middleware(BodyLimitMiddleware, max_bytes=settings.request_max_bytes)
