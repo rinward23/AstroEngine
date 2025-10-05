@@ -1,8 +1,13 @@
 # syntax=docker/dockerfile:1
 FROM python:3.11-slim AS base
+
+ARG EXTRA_GROUPS="api,providers"
+ENV ASTROENGINE_EXTRAS="${EXTRA_GROUPS}"
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    AE_QCACHE_SEC=0.25 \
+    AE_QCACHE_SIZE=16384
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential curl ca-certificates && \
@@ -13,9 +18,17 @@ COPY pyproject.toml README.md ./
 COPY astroengine ./astroengine
 COPY app ./app
 
-# Install with API+provider extras
-RUN pip install -U pip && \
-    pip install ".[api,providers]" "uvicorn[standard]"
+# Install requested extras (defaults to API + providers)
+RUN set -eux; \
+    pip install -U pip; \
+    if [ -n "${ASTROENGINE_EXTRAS}" ]; then \
+        pip install ".[${ASTROENGINE_EXTRAS}]"; \
+    else \
+        pip install .; \
+    fi; \
+    if printf '%s' "${ASTROENGINE_EXTRAS}" | grep -q "api"; then \
+        pip install "uvicorn[standard]"; \
+    fi
 
 # Optional: ship Swiss ephemeris files in-image
 # COPY eph/ /opt/eph/
@@ -29,4 +42,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
   CMD curl -fsS http://127.0.0.1:8000/health/plus || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["python", "-m", "app.uvicorn_runner"]

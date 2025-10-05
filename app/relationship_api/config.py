@@ -21,7 +21,7 @@ class ServiceSettings(BaseModel):
 
     @field_validator("cors_allow_origins", mode="before")
     @classmethod
-    def _parse_csv(cls, value: str | Iterable[str] | None):
+    def _parse_csv(cls, value: str | Iterable[str] | None) -> tuple[str, ...]:
         if value is None:
             return tuple()
         if isinstance(value, str):
@@ -45,7 +45,7 @@ class ServiceSettings(BaseModel):
         enable_etag = os.getenv("RELATIONSHIP_DISABLE_ETAG") not in {"1", "true", "TRUE"}
         environment = os.getenv("ENV", "dev")
         settings = cls(
-            cors_allow_origins=cls._parse_csv(os.getenv("CORS_ALLOW_ORIGINS")),
+            cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS"),
             rate_limit_per_minute=max(1, rate_limit),
             redis_url=redis_url,
             gzip_minimum_size=max(128, gzip_min_size),

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from typing import Dict
 
-from .. import cli_legacy
+from ._compat import cli_legacy_missing_reason, try_import_cli_legacy
 from ..utils import DETECTOR_NAMES, available_frames
 
 _ACCURACY_TO_STEP: Dict[str, int] = {"fast": 120, "default": 60, "high": 15}
@@ -119,21 +120,37 @@ def add_subparser(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> N
         help="Sidereal ayanāṁśa to apply when sidereal mode is enabled",
     )
 
-    cli_legacy.add_canonical_export_args(parser)
-    parser.set_defaults(func=run, profile=None)
+    legacy_module = try_import_cli_legacy()
+    if legacy_module is None:
+        reason = cli_legacy_missing_reason()
+        parser.description += "\n\nUnavailable: {reason}".format(reason=reason)
+        parser.set_defaults(func=_legacy_scan_unavailable, _cli_error=reason)
+        return
+
+    legacy_module.add_canonical_export_args(parser)
+    parser.set_defaults(func=run, profile=None, _cli_legacy=legacy_module)
 
 
 def run(args: argparse.Namespace) -> int:
     """Execute the scan subcommand via the legacy implementation."""
+
+    legacy_module = getattr(args, "_cli_legacy")
 
     accuracy = getattr(args, "accuracy_budget", None)
     if accuracy:
         args.step_minutes = _ACCURACY_TO_STEP[accuracy]
 
     if getattr(args, "moving", None) is None:
-        args.moving = list(cli_legacy.DEFAULT_MOVING_BODIES)
+        args.moving = list(legacy_module.DEFAULT_MOVING_BODIES)
 
     if not hasattr(args, "profile"):
         args.profile = None
 
-    return cli_legacy.cmd_scan(args)
+    return legacy_module.cmd_scan(args)
+
+
+def _legacy_scan_unavailable(args: argparse.Namespace) -> int:
+    reason = getattr(args, "_cli_error", cli_legacy_missing_reason())
+    message = reason or "Transit scanning requires pyswisseph"
+    print(message, file=sys.stderr)
+    return 2
