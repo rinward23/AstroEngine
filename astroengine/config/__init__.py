@@ -12,6 +12,7 @@ from .features import (
 )
 from .settings import (
     AspectsCfg,
+    ElectionalCfg,
     BodiesCfg,
     ChartsCfg,
     EphemerisCfg,
@@ -42,6 +43,7 @@ __all__ = [
     "HousesCfg",
     "BodiesCfg",
     "AspectsCfg",
+    "ElectionalCfg",
     "ChartsCfg",
     "NarrativeCfg",
     "RenderingCfg",

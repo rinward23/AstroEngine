@@ -161,6 +161,12 @@ class PerfCfg(BaseModel):
     max_scan_days: int = 365
 
 
+class ElectionalCfg(BaseModel):
+    """Electional feature gating and defaults."""
+
+    enabled: bool = True
+
+
 class Settings(BaseModel):
     """Top-level settings model persisted on disk."""
 
@@ -180,6 +186,7 @@ class Settings(BaseModel):
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
+    electional: ElectionalCfg = Field(default_factory=ElectionalCfg)
 
 
 # -------------------- I/O Helpers --------------------
