@@ -438,7 +438,12 @@ def chart_pdf(chart_id: int) -> Response:
             moment = moment.replace(tzinfo=UTC)
 
         location = ChartLocation(latitude=float(chart.lat), longitude=float(chart.lon))
-        natal = compute_natal_chart(moment, location)
+        body_expansions = expansions_from_groups(getattr(settings.bodies, "groups", {}))
+        natal = compute_natal_chart(
+            moment,
+            location,
+            body_expansions=body_expansions,
+        )
 
     context = build_chart_report_context(
         chart_id=chart_id,

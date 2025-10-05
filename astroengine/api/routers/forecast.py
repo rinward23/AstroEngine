@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 from ...chart import ChartLocation, compute_natal_chart
+from ...chart.natal import expansions_from_groups
 from ...config.settings import Settings, load_settings
 from ...forecast import ForecastChart, ForecastWindow, build_forecast_stack
 from ...userdata.vault import load_natal

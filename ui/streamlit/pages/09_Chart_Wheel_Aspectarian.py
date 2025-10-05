@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from astroengine.analysis import DeclinationAspect, declination_aspects, get_declinations
+from astroengine.chart.natal import expansions_from_groups
 from astroengine.config import load_settings
 from core.viz_plus.wheel_svg import WheelOptions, build_aspect_hits, render_chart_wheel
 from core.viz_plus.aspect_grid import aspect_grid_symbols, render_aspect_grid
@@ -44,6 +45,35 @@ AVAILABLE_ASPECTS = sorted(BASE_ASPECTS.keys())
 _APP_SETTINGS = load_settings()
 _DECL_DEFAULT_ENABLED = bool(getattr(_APP_SETTINGS.declinations, "enabled", True))
 _DECL_DEFAULT_ORB = float(getattr(_APP_SETTINGS.declinations, "orb_deg", 0.5))
+_BODY_GROUP_DEFAULTS = getattr(getattr(_APP_SETTINGS, "bodies", None), "groups", {})
+_EXPANSION_DEFAULTS = expansions_from_groups(_BODY_GROUP_DEFAULTS)
+
+_OPTIONAL_BODY_MAP: dict[str, tuple[str, ...]] = {
+    "asteroids": ("Ceres", "Pallas", "Juno", "Vesta"),
+    "chiron": ("Chiron",),
+    "mean_lilith": ("Black Moon Lilith (Mean)",),
+    "true_lilith": ("Black Moon Lilith (True)",),
+    "mean_node": ("Mean Node", "Mean South Node", "North Node", "South Node"),
+    "true_node": ("True Node", "True South Node"),
+    "vertex": ("Vertex", "Anti-Vertex"),
+}
+
+
+def _filter_optional_positions(
+    positions: Dict[str, float], toggles: dict[str, bool]
+) -> Dict[str, float]:
+    optional_names: set[str] = set()
+    allowed: set[str] = set()
+    for key, names in _OPTIONAL_BODY_MAP.items():
+        optional_names.update(names)
+        if toggles.get(key, False):
+            allowed.update(names)
+    filtered: Dict[str, float] = {}
+    for name, value in positions.items():
+        if name in optional_names and name not in allowed:
+            continue
+        filtered[name] = value
+    return filtered
 
 
 def _overlay_declination_markers(
@@ -78,6 +108,9 @@ with st.sidebar:
     except Exception as exc:  # pragma: no cover - UI error path
         st.error(f"Invalid positions JSON: {exc}")
         positions = {}
+    else:
+        if positions:
+            positions = _filter_optional_positions(positions, expansion_toggles)
 
     houses_txt = st.text_area(
         "Houses JSON (12 longitudes, optional)",
@@ -115,6 +148,50 @@ with st.sidebar:
     note_text = st.text_area("Note", value="", height=80)
     tags_input = st.text_input("Tags (comma separated)", value="")
     tags = [tag.strip() for tag in tags_input.split(",") if tag.strip()]
+
+    st.divider()
+    st.header("Body Expansions")
+    col_toggle_a, col_toggle_b = st.columns(2)
+    include_asteroids = col_toggle_a.toggle(
+        "Major asteroids",
+        value=_EXPANSION_DEFAULTS.get("asteroids", False),
+        help="Toggle Ceres, Pallas, Juno, and Vesta.",
+    )
+    include_chiron = col_toggle_b.toggle(
+        "Chiron",
+        value=_EXPANSION_DEFAULTS.get("chiron", False),
+    )
+    include_mean_lilith = col_toggle_a.toggle(
+        "Mean Lilith",
+        value=_EXPANSION_DEFAULTS.get("mean_lilith", False),
+    )
+    include_true_lilith = col_toggle_b.toggle(
+        "True Lilith",
+        value=_EXPANSION_DEFAULTS.get("true_lilith", False),
+    )
+    include_mean_node = col_toggle_a.toggle(
+        "Mean Node",
+        value=_EXPANSION_DEFAULTS.get("mean_node", False),
+        help="Enable mean North/South Node pair.",
+    )
+    include_true_node = col_toggle_b.toggle(
+        "True Node",
+        value=_EXPANSION_DEFAULTS.get("true_node", False),
+        help="Enable true North/South Node pair.",
+    )
+    include_vertex = st.toggle(
+        "Vertex & Anti-Vertex",
+        value=_EXPANSION_DEFAULTS.get("vertex", False),
+    )
+    expansion_toggles = {
+        "asteroids": include_asteroids,
+        "chiron": include_chiron,
+        "mean_lilith": include_mean_lilith,
+        "true_lilith": include_true_lilith,
+        "mean_node": include_mean_node,
+        "true_node": include_true_node,
+        "vertex": include_vertex,
+    }
 
     if st.button("Save note", use_container_width=True):
         if chart_id is None:

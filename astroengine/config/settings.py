@@ -66,9 +66,15 @@ class BodiesCfg(BaseModel):
             "modern": True,
             "dwarf": False,
             "centaurs": False,
+            "chiron": False,
             "asteroids_major": False,
             "asteroids_extended": False,
             "hypothetical": False,
+            "nodes_mean": False,
+            "nodes_true": False,
+            "lilith_mean": False,
+            "lilith_true": False,
+            "vertex": False,
         }
     )
     custom_asteroids: List[int] = Field(default_factory=list)
