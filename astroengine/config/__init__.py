@@ -71,11 +71,14 @@ from .narrative_profiles import (
 )
 from .profiles import (
     PROFILES_DIRNAME,
+    USE_CASE_PRESETS,
     apply_profile_overlay,
     built_in_profiles,
     delete_user_profile,
     list_profiles,
     load_profile_overlay,
+    profile_description,
+    profile_label,
     profiles_home,
     save_user_profile,
 )
@@ -144,8 +147,11 @@ __all__ = [
     "save_user_narrative_profile",
     "delete_user_narrative_profile",
     "PROFILES_DIRNAME",
+    "USE_CASE_PRESETS",
     "built_in_profiles",
     "profiles_home",
+    "profile_label",
+    "profile_description",
     "list_profiles",
     "load_profile_overlay",
     "apply_profile_overlay",
