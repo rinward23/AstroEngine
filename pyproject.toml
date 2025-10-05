@@ -103,11 +103,9 @@ api = [
   "httpx>=0.28,<0.29",
 ]
 providers = [
-
   "pyswisseph>=2.10",
   "timezonefinder>=8.1",
   "tzdata>=2024.1",
-
 ]
 dev = [
   "pytest",

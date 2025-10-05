@@ -1,45 +1,58 @@
 # >>> AUTO-GEN BEGIN: optional-reqs v1.0
+# Generated via scripts/generate_requirements.py; do not edit by hand.
 # Mirrors pyproject extras for non-pep517 workflows
-# ephem
+
+# [ephem]
 pyswisseph>=2.10; python_version < "3.12"
 pymeeus>=0.5.12
-# skyfield
+
+# [skyfield]
 skyfield>=1.49
 jplephem>=2.21
-# catalogs
+
+# [catalogs]
 astroquery>=0.4
 
-# exporters
-
+# [exporters]
 pyarrow>=16
-# document generators
+ics>=0.7
+
+# [narrative]
+jinja2>=3.1
+
+# [perf]
+numba>=0.58
+
+# [cli]
+click>=8.1
+rich>=13.7
+pluggy>=1.5
+
+# [reports]
 pypdf>=4.2
 weasyprint>=62
 python-docx>=1.1
 playwright>=1.45
 pypandoc>=1.12
-# narrative
-jinja2>=3.1
-# perf
-numba>=0.58
-# cli
-click>=8.1
-rich>=13.7
 
-pluggy>=1.5
-# streamlit
+# [streamlit]
 streamlit>=1.35
 plotly>=5.20
-# api
+
+# [ui]
+streamlit>=1.35
+plotly>=5.20
+
+# [api]
 fastapi>=0.117,<0.118
-uvicorn>=0.37
+uvicorn>=0.37,<0.38
 pydantic>=2.11,<3
 icalendar>=6
 httpx>=0.28,<0.29
-# providers
+
+# [providers]
+pyswisseph>=2.10
 timezonefinder>=8.1
 tzdata>=2024.1
-# shared helper
-requests>=2.31
 
 # >>> AUTO-GEN END: optional-reqs v1.0
