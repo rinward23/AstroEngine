@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+import logging
 from typing import Protocol
 
 from ..canonical import BodyPosition
@@ -9,6 +10,8 @@ from .se_fixedstars import get_star_lonlat as get_star_lonlat
 from .sweph_bridge import ensure_sweph_alias
 
 ensure_sweph_alias()
+
+LOG = logging.getLogger(__name__)
 
 
 class EphemerisProvider(Protocol):
@@ -56,8 +59,17 @@ def list_providers() -> Iterable[str]:
 # Eagerly import built-in providers so they register themselves.
 try:  # pragma: no cover
     from . import swiss_provider as _swiss  # noqa: F401
+except ImportError:
+    LOG.info(
+        "swiss provider unavailable",
+        extra={"err_code": "PROVIDER_IMPORT", "provider": "swiss"},
+        exc_info=True,
+    )
 except Exception:
-    pass
+    LOG.exception(
+        "unexpected provider import failure",
+        extra={"err_code": "PROVIDER_IMPORT_UNEXPECTED", "provider": "swiss"},
+    )
 
 
 # >>> AUTO-GEN END: AE Providers Registry v1.0
