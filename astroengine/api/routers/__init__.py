@@ -14,5 +14,6 @@ __all__ = [
     "traditional",
     "lots",
     "transit_overlay",
+    "astrocartography",
 ]
 

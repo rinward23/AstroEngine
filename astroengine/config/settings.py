@@ -161,6 +161,28 @@ class PerfCfg(BaseModel):
     max_scan_days: int = 365
 
 
+class AstrocartographyCfg(BaseModel):
+    """Default options for astrocartography and relocation outputs."""
+
+    bodies: list[str] = Field(
+        default_factory=lambda: [
+            "sun",
+            "moon",
+            "mercury",
+            "venus",
+            "mars",
+            "jupiter",
+            "saturn",
+        ]
+    )
+    line_types: list[str] = Field(
+        default_factory=lambda: ["ASC", "MC", "DSC", "IC"]
+    )
+    lat_step_deg: float = 1.5
+    simplify_tolerance_deg: float = 0.75
+    show_parans: bool = False
+
+
 class Settings(BaseModel):
     """Top-level settings model persisted on disk."""
 
@@ -180,6 +202,9 @@ class Settings(BaseModel):
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
+    astrocartography: AstrocartographyCfg = Field(
+        default_factory=AstrocartographyCfg
+    )
 
 
 # -------------------- I/O Helpers --------------------
