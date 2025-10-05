@@ -19,6 +19,7 @@ from app.telemetry import setup_tracing
 
 from app.routers import (
     aspects_router,
+    declinations_router,
     electional_router,
     events_router,
     health_router,
@@ -39,6 +40,7 @@ app = FastAPI(title="AstroEngine Plus API")
 configure_observability(app)
 setup_tracing(app, sqlalchemy_engine=engine)
 app.include_router(aspects_router)
+app.include_router(declinations_router)
 app.include_router(electional_router)
 app.include_router(events_router)
 app.include_router(transits_router)

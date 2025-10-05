@@ -250,6 +250,7 @@ from .scoring import (
     load_visibility_policy,
     lookup_dignities,
 )
+from .analysis import condition_report, score_accidental, score_essential
 
 __all__ = [
     "__version__",
@@ -334,7 +335,10 @@ __all__ = [
     "ScoreResult",
     "OrbCalculator",
     "compute_uncertainty_confidence",
+    "condition_report",
     "load_dignities",
+    "score_accidental",
+    "score_essential",
     "lookup_dignities",
     "OrbPolicy",
     "SeverityPolicy",
