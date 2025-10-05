@@ -1,7 +1,7 @@
-"""Analysis utilities for catalog and dataset lookups."""
+"""Analysis utilities including midpoint calculations."""
 
 from __future__ import annotations
 
-__all__ = [
-    "fixed_stars",
-]
+from .midpoints import compute_midpoints, get_midpoint_settings, midpoint_longitude
+
+__all__ = ["compute_midpoints", "get_midpoint_settings", "midpoint_longitude"]

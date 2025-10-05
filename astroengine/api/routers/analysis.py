@@ -1,90 +1,196 @@
-"""Endpoints exposing catalog-based analysis helpers."""
+"""Endpoints exposing analytical utilities such as midpoint calculations."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+import json
+from datetime import datetime, timezone
+from typing import Any, Mapping
 
-from ...analysis.fixed_stars import load_catalog, star_hits
-from ...config import load_settings
+from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel, Field
+
+from ...analysis.midpoints import compute_midpoints, get_midpoint_settings
+from ...chart.config import ChartConfig
+from ...chart.natal import ChartLocation, DEFAULT_BODIES, compute_natal_chart
+from ...providers.swisseph_adapter import SE_MEAN_NODE, SE_TRUE_NODE
+from ...userdata.vault import load_natal
 
 router = APIRouter(prefix="/v1/analysis", tags=["analysis"])
 
 
-class FixedStarHit(BaseModel):
-    name: str
-    delta_deg: float
-    longitude_deg: float
-    latitude_deg: float
-    magnitude: float
+class MidpointItem(BaseModel):
+    bodies: tuple[str, str] = Field(
+        description="Pair of chart factors used to compute the midpoint.",
+        min_length=2,
+        max_length=2,
+    )
+    longitude: float = Field(
+        description="Midpoint longitude in degrees (0°–360°).",
+        ge=0.0,
+        lt=360.0,
+    )
+    depth: int = Field(
+        description="Tree depth where 1 corresponds to direct body midpoints.",
+        ge=1,
+    )
 
 
-class FixedStarResponse(BaseModel):
-    enabled: bool
-    orb_deg: float
-    catalog: str
-    hits: list[FixedStarHit]
+class MidpointsResponse(BaseModel):
+    midpoints: list[MidpointItem]
+    source: dict[str, Any] | None = Field(
+        default=None, description="Metadata describing the midpoint input source."
+    )
+    metadata: dict[str, Any] | None = Field(
+        default=None, description="Diagnostic metadata about the computation."
+    )
+
+
+def _pair_depth(pair: tuple[str, str]) -> int:
+    return max(segment.count("/") for segment in pair) + 1
+
+
+def _parse_longitudes_payload(value: str | None) -> dict[str, float]:
+    if not value:
+        return {}
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError as exc:  # pragma: no cover - exercised via HTTP
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_LONGITUDES", "message": "longitudes must be JSON"},
+        ) from exc
+    if not isinstance(payload, Mapping):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_LONGITUDES", "message": "longitudes must be an object"},
+        )
+    parsed: dict[str, float] = {}
+    for raw_name, raw_value in payload.items():
+        name = str(raw_name)
+        if not name:
+            continue
+        try:
+            parsed[name] = float(raw_value)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "INVALID_LONGITUDE_VALUE",
+                    "message": f"longitude for '{name}' must be numeric",
+                },
+            ) from exc
+    return parsed
+
+
+def _chart_config_from_settings(include_nodes: bool) -> tuple[ChartConfig, dict[str, int]]:
+    settings = get_midpoint_settings()
+    base_config = ChartConfig()
+    bodies = dict(DEFAULT_BODIES)
+    if include_nodes:
+        node_variant = base_config.nodes_variant
+        node_code = SE_TRUE_NODE if node_variant == "true" else SE_MEAN_NODE
+        label = "True Node" if node_variant == "true" else "Mean Node"
+        bodies.setdefault(label, node_code)
+        bodies.setdefault("South Node", node_code)
+    return base_config, bodies
+
+
+def _load_natal_longitudes(natal_id: str, include_nodes: bool) -> dict[str, float]:
+    try:
+        record = load_natal(natal_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "NATAL_NOT_FOUND",
+                "message": f"Natal '{natal_id}' was not found.",
+            },
+        ) from exc
+    try:
+        moment = datetime.fromisoformat(record.utc.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "INVALID_NATAL_TIMESTAMP",
+                "message": f"Natal '{natal_id}' has an invalid UTC timestamp.",
+            },
+        ) from exc
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    else:
+        moment = moment.astimezone(timezone.utc)
+
+    config, body_map = _chart_config_from_settings(include_nodes)
+    chart = compute_natal_chart(
+        moment,
+        ChartLocation(latitude=float(record.lat), longitude=float(record.lon)),
+        bodies=body_map,
+        config=config,
+    )
+    return {name: pos.longitude for name, pos in chart.positions.items()}
 
 
 @router.get(
-    "/fixed-stars",
-    response_model=FixedStarResponse,
-    summary="List fixed stars near a given longitude",
-    description="Return fixed stars within the requested orb of the provided ecliptic longitude.",
+    "/midpoints",
+    response_model=MidpointsResponse,
+    summary="Compute planetary midpoints.",
+    operation_id="getMidpoints",
 )
-def fixed_star_contacts(
-    lon: float = Query(..., description="Ecliptic longitude in degrees."),
-    orb: float | None = Query(None, ge=0.0, description="Override orb in degrees."),
-    catalog: str | None = Query(
-        None,
-        description="Optional catalog identifier (defaults to the configured catalog).",
+def get_midpoints(
+    natal_id: str | None = Query(
+        default=None, description="Identifier for a stored natal chart."
     ),
-) -> FixedStarResponse:
-    settings = load_settings()
-    fs_cfg = getattr(settings, "fixed_stars", None)
+    longitudes: str | None = Query(
+        default=None, description="JSON mapping of bodies to longitudes in degrees."
+    ),
+    include_nodes: bool | None = Query(
+        default=None, description="Include lunar nodes when available."
+    ),
+) -> MidpointsResponse:
+    cfg = get_midpoint_settings()
+    if not cfg.enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "MIDPOINTS_DISABLED",
+                "message": "Midpoint analysis is disabled in the current settings.",
+            },
+        )
 
-    if fs_cfg is None:
-        enabled = False
-        configured_orb = 0.0
-        configured_catalog = catalog or "robson"
+    include_nodes_flag = include_nodes if include_nodes is not None else cfg.include_nodes
+    payload: dict[str, float]
+    source: dict[str, Any] | None = None
+
+    if longitudes:
+        payload = _parse_longitudes_payload(longitudes)
+        source = {"type": "inline", "count": len(payload)}
+    elif natal_id:
+        payload = _load_natal_longitudes(natal_id, include_nodes_flag)
+        source = {"type": "natal", "natal_id": natal_id, "count": len(payload)}
     else:
-        enabled = fs_cfg.enabled
-        configured_orb = float(fs_cfg.orb_deg)
-        configured_catalog = (catalog or fs_cfg.catalog or "robson").lower()
-
-    effective_orb = float(configured_orb if orb is None else orb)
-    if effective_orb < 0:
-        raise HTTPException(status_code=400, detail="Orb must be non-negative")
-
-    if not enabled:
-        return FixedStarResponse(
-            enabled=False,
-            orb_deg=effective_orb,
-            catalog=configured_catalog,
-            hits=[],
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "MISSING_INPUT",
+                "message": "Provide either 'natal_id' or 'longitudes' to compute midpoints.",
+            },
         )
 
-    try:
-        hits = star_hits(lon, effective_orb, catalog=configured_catalog)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not payload:
+        return MidpointsResponse(midpoints=[], source=source, metadata={"count": 0})
 
-    catalog_entries = {star.name: star for star in load_catalog(configured_catalog)}
-    response_hits = [
-        FixedStarHit(
-            name=name,
-            delta_deg=delta,
-            longitude_deg=catalog_entries[name].lon_deg,
-            latitude_deg=catalog_entries[name].lat_deg,
-            magnitude=catalog_entries[name].mag,
-        )
-        for name, delta in hits
-        if name in catalog_entries
+    midpoints = compute_midpoints(payload, include_nodes=include_nodes_flag)
+    items = [
+        MidpointItem(bodies=pair, longitude=value, depth=_pair_depth(pair))
+        for pair, value in midpoints.items()
     ]
-
-    return FixedStarResponse(
-        enabled=True,
-        orb_deg=effective_orb,
-        catalog=configured_catalog,
-        hits=response_hits,
-    )
+    items.sort(key=lambda item: (item.depth, item.bodies[0].casefold(), item.bodies[1].casefold()))
+    metadata = {
+        "count": len(items),
+        "tree": {
+            "enabled": cfg.tree.enabled,
+            "max_depth": cfg.tree.max_depth,
+        },
+    }
+    return MidpointsResponse(midpoints=items, source=source, metadata=metadata)

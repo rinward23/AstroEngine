@@ -37,6 +37,7 @@ if app:
     install_error_handlers(app)
 
     app.include_router(plus_router)
+    app.include_router(analysis_router)
     app.include_router(interpret_router)
     app.include_router(natals_router)
     app.include_router(analysis_router)
