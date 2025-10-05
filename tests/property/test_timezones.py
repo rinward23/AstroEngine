@@ -32,9 +32,12 @@ def _ensure_datetime(value: Any) -> datetime:
         candidate = value[0]
     else:
         candidate = value
-    if not isinstance(candidate, datetime):
-        raise TypeError(f"Expected datetime from timezone helper, got {type(candidate)!r}")
-    return candidate
+    if isinstance(candidate, datetime):
+        return candidate
+    utc_value = getattr(candidate, "utc", None)
+    if isinstance(utc_value, datetime):
+        return utc_value
+    raise TypeError(f"Expected datetime from timezone helper, got {type(candidate)!r}")
 
 
 def _call_from_utc(moment: datetime, lat: float, lon: float) -> datetime:
@@ -47,10 +50,8 @@ def _call_from_utc(moment: datetime, lat: float, lon: float) -> datetime:
 
 def _call_to_utc(moment: datetime, lat: float, lon: float, *, ambiguous: bool = False) -> datetime:
     kwargs: dict[str, Any] = {}
-    if "policy" in _TO_UTC_PARAMS:
-        kwargs.setdefault("policy", "shift_forward")
     if "nonexistent" in _TO_UTC_PARAMS:
-        kwargs.setdefault("nonexistent", "shift_forward")
+        kwargs.setdefault("nonexistent", "post")
     if ambiguous and "ambiguous" in _TO_UTC_PARAMS:
         kwargs.setdefault("ambiguous", "earliest")
     try:

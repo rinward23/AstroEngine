@@ -4,7 +4,7 @@ The UX module reserves runtime surfaces for maps, timelines, and plugin panels. 
 
 ## Atlas and timezone inputs
 
-- `astroengine/atlas/tz.py` wraps the `timezonefinder` dataset to resolve Olson timezone identifiers from latitude/longitude pairs. Overlay renderers must use `tzid_for`, `to_utc`, and `from_utc` to convert Solar Fire event timestamps into local presentation time without discarding provenance.
+- `astroengine/atlas/tz.py` wraps the `timezonefinder` dataset to resolve Olson timezone identifiers from latitude/longitude pairs. Overlay renderers must use `tzid_for`, `to_utc`, and `from_utc` to convert Solar Fire event timestamps into local presentation time without discarding provenance. The `to_utc` helper now returns a `LocalTimeResolution` record so overlays can persist the chosen fold, resolved timezone, and UTC instant alongside the caller-supplied local moment.
 - Coordinate metadata for overlays is derived from the Solar Fire comparison exports archived under `qa/artifacts/solarfire/2025-10-02/`. The checksums are tracked in `qa/artifacts/solarfire/2025-10-02/provenance_ingestion.md` to guarantee that overlay timelines reproduce the same event positions used for runtime validation.
 
 ## Map overlays
