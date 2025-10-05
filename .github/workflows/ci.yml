@@ -19,11 +19,15 @@ jobs:
       - name: Install lint dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          pip install -r requirements-dev.txt bandit pip-audit
       - name: Lint (Ruff)
         run: ruff check --output-format=github .
       - name: Format check (Black)
         run: black --check .
+      - name: Security scan (Bandit)
+        run: bandit -q -r astroengine app
+      - name: Dependency audit (pip-audit)
+        run: pip-audit --require-hashes=false
       - name: Type check
         run: |
           pip install mypy pydantic
