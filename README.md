@@ -303,6 +303,19 @@ These helpers ensure the module → submodule → channel → subchannel hierarc
 remains intact, particularly when integrating new Solar Fire derived datasets or
 augmenting the runtime with additional registries.
 
+### Updating dependency manifests
+
+`requirements.txt`, `requirements-dev.txt`, and `requirements-optional.txt`
+are generated from `pyproject.toml` so the dependency graph only has one
+source of truth. Regenerate them with:
+
+```bash
+python scripts/generate_requirements.py
+```
+
+Pass `--check` to verify whether the tracked files already match the
+`pyproject` declarations.
+
 # >>> AUTO-GEN BEGIN: AE README Providers Addendum v1.2
 ### Optional providers & catalogs
 Use the helper script to install the complete optional stack, including the
