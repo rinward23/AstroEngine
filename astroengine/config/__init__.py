@@ -11,6 +11,8 @@ from .features import (
     is_enabled,
 )
 from .settings import (
+    ArabicPartCustom,
+    ArabicPartsCfg,
     AspectsCfg,
     BodiesCfg,
     ChartsCfg,
@@ -42,6 +44,8 @@ __all__ = [
     "HousesCfg",
     "BodiesCfg",
     "AspectsCfg",
+    "ArabicPartsCfg",
+    "ArabicPartCustom",
     "ChartsCfg",
     "NarrativeCfg",
     "RenderingCfg",
