@@ -118,6 +118,19 @@ orbs_global = st.slider(
     "Global Orb (deg)", 1.0, 12.0, float(current_settings.aspects.orbs_global), 0.5
 )
 
+st.subheader("Declinations")
+decl_enabled = st.toggle(
+    "Detect declination parallels/contraparallels",
+    current_settings.declinations.enabled,
+)
+decl_orb = st.number_input(
+    "Declination orb (deg)",
+    min_value=0.1,
+    max_value=5.0,
+    value=float(current_settings.declinations.orb_deg),
+    step=0.1,
+)
+
 st.subheader("Chart Types & Techniques")
 chart_flags = current_settings.charts.enabled.copy()
 cols_charts = st.columns(4)
@@ -198,6 +211,7 @@ if st.button("💾 Save Settings", type="primary"):
             "use_moiety": current_settings.aspects.use_moiety,
             "show_applying": current_settings.aspects.show_applying,
         },
+        declinations={"enabled": decl_enabled, "orb_deg": decl_orb},
         charts={"enabled": chart_flags},
         narrative={
             "library": library,

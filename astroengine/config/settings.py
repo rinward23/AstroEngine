@@ -90,6 +90,13 @@ class AspectsCfg(BaseModel):
     show_applying: bool = True
 
 
+class DeclinationsCfg(BaseModel):
+    """Declination aspect detection configuration."""
+
+    enabled: bool = True
+    orb_deg: float = Field(0.5, ge=0.0, le=5.0)
+
+
 class ChartsCfg(BaseModel):
     """Toggle availability of chart techniques exposed by the engine."""
 
@@ -175,6 +182,7 @@ class Settings(BaseModel):
     houses: HousesCfg = Field(default_factory=HousesCfg)
     bodies: BodiesCfg = Field(default_factory=BodiesCfg)
     aspects: AspectsCfg = Field(default_factory=AspectsCfg)
+    declinations: DeclinationsCfg = Field(default_factory=DeclinationsCfg)
     charts: ChartsCfg = Field(default_factory=ChartsCfg)
     narrative: NarrativeCfg = Field(default_factory=NarrativeCfg)
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
