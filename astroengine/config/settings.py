@@ -90,6 +90,14 @@ class AspectsCfg(BaseModel):
     show_applying: bool = True
 
 
+class AntisciaCfg(BaseModel):
+    """Configuration for antiscia/contra-antiscia mirror detection."""
+
+    enabled: bool = False
+    orb: float = 2.0
+    show_overlay: bool = False
+
+
 class ChartsCfg(BaseModel):
     """Toggle availability of chart techniques exposed by the engine."""
 

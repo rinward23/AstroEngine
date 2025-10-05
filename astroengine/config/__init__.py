@@ -82,6 +82,7 @@ __all__ = [
     "HousesCfg",
     "BodiesCfg",
     "AspectsCfg",
+    "AntisciaCfg",
     "ChartsCfg",
     "MidpointsCfg",
     "MidpointTreeCfg",
