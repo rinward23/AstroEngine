@@ -92,6 +92,7 @@ __all__ = [
     "FixedStarsCfg",
     "EphemerisCfg",
     "PerfCfg",
+    "ReturnsIngressCfg",
     "config_path",
     "get_config_home",
     "default_settings",

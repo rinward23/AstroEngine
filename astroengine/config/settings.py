@@ -169,6 +169,16 @@ class EphemerisCfg(BaseModel):
     precision: Literal["normal", "high"] = "normal"
 
 
+class ReturnsIngressCfg(BaseModel):
+    """Feature toggles for return charts and ingress lookups."""
+
+    solar_return: bool = True
+    lunar_return: bool = True
+    aries_ingress: bool = True
+    lunar_count: int = Field(12, ge=1, le=36)
+    timezone: Optional[str] = None
+
+
 class PerfCfg(BaseModel):
     """Performance tuning options for heavy calculations."""
 

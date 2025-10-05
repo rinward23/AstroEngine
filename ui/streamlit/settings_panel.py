@@ -144,6 +144,34 @@ for idx, key in enumerate(sorted(chart_flags.keys())):
             key.replace("_", " ").title(), value=chart_flags[key], key=f"c_{key}"
         )
 
+st.subheader("Returns & Ingress")
+returns_cfg = current_settings.returns_ingress
+col_solar, col_lunar, col_ingress = st.columns(3)
+with col_solar:
+    returns_solar = st.toggle(
+        "Solar Return", returns_cfg.solar_return, key="ri_solar"
+    )
+with col_lunar:
+    returns_lunar = st.toggle(
+        "Lunar Returns", returns_cfg.lunar_return, key="ri_lunar"
+    )
+with col_ingress:
+    returns_aries = st.toggle(
+        "Aries Ingress", returns_cfg.aries_ingress, key="ri_aries"
+    )
+col_count, col_tz = st.columns([1, 2])
+with col_count:
+    lunar_count = st.number_input(
+        "Lunar Return Count",
+        min_value=1,
+        max_value=36,
+        value=int(returns_cfg.lunar_count),
+    )
+with col_tz:
+    returns_tz = st.text_input(
+        "Preferred Timezone (IANA)", returns_cfg.timezone or "", help="Overrides natal timezone when available."
+    )
+
 st.subheader("Narrative & Rendering")
 library = st.selectbox(
     "Narrative Library",
@@ -264,6 +292,13 @@ if st.button("💾 Save Settings", type="primary"):
             "qcache_size": qcache_size,
             "qcache_sec": qcache_seconds,
             "max_scan_days": max_scan_days,
+        },
+        returns_ingress={
+            "solar_return": returns_solar,
+            "lunar_return": returns_lunar,
+            "aries_ingress": returns_aries,
+            "lunar_count": int(lunar_count),
+            "timezone": returns_tz.strip() or None,
         },
     )
     save_settings(updated)
