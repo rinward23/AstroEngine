@@ -676,6 +676,7 @@ class Settings(BaseModel):
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     swiss_caps: SwissCapsCfg = Field(default_factory=SwissCapsCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
+    observability: ObservabilityCfg = Field(default_factory=ObservabilityCfg)
     astrocartography: AstroCartoCfg = Field(default_factory=AstroCartoCfg)
     midpoints: MidpointsCfg = Field(default_factory=MidpointsCfg)
     fixed_stars: FixedStarsCfg = Field(default_factory=FixedStarsCfg)

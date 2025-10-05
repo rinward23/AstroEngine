@@ -56,6 +56,7 @@ from .settings import (
     get_config_home,
     narrative_profiles_home,
     load_settings,
+    apply_narrative_profile_overlay,
     save_user_narrative_profile,
     save_settings,
     compose_narrative_from_mix,

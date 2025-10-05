@@ -3,22 +3,65 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from fastapi import FastAPI
 
 _LOGGER = logging.getLogger("astroengine.telemetry")
 
 
+if TYPE_CHECKING:  # pragma: no cover - for type checking only
+    from astroengine.config.settings import ObservabilityCfg
+
+
+def resolve_observability_config(app: FastAPI) -> "ObservabilityCfg | None":
+    """Return the active observability configuration, if available."""
+
+    cached = getattr(app.state, "_observability_cfg", None)
+    if cached is not None:
+        return cached
+
+    settings = getattr(app.state, "settings", None)
+    cfg = getattr(settings, "observability", None) if settings else None
+    if cfg is not None:
+        return cfg
+    try:  # pragma: no cover - optional disk read
+        from astroengine.config import load_settings
+    except Exception:
+        return None
+    try:
+        return load_settings().observability
+    except Exception as exc:  # pragma: no cover - defensive guard
+        _LOGGER.debug(
+            "telemetry.settings_load_failed",
+            extra={"err_code": "SETTINGS_LOAD_FAILED", "error": str(exc)},
+        )
+        return None
+
+
 def setup_tracing(
     app: FastAPI,
     sqlalchemy_engine: Optional[object] = None,
     service_name: str = "astroengine-api",
+    sampling_ratio: Optional[float] = None,
+    enabled: Optional[bool] = None,
 ) -> None:
     """Configure OpenTelemetry tracing instrumentation if available."""
 
     sql_configured_flag = "_otel_sqlalchemy_instrumented"
     tracing_configured_flag = "_otel_tracing_configured"
+
+    cfg = None
+    if sampling_ratio is None or enabled is None:
+        cfg = resolve_observability_config(app)
+    if enabled is None:
+        enabled = bool(getattr(cfg, "otel_enabled", False))
+    if not enabled:
+        return
+
+    if sampling_ratio is None:
+        sampling_ratio = getattr(cfg, "sampling_ratio", 1.0)
+    sampling_ratio = max(0.0, min(1.0, float(sampling_ratio)))
 
     if (
         getattr(app.state, tracing_configured_flag, False)
@@ -40,6 +83,7 @@ def setup_tracing(
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
     except ImportError:
         _LOGGER.warning(
             "telemetry.opentelemetry_missing",
@@ -52,7 +96,8 @@ def setup_tracing(
 
     if not getattr(app.state, tracing_configured_flag, False):
         resource = Resource.create({"service.name": service_name})
-        provider = TracerProvider(resource=resource)
+        sampler = ParentBased(TraceIdRatioBased(float(sampling_ratio)))
+        provider = TracerProvider(resource=resource, sampler=sampler)
         trace.set_tracer_provider(provider)
         provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
         FastAPIInstrumentor.instrument_app(

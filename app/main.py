@@ -15,7 +15,7 @@ from astroengine.ephemeris.adapter import EphemerisAdapter, EphemerisConfig
 
 from app.db.session import engine
 from app.observability import configure_observability
-from app.telemetry import setup_tracing
+from app.telemetry import resolve_observability_config, setup_tracing
 
 from app.routers import (
     aspects_router,
@@ -47,7 +47,13 @@ DEV_MODE_ENABLED = os.getenv("DEV_MODE")
 
 app = FastAPI(title="AstroEngine Plus API")
 configure_observability(app)
-setup_tracing(app, sqlalchemy_engine=engine)
+_obs_cfg = resolve_observability_config(app)
+setup_tracing(
+    app,
+    sqlalchemy_engine=engine,
+    sampling_ratio=getattr(_obs_cfg, "sampling_ratio", None),
+    enabled=getattr(_obs_cfg, "otel_enabled", None),
+)
 app.include_router(aspects_router)
 app.include_router(declinations_router)
 app.include_router(electional_router)
