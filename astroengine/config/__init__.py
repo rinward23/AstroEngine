@@ -88,6 +88,7 @@ __all__ = [
     "MidpointsCfg",
     "MidpointTreeCfg",
     "NarrativeCfg",
+    "MultiWheelCfg",
     "RenderingCfg",
     "FixedStarsCfg",
     "EphemerisCfg",
