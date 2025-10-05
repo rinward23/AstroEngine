@@ -18,6 +18,7 @@ else:
             {"name": "natals", "description": "Stored natal chart management."},
             {"name": "scan", "description": "Transit and progression scanning."},
             {"name": "synastry", "description": "Synastry chart operations."},
+            {"name": "analysis", "description": "Catalog and fixed-star lookups."},
         ],
     )
 
@@ -39,6 +40,7 @@ if app:
     app.include_router(analysis_router)
     app.include_router(interpret_router)
     app.include_router(natals_router)
+    app.include_router(analysis_router)
     app.include_router(scan_router, prefix="/v1/scan", tags=["scan"])
     app.include_router(syn_router, prefix="/v1/synastry", tags=["synastry"])
 

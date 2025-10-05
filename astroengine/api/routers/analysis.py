@@ -1,123 +1,196 @@
-"""FastAPI router exposing Arabic Parts computations."""
+"""Endpoints exposing analytical utilities such as midpoint calculations."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import Any
+import json
+from datetime import datetime, timezone
+from typing import Any, Mapping
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from ...analysis import arabic_parts
-from ...analysis.arabic_parts import ArabicPartError
-from ...chart.natal import ChartLocation, compute_natal_chart
-from ...config import Settings, load_settings
+from ...analysis.midpoints import compute_midpoints, get_midpoint_settings
+from ...chart.config import ChartConfig
+from ...chart.natal import ChartLocation, DEFAULT_BODIES, compute_natal_chart
+from ...providers.swisseph_adapter import SE_MEAN_NODE, SE_TRUE_NODE
 from ...userdata.vault import load_natal
 
 router = APIRouter(prefix="/v1/analysis", tags=["analysis"])
 
 
-def _parse_utc(value: str) -> datetime:
+class MidpointItem(BaseModel):
+    bodies: tuple[str, str] = Field(
+        description="Pair of chart factors used to compute the midpoint.",
+        min_length=2,
+        max_length=2,
+    )
+    longitude: float = Field(
+        description="Midpoint longitude in degrees (0°–360°).",
+        ge=0.0,
+        lt=360.0,
+    )
+    depth: int = Field(
+        description="Tree depth where 1 corresponds to direct body midpoints.",
+        ge=1,
+    )
+
+
+class MidpointsResponse(BaseModel):
+    midpoints: list[MidpointItem]
+    source: dict[str, Any] | None = Field(
+        default=None, description="Metadata describing the midpoint input source."
+    )
+    metadata: dict[str, Any] | None = Field(
+        default=None, description="Diagnostic metadata about the computation."
+    )
+
+
+def _pair_depth(pair: tuple[str, str]) -> int:
+    return max(segment.count("/") for segment in pair) + 1
+
+
+def _parse_longitudes_payload(value: str | None) -> dict[str, float]:
+    if not value:
+        return {}
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:  # pragma: no cover - defensive
-        raise ArabicPartError(f"Invalid ISO timestamp '{value}'") from exc
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC)
+        payload = json.loads(value)
+    except json.JSONDecodeError as exc:  # pragma: no cover - exercised via HTTP
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_LONGITUDES", "message": "longitudes must be JSON"},
+        ) from exc
+    if not isinstance(payload, Mapping):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_LONGITUDES", "message": "longitudes must be an object"},
+        )
+    parsed: dict[str, float] = {}
+    for raw_name, raw_value in payload.items():
+        name = str(raw_name)
+        if not name:
+            continue
+        try:
+            parsed[name] = float(raw_value)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "INVALID_LONGITUDE_VALUE",
+                    "message": f"longitude for '{name}' must be numeric",
+                },
+            ) from exc
+    return parsed
 
 
-class LocationOut(BaseModel):
-    latitude: float
-    longitude: float
+def _chart_config_from_settings(include_nodes: bool) -> tuple[ChartConfig, dict[str, int]]:
+    settings = get_midpoint_settings()
+    base_config = ChartConfig()
+    bodies = dict(DEFAULT_BODIES)
+    if include_nodes:
+        node_variant = base_config.nodes_variant
+        node_code = SE_TRUE_NODE if node_variant == "true" else SE_MEAN_NODE
+        label = "True Node" if node_variant == "true" else "Mean Node"
+        bodies.setdefault(label, node_code)
+        bodies.setdefault("South Node", node_code)
+    return base_config, bodies
 
 
-class ArabicPartOut(BaseModel):
-    name: str
-    longitude: float
-    house: int | None = None
-    description: str | None = None
-    source: str = Field(description="Either 'preset' or 'custom'.")
-    day_formula: str
-    night_formula: str
-
-
-class ArabicLotsResponse(BaseModel):
-    natal_id: str
-    natal_name: str | None = None
-    moment: datetime
-    location: LocationOut
-    is_day: bool
-    lots: list[ArabicPartOut]
-    metadata: dict[str, Any]
-
-    class Config:
-        json_encoders = {datetime: lambda dt: dt.astimezone(UTC).isoformat().replace("+00:00", "Z")}
-
-
-def _load_settings() -> Settings:
-    return load_settings()
-
-
-@router.get(
-    "/lots",
-    response_model=ArabicLotsResponse,
-    summary="Compute Arabic Parts for a stored natal chart.",
-    responses={
-        status.HTTP_200_OK: {"description": "Computed Arabic Parts."},
-        status.HTTP_404_NOT_FOUND: {"description": "Natal chart not found."},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"description": "Unable to evaluate lots."},
-    },
-)
-def compute_arabic_parts(natal_id: str = Query(..., description="Identifier returned from /v1/natals.")) -> ArabicLotsResponse:
+def _load_natal_longitudes(natal_id: str, include_nodes: bool) -> dict[str, float]:
     try:
         record = load_natal(natal_id)
     except FileNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "NATAL_NOT_FOUND", "message": f"Natal '{natal_id}' was not found."},
+            detail={
+                "code": "NATAL_NOT_FOUND",
+                "message": f"Natal '{natal_id}' was not found.",
+            },
         ) from exc
-
-    moment = _parse_utc(record.utc)
-    location = ChartLocation(latitude=record.lat, longitude=record.lon)
-
     try:
-        chart = compute_natal_chart(moment, location)
-    except Exception as exc:  # pragma: no cover - compute_natal_chart validated elsewhere
+        moment = datetime.fromisoformat(record.utc.replace("Z", "+00:00"))
+    except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "CHART_COMPUTE_FAILED", "message": str(exc)},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "INVALID_NATAL_TIMESTAMP",
+                "message": f"Natal '{natal_id}' has an invalid UTC timestamp.",
+            },
         ) from exc
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    else:
+        moment = moment.astimezone(timezone.utc)
 
-    settings = _load_settings()
-    try:
-        result = arabic_parts.compute_all(settings, chart)
-    except ArabicPartError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "ARABIC_PART_ERROR", "message": str(exc)},
-        ) from exc
-
-    lots_payload = [
-        ArabicPartOut(
-            name=item.name,
-            longitude=item.longitude,
-            house=item.house,
-            description=item.description,
-            source=item.source,
-            day_formula=item.day_formula,
-            night_formula=item.night_formula,
-        )
-        for item in result.lots
-    ]
-
-    response = ArabicLotsResponse(
-        natal_id=natal_id,
-        natal_name=getattr(record, "name", None),
-        moment=moment,
-        location=LocationOut(latitude=record.lat, longitude=record.lon),
-        is_day=result.is_day,
-        lots=lots_payload,
-        metadata=dict(result.metadata),
+    config, body_map = _chart_config_from_settings(include_nodes)
+    chart = compute_natal_chart(
+        moment,
+        ChartLocation(latitude=float(record.lat), longitude=float(record.lon)),
+        bodies=body_map,
+        config=config,
     )
-    return response
+    return {name: pos.longitude for name, pos in chart.positions.items()}
+
+
+@router.get(
+    "/midpoints",
+    response_model=MidpointsResponse,
+    summary="Compute planetary midpoints.",
+    operation_id="getMidpoints",
+)
+def get_midpoints(
+    natal_id: str | None = Query(
+        default=None, description="Identifier for a stored natal chart."
+    ),
+    longitudes: str | None = Query(
+        default=None, description="JSON mapping of bodies to longitudes in degrees."
+    ),
+    include_nodes: bool | None = Query(
+        default=None, description="Include lunar nodes when available."
+    ),
+) -> MidpointsResponse:
+    cfg = get_midpoint_settings()
+    if not cfg.enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "MIDPOINTS_DISABLED",
+                "message": "Midpoint analysis is disabled in the current settings.",
+            },
+        )
+
+    include_nodes_flag = include_nodes if include_nodes is not None else cfg.include_nodes
+    payload: dict[str, float]
+    source: dict[str, Any] | None = None
+
+    if longitudes:
+        payload = _parse_longitudes_payload(longitudes)
+        source = {"type": "inline", "count": len(payload)}
+    elif natal_id:
+        payload = _load_natal_longitudes(natal_id, include_nodes_flag)
+        source = {"type": "natal", "natal_id": natal_id, "count": len(payload)}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "MISSING_INPUT",
+                "message": "Provide either 'natal_id' or 'longitudes' to compute midpoints.",
+            },
+        )
+
+    if not payload:
+        return MidpointsResponse(midpoints=[], source=source, metadata={"count": 0})
+
+    midpoints = compute_midpoints(payload, include_nodes=include_nodes_flag)
+    items = [
+        MidpointItem(bodies=pair, longitude=value, depth=_pair_depth(pair))
+        for pair, value in midpoints.items()
+    ]
+    items.sort(key=lambda item: (item.depth, item.bodies[0].casefold(), item.bodies[1].casefold()))
+    metadata = {
+        "count": len(items),
+        "tree": {
+            "enabled": cfg.tree.enabled,
+            "max_depth": cfg.tree.max_depth,
+        },
+    }
+    return MidpointsResponse(midpoints=items, source=source, metadata=metadata)

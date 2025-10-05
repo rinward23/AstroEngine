@@ -33,6 +33,7 @@ def create_app() -> FastAPI:
             {"name": "natals", "description": "Stored natal chart management."},
             {"name": "scan", "description": "Transit and progression scanning."},
             {"name": "synastry", "description": "Synastry chart operations."},
+            {"name": "analysis", "description": "Chart dignity and condition reports."},
         ],
     )
     app.add_middleware(GZipMiddleware, minimum_size=512)
@@ -45,6 +46,7 @@ def create_app() -> FastAPI:
     app.include_router(lots_router.router, prefix="/v1", tags=["lots"])
     app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])
     app.include_router(synastry_router.router, prefix="/v1/synastry", tags=["synastry"])
+    app.include_router(analysis_router.router)
     app.include_router(vedic_router.router)
     app.include_router(topocentric_router.router, prefix="/v1", tags=["topocentric"])
     app.include_router(transit_overlay_router.router)
