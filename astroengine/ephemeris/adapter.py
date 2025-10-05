@@ -457,3 +457,23 @@ class EphemerisAdapter:
             "sidereal": "enabled" if self._config.sidereal else "disabled",
             "sidereal_mode": self._sidereal_mode_key,
         }
+
+    def signature(self) -> tuple[object, ...]:
+        """Return a stable signature describing the adapter configuration."""
+
+        observer = None
+        if self._config.observer is not None:
+            observer = self._config.observer.as_tuple()
+        return (
+            "EphemerisAdapter",
+            bool(self._config.prefer_moshier),
+            bool(self._config.topocentric),
+            observer,
+            bool(self._config.sidereal),
+            self._sidereal_mode_key,
+            self._config.time_scale.input_scale,
+            self._config.time_scale.ephemeris_scale,
+            self._config.time_scale.describe(),
+            self._config.ephemeris_path,
+            self._use_tt,
+        )

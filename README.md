@@ -171,6 +171,21 @@ The page offers real datasets for quick regression checks:
 Sample longitude presets bundled with the page correspond to historical charts
 captured from published ephemerides so the outputs remain fully data-backed.
 
+### Quantized refinement cache tuning
+
+High-frequency refinement loops now consult a tiny process-local LRU that
+quantizes Terrestrial Time (TT) into short bins so repeat calls within the same
+window reuse identical Swiss Ephemeris samples. Control the cache via env vars:
+
+- `AE_QCACHE_SEC` – quantization window in seconds (default `1.0`). Lower values
+  tighten the window; increase to broaden cache hits when input jitter exceeds
+  one second.
+- `AE_QCACHE_SIZE` – maximum cached entries (default `4096`). Raise this if
+  long-running transit scans churn through the default footprint.
+
+Both knobs act locally per process and can be tuned without code changes when
+profiling heavy refinement workloads.
+
 ### Relationship API (v1)
 
 The new FastAPI-powered relationship service exposes deterministic REST

@@ -11,14 +11,15 @@ from collections.abc import Iterable
 from collections.abc import Iterable as _TypingIterable
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any as _TypingAny
-from typing import Literal
+from typing import Any as _TypingAny, Literal, cast
 
 from ..chart.natal import DEFAULT_BODIES
 from ..detectors_aspects import AspectHit
 from ..ephemeris import EphemerisAdapter, EphemerisConfig, EphemerisSample
 from ..ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from ..ephemeris.refinement import SECONDS_PER_DAY, RefineResult, refine_event
+from .qcache import DEFAULT_QSEC, qbin, qcache
+from .time import to_tt
 from .angles import classify_relative_motion, signed_delta
 from .angles import normalize_degrees as _normalize_degrees
 from .api import TransitEvent as LegacyTransitEvent
@@ -43,6 +44,27 @@ def to_canonical_events(
 # >>> AUTO-GEN END: Canonical Scan Adapter v1.0
 
 __all__ = ["TransitEngine", "TransitEngineConfig"]
+
+
+def _quantized_refined_sample(
+    adapter: EphemerisAdapter,
+    body: int,
+    moment: _dt.datetime,
+    *,
+    frame: str,
+    accuracy: str,
+) -> EphemerisSample:
+    """Return a cached ephemeris sample quantized by ``accuracy`` and frame."""
+
+    conversion = to_tt(moment)
+    bin_key = qbin(conversion.jd_tt, DEFAULT_QSEC)
+    cache_key = ("pos", int(body), bin_key, frame, accuracy, adapter.signature())
+    cached = qcache.get(cache_key)
+    if cached is not None:
+        return cast(EphemerisSample, cached)
+    sample = adapter.sample(body, conversion)
+    qcache.put(cache_key, sample)
+    return sample
 
 
 @dataclass(frozen=True)
@@ -143,6 +165,7 @@ class TransitEngine:
         if step_hours <= 0:
             raise ValueError("step_hours must be positive")
 
+        requested_mode = (refinement or self.config.refinement_mode).lower()
         settings = self.config.resolve_settings(refinement)
 
         tick_cache: dict[_dt.datetime, EphemerisSample] | None = (
@@ -263,7 +286,13 @@ class TransitEngine:
                 def _delta_fn(jd_ut: float) -> float:
                     seconds = (jd_ut - base_jd) * SECONDS_PER_DAY
                     moment = base_time + _dt.timedelta(seconds=seconds)
-                    sample = self.adapter.sample(body, moment)
+                    sample = _quantized_refined_sample(
+                        self.adapter,
+                        body,
+                        moment,
+                        frame="geocentric_ecliptic",
+                        accuracy=requested_mode,
+                    )
                     return compute_offset(sample)
 
                 result: RefineResult = refine_event(
@@ -274,7 +303,13 @@ class TransitEngine:
                 )
                 refined_seconds = (result.t_exact_jd - base_jd) * SECONDS_PER_DAY
                 refined_time = base_time + _dt.timedelta(seconds=refined_seconds)
-                refined_sample = self.adapter.sample(body, refined_time)
+                refined_sample = _quantized_refined_sample(
+                    self.adapter,
+                    body,
+                    refined_time,
+                    frame="geocentric_ecliptic",
+                    accuracy=requested_mode,
+                )
                 if tick_cache is not None:
                     tick_cache[refined_time] = refined_sample
                 final_time = refined_time
