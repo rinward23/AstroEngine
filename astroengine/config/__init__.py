@@ -31,6 +31,7 @@ from .settings import (
     MidpointsCfg,
     MultiWheelCfg,
     NarrativeCfg,
+    PluginCfg,
     PerfCfg,
     PrimaryDirectionsCfg,
     ReportsCfg,

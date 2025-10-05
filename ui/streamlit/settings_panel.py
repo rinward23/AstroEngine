@@ -4,7 +4,19 @@ from __future__ import annotations
 
 import streamlit as st
 
-from astroengine.config import config_path, load_settings, save_settings, Settings
+from astroengine.config import (
+    PluginCfg,
+    Settings,
+    config_path,
+    load_settings,
+    save_settings,
+)
+from astroengine.plugins.registry import (
+    PLUGIN_DIRECTORY,
+    ensure_user_plugins_loaded,
+    iter_aspect_plugins,
+    iter_lot_plugins,
+)
 
 st.set_page_config(page_title="AstroEngine Settings", layout="wide")
 
@@ -12,6 +24,28 @@ st.title("⚙️ AstroEngine Settings")
 
 current_settings = load_settings()
 st.sidebar.success(f"Profile: {config_path()}")
+
+ensure_user_plugins_loaded()
+aspect_plugins = list(iter_aspect_plugins())
+lot_plugins = list(iter_lot_plugins())
+
+plugin_aspect_state = {
+    key: bool(value)
+    for key, value in (current_settings.plugins.aspects or {}).items()
+}
+plugin_lot_state = {
+    key: bool(value)
+    for key, value in (current_settings.plugins.lots or {}).items()
+}
+
+available_aspect_keys = {spec.key for spec in aspect_plugins}
+available_lot_keys = {spec.key for spec in lot_plugins}
+plugin_aspect_state = {
+    key: val for key, val in plugin_aspect_state.items() if key in available_aspect_keys
+}
+plugin_lot_state = {
+    key: val for key, val in plugin_lot_state.items() if key in available_lot_keys
+}
 
 preset_options = [
     "modern_western",

@@ -9,6 +9,8 @@ from typing import Dict, List, Literal, Optional
 import yaml
 from pydantic import BaseModel, Field
 
+from astroengine.plugins.registry import apply_plugin_settings
+
 # -------------------- Settings Schema --------------------
 
 
@@ -436,6 +438,7 @@ def save_settings(settings: Settings, path: Optional[Path] = None) -> Path:
     data = settings.model_dump()
     with target_path.open("w", encoding="utf-8") as handle:
         yaml.safe_dump(data, handle, sort_keys=False, allow_unicode=True)
+    apply_plugin_settings(settings)
     return target_path
 
 
@@ -449,7 +452,9 @@ def load_settings(path: Optional[Path] = None) -> Settings:
         return settings
     with source_path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
-    return Settings(**data)
+    settings = Settings(**data)
+    apply_plugin_settings(settings)
+    return settings
 
 
 def ensure_default_config() -> Path:
