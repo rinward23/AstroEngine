@@ -53,15 +53,41 @@
         ],
         "summary": "Composite (midpoint) positions",
         "operationId": "api_composite_relationship_composite_post",
+        "parameters": [
+          {
+            "name": "houses",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include composite houses in response",
+              "default": false,
+              "title": "Houses"
+            },
+            "description": "Include composite houses in response"
+          },
+          {
+            "name": "hsys",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Requested house system code",
+              "default": "P",
+              "title": "Hsys"
+            },
+            "description": "Requested house system code"
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CompositeRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -94,15 +120,41 @@
         ],
         "summary": "Davison chart at time midpoint (MVP)",
         "operationId": "api_davison_relationship_davison_post",
+        "parameters": [
+          {
+            "name": "houses",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include Davison houses in response",
+              "default": false,
+              "title": "Houses"
+            },
+            "description": "Include Davison houses in response"
+          },
+          {
+            "name": "hsys",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Requested house system code",
+              "default": "P",
+              "title": "Hsys"
+            },
+            "description": "Requested house system code"
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DavisonRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -193,6 +245,30 @@
   },
   "components": {
     "schemas": {
+      "CompositeEventIn": {
+        "properties": {
+          "when": {
+            "type": "string",
+            "format": "date-time",
+            "title": "When"
+          },
+          "lat_deg": {
+            "type": "number",
+            "title": "Lat Deg"
+          },
+          "lon_deg_east": {
+            "type": "number",
+            "title": "Lon Deg East"
+          }
+        },
+        "type": "object",
+        "required": [
+          "when",
+          "lat_deg",
+          "lon_deg_east"
+        ],
+        "title": "CompositeEventIn"
+      },
       "CompositeRequest": {
         "properties": {
           "posA": {
@@ -222,6 +298,26 @@
               }
             ],
             "title": "Bodies"
+          },
+          "eventA": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompositeEventIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eventB": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompositeEventIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -244,6 +340,16 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Meta"
+          },
+          "houses": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HouseOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -315,6 +421,16 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Meta"
+          },
+          "houses": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HouseOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -415,6 +531,32 @@
             ],
             "title": "Positions"
           },
+          "houses": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Houses"
+          },
+          "angles": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Angles"
+          },
           "rulepack_id": {
             "anyOf": [
               {
@@ -428,13 +570,7 @@
           },
           "rules_inline": {
             "anyOf": [
-              {
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "type": "array"
-              },
+              {},
               {
                 "type": "null"
               }
@@ -464,6 +600,17 @@
               }
             ],
             "title": "Min Score"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile"
           }
         },
         "type": "object",
@@ -523,6 +670,65 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HouseOut": {
+        "properties": {
+          "ascendant": {
+            "type": "number",
+            "title": "Ascendant"
+          },
+          "midheaven": {
+            "type": "number",
+            "title": "Midheaven"
+          },
+          "cusps": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Cusps"
+          },
+          "house_system_requested": {
+            "type": "string",
+            "title": "House System Requested"
+          },
+          "house_system_used": {
+            "type": "string",
+            "title": "House System Used"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ascendant",
+          "midheaven",
+          "cusps",
+          "house_system_requested",
+          "house_system_used"
+        ],
+        "title": "HouseOut"
       },
       "OrbPolicyInline": {
         "properties": {

@@ -2,47 +2,170 @@
   "openapi": "3.1.0",
   "info": {
     "title": "AstroEngine API",
-    "version": "0.1.0"
+    "version": "1.0"
   },
   "servers": [],
   "components": {
     "schemas": {
-      "ExportOptions": {
+      "CompositePositionsInput": {
         "properties": {
-          "path": {
+          "positions": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Positions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "positions"
+        ],
+        "title": "CompositePositionsInput"
+      },
+      "DavisonPositionsInput": {
+        "properties": {
+          "positions": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Positions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "positions"
+        ],
+        "title": "DavisonPositionsInput"
+      },
+      "ErrorEnvelope": {
+        "properties": {
+          "code": {
             "type": "string",
-            "title": "Path",
-            "description": "Filesystem destination for exported events"
+            "title": "Code",
+            "description": "Machine readable error code."
           },
-          "format": {
+          "message": {
             "type": "string",
-            "enum": [
-              "json",
-              "ics",
-              "parquet",
-              "sqlite"
+            "title": "Message",
+            "description": "Human friendly summary of the error."
+          },
+          "details": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
             ],
-            "title": "Format"
+            "title": "Details",
+            "description": "Optional structured details that expand on the error."
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorEnvelope",
+        "description": "Standardized error payload returned by the public API."
+      },
+      "Finding": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
           },
-          "calendar_name": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "context": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "tags",
+          "score"
+        ],
+        "title": "Finding",
+        "description": "Single interpretation finding returned to clients."
+      },
+      "FindingsFilters": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "title": "Profile",
+            "default": "balanced"
+          },
+          "top_k": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "integer",
+                "minimum": 1.0
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Calendar Name",
-            "description": "Optional calendar name used for ICS exports."
+            "title": "Top K",
+            "default": 50
+          },
+          "min_score": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Min Score",
+            "default": 0.0
+          },
+          "include_tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Include Tags"
+          },
+          "exclude_tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclude Tags"
           }
         },
         "type": "object",
-        "required": [
-          "path",
-          "format"
-        ],
-        "title": "ExportOptions"
+        "title": "FindingsFilters",
+        "description": "Filtering controls for interpretation results."
       },
       "HTTPValidationError": {
         "properties": {
@@ -156,6 +279,28 @@
             ],
             "title": "Offset"
           },
+          "speed_deg_per_day": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed Deg Per Day"
+          },
+          "retrograde": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrograde"
+          },
           "metadata": {
             "anyOf": [
               {
@@ -179,48 +324,250 @@
         ],
         "title": "Hit"
       },
-      "NatalPayload": {
+      "InterpretRequest": {
         "properties": {
-          "ts": {
+          "rulepack_id": {
             "type": "string",
-            "format": "date-time",
-            "title": "Ts"
+            "title": "Rulepack Id"
           },
-          "lat": {
-            "type": "number",
-            "title": "Lat"
+          "scope": {
+            "type": "string",
+            "enum": [
+              "synastry",
+              "composite",
+              "davison"
+            ],
+            "title": "Scope",
+            "default": "synastry"
           },
-          "lon": {
-            "type": "number",
-            "title": "Lon"
+          "filters": {
+            "$ref": "#/components/schemas/FindingsFilters"
+          },
+          "synastry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SynastryHitsInput"
+              },
+              {
+                "$ref": "#/components/schemas/SynastryPositionsInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synastry"
+          },
+          "composite": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompositePositionsInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "davison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DavisonPositionsInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
-          "ts",
-          "lat",
-          "lon"
+          "rulepack_id"
         ],
-        "title": "NatalPayload",
-        "description": "Minimal payload describing a natal chart for synastry scans."
+        "title": "InterpretRequest",
+        "description": "Request payload for `/relationship` evaluations."
       },
-      "ReturnsScanRequest": {
+      "InterpretResponse": {
         "properties": {
-          "natal": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Natal"
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "type": "array",
+            "title": "Findings"
           },
-          "start": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Start"
+          "totals": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Totals"
           },
-          "end": {
-            "type": "string",
-            "format": "date-time",
-            "title": "End"
+          "rulepack": {
+            "$ref": "#/components/schemas/RulepackMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "findings",
+          "totals",
+          "rulepack"
+        ],
+        "title": "InterpretResponse",
+        "description": "Response payload describing evaluated findings."
+      },
+      "NatalCollection": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NatalRecord"
+            },
+            "type": "array",
+            "title": "Items"
           },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "NatalCollection",
+        "description": "Paginated collection of natals returned by list endpoints.",
+        "example": {
+          "items": [
+            {
+              "lat": 28.60839,
+              "lon": -80.60433,
+              "name": "Apollo 11 Launch",
+              "natal_id": "apollo-11-launch",
+              "place": "Launch Complex 39A, Kennedy Space Center",
+              "tz": "UTC",
+              "utc": "1969-07-16T13:32:00Z"
+            }
+          ],
+          "page": 1,
+          "page_size": 25,
+          "total": 1
+        }
+      },
+      "NatalRecord": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Display name for the chart owner."
+          },
+          "utc": {
+            "type": "string",
+            "title": "Utc",
+            "description": "Moment of birth in ISO-8601 UTC."
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat",
+            "description": "Latitude in decimal degrees."
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon",
+            "description": "Longitude in decimal degrees."
+          },
+          "tz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tz",
+            "description": "Original timezone identifier, if known."
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place",
+            "description": "Birth location description."
+          },
+          "natal_id": {
+            "type": "string",
+            "title": "Natal Id",
+            "description": "Stable identifier for the natal record."
+          }
+        },
+        "type": "object",
+        "required": [
+          "utc",
+          "lat",
+          "lon",
+          "natal_id"
+        ],
+        "title": "NatalRecord",
+        "description": "Representation of a stored natal chart.",
+        "examples": [
+          {
+            "lat": 28.60839,
+            "lon": -80.60433,
+            "name": "Apollo 11 Launch",
+            "place": "Launch Complex 39A, Kennedy Space Center",
+            "tz": "UTC",
+            "utc": "1969-07-16T13:32:00Z"
+          }
+        ]
+      },
+      "ProfileDefinition": {
+        "properties": {
+          "base_multiplier": {
+            "type": "number",
+            "title": "Base Multiplier",
+            "default": 1.0
+          },
+          "tag_weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Tag Weights"
+          },
+          "rule_weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Rule Weights"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "ProfileDefinition",
+        "description": "Profile weighting configuration for a rulepack."
+      },
+      "RuleCondition": {
+        "properties": {
           "bodies": {
             "anyOf": [
               {
@@ -235,35 +582,423 @@
             ],
             "title": "Bodies"
           },
-          "step_days": {
+          "bodiesA": {
             "anyOf": [
               {
-                "type": "number"
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Step Days"
+            "title": "Bodiesa"
           },
-          "export": {
+          "bodiesB": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ExportOptions"
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "string"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Bodiesb"
+          },
+          "aspects": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aspects"
+          },
+          "aspect_in": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aspect In"
+          },
+          "min_severity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Severity"
+          },
+          "longitude_ranges": {
+            "anyOf": [
+              {
+                "items": {
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array",
+                  "maxItems": 2,
+                  "minItems": 2
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude Ranges"
+          }
+        },
+        "type": "object",
+        "title": "RuleCondition",
+        "description": "Condition block inside a rule definition with legacy compatibility."
+      },
+      "RuleDefinition": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "synastry",
+              "composite",
+              "davison"
+            ],
+            "title": "Scope"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "default": 1.0
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "when": {
+            "$ref": "#/components/schemas/RuleCondition"
+          },
+          "then": {
+            "$ref": "#/components/schemas/RuleThen"
           }
         },
         "type": "object",
         "required": [
-          "natal",
-          "start",
-          "end"
+          "id",
+          "scope",
+          "then"
         ],
-        "title": "ReturnsScanRequest"
+        "title": "RuleDefinition",
+        "description": "Single interpretation rule supporting legacy and modern payloads."
+      },
+      "RuleThen": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "base_score": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Base Score",
+            "default": 1.0
+          },
+          "score_fn": {
+            "type": "string",
+            "title": "Score Fn",
+            "default": "linear"
+          },
+          "markdown_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Markdown Template"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "RuleThen",
+        "description": "Consequences block for a rule."
+      },
+      "RulepackCollection": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RulepackMeta"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "RulepackCollection",
+        "description": "Paginated rulepack listing.",
+        "example": {
+          "items": [
+            {
+              "available_versions": [
+                1
+              ],
+              "created_at": "2023-01-01T00:00:00+00:00",
+              "description": "Core synastry findings",
+              "id": "relationship_basic",
+              "mutable": false,
+              "name": "Relationship Basic",
+              "title": "Relationship Essentials",
+              "version": 1
+            }
+          ],
+          "page": 1,
+          "page_size": 25,
+          "total": 1
+        }
+      },
+      "RulepackLintResult": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "RulepackLintResult",
+        "description": "Lint outcome for a rulepack upload attempt."
+      },
+      "RulepackMeta": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "mutable": {
+            "type": "boolean",
+            "title": "Mutable",
+            "default": false
+          },
+          "available_versions": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Available Versions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "version",
+          "title",
+          "created_at"
+        ],
+        "title": "RulepackMeta",
+        "description": "Metadata describing a stored rulepack version."
+      },
+      "RulepackVersionPayload": {
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/RulepackMeta"
+          },
+          "profiles": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProfileDefinition"
+            },
+            "type": "object",
+            "title": "Profiles"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleDefinition"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "etag": {
+            "type": "string",
+            "title": "Etag"
+          },
+          "content": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Content"
+          },
+          "mutable": {
+            "type": "boolean",
+            "title": "Mutable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "meta",
+          "profiles",
+          "rules",
+          "version",
+          "etag",
+          "content",
+          "mutable"
+        ],
+        "title": "RulepackVersionPayload",
+        "description": "Envelope returned when fetching a rulepack."
       },
       "ScanResponse": {
         "properties": {
@@ -301,7 +1036,8 @@
           "hits",
           "count"
         ],
-        "title": "ScanResponse"
+        "title": "ScanResponse",
+        "description": "count reflects total hits before pagination is applied"
       },
       "SynastryHitDTO": {
         "properties": {
@@ -361,13 +1097,95 @@
         ],
         "title": "SynastryHitDTO"
       },
+      "SynastryHitsInput": {
+        "properties": {
+          "hits": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Hits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hits"
+        ],
+        "title": "SynastryHitsInput",
+        "description": "Direct synastry hits payload."
+      },
+      "SynastryPositionsInput": {
+        "properties": {
+          "positionsA": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Positionsa"
+          },
+          "positionsB": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Positionsb"
+          },
+          "aspects": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer",
+                  "enum": [
+                    0,
+                    30,
+                    45,
+                    60,
+                    72,
+                    90,
+                    120,
+                    135,
+                    144,
+                    150,
+                    180
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aspects"
+          },
+          "policy": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "positionsA",
+          "positionsB"
+        ],
+        "title": "SynastryPositionsInput",
+        "description": "Synastry positions payload used to compute hits in-process."
+      },
       "SynastryRequest": {
         "properties": {
           "subject": {
-            "$ref": "#/components/schemas/NatalPayload"
+            "$ref": "#/components/schemas/astroengine__api__routers__synastry__NatalPayload"
           },
           "partner": {
-            "$ref": "#/components/schemas/NatalPayload"
+            "$ref": "#/components/schemas/astroengine__api__routers__synastry__NatalPayload"
           },
           "bodies": {
             "anyOf": [
@@ -483,106 +1301,6 @@
         ],
         "title": "SynastrySummary"
       },
-      "TransitScanRequest": {
-        "properties": {
-          "natal": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Natal"
-          },
-          "start": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Start"
-          },
-          "end": {
-            "type": "string",
-            "format": "date-time",
-            "title": "End"
-          },
-          "method": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Method"
-          },
-          "bodies": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bodies"
-          },
-          "targets": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Targets"
-          },
-          "aspects": {
-            "anyOf": [
-              {
-                "items": {},
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Aspects"
-          },
-          "orb": {
-            "type": "number",
-            "minimum": 0.0,
-            "title": "Orb",
-            "description": "Maximum aspect orb in degrees",
-            "default": 1.0
-          },
-          "step_days": {
-            "type": "number",
-            "exclusiveMinimum": 0.0,
-            "title": "Step Days",
-            "default": 1.0
-          },
-          "export": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ExportOptions"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "natal",
-          "start",
-          "end"
-        ],
-        "title": "TransitScanRequest"
-      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -615,6 +1333,105 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "astroengine__api__routers__natals__NatalPayload": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Display name for the chart owner."
+          },
+          "utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Utc",
+            "description": "Moment of birth in ISO-8601 UTC."
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat",
+            "description": "Latitude in decimal degrees."
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon",
+            "description": "Longitude in decimal degrees."
+          },
+          "tz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tz",
+            "description": "Original timezone identifier, if known."
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place",
+            "description": "Birth location description."
+          }
+        },
+        "type": "object",
+        "required": [
+          "utc",
+          "lat",
+          "lon"
+        ],
+        "title": "NatalPayload",
+        "description": "Incoming payload used to create or update a natal record.",
+        "examples": [
+          {
+            "lat": 28.60839,
+            "lon": -80.60433,
+            "name": "Apollo 11 Launch",
+            "place": "Launch Complex 39A, Kennedy Space Center",
+            "tz": "UTC",
+            "utc": "1969-07-16T13:32:00Z"
+          }
+        ]
+      },
+      "astroengine__api__routers__synastry__NatalPayload": {
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ts"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ts",
+          "lat",
+          "lon"
+        ],
+        "title": "NatalPayload",
+        "description": "Minimal payload describing a natal chart for synastry scans."
       }
     }
   },

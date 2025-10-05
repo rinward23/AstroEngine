@@ -226,14 +226,14 @@ def build_postman(path: Path) -> None:
             {
                 "name": "Natal Upsert",
                 "request": {
-                    "method": "POST",
+                    "method": "PUT",
                     "header": [
                         {"key": "Content-Type", "value": "application/json"},
                     ],
                     "url": {
-                        "raw": "{{baseUrl}}/natals/sample",
+                        "raw": "{{baseUrl}}/v1/natals/sample",
                         "host": ["{{baseUrl}}"],
-                        "path": ["natals", "sample"],
+                        "path": ["v1", "natals", "sample"],
                     },
                     "body": {
                         "mode": "raw",

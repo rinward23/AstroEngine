@@ -1436,62 +1436,50 @@
     }
   },
   "paths": {
-    "/v1/scan/progressions": {
-      "post": {
+    "/v1/natals": {
+      "get": {
         "tags": [
-          "scan"
+          "natals"
         ],
-        "summary": "Api Scan Progressions",
-        "operationId": "api_scan_progressions_v1_scan_progressions_post",
+        "summary": "List stored natal charts.",
+        "description": "Return a paginated view of available natal records.",
+        "operationId": "listNatals",
         "parameters": [
           {
-            "name": "limit",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 2000,
               "minimum": 1,
-              "description": "Maximum number of hits to return (default 500, maximum 2000).",
-              "default": 500,
-              "title": "Limit"
+              "description": "1-indexed page number.",
+              "default": 1,
+              "title": "Page"
             },
-            "description": "Maximum number of hits to return (default 500, maximum 2000)."
+            "description": "1-indexed page number."
           },
           {
-            "name": "offset",
+            "name": "page_size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "minimum": 0,
-              "description": "Number of hits to skip from the start of the result set.",
-              "default": 0,
-              "title": "Offset"
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Number of items to include in the response page (max 100).",
+              "default": 25,
+              "title": "Page Size"
             },
-            "description": "Number of hits to skip from the start of the result set."
+            "description": "Number of items to include in the response page (max 100)."
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "description": "Scan request payload",
-                "title": "Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Paginated list of natals.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScanResponse"
+                  "$ref": "#/components/schemas/NatalCollection"
                 }
               }
             }
@@ -1509,65 +1497,46 @@
         }
       }
     },
-    "/v1/scan/directions": {
-      "post": {
+    "/v1/natals/{natal_id}": {
+      "get": {
         "tags": [
-          "scan"
+          "natals"
         ],
-        "summary": "Api Scan Directions",
-        "operationId": "api_scan_directions_v1_scan_directions_post",
+        "summary": "Fetch a single natal chart.",
+        "operationId": "getNatal",
         "parameters": [
           {
-            "name": "limit",
-            "in": "query",
-            "required": false,
+            "name": "natal_id",
+            "in": "path",
+            "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 2000,
-              "minimum": 1,
-              "description": "Maximum number of hits to return (default 500, maximum 2000).",
-              "default": 500,
-              "title": "Limit"
+              "type": "string",
+              "description": "Identifier returned from the list endpoint.",
+              "title": "Natal Id"
             },
-            "description": "Maximum number of hits to return (default 500, maximum 2000)."
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "Number of hits to skip from the start of the result set.",
-              "default": 0,
-              "title": "Offset"
-            },
-            "description": "Number of hits to skip from the start of the result set."
+            "description": "Identifier returned from the list endpoint."
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "description": "Scan request payload",
-                "title": "Payload"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "The requested natal chart.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScanResponse"
+                  "$ref": "#/components/schemas/NatalRecord"
                 }
               }
             }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
           },
           "422": {
             "description": "Validation Error",
@@ -1580,42 +1549,24 @@
             }
           }
         }
-      }
-    },
-    "/v1/scan/transits": {
-      "post": {
+      },
+      "put": {
         "tags": [
-          "scan"
+          "natals"
         ],
-        "summary": "Api Scan Transits",
-        "operationId": "api_scan_transits_v1_scan_transits_post",
+        "summary": "Create or replace a natal chart.",
+        "operationId": "upsertNatal",
         "parameters": [
           {
-            "name": "limit",
-            "in": "query",
-            "required": false,
+            "name": "natal_id",
+            "in": "path",
+            "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 2000,
-              "minimum": 1,
-              "description": "Maximum number of hits to return (default 500, maximum 2000).",
-              "default": 500,
-              "title": "Limit"
+              "type": "string",
+              "description": "Identifier to assign to the natal chart.",
+              "title": "Natal Id"
             },
-            "description": "Maximum number of hits to return (default 500, maximum 2000)."
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "Number of hits to skip from the start of the result set.",
-              "default": 0,
-              "title": "Offset"
-            },
-            "description": "Number of hits to skip from the start of the result set."
+            "description": "Identifier to assign to the natal chart."
           }
         ],
         "requestBody": {
@@ -1623,107 +1574,47 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "description": "Scan request payload",
-                "title": "Payload"
+                "$ref": "#/components/schemas/astroengine__api__routers__natals__NatalPayload"
+              },
+              "examples": {
+                "apollo11": {
+                  "summary": "Apollo 11 launch data",
+                  "value": {
+                    "name": "Apollo 11 Launch",
+                    "utc": "1969-07-16T13:32:00Z",
+                    "lat": 28.60839,
+                    "lon": -80.60433,
+                    "tz": "UTC",
+                    "place": "Launch Complex 39A, Kennedy Space Center"
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "The persisted natal chart.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScanResponse"
+                  "$ref": "#/components/schemas/NatalRecord"
                 }
               }
             }
+          },
+          "201": {
+            "description": "The persisted natal chart."
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "/v1/scan/returns": {
-      "post": {
-        "tags": [
-          "scan"
-        ],
-        "summary": "Api Scan Returns",
-        "operationId": "api_scan_returns_v1_scan_returns_post",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 2000,
-              "minimum": 1,
-              "description": "Maximum number of hits to return (default 500, maximum 2000).",
-              "default": 500,
-              "title": "Limit"
             },
-            "description": "Maximum number of hits to return (default 500, maximum 2000)."
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "Number of hits to skip from the start of the result set.",
-              "default": 0,
-              "title": "Offset"
-            },
-            "description": "Number of hits to skip from the start of the result set."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "description": "Scan request payload",
-                "title": "Payload"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScanResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
+            "description": "Unprocessable Entity"
           }
         }
       }

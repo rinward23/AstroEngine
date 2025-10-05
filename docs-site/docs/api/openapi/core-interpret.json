@@ -1436,62 +1436,340 @@
     }
   },
   "paths": {
-    "/v1/scan/progressions": {
-      "post": {
+    "/v1/interpret/rulepacks": {
+      "get": {
         "tags": [
-          "scan"
+          "interpret"
         ],
-        "summary": "Api Scan Progressions",
-        "operationId": "api_scan_progressions_v1_scan_progressions_post",
+        "summary": "List uploaded rulepacks.",
+        "operationId": "listRulepacks",
         "parameters": [
           {
-            "name": "limit",
+            "name": "page",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 2000,
               "minimum": 1,
-              "description": "Maximum number of hits to return (default 500, maximum 2000).",
-              "default": 500,
-              "title": "Limit"
+              "description": "1-indexed page number.",
+              "default": 1,
+              "title": "Page"
             },
-            "description": "Maximum number of hits to return (default 500, maximum 2000)."
+            "description": "1-indexed page number."
           },
           {
-            "name": "offset",
+            "name": "page_size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "minimum": 0,
-              "description": "Number of hits to skip from the start of the result set.",
-              "default": 0,
-              "title": "Offset"
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Number of items to include in the response page (max 100).",
+              "default": 25,
+              "title": "Page Size"
             },
-            "description": "Number of hits to skip from the start of the result set."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "description": "Scan request payload",
-                "title": "Payload"
-              }
+            "description": "Number of items to include in the response page (max 100)."
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
-        },
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScanResponse"
+                  "$ref": "#/components/schemas/RulepackCollection"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "interpret"
+        ],
+        "summary": "Upload Rulepack",
+        "operationId": "uploadRulepack",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RulepackMeta"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/interpret/rulepacks/{rulepack_id}": {
+      "get": {
+        "tags": [
+          "interpret"
+        ],
+        "summary": "Get Rulepack",
+        "operationId": "getRulepack",
+        "parameters": [
+          {
+            "name": "rulepack_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rulepack Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RulepackVersionPayload"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "interpret"
+        ],
+        "summary": "Delete Rulepack",
+        "operationId": "deleteRulepack",
+        "parameters": [
+          {
+            "name": "rulepack_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rulepack Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/interpret/rulepacks/lint": {
+      "post": {
+        "tags": [
+          "interpret"
+        ],
+        "summary": "Lint Rulepack Endpoint",
+        "operationId": "lintRulepack",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RulepackLintResult"
                 }
               }
             }
@@ -1509,40 +1787,29 @@
         }
       }
     },
-    "/v1/scan/directions": {
+    "/v1/interpret/relationship": {
       "post": {
         "tags": [
-          "scan"
+          "interpret"
         ],
-        "summary": "Api Scan Directions",
-        "operationId": "api_scan_directions_v1_scan_directions_post",
+        "summary": "Run a relationship interpretation.",
+        "operationId": "interpretRelationship",
         "parameters": [
           {
-            "name": "limit",
-            "in": "query",
+            "name": "x-api-key",
+            "in": "header",
             "required": false,
             "schema": {
-              "type": "integer",
-              "maximum": 2000,
-              "minimum": 1,
-              "description": "Maximum number of hits to return (default 500, maximum 2000).",
-              "default": 500,
-              "title": "Limit"
-            },
-            "description": "Maximum number of hits to return (default 500, maximum 2000)."
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "Number of hits to skip from the start of the result set.",
-              "default": 0,
-              "title": "Offset"
-            },
-            "description": "Number of hits to skip from the start of the result set."
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "requestBody": {
@@ -1550,10 +1817,32 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "description": "Scan request payload",
-                "title": "Payload"
+                "$ref": "#/components/schemas/InterpretRequest"
+              },
+              "examples": {
+                "synastry": {
+                  "summary": "Synastry findings from pre-computed hits",
+                  "value": {
+                    "rulepack_id": "relationship_basic",
+                    "scope": "synastry",
+                    "synastry": {
+                      "hits": [
+                        {
+                          "a": "Sun",
+                          "b": "Moon",
+                          "aspect": "trine",
+                          "severity": 0.6
+                        },
+                        {
+                          "a": "Venus",
+                          "b": "Mars",
+                          "aspect": "conjunction",
+                          "severity": 0.5
+                        }
+                      ]
+                    }
+                  }
+                }
               }
             }
           }
@@ -1564,156 +1853,30 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScanResponse"
+                  "$ref": "#/components/schemas/InterpretResponse"
                 }
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "/v1/scan/transits": {
-      "post": {
-        "tags": [
-          "scan"
-        ],
-        "summary": "Api Scan Transits",
-        "operationId": "api_scan_transits_v1_scan_transits_post",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 2000,
-              "minimum": 1,
-              "description": "Maximum number of hits to return (default 500, maximum 2000).",
-              "default": 500,
-              "title": "Limit"
             },
-            "description": "Maximum number of hits to return (default 500, maximum 2000)."
+            "description": "Bad Request"
           },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "Number of hits to skip from the start of the result set.",
-              "default": 0,
-              "title": "Offset"
-            },
-            "description": "Number of hits to skip from the start of the result set."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "description": "Scan request payload",
-                "title": "Payload"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
+          "404": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScanResponse"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/scan/returns": {
-      "post": {
-        "tags": [
-          "scan"
-        ],
-        "summary": "Api Scan Returns",
-        "operationId": "api_scan_returns_v1_scan_returns_post",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 2000,
-              "minimum": 1,
-              "description": "Maximum number of hits to return (default 500, maximum 2000).",
-              "default": 500,
-              "title": "Limit"
             },
-            "description": "Maximum number of hits to return (default 500, maximum 2000)."
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "Number of hits to skip from the start of the result set.",
-              "default": 0,
-              "title": "Offset"
-            },
-            "description": "Number of hits to skip from the start of the result set."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "description": "Scan request payload",
-                "title": "Payload"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScanResponse"
-                }
-              }
-            }
+            "description": "Not Found"
           },
           "422": {
             "description": "Validation Error",
