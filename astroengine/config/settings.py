@@ -9,6 +9,8 @@ from typing import Dict, List, Literal, Optional
 import yaml
 from pydantic import BaseModel, Field
 
+from astroengine.plugins.registry import apply_plugin_settings
+
 # -------------------- Settings Schema --------------------
 
 
@@ -161,6 +163,13 @@ class PerfCfg(BaseModel):
     max_scan_days: int = 365
 
 
+class PluginCfg(BaseModel):
+    """Per-profile toggles for user-installed plugins."""
+
+    aspects: Dict[str, bool] = Field(default_factory=dict)
+    lots: Dict[str, bool] = Field(default_factory=dict)
+
+
 class Settings(BaseModel):
     """Top-level settings model persisted on disk."""
 
@@ -180,6 +189,7 @@ class Settings(BaseModel):
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
+    plugins: PluginCfg = Field(default_factory=PluginCfg)
 
 
 # -------------------- I/O Helpers --------------------
@@ -222,6 +232,7 @@ def save_settings(settings: Settings, path: Optional[Path] = None) -> Path:
     data = settings.model_dump()
     with target_path.open("w", encoding="utf-8") as handle:
         yaml.safe_dump(data, handle, sort_keys=False, allow_unicode=True)
+    apply_plugin_settings(settings)
     return target_path
 
 
@@ -235,7 +246,9 @@ def load_settings(path: Optional[Path] = None) -> Settings:
         return settings
     with source_path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
-    return Settings(**data)
+    settings = Settings(**data)
+    apply_plugin_settings(settings)
+    return settings
 
 
 def ensure_default_config() -> Path:

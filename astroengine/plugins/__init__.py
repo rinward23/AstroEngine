@@ -10,6 +10,20 @@ from typing import TYPE_CHECKING, Any
 
 import pluggy
 
+from .registry import (
+    ASPECT_REGISTRY,
+    LOT_REGISTRY,
+    AspectPluginSpec,
+    LotPluginSpec,
+    apply_plugin_settings,
+    ensure_user_plugins_loaded,
+    iter_aspect_plugins,
+    iter_lot_plugins,
+    load_user_plugins,
+    register_aspect,
+    register_lot,
+)
+
 if TYPE_CHECKING:  # pragma: no cover - imports for static typing only
     from astroengine.exporters import LegacyTransitEvent
     from astroengine.scoring import ScoreInputs, ScoreResult
@@ -444,18 +458,29 @@ def apply_score_extensions(inputs: ScoreInputs, result: ScoreResult) -> ScoreRes
 
 
 __all__ = [
+    "ASPECT_REGISTRY",
     "PLUGIN_API_VERSION",
+    "LOT_REGISTRY",
     "DetectorContext",
     "DetectorRegistry",
     "DetectorSpec",
     "ExportContext",
+    "AspectPluginSpec",
     "PluginRuntime",
     "ScoreExtensionRegistry",
     "ScoreExtensionSpec",
+    "LotPluginSpec",
     "UIPanelSpec",
+    "apply_plugin_settings",
     "apply_score_extensions",
+    "ensure_user_plugins_loaded",
     "get_plugin_manager",
     "hookimpl",
     "hookspec",
+    "iter_aspect_plugins",
+    "iter_lot_plugins",
+    "load_user_plugins",
+    "register_aspect",
+    "register_lot",
     "set_plugin_manager",
 ]
