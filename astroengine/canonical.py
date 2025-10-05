@@ -22,6 +22,35 @@ except ModuleNotFoundError as exc:  # pragma: no cover - allows lightweight impo
 
 
 
+_CANONICAL_PRECISION = 8
+
+
+def _round_float(value: float) -> float:
+    """Round ``value`` to the canonical precision used for ephemeris payloads."""
+
+    return round(float(value), _CANONICAL_PRECISION)
+
+
+def _normalize_longitude(value: float) -> float:
+    """Return ``value`` wrapped into ``[0, 360)`` with canonical rounding."""
+
+    lon = float(value) % 360.0
+    if lon < 0:
+        lon += 360.0
+    normalized = _round_float(lon)
+    # Guard against values like 359.9999999999 -> 360.0 due to rounding.
+    if normalized >= 360.0:
+        return 0.0
+    return normalized
+
+
+def _normalize_declination(value: float) -> float:
+    """Clamp declinations to ``[-90, +90]`` and round deterministically."""
+
+    dec = max(-90.0, min(90.0, float(value)))
+    return _round_float(dec)
+
+
 AspectName = Literal[
     "conjunction",
     "sextile",
@@ -55,6 +84,12 @@ class BodyPosition:
     lat: float
     dec: float
     speed_lon: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "lon", _normalize_longitude(self.lon))
+        object.__setattr__(self, "lat", _round_float(self.lat))
+        object.__setattr__(self, "dec", _normalize_declination(self.dec))
+        object.__setattr__(self, "speed_lon", _round_float(self.speed_lon))
 
 
 @dataclass(frozen=True)
