@@ -87,6 +87,7 @@ __all__ = [
     "MidpointTreeCfg",
     "NarrativeCfg",
     "RenderingCfg",
+    "FixedStarsCfg",
     "EphemerisCfg",
     "PerfCfg",
     "config_path",
