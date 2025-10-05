@@ -31,6 +31,7 @@ from .settings import (
     MidpointsCfg,
     MultiWheelCfg,
     NarrativeCfg,
+    NarrativeMixCfg,
     ObservabilityCfg,
     PerfCfg,
     PrimaryDirectionsCfg,
@@ -51,6 +52,16 @@ from .settings import (
     get_config_home,
     load_settings,
     save_settings,
+    compose_narrative_from_mix,
+    save_mix_as_user_narrative_profile,
+)
+from .narrative_profiles import (
+    NARRATIVE_PROFILES_DIRNAME,
+    built_in_narrative_profiles,
+    list_narrative_profiles,
+    load_narrative_profile_overlay,
+    narrative_profiles_home,
+    save_user_narrative_profile,
 )
 from .profiles import (
     PROFILES_DIRNAME,
@@ -102,6 +113,7 @@ __all__ = [
     "MidpointsCfg",
     "MidpointTreeCfg",
     "NarrativeCfg",
+    "NarrativeMixCfg",
     "MultiWheelCfg",
     "RenderingCfg",
     "FixedStarsCfg",
@@ -114,6 +126,8 @@ __all__ = [
     "default_settings",
     "load_settings",
     "save_settings",
+    "compose_narrative_from_mix",
+    "save_mix_as_user_narrative_profile",
     "ensure_default_config",
     "PROFILES_DIRNAME",
     "built_in_profiles",
@@ -123,4 +137,10 @@ __all__ = [
     "apply_profile_overlay",
     "save_user_profile",
     "delete_user_profile",
+    "NARRATIVE_PROFILES_DIRNAME",
+    "built_in_narrative_profiles",
+    "list_narrative_profiles",
+    "load_narrative_profile_overlay",
+    "narrative_profiles_home",
+    "save_user_narrative_profile",
 ]

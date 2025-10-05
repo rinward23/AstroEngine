@@ -5,12 +5,44 @@ from typing import Any, Dict, List
 
 import streamlit as st
 
-SYSTEM_PROMPT = (
-    "You are AstroEngine Copilot — an astrology assistant. "
-    "Be concise, accurate, and cite internal findings by referring to data returned by local endpoints when available. "
-    "If the user asks about charts, techniques, or diagnostics, you may suggest hitting local endpoints like /v1/settings or /healthz if the user consents. "
-    "Never fabricate data; if unsure, ask to run a local check (e.g., /healthz)."
-)
+
+def build_system_prompt() -> str:
+    from astroengine.config import compose_narrative_from_mix, load_settings
+
+    settings = load_settings()
+    try:
+        effective = compose_narrative_from_mix(settings, settings.narrative_mix)
+    except Exception:
+        effective = settings.narrative
+    style_bits = [
+        f"mode={effective.mode}",
+        f"tone={effective.tone}",
+        f"length={effective.length}",
+        f"verbosity={effective.verbosity:.2f}",
+    ]
+    sources_enabled = sorted(
+        [key for key, enabled in (effective.sources or {}).items() if enabled]
+    )
+    frameworks_enabled = sorted(
+        [key for key, enabled in (effective.frameworks or {}).items() if enabled]
+    )
+    esoteric_bits = []
+    if effective.esoteric.tarot_enabled:
+        esoteric_bits.append(f"tarot:{effective.esoteric.tarot_deck}")
+    if effective.esoteric.numerology_enabled:
+        esoteric_bits.append(
+            f"numerology:{effective.esoteric.numerology_system}"
+        )
+    sources = ",".join(sources_enabled) if sources_enabled else "aspects only"
+    frameworks = ",".join(frameworks_enabled) if frameworks_enabled else "none"
+    esoteric = ",".join(esoteric_bits) if esoteric_bits else "none"
+    return (
+        "You are AstroEngine Copilot — an astrology assistant. "
+        "Adopt the configured narrative style and data sources. "
+        f"Style: {'; '.join(style_bits)}. Sources: {sources}. Frameworks: {frameworks}. Esoteric: {esoteric}. "
+        "Be concise and accurate; when in doubt, suggest checking local endpoints (e.g., /v1/settings, /healthz). "
+        "Never fabricate data."
+    )
 
 DEFAULT_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 DEFAULT_API_BASE = os.environ.get("OPENAI_BASE_URL", None)
@@ -19,7 +51,7 @@ DEFAULT_API_BASE = os.environ.get("OPENAI_BASE_URL", None)
 def _ensure_state() -> None:
     if "chat_messages" not in st.session_state:
         st.session_state.chat_messages = [
-            {"role": "system", "content": SYSTEM_PROMPT}
+            {"role": "system", "content": build_system_prompt()}
         ]
     if "openai_model" not in st.session_state:
         st.session_state.openai_model = DEFAULT_MODEL
@@ -132,6 +164,10 @@ def chatgpt_panel() -> None:
             with st.chat_message("assistant"):
                 # Stream tokens
                 try:
+                    st.session_state.chat_messages[0] = {
+                        "role": "system",
+                        "content": build_system_prompt(),
+                    }
                     stream = _call_openai(
                         messages=st.session_state.chat_messages,
                         model=st.session_state.openai_model,
