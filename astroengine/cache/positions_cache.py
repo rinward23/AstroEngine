@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS positions_daily (
   speed REAL,
   PRIMARY KEY (day_jd, body)
 );
+CREATE INDEX IF NOT EXISTS ix_positions_daily_day_body
+  ON positions_daily(day_jd, body);
 """,
     "get": "SELECT lon FROM positions_daily WHERE day_jd=? AND body=?",
     "upsert": (
@@ -32,7 +34,10 @@ CREATE TABLE IF NOT EXISTS positions_daily (
 
 def _connect():
     con = sqlite3.connect(str(DB))
-    con.execute(_SQL["init"])
+    con.execute("PRAGMA journal_mode=WAL;")
+    con.execute("PRAGMA synchronous=NORMAL;")
+    con.executescript(_SQL["init"])
+    con.commit()
     return con
 
 
