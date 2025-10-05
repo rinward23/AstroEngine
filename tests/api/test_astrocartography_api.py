@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from astroengine.analysis.astrocartography import AstrocartographyResult, MapLine
 from astroengine.api import create_app
 from astroengine.userdata import vault
 
@@ -42,3 +43,39 @@ def test_astrocartography_endpoint_returns_geojson(monkeypatch: pytest.MonkeyPat
     assert first["type"] == "Feature"
     assert first["geometry"]["type"] == "LineString"
     assert len(first["geometry"]["coordinates"]) >= 2
+
+
+def test_astrocartography_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    _save_sample_natal()
+
+    dummy_result = AstrocartographyResult(
+        lines=(
+            MapLine(
+                body="sun",
+                kind="MC",
+                coordinates=((0.0, 0.0), (10.0, 10.0)),
+                metadata={"strength": 1.0},
+            ),
+        ),
+        parans=(),
+    )
+
+    monkeypatch.setattr(
+        "astroengine.api.routers.astrocartography.compute_astrocartography_lines",
+        lambda *args, **kwargs: dummy_result,
+    )
+
+    app = create_app()
+    client = TestClient(app)
+    params = {"natal_id": "sample", "bodies": "sun"}
+
+    for _ in range(10):
+        ok = client.get("/v1/astrocartography", params=params)
+        assert ok.status_code == 200
+
+    limited = client.get("/v1/astrocartography", params=params)
+    assert limited.status_code == 429
+    detail = limited.json()["detail"]
+    assert detail["code"] == "rate_limited"
+    assert "please try again" in detail["message"].lower()
+    assert int(limited.headers["Retry-After"]) >= 0
