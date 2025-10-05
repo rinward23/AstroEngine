@@ -78,6 +78,47 @@ def register_developer_platform_module(registry: AstroRegistry) -> None:
         },
     )
 
+    codex = module.register_submodule(
+        "codex",
+        metadata={
+            "description": "Developer codex surfaces for inspecting registry assets.",
+            "docs": ["docs/module/developer_platform/codex.md"],
+            "status": "beta",
+        },
+    )
+    access = codex.register_channel(
+        "access",
+        metadata={
+            "description": "Entry points that expose the registry hierarchy to developers.",
+        },
+    )
+    access.register_subchannel(
+        "cli",
+        metadata={
+            "description": "Command line interface for browsing codex metadata.",
+            "status": "available",
+        },
+        payload={
+            "command": "astroengine codex",
+            "documentation": "docs/module/developer_platform/codex.md#cli",
+        },
+    )
+    access.register_subchannel(
+        "python",
+        metadata={
+            "description": "Python helpers for programmatic codex exploration.",
+            "status": "available",
+        },
+        payload={
+            "module": "astroengine.codex",
+            "functions": [
+                "astroengine.codex.describe_path",
+                "astroengine.codex.resolved_files",
+            ],
+            "documentation": "docs/module/developer_platform/codex.md#python",
+        },
+    )
+
     devportal = module.register_submodule(
         "devportal",
         metadata={

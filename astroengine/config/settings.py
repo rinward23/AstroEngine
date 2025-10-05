@@ -310,6 +310,10 @@ class AstroCartoCfg(BaseModel):
     show_parans: bool = False
 
 
+class AstrocartographyCfg(AstroCartoCfg):
+    """Backward-compatible alias for :class:`AstroCartoCfg`."""
+
+
 class MidpointTreeCfg(BaseModel):
     """Tree settings for midpoint expansion."""
 
@@ -505,6 +509,13 @@ class ElectionalCfg(BaseModel):
         return max(1, min(60, int(value)))
 
 
+class PluginCfg(BaseModel):
+    """Plugin enablement state segregated by capability."""
+
+    aspects: Optional[Dict[str, bool]] = None
+    lots: Optional[Dict[str, bool]] = None
+
+
 class ReturnsIngressCfg(BaseModel):
     """Return and ingress toggles."""
 
@@ -614,8 +625,7 @@ class Settings(BaseModel):
     timeline_ui: TimelineUICfg = Field(default_factory=TimelineUICfg)
     reports: ReportsCfg = Field(default_factory=ReportsCfg)
     atlas: AtlasCfg = Field(default_factory=AtlasCfg)
-    observability: ObservabilityCfg = Field(default_factory=ObservabilityCfg)
-    chat: ChatCfg = Field(default_factory=ChatCfg)
+    plugins: PluginCfg = Field(default_factory=PluginCfg)
 
 
 # -------------------- I/O Helpers --------------------
