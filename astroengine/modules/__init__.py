@@ -12,6 +12,7 @@ from .narrative import register_narrative_module
 from .jyotish import register_jyotish_module
 from .interop import register_interop_module
 from .predictive import register_predictive_module
+from .reference import register_reference_module
 from .registry import (
     AstroChannel,
     AstroModule,
@@ -52,6 +53,7 @@ def bootstrap_default_registry() -> AstroRegistry:
     register_ux_module(registry)
     register_integrations_module(registry)
     register_data_packs_module(registry)
+    register_reference_module(registry)
     register_providers_module(registry)
     register_interop_module(registry)
     register_developer_platform_module(registry)
