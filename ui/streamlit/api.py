@@ -67,6 +67,36 @@ class APIClient:
         except ValueError as exc:  # pragma: no cover - streamlit UI only
             raise RuntimeError("API returned a non-JSON response") from exc
 
+    # ---- Natals ------------------------------------------------------------
+    def list_natals(self, page: int = 1, page_size: int = 100) -> Dict[str, Any]:
+        """Return a page of stored natal charts."""
+
+        response = requests.get(
+            f"{self.base}/v1/natals",
+            params={"page": page, "page_size": page_size},
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/natals")
+        return data
+
+    # ---- Analysis ----------------------------------------------------------
+    def analysis_lots(self, natal_id: str) -> Dict[str, Any]:
+        """Compute Arabic Parts for ``natal_id`` via the analysis endpoint."""
+
+        response = requests.get(
+            f"{self.base}/v1/analysis/lots",
+            params={"natal_id": natal_id},
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/analysis/lots")
+        return data
+
     # ---- Aspects -----------------------------------------------------------
     def aspects_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Call the aspect search endpoint and return the parsed JSON body."""
