@@ -393,6 +393,14 @@ class RulesetVersion(ModuleScopeMixin, TimestampMixin, Base):
             "channel",
             "subchannel",
         ),
+        Index(
+            "ix_ruleset_versions_scope_key",
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+            "ruleset_key",
+        ),
         Index("ix_ruleset_versions_created_at", "created_at"),
     )
 

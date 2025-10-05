@@ -39,13 +39,13 @@ def main() -> None:
 
     host = os.getenv("UVICORN_HOST", "0.0.0.0")
     port = int(os.getenv("UVICORN_PORT", os.getenv("PORT", "8000")))
+    timeout_keep_alive = _env_positive_int("UVICORN_TIMEOUT_KEEP_ALIVE") or 10
     uvicorn.run(
         "app.main:app",
         host=host,
         port=port,
         workers=determine_worker_count(),
-        loop="uvloop",
-        http="httptools",
+        timeout_keep_alive=timeout_keep_alive,
     )
 
 

@@ -97,13 +97,13 @@ def scan_lot_events(
 
     events: list[LotEvent] = []
     for body in bodies:
-        current = t0
-        body_val, body_speed = _get_longitude(ephem, body, current)
         for angle in angles:
+            current = t0
+            body_val, body_speed = _get_longitude(ephem, body, current)
             allowance = _resolve_orb(policy, body, angle)
             target = angle if abs(_angular_separation(body_val, lot_lambda) - angle) <= abs(_angular_separation(body_val, lot_lambda) + angle) else -angle
             diff_prev = _angular_separation(body_val, lot_lambda) - target
-            while current <= t1:
+            while current < t1:
                 next_time = min(current + step, t1)
                 body_next, _ = _get_longitude(ephem, body, next_time)
                 diff_next = _angular_separation(body_next, lot_lambda) - target
@@ -141,9 +141,7 @@ def scan_lot_events(
                                 metadata=_event_metadata(angle, int(round(360 / angle)) if angle else 0),
                             )
                         )
-                    diff_prev = diff_next
-                else:
-                    diff_prev = diff_next
+                diff_prev = diff_next
                 current = next_time
                 body_val = body_next
     events.sort(key=lambda event: event.timestamp)
