@@ -16,15 +16,8 @@ try:  # pragma: no cover - optional dependency
 except Exception:  # pragma: no cover
     sqlite3 = None  # type: ignore[assignment]
 
-try:  # pragma: no cover - optional dependency
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-
-    _PARQUET_OK = True
-except Exception:  # pragma: no cover
-    pa = None  # type: ignore[assignment]
-    pq = None  # type: ignore[assignment]
-    _PARQUET_OK = False
+_PYARROW_MODULES: tuple[_TypingAny, _TypingAny] | None = None
+_PARQUET_OK: bool | None = None
 
 __all__ = [
     "LegacyTransitEvent",
@@ -34,6 +27,29 @@ __all__ = [
     "write_parquet_canonical",
     "parquet_available",
 ]
+
+
+def _load_pyarrow(*, required: bool) -> tuple[_TypingAny, _TypingAny] | None:
+    """Import :mod:`pyarrow` lazily to avoid CLI cold-start penalties."""
+
+    global _PYARROW_MODULES, _PARQUET_OK
+
+    if _PYARROW_MODULES is not None:
+        _PARQUET_OK = True
+        return _PYARROW_MODULES
+
+    try:  # pragma: no cover - optional dependency
+        import pyarrow as pa_module
+        import pyarrow.parquet as pq_module
+    except Exception as exc:  # pragma: no cover - optional dependency
+        _PARQUET_OK = False
+        if required:
+            raise ImportError("pyarrow not installed") from exc
+        return None
+
+    _PYARROW_MODULES = (pa_module, pq_module)
+    _PARQUET_OK = True
+    return _PYARROW_MODULES
 
 
 @dataclass
@@ -137,14 +153,16 @@ class ParquetExporter:
     """Write transit events as a Parquet dataset."""
 
     def __init__(self, path: str | Path) -> None:
-        if pa is None or pq is None:  # pragma: no cover - optional dependency
-            raise ImportError("pyarrow not installed")
+        if _load_pyarrow(required=False) is None:
+            _load_pyarrow(required=True)
         self.path = str(path)
 
     def write(self, events: Iterable[LegacyTransitEvent]) -> None:
-        assert pa is not None and pq is not None  # for mypy/pyright
-        table = pa.Table.from_pylist([event.to_dict() for event in events])
-        pq.write_table(table, self.path)
+        modules = _load_pyarrow(required=True)
+        assert modules is not None  # for type-checkers
+        pa_module, pq_module = modules
+        table = pa_module.Table.from_pylist([event.to_dict() for event in events])
+        pq_module.write_table(table, self.path)
 
 
 # >>> AUTO-GEN BEGIN: Canonical Export Adapters v1.0
@@ -165,4 +183,6 @@ def write_parquet_canonical(path: str, events: _TypingIterable[_TypingAny]) -> i
 
 
 def parquet_available() -> bool:
-    return _PARQUET_OK
+    if _PARQUET_OK is None:
+        _load_pyarrow(required=False)
+    return bool(_PARQUET_OK)

@@ -9,8 +9,6 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
-from sqlalchemy import create_engine
-from sqlalchemy.pool import NullPool
 
 
 def _absolute_sqlite_url(db_path: str | Path) -> str:
@@ -46,6 +44,9 @@ class SQLiteMigrator:
         command.downgrade(self._config(), revision)
 
     def current(self) -> str | None:
+        from sqlalchemy import create_engine
+        from sqlalchemy.pool import NullPool
+
         engine = create_engine(
             _absolute_sqlite_url(self.db_path), future=True, poolclass=NullPool
         )
