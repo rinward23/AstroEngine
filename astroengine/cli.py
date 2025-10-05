@@ -50,7 +50,6 @@ from .ephemeris import (
     SwissEphemerisAdapter,
     TimeScaleContext,
 )
-from .exporters import write_parquet_canonical, write_sqlite_canonical
 from .exporters_batch import export_parquet_dataset
 from .exporters_ics import (
     DEFAULT_DESCRIPTION_TEMPLATE as ICS_DEFAULT_DESCRIPTION_TEMPLATE,
@@ -61,7 +60,6 @@ from .exporters_ics import (
     write_ics_calendar,
     write_ics_canonical,
 )
-from .infrastructure.storage.sqlite import SQLiteMigrator
 from .infrastructure.storage.sqlite.query import top_events_by_score
 from .mundane import compute_solar_ingress_chart, compute_solar_quartet
 from .narrative import compose_narrative, summarize_top_events
@@ -336,6 +334,8 @@ def cmd_cache_warm(args: argparse.Namespace) -> int:
 
 
 def cmd_ops_migrate(args: argparse.Namespace) -> int:
+    from .infrastructure.storage.sqlite.engine import SQLiteMigrator
+
     migrator = SQLiteMigrator(args.sqlite)
     revision = args.revision or "head"
     try:
@@ -827,10 +827,9 @@ def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, in
 
     written: dict[str, int] = {}
     if getattr(args, "sqlite", None):
-        written["sqlite"] = write_sqlite_canonical(args.sqlite, events)
+        written["sqlite"] = _write_sqlite_canonical(args.sqlite, events)
     if getattr(args, "parquet", None):
-
-        written["parquet"] = write_parquet_canonical(args.parquet, events)
+        written["parquet"] = _write_parquet_canonical(args.parquet, events)
     runtime = get_plugin_manager()
     runtime.post_export(
         ExportContext(
@@ -841,6 +840,18 @@ def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, in
     )
 
     return written
+
+
+def _write_sqlite_canonical(path: str, events: Sequence[Any]) -> int:
+    from .exporters import write_sqlite_canonical as _impl
+
+    return _impl(path, events)
+
+
+def _write_parquet_canonical(path: str, events: Sequence[Any]) -> int:
+    from .exporters import write_parquet_canonical as _impl
+
+    return _impl(path, events)
 
 
 _ASPECT_NAME_BY_DEG = {
@@ -1053,9 +1064,9 @@ def _run_aspect_detector(
                 print(f"{label}: {exc}", file=sys.stderr)
                 return 1
             if out_kind == "sqlite":
-                rows = write_sqlite_canonical(str(path), canonical)
+                rows = _write_sqlite_canonical(str(path), canonical)
             else:
-                rows = write_parquet_canonical(str(path), canonical)
+                rows = _write_parquet_canonical(str(path), canonical)
             print(f"{label}: wrote {rows} rows to {path}")
 
     print(f"{label}: {len(hits)} hits", file=sys.stderr)
@@ -1626,14 +1637,14 @@ def cmd_scan(args: argparse.Namespace) -> int:
 
     if args.export_sqlite:
         try:
-            rows = write_sqlite_canonical(args.export_sqlite, canonical_events)
+            rows = _write_sqlite_canonical(args.export_sqlite, canonical_events)
             print(f"SQLite export complete: {args.export_sqlite} ({rows} rows)")
         except Exception as exc:
             print(f"SQLite export failed ({exc})", file=sys.stderr)
 
     if args.export_parquet:
         try:
-            rows = write_parquet_canonical(args.export_parquet, canonical_events)
+            rows = _write_parquet_canonical(args.export_parquet, canonical_events)
             print(f"Parquet export complete: {args.export_parquet} ({rows} rows)")
         except Exception as exc:
             print(f"Parquet export failed ({exc})", file=sys.stderr)
