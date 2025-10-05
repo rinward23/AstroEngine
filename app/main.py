@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+
 from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request
@@ -44,18 +45,9 @@ app.include_router(reports_router)
 
 @app.on_event("startup")
 def _init_singletons() -> None:
-    """Initialise process-scoped singletons used across request handlers."""
+    """Initialize application-wide state on startup."""
 
     app.state.trust_proxy = os.getenv("TRUST_PROXY", "0").lower() in {"1", "true", "yes"}
-    app.state.adapter = EphemerisAdapter(
-        EphemerisConfig(ephemeris_path=os.getenv("SE_EPHE_PATH"))
-    )
-
-
-def get_adapter() -> EphemerisAdapter:
-    """Return the process-local :class:`EphemerisAdapter` instance."""
-
-    return app.state.adapter
 
 
 @app.middleware("http")
