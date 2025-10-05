@@ -15,6 +15,7 @@ fi
 
 if [[ -f "${PROJECT_ROOT}/pyproject.toml" ]] || [[ -f "${PROJECT_ROOT}/setup.py" ]]; then
   pushd "${PROJECT_ROOT}" >/dev/null
+  # API + providers + UI in one go (fallback to core only if extras unavailable)
   pip install -e ".[api,providers,ui]" || pip install -e .
   popd >/dev/null
 fi
