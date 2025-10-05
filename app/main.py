@@ -30,6 +30,9 @@ from app.routers import (
     reports_router,
     relationship_router,
     transits_router,
+    notes_router,
+    data_router,
+    charts_router,
 )
 from app.routers.aspects import (  # re-exported for convenience
     clear_position_provider,
@@ -51,6 +54,9 @@ app.include_router(interpret_router)
 app.include_router(reports_router)
 app.include_router(health_router)
 app.include_router(settings_router)
+app.include_router(notes_router)
+app.include_router(data_router)
+app.include_router(charts_router)
 
 
 @app.on_event("startup")
