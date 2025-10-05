@@ -351,7 +351,7 @@ def _render_png(
         margin_left + plot_width / 2,
         margin_top + plot_height + 220,
         160,
-        image_font_module,
+        font,
     )
 
     buffer = BytesIO()
@@ -495,7 +495,7 @@ def _draw_polar(
     cx: float,
     cy: float,
     radius: float,
-    font_module,
+    font: ImageFont.ImageFont,
 ) -> None:
     for alt in (90, 60, 30, 0):
         r = _polar_radius(alt, radius)
@@ -505,11 +505,10 @@ def _draw_polar(
         x = cx + radius * math.sin(theta)
         y = cy - radius * math.cos(theta)
         draw.line([cx, cy, x, y], fill="#ffffff20")
-    label_font = font_module.load_default()
-    draw.text((cx - 5, cy - radius - 20), "N", fill="#ffffff", font=label_font)
-    draw.text((cx + radius + 5, cy - 5), "E", fill="#ffffff", font=label_font)
-    draw.text((cx - 5, cy + radius + 5), "S", fill="#ffffff", font=label_font)
-    draw.text((cx - radius - 20, cy - 5), "W", fill="#ffffff", font=label_font)
+    draw.text((cx - 5, cy - radius - 20), "N", fill="#ffffff", font=font)
+    draw.text((cx + radius + 5, cy - 5), "E", fill="#ffffff", font=font)
+    draw.text((cx - 5, cy + radius + 5), "S", fill="#ffffff", font=font)
+    draw.text((cx - radius - 20, cy - 5), "W", fill="#ffffff", font=font)
     path = []
     for s in samples:
         r = _polar_radius(s.altitude_deg, radius)

@@ -7,7 +7,7 @@ help:
 setup:
 	python -m pip install --upgrade pip
 	@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-	@if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e . || true; fi
+	@if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e ".[api,providers,ui]" || pip install -e .; fi
 	python -m astroengine.diagnostics --strict || true
 
 install-optional:
