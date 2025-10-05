@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from astroengine.config import Settings
-from astroengine.geo.atlas import AtlasLookupError, geocode
+from astroengine.geo.atlas import AtlasLookupError, GeocodeResult, geocode
 
 
 def _offline_settings(db_path: Path) -> Settings:
@@ -44,3 +44,30 @@ def test_geocode_offline_missing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     with pytest.raises(AtlasLookupError) as excinfo:
         geocode("Nowhere")
     assert "Offline atlas database not found" in str(excinfo.value)
+
+
+def test_geocode_online_disabled_by_default() -> None:
+    settings = Settings()
+
+    with pytest.raises(AtlasLookupError) as excinfo:
+        geocode("Anywhere", settings=settings)
+
+    assert "Online atlas fallback is disabled" in str(excinfo.value)
+
+
+def test_geocode_uses_online_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = Settings()
+    settings.atlas.online_fallback_enabled = True
+
+    calls: dict[str, int] = {"count": 0}
+
+    def _fake_online(query: str) -> GeocodeResult:  # type: ignore[name-defined]
+        calls["count"] += 1
+        return {"name": query.title(), "lat": 1.0, "lon": 2.0, "tz": "UTC"}
+
+    monkeypatch.setattr("astroengine.geo.atlas._geocode_online", _fake_online)
+
+    result = geocode("sample", settings=settings)
+
+    assert result["name"] == "Sample"
+    assert calls["count"] == 1
