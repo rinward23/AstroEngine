@@ -65,9 +65,17 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         )
         rate_headers: dict[str, str] | None = None
         if self.rate_limiter is not None:
-            identity = request.headers.get("x-forwarded-for") or (
-                request.client.host if request.client else "anonymous"
+            identity = (
+                request.client.host if request.client and request.client.host else "anonymous"
             )
+            trust_proxy = getattr(request.app.state, "trust_proxy", False)
+            if trust_proxy:
+                x_real = request.headers.get("x-real-ip")
+                xff = request.headers.get("x-forwarded-for")
+                if x_real:
+                    identity = x_real.strip()
+                elif xff:
+                    identity = xff.split(",")[0].strip()
             result = await self.rate_limiter.check(identity)
             rate_headers = {
                 "X-RateLimit-Limit": str(self.rate_limiter.limit),

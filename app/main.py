@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import os
+
 from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request
@@ -37,6 +39,13 @@ app.include_router(lots_router)
 app.include_router(relationship_router)
 app.include_router(interpret_router)
 app.include_router(reports_router)
+
+
+@app.on_event("startup")
+def _init_singletons() -> None:
+    """Initialize application-wide state on startup."""
+
+    app.state.trust_proxy = os.getenv("TRUST_PROXY", "0").lower() in {"1", "true", "yes"}
 
 
 @app.middleware("http")
