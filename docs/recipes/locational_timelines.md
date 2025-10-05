@@ -23,7 +23,9 @@ longitude points. Feed the JSON into GIS tooling to draw world maps or
 overlay angular lines on a projection of your choice.
 
 Python callers can use :func:`astroengine.ux.maps.astrocartography_lines`
-for the same payload while keeping everything in-memory.
+for the same payload while keeping everything in-memory. The REST API also
+offers ``GET /v1/astrocartography`` which returns a GeoJSON FeatureCollection
+ready for mapping front-ends.
 
 ## Local space azimuths
 
