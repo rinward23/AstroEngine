@@ -36,11 +36,11 @@ class BodyLimitMiddleware(BaseHTTPMiddleware):
         if header_len and int(header_len) > self.max_bytes:
             payload = ApiError(code="REQUEST_TOO_LARGE", message="Payload exceeds limit").model_dump()
             return JSONResponse(status_code=413, content=payload)
+        # Starlette caches the body after it is first read; no need to store it on the request.
         body = await request.body()
         if len(body) > self.max_bytes:
             payload = ApiError(code="REQUEST_TOO_LARGE", message="Payload exceeds limit").model_dump()
             return JSONResponse(status_code=413, content=payload)
-        request._body = body  # type: ignore[attr-defined]
         return await call_next(request)
 
 
