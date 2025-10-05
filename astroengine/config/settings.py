@@ -145,6 +145,13 @@ class RenderingCfg(BaseModel):
     glyph_set: Literal["default", "classic", "modern"] = "default"
 
 
+class DignitiesCfg(BaseModel):
+    """Configuration toggle for dignity scoring outputs."""
+
+    enabled: bool = True
+    scoring: Literal["lilly"] = "lilly"
+
+
 class EphemerisCfg(BaseModel):
     """Ephemeris source configuration."""
 
@@ -178,6 +185,7 @@ class Settings(BaseModel):
     charts: ChartsCfg = Field(default_factory=ChartsCfg)
     narrative: NarrativeCfg = Field(default_factory=NarrativeCfg)
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
+    dignities: DignitiesCfg = Field(default_factory=DignitiesCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
 

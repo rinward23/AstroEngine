@@ -1,0 +1,235 @@
+{
+  "metadata": {
+    "source": "William Lilly, Christian Astrology (1647) table of essential dignities",
+    "notes": "Classical rulers with Dorothean triplicity order, Egyptian terms, and Chaldean faces. Degrees are given for exaltations and corresponding falls."
+  },
+  "signs": {
+    "aries": {
+      "rulers": ["mars"],
+      "detriments": ["venus"],
+      "exaltation": {"planet": "sun", "degree": 19.0},
+      "fall": {"planet": "saturn", "degree": 21.0},
+      "triplicity": {"day": "sun", "night": "jupiter", "participating": "saturn"},
+      "terms": [
+        {"start": 0.0, "end": 6.0, "ruler": "jupiter"},
+        {"start": 6.0, "end": 14.0, "ruler": "venus"},
+        {"start": 14.0, "end": 21.0, "ruler": "mercury"},
+        {"start": 21.0, "end": 26.0, "ruler": "mars"},
+        {"start": 26.0, "end": 30.0, "ruler": "saturn"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "mars"},
+        {"start": 10.0, "end": 20.0, "ruler": "sun"},
+        {"start": 20.0, "end": 30.0, "ruler": "venus"}
+      ]
+    },
+    "taurus": {
+      "rulers": ["venus"],
+      "detriments": ["mars"],
+      "exaltation": {"planet": "moon", "degree": 3.0},
+      "fall": null,
+      "triplicity": {"day": "venus", "night": "moon", "participating": "mars"},
+      "terms": [
+        {"start": 0.0, "end": 8.0, "ruler": "venus"},
+        {"start": 8.0, "end": 14.0, "ruler": "mercury"},
+        {"start": 14.0, "end": 22.0, "ruler": "jupiter"},
+        {"start": 22.0, "end": 27.0, "ruler": "saturn"},
+        {"start": 27.0, "end": 30.0, "ruler": "mars"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "mercury"},
+        {"start": 10.0, "end": 20.0, "ruler": "moon"},
+        {"start": 20.0, "end": 30.0, "ruler": "saturn"}
+      ]
+    },
+    "gemini": {
+      "rulers": ["mercury"],
+      "detriments": ["jupiter"],
+      "exaltation": null,
+      "fall": null,
+      "triplicity": {"day": "saturn", "night": "mercury", "participating": "jupiter"},
+      "terms": [
+        {"start": 0.0, "end": 6.0, "ruler": "mercury"},
+        {"start": 6.0, "end": 14.0, "ruler": "jupiter"},
+        {"start": 14.0, "end": 21.0, "ruler": "venus"},
+        {"start": 21.0, "end": 28.0, "ruler": "mars"},
+        {"start": 28.0, "end": 30.0, "ruler": "saturn"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "jupiter"},
+        {"start": 10.0, "end": 20.0, "ruler": "mars"},
+        {"start": 20.0, "end": 30.0, "ruler": "sun"}
+      ]
+    },
+    "cancer": {
+      "rulers": ["moon"],
+      "detriments": ["saturn"],
+      "exaltation": {"planet": "jupiter", "degree": 15.0},
+      "fall": {"planet": "mars", "degree": 28.0},
+      "triplicity": {"day": "venus", "night": "mars", "participating": "moon"},
+      "terms": [
+        {"start": 0.0, "end": 6.0, "ruler": "moon"},
+        {"start": 6.0, "end": 13.0, "ruler": "venus"},
+        {"start": 13.0, "end": 20.0, "ruler": "mercury"},
+        {"start": 20.0, "end": 27.0, "ruler": "jupiter"},
+        {"start": 27.0, "end": 30.0, "ruler": "mars"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "venus"},
+        {"start": 10.0, "end": 20.0, "ruler": "mercury"},
+        {"start": 20.0, "end": 30.0, "ruler": "moon"}
+      ]
+    },
+    "leo": {
+      "rulers": ["sun"],
+      "detriments": ["saturn"],
+      "exaltation": null,
+      "fall": null,
+      "triplicity": {"day": "sun", "night": "jupiter", "participating": "saturn"},
+      "terms": [
+        {"start": 0.0, "end": 6.0, "ruler": "saturn"},
+        {"start": 6.0, "end": 13.0, "ruler": "jupiter"},
+        {"start": 13.0, "end": 20.0, "ruler": "mars"},
+        {"start": 20.0, "end": 27.0, "ruler": "sun"},
+        {"start": 27.0, "end": 30.0, "ruler": "venus"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "saturn"},
+        {"start": 10.0, "end": 20.0, "ruler": "jupiter"},
+        {"start": 20.0, "end": 30.0, "ruler": "mars"}
+      ]
+    },
+    "virgo": {
+      "rulers": ["mercury"],
+      "detriments": ["jupiter"],
+      "exaltation": {"planet": "mercury", "degree": 15.0},
+      "fall": {"planet": "venus", "degree": 27.0},
+      "triplicity": {"day": "venus", "night": "moon", "participating": "mars"},
+      "terms": [
+        {"start": 0.0, "end": 7.0, "ruler": "mercury"},
+        {"start": 7.0, "end": 13.0, "ruler": "venus"},
+        {"start": 13.0, "end": 17.0, "ruler": "jupiter"},
+        {"start": 17.0, "end": 21.0, "ruler": "mercury"},
+        {"start": 21.0, "end": 24.0, "ruler": "mars"},
+        {"start": 24.0, "end": 30.0, "ruler": "saturn"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "sun"},
+        {"start": 10.0, "end": 20.0, "ruler": "venus"},
+        {"start": 20.0, "end": 30.0, "ruler": "mercury"}
+      ]
+    },
+    "libra": {
+      "rulers": ["venus"],
+      "detriments": ["mars"],
+      "exaltation": {"planet": "saturn", "degree": 21.0},
+      "fall": {"planet": "sun", "degree": 19.0},
+      "triplicity": {"day": "saturn", "night": "mercury", "participating": "jupiter"},
+      "terms": [
+        {"start": 0.0, "end": 6.0, "ruler": "saturn"},
+        {"start": 6.0, "end": 14.0, "ruler": "mercury"},
+        {"start": 14.0, "end": 21.0, "ruler": "jupiter"},
+        {"start": 21.0, "end": 28.0, "ruler": "venus"},
+        {"start": 28.0, "end": 30.0, "ruler": "mars"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "moon"},
+        {"start": 10.0, "end": 20.0, "ruler": "saturn"},
+        {"start": 20.0, "end": 30.0, "ruler": "jupiter"}
+      ]
+    },
+    "scorpio": {
+      "rulers": ["mars"],
+      "detriments": ["venus"],
+      "exaltation": null,
+      "fall": {"planet": "moon", "degree": 3.0},
+      "triplicity": {"day": "venus", "night": "mars", "participating": "moon"},
+      "terms": [
+        {"start": 0.0, "end": 7.0, "ruler": "mars"},
+        {"start": 7.0, "end": 13.0, "ruler": "venus"},
+        {"start": 13.0, "end": 19.0, "ruler": "mercury"},
+        {"start": 19.0, "end": 24.0, "ruler": "jupiter"},
+        {"start": 24.0, "end": 30.0, "ruler": "saturn"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "mars"},
+        {"start": 10.0, "end": 20.0, "ruler": "sun"},
+        {"start": 20.0, "end": 30.0, "ruler": "venus"}
+      ]
+    },
+    "sagittarius": {
+      "rulers": ["jupiter"],
+      "detriments": ["mercury"],
+      "exaltation": null,
+      "fall": null,
+      "triplicity": {"day": "sun", "night": "jupiter", "participating": "saturn"},
+      "terms": [
+        {"start": 0.0, "end": 12.0, "ruler": "jupiter"},
+        {"start": 12.0, "end": 19.0, "ruler": "venus"},
+        {"start": 19.0, "end": 26.0, "ruler": "mercury"},
+        {"start": 26.0, "end": 30.0, "ruler": "saturn"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "mercury"},
+        {"start": 10.0, "end": 20.0, "ruler": "moon"},
+        {"start": 20.0, "end": 30.0, "ruler": "saturn"}
+      ]
+    },
+    "capricorn": {
+      "rulers": ["saturn"],
+      "detriments": ["moon"],
+      "exaltation": {"planet": "mars", "degree": 28.0},
+      "fall": {"planet": "jupiter", "degree": 15.0},
+      "triplicity": {"day": "venus", "night": "moon", "participating": "mars"},
+      "terms": [
+        {"start": 0.0, "end": 7.0, "ruler": "mercury"},
+        {"start": 7.0, "end": 13.0, "ruler": "jupiter"},
+        {"start": 13.0, "end": 19.0, "ruler": "venus"},
+        {"start": 19.0, "end": 26.0, "ruler": "saturn"},
+        {"start": 26.0, "end": 30.0, "ruler": "mars"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "jupiter"},
+        {"start": 10.0, "end": 20.0, "ruler": "mars"},
+        {"start": 20.0, "end": 30.0, "ruler": "sun"}
+      ]
+    },
+    "aquarius": {
+      "rulers": ["saturn"],
+      "detriments": ["sun"],
+      "exaltation": null,
+      "fall": null,
+      "triplicity": {"day": "saturn", "night": "mercury", "participating": "jupiter"},
+      "terms": [
+        {"start": 0.0, "end": 7.0, "ruler": "mercury"},
+        {"start": 7.0, "end": 13.0, "ruler": "venus"},
+        {"start": 13.0, "end": 20.0, "ruler": "jupiter"},
+        {"start": 20.0, "end": 25.0, "ruler": "mars"},
+        {"start": 25.0, "end": 30.0, "ruler": "saturn"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "venus"},
+        {"start": 10.0, "end": 20.0, "ruler": "mercury"},
+        {"start": 20.0, "end": 30.0, "ruler": "moon"}
+      ]
+    },
+    "pisces": {
+      "rulers": ["jupiter"],
+      "detriments": ["mercury"],
+      "exaltation": {"planet": "venus", "degree": 27.0},
+      "fall": {"planet": "mercury", "degree": 15.0},
+      "triplicity": {"day": "venus", "night": "mars", "participating": "moon"},
+      "terms": [
+        {"start": 0.0, "end": 12.0, "ruler": "venus"},
+        {"start": 12.0, "end": 19.0, "ruler": "jupiter"},
+        {"start": 19.0, "end": 28.0, "ruler": "mercury"},
+        {"start": 28.0, "end": 30.0, "ruler": "mars"}
+      ],
+      "faces": [
+        {"start": 0.0, "end": 10.0, "ruler": "saturn"},
+        {"start": 10.0, "end": 20.0, "ruler": "jupiter"},
+        {"start": 20.0, "end": 30.0, "ruler": "mars"}
+      ]
+    }
+  }
+}
