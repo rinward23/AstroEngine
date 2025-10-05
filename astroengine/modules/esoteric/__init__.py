@@ -201,6 +201,31 @@ def register_esoteric_module(registry: AstroRegistry) -> None:
         payload={"spreads": [spread.to_payload() for spread in TAROT_SPREADS]},
     )
 
+    adapters = module.register_submodule(
+        "adapters",
+        metadata={
+            "description": "Optional tarot and numerology prompts mapped from natal data.",
+            "notes": "Helpers surface meditative overlays only when explicitly requested.",
+        },
+    )
+    adapters.register_channel(
+        "optional_tools",
+        metadata={
+            "tarot_mapper": "astroengine.esoteric.adapters.tarot_mapper",
+            "numerology_mapper": "astroengine.esoteric.adapters.numerology_mapper",
+        },
+    ).register_subchannel(
+        "tarot_numerology",
+        metadata={
+            "description": "Expose optional tarot and numerology adapters with disclaimers.",
+            "tests": ["tests/test_esoteric_adapters.py"],
+        },
+        payload={
+            "tarot_mapper": "astroengine.esoteric.adapters.tarot_mapper",
+            "numerology_mapper": "astroengine.esoteric.adapters.numerology_mapper",
+        },
+    )
+
     numerology = module.register_submodule(
         "numerology",
         metadata={
