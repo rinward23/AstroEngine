@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import asyncio
 import time
 from typing import Dict
 
@@ -10,8 +11,28 @@ from .telemetry import get_logger
 
 try:  # pragma: no cover - optional dependency
     from redis.asyncio import Redis
-except Exception:  # pragma: no cover - redis optional
+    from redis.exceptions import (
+        ConnectionError as RedisConnectionError,
+        RedisError,
+        TimeoutError as RedisTimeoutError,
+    )
+except ImportError:  # pragma: no cover - redis optional
     Redis = None  # type: ignore[assignment]
+
+    class RedisError(Exception):  # type: ignore[dead-code]
+        """Fallback RedisError for environments without redis-py."""
+
+    class RedisConnectionError(RedisError):  # type: ignore[dead-code]
+        """Fallback connection error."""
+
+    class RedisTimeoutError(asyncio.TimeoutError):  # type: ignore[dead-code]
+        """Fallback timeout error."""
+
+    get_logger().info(
+        "redis client unavailable",
+        extra={"err_code": "REDIS_IMPORT", "request_id": "-"},
+        exc_info=True,
+    )
 
 
 @dataclass(slots=True)
@@ -32,8 +53,16 @@ class RateLimiter:
         if redis_url and Redis is not None:
             try:
                 self._redis = Redis.from_url(redis_url, encoding="utf-8", decode_responses=True)
-            except Exception as exc:  # pragma: no cover - connection errors handled at runtime
-                get_logger().warning("rate limiter redis setup failed", extra={"error": str(exc), "request_id": "-"})
+            except (RedisConnectionError, RedisError, OSError, ValueError) as exc:  # pragma: no cover - connection errors handled at runtime
+                get_logger().error(
+                    "rate limiter redis setup failed",
+                    extra={
+                        "error": str(exc),
+                        "request_id": "-",
+                        "err_code": "REDIS_CONN",
+                    },
+                    exc_info=True,
+                )
                 self._redis = None
 
     async def check(self, identity: str) -> RateLimitResult:
@@ -46,8 +75,26 @@ class RateLimiter:
                 pipe.incr(key)
                 pipe.expire(key, 120)
                 count, _ = await pipe.execute()
-            except Exception as exc:  # pragma: no cover - redis runtime failure
-                get_logger().warning("rate limiter redis failed", extra={"error": str(exc), "request_id": "-"})
+            except (RedisTimeoutError, asyncio.TimeoutError) as exc:  # pragma: no cover - redis runtime failure
+                get_logger().warning(
+                    "rate limiter redis timeout",
+                    extra={
+                        "error": str(exc),
+                        "request_id": "-",
+                        "err_code": "REDIS_TIMEOUT",
+                    },
+                    exc_info=True,
+                )
+            except (RedisError, OSError) as exc:  # pragma: no cover - redis runtime failure
+                get_logger().error(
+                    "rate limiter redis failed",
+                    extra={
+                        "error": str(exc),
+                        "request_id": "-",
+                        "err_code": "REDIS_ERROR",
+                    },
+                    exc_info=True,
+                )
             else:
                 count_int = int(count)
                 remaining = max(0, self.limit - count_int)

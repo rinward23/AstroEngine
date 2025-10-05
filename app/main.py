@@ -3,10 +3,14 @@
 
 from __future__ import annotations
 
+import os
+
 from typing import Awaitable, Callable
 
 from fastapi import FastAPI, Request
 from starlette.responses import Response
+
+from astroengine.ephemeris.adapter import EphemerisAdapter, EphemerisConfig
 
 from app.observability import configure_observability
 
@@ -39,6 +43,13 @@ app.include_router(interpret_router)
 app.include_router(reports_router)
 
 
+@app.on_event("startup")
+def _init_singletons() -> None:
+    """Initialize application-wide state on startup."""
+
+    app.state.trust_proxy = os.getenv("TRUST_PROXY", "0").lower() in {"1", "true", "yes"}
+
+
 @app.middleware("http")
 async def security_headers(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -48,8 +59,18 @@ async def security_headers(
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault(
+        "Permissions-Policy", "geolocation=(), microphone=()"
+    )
+    if request.method == "GET":
+        response.headers.setdefault("Cache-Control", "public, max-age=60")
     return response
 
 
-__all__ = ["app", "configure_position_provider", "clear_position_provider"]
+__all__ = [
+    "app",
+    "configure_position_provider",
+    "clear_position_provider",
+    "get_adapter",
+]
 

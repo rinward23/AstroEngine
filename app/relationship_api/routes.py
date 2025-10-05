@@ -64,6 +64,12 @@ def register_routes(app: FastAPI, settings: ServiceSettings) -> None:
         "/relationship/synastry",
         response_model=SynastryResponse,
         summary="Synastry hits, grid, overlay, and scores",
+        responses={
+            429: {
+                "model": ApiError,
+                "description": "Rate limited. Back off and retry after the number of seconds in the Retry-After header.",
+            }
+        },
     )
     async def synastry_endpoint(request: Request, response: Response, payload: SynastryRequest) -> SynastryResponse:
         logger = getattr(request.state, "logger", get_logger())
@@ -82,6 +88,12 @@ def register_routes(app: FastAPI, settings: ServiceSettings) -> None:
         "/relationship/composite",
         response_model=CompositeResponse,
         summary="Composite midpoint positions",
+        responses={
+            429: {
+                "model": ApiError,
+                "description": "Rate limited. Back off and retry after the number of seconds in the Retry-After header.",
+            }
+        },
     )
     async def composite_endpoint(request: Request, response: Response, payload: CompositeRequest) -> CompositeResponse:
         logger = getattr(request.state, "logger", get_logger())
@@ -99,6 +111,12 @@ def register_routes(app: FastAPI, settings: ServiceSettings) -> None:
         "/relationship/davison",
         response_model=DavisonResponse,
         summary="Davison midpoints and positions",
+        responses={
+            429: {
+                "model": ApiError,
+                "description": "Rate limited. Back off and retry after the number of seconds in the Retry-After header.",
+            }
+        },
     )
     async def davison_endpoint(request: Request, payload: DavisonRequest) -> DavisonResponse:
         logger = getattr(request.state, "logger", get_logger())

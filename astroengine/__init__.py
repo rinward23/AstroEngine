@@ -7,11 +7,22 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 try:
-    from importlib.metadata import version as _get_version
+    from importlib.metadata import PackageNotFoundError, version as _get_version
+except ImportError:  # pragma: no cover - fallback for Python <3.8 environments
+    from importlib_metadata import PackageNotFoundError, version as _get_version
 
+try:
     __version__ = _get_version("astroengine")
-except Exception:  # pragma: no cover - metadata may be unavailable in editable installs
-    __version__ = "0.0.0.dev"
+except PackageNotFoundError:  # pragma: no cover - metadata may be unavailable in editable installs
+    # When running from source without installed metadata (e.g., editable installs),
+    # surface an explicit unknown version to avoid implying a prerelease build.
+    __version__ = "0+unknown"
+
+
+def get_version() -> str:
+    """Return the resolved AstroEngine package version."""
+
+    return __version__
 
 
 from .atlas.tz import (  # noqa: F401
