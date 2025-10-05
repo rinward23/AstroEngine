@@ -33,7 +33,8 @@ class OrbPolicyInline(BaseModel):
 # ---- Request --------------------------------------------------------------
 AspectName = Literal[
     "conjunction","opposition","square","trine","sextile",
-    "quincunx","semisquare","sesquisquare","quintile","biquintile"
+    "quincunx","semisquare","sesquisquare","quintile","biquintile",
+    "antiscia","contra_antiscia"
 ]
 
 class AspectSearchRequest(BaseModel):
