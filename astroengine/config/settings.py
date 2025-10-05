@@ -180,6 +180,9 @@ class Settings(BaseModel):
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
+    eclipse_finder: bool = True
+    stations: bool = True
+    timeline_ui: bool = True
 
 
 # -------------------- I/O Helpers --------------------
