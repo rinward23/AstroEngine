@@ -75,6 +75,38 @@ The containers mount `./data` at `/app/data`, so database migrations and
 ephemeris files persist between restarts and remain available to both services.
 # >>> AUTO-GEN END: README Quick Start v1.1
 
+### Windows desktop shell
+
+The packaged Windows experience wraps the FastAPI service, Streamlit UI, and
+diagnostics inside a WebView2-powered desktop window. Launch it locally with:
+
+```bash
+python -m app.desktop.launch_desktop
+```
+
+Key behaviour:
+
+* **Native menus & tray.** Start/stop the API, reopen the embedded UI, tail
+  logs, or quit directly from the title bar menu or system tray icon.
+* **Settings editor.** Configuration lives at
+  `%LOCALAPPDATA%/AstroEngine/config.yaml` and includes database connection
+  details, Swiss Ephemeris path validation, API/Streamlit port overrides,
+  caching knobs (`AE_QCACHE_*`), logging level, theme, and auto-start toggles.
+  Updates are validated (including a live database connectivity check) before
+  being applied.
+* **Observability helpers.** Diagnostics, `/healthz`, `/metrics`, and log
+  viewers are available from the menus, and a one-click issue report bundles an
+  anonymised diagnostics snapshot for support.
+* **ChatGPT copilot.** The dockable copilot panel can tail logs, run
+  diagnostics, summarise API errors, and explain endpoints. Provide an OpenAI
+  API key and model in Settings to enable remote completions; otherwise the
+  panel falls back to deterministic tool output. Token usage is tracked with a
+  daily guardrail sourced from the desktop config.
+
+All values surfaced by the desktop shell originate from the same data-backed
+modules shipped with AstroEngine—no synthetic astrology data or guessed
+ephemerides are injected into the workflow.
+
 ### First transit sanity check
 
 Once the virtual environment is ready, confirm that the bundled CLI can
