@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Iterable
+import numpy as np
 
 from ..ephemeris import SwissEphemerisAdapter
 from ..infrastructure.home import ae_home
@@ -10,6 +11,21 @@ from ..infrastructure.home import ae_home
 CACHE_DIR = ae_home() / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 DB = CACHE_DIR / "positions.sqlite"
+
+_BODY_CODES = {
+    "sun": "SUN",
+    "moon": "MOON",
+    "mercury": "MERCURY",
+    "venus": "VENUS",
+    "mars": "MARS",
+    "jupiter": "JUPITER",
+    "saturn": "SATURN",
+    "uranus": "URANUS",
+    "neptune": "NEPTUNE",
+    "pluto": "PLUTO",
+}
+
+_SUPPORTED_BODIES = set(_BODY_CODES)
 
 _SQL = {
     "init": """
@@ -23,6 +39,7 @@ CREATE TABLE IF NOT EXISTS positions_daily (
 );
 """,
     "get": "SELECT lon FROM positions_daily WHERE day_jd=? AND body=?",
+    "get_full": "SELECT lon, lat, speed FROM positions_daily WHERE day_jd=? AND body=?",
     "upsert": (
         "INSERT OR REPLACE INTO positions_daily(day_jd, body, lon, lat, speed)"
         " VALUES (?,?,?,?,?)"
@@ -46,32 +63,35 @@ def _ensure_swiss_available() -> bool:
     return detectors_common._ensure_swiss()
 
 
-def get_lon_daily(jd_ut: float, body: str) -> float:
+def supported_body(body: str) -> bool:
+    return body.lower() in _SUPPORTED_BODIES
+
+
+def get_daily_entry(
+    jd_ut: float, body: str
+) -> tuple[float, float | None, float | None]:
+    normalized = body.lower()
     con = _connect()
     try:
-        cur = con.execute(_SQL["get"], (_day_jd(jd_ut), body.lower()))
+        cur = con.execute(_SQL["get_full"], (_day_jd(jd_ut), normalized))
         row = cur.fetchone()
         if row is not None:
-            return float(row[0])
+            lon, lat, speed = row
+            lon_f = float(lon)
+            lat_f = None if lat is None else float(lat)
+            speed_f = None if speed is None else float(speed)
+            return lon_f, lat_f, speed_f
     finally:
         con.close()
-    # miss → compute and store
+
     if not _ensure_swiss_available():
         raise RuntimeError("Swiss ephemeris unavailable for cache compute")
     import swisseph as swe  # type: ignore
 
-    code = {
-        "sun": swe.SUN,
-        "moon": swe.MOON,
-        "mercury": swe.MERCURY,
-        "venus": swe.VENUS,
-        "mars": swe.MARS,
-        "jupiter": swe.JUPITER,
-        "saturn": swe.SATURN,
-        "uranus": swe.URANUS,
-        "neptune": swe.NEPTUNE,
-        "pluto": swe.PLUTO,
-    }[body.lower()]
+    try:
+        code = int(getattr(swe, _BODY_CODES[normalized]))
+    except (KeyError, AttributeError) as exc:
+        raise ValueError(f"Unsupported body '{body}' for daily cache") from exc
     adapter = SwissEphemerisAdapter.get_default_adapter()
     sample = adapter.body_position(float(_day_jd(jd_ut)), code, body_name=body.title())
     lon = float(sample.longitude)
@@ -81,11 +101,22 @@ def get_lon_daily(jd_ut: float, body: str) -> float:
     try:
         con.execute(
             _SQL["upsert"],
-            (_day_jd(jd_ut), body.lower(), float(lon), float(lat), float(speed)),
+            (
+                _day_jd(jd_ut),
+                normalized,
+                lon,
+                lat,
+                speed,
+            ),
         )
         con.commit()
     finally:
         con.close()
+    return lon, lat, speed
+
+
+def get_lon_daily(jd_ut: float, body: str) -> float:
+    lon, _, _ = get_daily_entry(jd_ut, body)
     return float(lon)
 
 
@@ -93,11 +124,16 @@ def warm_daily(bodies: Iterable[str], start_jd: float, end_jd: float) -> int:
     count = 0
     jd = int(start_jd)
     end = int(end_jd)
-    while jd <= end:
-        for b in bodies:
-            _ = get_lon_daily(jd, b)
+    if end < jd:
+        return 0
+
+    days = np.arange(jd, end + 1, dtype=np.int64)
+    cached_bodies = tuple(body.lower() for body in bodies)
+    for day in days:
+        day_jd = float(day)
+        for body in cached_bodies:
+            get_daily_entry(day_jd, body)
             count += 1
-        jd += 1
     return count
 
 
