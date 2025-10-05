@@ -15,6 +15,7 @@ from typing import Final, cast
 from ..core.angles import AspectMotion, DeltaLambdaTracker, classify_relative_motion
 from ..core.time import TimeConversion, to_tt
 from ..observability import (
+    COMPUTE_ERRORS,
     EPHEMERIS_CACHE_COMPUTE_DURATION,
     EPHEMERIS_CACHE_HITS,
     EPHEMERIS_CACHE_MISSES,
@@ -205,6 +206,12 @@ class EphemerisAdapter:
                 ra_speed,
                 dec_speed,
             ) = backend(moment, body, flags)
+        except Exception as exc:
+            COMPUTE_ERRORS.labels(
+                component="ephemeris_backend",
+                error=exc.__class__.__name__,
+            ).inc()
+            raise
         finally:
             duration = perf_counter() - start
             EPHEMERIS_CACHE_COMPUTE_DURATION.labels(
