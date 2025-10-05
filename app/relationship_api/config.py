@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 class ServiceSettings(BaseModel):
     """Container for environment-derived settings."""
 
-    cors_allow_origins: tuple[str, ...] = field(default_factory=tuple)
+    cors_allow_origins: tuple[str, ...] = Field(default_factory=tuple)
     environment: str = "dev"
     rate_limit_per_minute: int = 60
     redis_url: str | None = None
@@ -21,9 +21,9 @@ class ServiceSettings(BaseModel):
 
     @field_validator("cors_allow_origins", mode="before")
     @classmethod
-    def _parse_csv(cls, value: str | Iterable[str] | None):
+    def _parse_csv(cls, value: str | Iterable[str] | None) -> tuple[str, ...]:
         if value is None:
-            return []
+            return tuple()
         if isinstance(value, str):
             items = (item.strip() for item in value.split(","))
         else:
@@ -34,7 +34,7 @@ class ServiceSettings(BaseModel):
             if item and item not in seen:
                 normalized.append(item)
                 seen.add(item)
-        return normalized
+        return tuple(normalized)
 
     @classmethod
     def from_env(cls) -> "ServiceSettings":
@@ -44,8 +44,8 @@ class ServiceSettings(BaseModel):
         request_max = int(os.getenv("RELATIONSHIP_REQUEST_MAX", "1000000"))
         enable_etag = os.getenv("RELATIONSHIP_DISABLE_ETAG") not in {"1", "true", "TRUE"}
         environment = os.getenv("ENV", "dev")
-        return cls(
-            cors_allow_origins=_parse_origins(os.getenv("CORS_ALLOW_ORIGINS")),
+        settings = cls(
+            cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS"),
             rate_limit_per_minute=max(1, rate_limit),
             redis_url=redis_url,
             gzip_minimum_size=max(128, gzip_min_size),
@@ -53,8 +53,8 @@ class ServiceSettings(BaseModel):
             enable_etag=enable_etag,
             environment=environment,
         )
-        if env_name == "dev" and not settings.cors_allow_origins:
-            settings.cors_allow_origins = ["*"]
+        if settings.environment == "dev" and not settings.cors_allow_origins:
+            settings = settings.model_copy(update={"cors_allow_origins": ("*",)})
         return settings
 
     def cors_origin_list(self) -> Iterable[str]:
