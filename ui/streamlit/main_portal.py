@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable, Dict, List
 
 import requests
 import streamlit as st
@@ -99,20 +100,71 @@ def _render_custom() -> None:
     st.write("")
 
 
-PANE_RENDERERS: Dict[str, Callable[[], None]] = {
-    "Chart": _render_chart,
-    "Aspects": _render_aspects,
-    "Timeline": _render_timeline,
-    "Map": _render_map,
-    "Custom": _render_custom,
+def _render_health() -> None:
+    st.markdown("**Service Health**")
+    url = f"{_api_base()}/healthz"
+    try:
+        r = requests.get(url, timeout=3)
+        st.markdown(f"`GET {url}` → **{r.status_code}**")
+        content_type = r.headers.get("content-type", "")
+        if content_type.startswith("application/json"):
+            st.json(r.json())
+        else:
+            st.code(r.text[:2000])
+    except Exception as exc:
+        st.warning(f"Health endpoint unreachable: {exc}")
+
+
+def _render_settings_snapshot() -> None:
+    st.markdown("**Configuration Snapshot**")
+    url = f"{_api_base()}/v1/settings"
+    try:
+        r = requests.get(url, timeout=4)
+        if r.ok:
+            st.json(r.json())
+        else:
+            st.info("Settings endpoint responded without data. Ensure /v1/settings is implemented.")
+    except Exception as exc:
+        st.warning(f"Settings endpoint unreachable: {exc}")
+
+
+def _render_metrics() -> None:
+    st.markdown("**Prometheus Metrics**")
+    url = f"{_api_base()}/metrics"
+    try:
+        r = requests.get(url, timeout=4)
+        if r.ok:
+            st.code(r.text[:4000] + ("\n…" if len(r.text) > 4000 else ""), language="text")
+        else:
+            st.info("Metrics endpoint responded without data. Ensure Prometheus middleware is enabled.")
+    except Exception as exc:
+        st.warning(f"Metrics endpoint unreachable: {exc}")
+
+
+@dataclass(frozen=True)
+class PaneDefinition:
+    label: str
+    category: str
+    renderer: Callable[[], None]
+
+
+PANE_LIBRARY: Dict[str, PaneDefinition] = {
+    "chart_wheel": PaneDefinition("Chart Wheel", "Charts", _render_chart),
+    "aspect_grid": PaneDefinition("Aspect Grid", "Charts", _render_aspects),
+    "timeline": PaneDefinition("Event Timeline", "Temporal", _render_timeline),
+    "astro_map": PaneDefinition("Astrocartography Map", "Geospatial", _render_map),
+    "custom_panel": PaneDefinition("Custom Panel", "Custom", _render_custom),
+    "api_health": PaneDefinition("API Health", "Diagnostics", _render_health),
+    "api_settings": PaneDefinition("Configuration Snapshot", "Diagnostics", _render_settings_snapshot),
+    "api_metrics": PaneDefinition("Prometheus Metrics", "Diagnostics", _render_metrics),
 }
 
 
 DEFAULT_LAYOUT = {
-    "Top Left": "Chart",
-    "Top Right": "Timeline",
-    "Bottom Left": "Map",
-    "Bottom Right": "Aspects",
+    "Top Left": "chart_wheel",
+    "Top Right": "timeline",
+    "Bottom Left": "astro_map",
+    "Bottom Right": "aspect_grid",
 }
 
 
@@ -124,18 +176,53 @@ def _init_dashboard_state() -> None:
 def _layout_controls() -> None:
     with st.expander("Dashboard Layout", expanded=False):
         st.markdown(
-            "Select which insight appears in each quadrant. Choose **Empty** to clear a slot."
+            "Select which insight appears in each quadrant. Choose a category to filter the available panels."
         )
-        options = ["Empty", *PANE_RENDERERS.keys()]
+        categories: List[str] = sorted({pane.category for pane in PANE_LIBRARY.values()})
         for slot in DEFAULT_LAYOUT:
             current = st.session_state.dashboard_slots.get(slot, "Empty")
-            selected = st.selectbox(
-                slot,
-                options=options,
-                index=options.index(current) if current in options else 0,
-                key=f"dashboard_slot_{slot.replace(' ', '_').lower()}",
+            slot_key = slot.replace(" ", "_").lower()
+
+            if current == "Empty":
+                current_category = "Empty"
+            else:
+                pane_meta = PANE_LIBRARY.get(current)
+                current_category = pane_meta.category if pane_meta else "Empty"
+
+            category_options = ["Empty", *categories]
+            selected_category = st.selectbox(
+                f"{slot} Category",
+                options=category_options,
+                index=category_options.index(current_category)
+                if current_category in category_options
+                else 0,
+                key=f"dashboard_slot_{slot_key}_category",
             )
-            st.session_state.dashboard_slots[slot] = selected
+
+            if selected_category == "Empty":
+                st.session_state.dashboard_slots[slot] = "Empty"
+                st.session_state[f"dashboard_slot_{slot_key}_pane"] = "Empty"
+                continue
+
+            panes_in_category = [
+                key
+                for key, pane in PANE_LIBRARY.items()
+                if pane.category == selected_category
+            ]
+            if not panes_in_category:
+                st.session_state.dashboard_slots[slot] = "Empty"
+                st.warning(f"No panels available for category {selected_category}.")
+                continue
+
+            default_pane = current if current in panes_in_category else panes_in_category[0]
+            selected_pane = st.selectbox(
+                slot,
+                options=panes_in_category,
+                index=panes_in_category.index(default_pane),
+                format_func=lambda key: PANE_LIBRARY[key].label,
+                key=f"dashboard_slot_{slot_key}_pane",
+            )
+            st.session_state.dashboard_slots[slot] = selected_pane
 
 
 def _render_slot(slot: str, pane_key: str) -> None:
@@ -143,11 +230,11 @@ def _render_slot(slot: str, pane_key: str) -> None:
         if pane_key == "Empty":
             st.info("Select a panel from the layout controls to populate this slot.")
             return
-        renderer = PANE_RENDERERS.get(pane_key)
-        if not renderer:
+        pane = PANE_LIBRARY.get(pane_key)
+        if not pane:
             st.warning(f"Unknown panel: {pane_key}")
             return
-        renderer()
+        pane.renderer()
 
 
 _init_dashboard_state()
