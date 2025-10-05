@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Sequence
 
 import requests
 from requests import Response
@@ -177,6 +177,30 @@ class APIClient:
         data = self._post_json("/events/returns", payload, timeout=60)
         if not isinstance(data, list):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /events/returns")
+        return data
+
+    # ---- Timeline ---------------------------------------------------------
+    def timeline(
+        self,
+        start_iso: str,
+        end_iso: str,
+        *,
+        types: Sequence[str] | None = None,
+        bodies: Sequence[str] | None = None,
+        sign_orb: float | None = None,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {"from": start_iso, "to": end_iso}
+        if types:
+            params["types"] = ",".join(types)
+        if bodies:
+            params["bodies"] = ",".join(bodies)
+        if sign_orb is not None:
+            params["sign_orb"] = float(sign_orb)
+        r = requests.get(f"{self.base}/v1/timeline", params=params, timeout=60)
+        r.raise_for_status()
+        data = r.json()
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/timeline")
         return data
 
     def electional_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
