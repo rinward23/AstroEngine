@@ -7,19 +7,14 @@ import json as _json
 json = _json
 
 
+# Lazy import to avoid pulling heavy deps at module import time
 def build_parser():
-    """Lazily import the CLI parser builder to avoid early heavy dependencies."""
-
     from .__main__ import build_parser as _build
-
     return _build()
 
 
 def main(argv=None):
-    """Lazily import the CLI entrypoint to defer optional dependency loading."""
-
     from .__main__ import main as _main
-
     return _main(argv)
 
 
