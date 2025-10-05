@@ -2,12 +2,25 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata
+import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import Iterable, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _constraint_args() -> list[str]:
+    """Return pip constraint arguments when ``constraints.txt`` is present."""
+
+    env_constraint = os.environ.get("PIP_CONSTRAINT")
+    if env_constraint:
+        return ["--constraint", env_constraint]
+    candidate = PROJECT_ROOT / "constraints.txt"
+    if candidate.exists():
+        return ["--constraint", str(candidate)]
+    return []
 
 
 def version_tuple(raw: str) -> Tuple[int, ...]:
@@ -81,7 +94,15 @@ def ensure(
             raise ModuleNotFoundError(
                 f"Dependency '{dist_name}' is missing or below the required version"
             )
-        cmd = [sys.executable, '-m', 'pip', 'install', spec, *pip_args]
+        cmd = [
+            sys.executable,
+            '-m',
+            'pip',
+            'install',
+            *_constraint_args(),
+            spec,
+            *pip_args,
+        ]
         kwargs = {}
         if quiet:
             kwargs['stdout'] = subprocess.DEVNULL
@@ -100,7 +121,15 @@ def install_requirements(path: Path, *, quiet: bool = False) -> bool:
 
     if not path.exists():
         return False
-    cmd = [sys.executable, '-m', 'pip', 'install', '-r', str(path)]
+    cmd = [
+        sys.executable,
+        '-m',
+        'pip',
+        'install',
+        *_constraint_args(),
+        '-r',
+        str(path),
+    ]
     kwargs = {}
     if quiet:
         kwargs['stdout'] = subprocess.DEVNULL

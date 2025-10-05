@@ -6,8 +6,8 @@ help:
 
 setup:
 python -m pip install --upgrade pip
-@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-@if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e . || true; fi
+@if [ -f requirements-dev.txt ]; then PIP_CONSTRAINT=constraints.txt pip install -r requirements-dev.txt; fi
+@if [ -f pyproject.toml ] || [ -f setup.py ]; then PIP_CONSTRAINT=constraints.txt pip install -e . || true; fi
 python -m astroengine.diagnostics --strict || true
 
 install-optional:

@@ -8,6 +8,8 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    env:
+      PIP_CONSTRAINT: constraints.txt
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,6 +29,8 @@ jobs:
   tests:
     needs: lint
     runs-on: ${{ matrix.os }}
+    env:
+      PIP_CONSTRAINT: constraints.txt
     strategy:
       fail-fast: false
       matrix:

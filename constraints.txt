@@ -1,0 +1,7 @@
+# AstroEngine dependency guardrails
+#
+# Pin FastAPI and its HTTP stack to versions validated with our runtime.
+# Adjust only after verifying upstream compatibility locally and in CI.
+fastapi==0.117.0
+starlette==0.38.2
+httpx==0.28.1

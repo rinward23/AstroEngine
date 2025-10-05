@@ -5,7 +5,7 @@ AstroEngine can use `pyswisseph` (Swiss Ephemeris). Without data files, it will 
 
 ## Install the library
 ```bash
-pip install pyswisseph
+PIP_CONSTRAINT=constraints.txt pip install pyswisseph
 ```
 
 ## Data files (optional, for high precision)

@@ -16,7 +16,8 @@ try:  # pragma: no cover - Streamlit import guarded for test environments
     import streamlit as st
 except Exception:  # pragma: no cover - surfacing missing dependency
     print(
-        "This app requires the UI extras. Install with: pip install -e .[ui]",
+        "This app requires the UI extras. Install with: "
+        "export PIP_CONSTRAINT=constraints.txt && pip install -e .[ui]",
         file=sys.stderr,
     )
     raise

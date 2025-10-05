@@ -3,6 +3,7 @@
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Windows: .\\.venv\\Scripts\\Activate.ps1
+export PIP_CONSTRAINT=constraints.txt
 pip install -e .[dev]
 ```
 

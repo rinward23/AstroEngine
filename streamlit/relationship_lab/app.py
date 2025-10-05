@@ -12,7 +12,10 @@ from typing import Any, Dict
 try:  # pragma: no cover - Streamlit import guarded for tests
     import streamlit as st
 except Exception:  # pragma: no cover - surfaced to CLI when dependencies missing
-    print("This app requires the UI extras. Install with: pip install -e .[ui]")
+    print(
+        "This app requires the UI extras. Install with: "
+        "export PIP_CONSTRAINT=constraints.txt && pip install -e .[ui]"
+    )
     raise
 
 from .api import build_backend

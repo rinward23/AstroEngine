@@ -106,6 +106,7 @@ channel, and subchannel remains intact and data-backed:
 1. **Python 3.11** recommended. Create a venv and install runtime + optional UI deps:
    ```bash
    python -m venv .venv && source .venv/bin/activate
+   export PIP_CONSTRAINT=constraints.txt
    pip install -e .[ui]
    # optional exports/providers:
    pip install pyarrow skyfield jplephem
@@ -461,7 +462,7 @@ pytest
 > The base development container only installs the core runtime so images stay
 > lightweight. API-facing dependencies such as `fastapi`, `uvicorn`,
 > `pydantic`, and `icalendar` therefore are not present until you explicitly
-> install the `api` extra (e.g. `pip install -e .[api,dev]`) or the mirrored
+> install the `api` extra (e.g. `export PIP_CONSTRAINT=constraints.txt && pip install -e .[api,dev]`) or the mirrored
 > bundle in `requirements-optional.txt`.
 
 Schema validation helpers reside in `astroengine/validation` and operate

@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -44,6 +45,8 @@ from .infrastructure.paths import project_root
 
 ROOT = project_root()
 REQ_DEV = ROOT / "requirements-dev.txt"
+_env_constraint = os.environ.get("PIP_CONSTRAINT")
+CONSTRAINT_FILE = Path(_env_constraint) if _env_constraint else ROOT / "constraints.txt"
 
 
 # ---------- helpers ----------
@@ -91,7 +94,10 @@ def pip_install(pkgs: Iterable[str]) -> int:
     pkgs = list(pkgs)
     if not pkgs:
         return 0
-    cmd = [sys.executable, "-m", "pip", "install", *pkgs]
+    cmd = [sys.executable, "-m", "pip", "install"]
+    if CONSTRAINT_FILE.exists():
+        cmd.extend(["--constraint", str(CONSTRAINT_FILE)])
+    cmd.extend(pkgs)
     code, _ = sh(cmd)
     return code
 

@@ -7,6 +7,7 @@ if ($Conda) {
   python -m venv .venv
   .\.venv\Scripts\Activate.ps1
   python -m pip install --upgrade pip
+  $env:PIP_CONSTRAINT = "constraints.txt"
   pip install -e .[dev]
 }
 python -m astroengine env
