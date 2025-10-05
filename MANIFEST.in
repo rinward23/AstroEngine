@@ -3,6 +3,7 @@ recursive-include astroengine/registry *.yaml *.yml *.csv
 recursive-include astroengine/profiles *.yaml *.yml *.json
 recursive-include astroengine/datasets *.csv *.json
 recursive-include astroengine/datasets/swisseph_stub *
+recursive-include astroengine/data *.csv
 
 recursive-include astroengine/exporters/reports/relationship/templates *
 
