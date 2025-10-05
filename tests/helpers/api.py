@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Dict, Iterator, Mapping
 
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRouter
 
 from app.routers import clear_position_provider, configure_position_provider
@@ -32,7 +33,7 @@ class LinearEphemeris:
 def build_app(*routers: APIRouter) -> FastAPI:
     """Build a FastAPI app with the provided routers included."""
 
-    app = FastAPI()
+    app = FastAPI(default_response_class=ORJSONResponse)
     for router in routers:
         app.include_router(router)
     return app

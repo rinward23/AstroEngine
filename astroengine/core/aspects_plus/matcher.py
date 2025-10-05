@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 from itertools import combinations
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from .harmonics import BASE_ASPECTS
-from .orb_policy import orb_limit
+from .orb_policy import PreparedOrbPolicy, orb_limit, orb_limit_prepared
 
 EPS = 1e-9
 
@@ -30,7 +30,9 @@ def _match_for_delta(
     b_name: str,
     delta: float,
     aspects: Iterable[str],
-    policy: Dict,
+    policy: Any,
+    *,
+    limit_fn: Callable[[str, str, str, Any], float] = orb_limit,
 ):
     best = None
     for asp in aspects:
@@ -39,7 +41,7 @@ def _match_for_delta(
         if angle is None:
             continue
         orb = abs(delta - angle)
-        limit = orb_limit(a_name, b_name, key, policy)
+        limit = limit_fn(a_name, b_name, key, policy)
         if orb <= limit + EPS:
             cand = {
                 "a": a_name,
@@ -66,6 +68,27 @@ def match_pair(
     """Match a single pair. Returns best match dict or None."""
     delta = angular_sep_deg(float(lon_a), float(lon_b))
     return _match_for_delta(a_name, b_name, delta, aspects, policy)
+
+
+def match_pair_prepared(
+    a_name: str,
+    b_name: str,
+    lon_a: float,
+    lon_b: float,
+    aspects: Iterable[str],
+    policy: PreparedOrbPolicy,
+):
+    """Fast-path pair matcher that reuses a prepared policy."""
+
+    delta = angular_sep_deg(float(lon_a), float(lon_b))
+    return _match_for_delta(
+        a_name,
+        b_name,
+        delta,
+        aspects,
+        policy,
+        limit_fn=orb_limit_prepared,
+    )
 
 
 def match_all(

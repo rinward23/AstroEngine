@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 
 from .config import ServiceSettings
 from .middleware import install_middleware
@@ -21,6 +22,7 @@ def create_app(settings: ServiceSettings | None = None) -> FastAPI:
         openapi_url="/v1/openapi.json",
         docs_url="/docs",
         redoc_url=None,
+        default_response_class=ORJSONResponse,
     )
     install_middleware(app, settings)
     register_routes(app, settings)

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
 from app.routers.relationship import router as relationship_router
@@ -26,7 +27,7 @@ class LinearEphemeris:
 
 
 def build_app(provider=None):
-    app = FastAPI()
+    app = FastAPI(default_response_class=ORJSONResponse)
     if provider is not None:
         aspects_module.position_provider = provider
         if hasattr(aspects_module, "_cached"):

@@ -7,7 +7,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from cachetools import TTLCache
 
 from astroengine.cache.relationship import canonicalize_synastry_payload
-from astroengine.core.aspects_plus.matcher import match_pair
+from astroengine.core.aspects_plus.matcher import match_pair_prepared
+from astroengine.core.aspects_plus.orb_policy import PreparedOrbPolicy, prepare_policy
 
 
 _MEMO_CACHE = TTLCache(
@@ -64,17 +65,29 @@ def synastry_interaspects(
     if cached is not None:
         return cached
 
+    prepared_policy: PreparedOrbPolicy = prepare_policy(policy)
+    aspects_list = list(aspects)
     hits: List[Dict[str, Any]] = []
+    append_hit = hits.append
     for a_name, lon_a in pos_a.items():
         if lon_a is None:
             continue
+        lon_a_f = float(lon_a)
         for b_name, lon_b in pos_b.items():
             if lon_b is None:
                 continue
-            match = match_pair(a_name, b_name, float(lon_a), float(lon_b), aspects, policy)
+            lon_b_f = float(lon_b)
+            match = match_pair_prepared(
+                a_name,
+                b_name,
+                lon_a_f,
+                lon_b_f,
+                aspects_list,
+                prepared_policy,
+            )
             if not match:
                 continue
-            hits.append(
+            append_hit(
                 {
                     "a_obj": match["a"],
                     "b_obj": match["b"],

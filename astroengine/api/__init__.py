@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 
 _APP_INSTANCE: FastAPI | None = None
 

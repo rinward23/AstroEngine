@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
 from app.routers import aspects as aspects_module
@@ -24,7 +25,7 @@ class LinearEphemeris:
 
 
 def build_app(provider):
-    app = FastAPI()
+    app = FastAPI(default_response_class=ORJSONResponse)
     aspects_module.position_provider = provider
     if hasattr(aspects_module, "_cached"):
         aspects_module._cached = None

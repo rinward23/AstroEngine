@@ -1,11 +1,12 @@
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
 from app.routers.lots import router as lots_router
 
 
 def build_app():
-    app = FastAPI()
+    app = FastAPI(default_response_class=ORJSONResponse)
     app.include_router(lots_router)
     return app
 

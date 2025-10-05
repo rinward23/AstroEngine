@@ -4,12 +4,13 @@ import io
 import zipfile
 
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 from pypdf import PdfReader
 
 from app.routers.reports import router as reports_router
 
-APP = FastAPI()
+APP = FastAPI(default_response_class=ORJSONResponse)
 APP.include_router(reports_router)
 CLIENT = TestClient(APP)
 
