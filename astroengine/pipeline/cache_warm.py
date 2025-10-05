@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from typing import Sequence
 
@@ -22,7 +22,8 @@ DEFAULT_BODIES: Sequence[str] = (
     "neptune",
     "pluto",
 )
-DEFAULT_WINDOW_DAYS = 7
+DEFAULT_START = date(1900, 1, 1)
+DEFAULT_END = date(2100, 12, 31)
 
 
 def _ensure_environment() -> Path:
@@ -35,20 +36,38 @@ def _ensure_environment() -> Path:
     return home
 
 
+def _parse_date_env(name: str, default: date) -> date:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        return date.fromisoformat(raw)
+    except ValueError as exc:
+        raise ValueError(f"Environment variable {name} must be YYYY-MM-DD") from exc
+
+
+def _parse_bodies_env() -> Sequence[str]:
+    raw = os.environ.get("AE_WARM_BODIES")
+    if not raw:
+        return DEFAULT_BODIES
+    entries = [token.strip() for token in raw.split(",") if token.strip()]
+    return tuple(entries) if entries else DEFAULT_BODIES
+
+
 def warm_ephemeris_cache(
     bodies: Sequence[str] = DEFAULT_BODIES,
-    window_days: int = DEFAULT_WINDOW_DAYS,
+    *,
+    start: date = DEFAULT_START,
+    end: date = DEFAULT_END,
 ) -> tuple[str, str, int]:
-    """Warm the daily ephemeris cache for ``bodies`` over ``window_days`` days."""
+    """Warm the daily ephemeris cache between ``start`` and ``end`` (inclusive)."""
 
-    if window_days < 1:
-        raise ValueError("window_days must be positive")
+    if end < start:
+        raise ValueError("end date must not be before start date")
 
     _ensure_environment()
     enable_cache(True)
 
-    start = date.today()
-    end = start + timedelta(days=window_days - 1)
     start_iso = start.isoformat()
     end_iso = end.isoformat()
     entries = warm_daily(bodies, iso_to_jd(start_iso), iso_to_jd(end_iso))
@@ -58,9 +77,12 @@ def warm_ephemeris_cache(
 def main() -> int:
     """CLI entry point used by the Makefile target."""
 
-    start_iso, end_iso, entries = warm_ephemeris_cache()
+    bodies = _parse_bodies_env()
+    start = _parse_date_env("AE_WARM_START", DEFAULT_START)
+    end = _parse_date_env("AE_WARM_END", DEFAULT_END)
+    start_iso, end_iso, entries = warm_ephemeris_cache(bodies, start=start, end=end)
     print(
-        f"Cache warmed [{', '.join(DEFAULT_BODIES)}] for {start_iso} "
+        f"Cache warmed [{', '.join(bodies)}] for {start_iso} "
         f"→ {end_iso} ({entries} entries)"
     )
     return 0

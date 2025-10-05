@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Response
+from fastapi.responses import StreamingResponse
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
@@ -20,7 +21,7 @@ from ...ephemeris import SwissEphemerisAdapter
 from ...events import ReturnEvent
 from ...exporters import write_parquet_canonical, write_sqlite_canonical
 from ...exporters_ics import write_ics_canonical
-from .._time import UtcDateTime, ensure_utc_datetime
+from ...web.responses import json_response, ndjson_stream
 
 
 DEFAULT_PAGE_LIMIT = 500
@@ -209,13 +210,6 @@ def _hit_from_aspect(hit: AspectHit | Mapping[str, Any]) -> Hit:
     )
 
 
-    normalized: dict[str, Any] = {
-        "natal": natal,
-        "start": start,
-        "end": end,
-    }
-
-
 def _hit_from_return(event: ReturnEvent) -> Hit:
     if hasattr(event, "body"):
         return Hit(
@@ -272,6 +266,10 @@ def _hit_to_canonical(hit: Hit) -> dict[str, Any]:
     }
 
 
+def _serialize_hit(hit: Hit) -> dict[str, Any]:
+    return hit.model_dump(mode="json")
+
+
 def _export_hits(options: ExportOptions, hits: Iterable[Hit], *, method: str) -> dict[str, Any]:
     canonical = [_hit_to_canonical(hit) for hit in hits]
     path = Path(options.path)
@@ -308,29 +306,9 @@ def _normalize_aspects(values: Sequence[Any] | None) -> list[int]:
     return resolved or [0, 60, 90, 120, 180]
 
 
-@router.post("/progressions", response_model=ScanResponse)
-def api_scan_progressions(
-    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
-    limit: int = Query(
-        DEFAULT_PAGE_LIMIT,
-        ge=1,
-        le=MAX_PAGE_LIMIT,
-        description=(
-            "Maximum number of hits to return (default {default}, maximum {maximum})."
-            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
-        ),
-    ),
-    offset: int = Query(
-        0,
-        ge=0,
-        description="Number of hits to skip from the start of the result set.",
-    ),
-) -> ScanResponse:
-    request_data = _normalize_scan_payload(payload)
-    request = TransitScanRequest(**request_data)
+def _iter_progression_hits(request: TransitScanRequest) -> Iterator[Hit]:
     natal, start, end = request.iso_tuple()
-
-    all_hits = [
+    yield from (
         _hit_from_aspect(hit)
         for hit in progressed_natal_aspects(
             natal_ts=natal,
@@ -341,47 +319,12 @@ def api_scan_progressions(
             bodies=request.bodies,
             step_days=request.step_days,
         )
-    ]
-
-    total_hits = len(all_hits)
-    page_hits = all_hits[offset : offset + limit]
-
-    export_info = (
-        _export_hits(request.export, all_hits, method="progressions")
-        if request.export
-        else None
-    )
-    return ScanResponse(
-        method="progressions",
-        hits=page_hits,
-        count=total_hits,
-        export=export_info,
     )
 
 
-@router.post("/directions", response_model=ScanResponse)
-def api_scan_directions(
-    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
-    limit: int = Query(
-        DEFAULT_PAGE_LIMIT,
-        ge=1,
-        le=MAX_PAGE_LIMIT,
-        description=(
-            "Maximum number of hits to return (default {default}, maximum {maximum})."
-            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
-        ),
-    ),
-    offset: int = Query(
-        0,
-        ge=0,
-        description="Number of hits to skip from the start of the result set.",
-    ),
-) -> ScanResponse:
-    request_data = _normalize_scan_payload(payload)
-    request = TransitScanRequest(**request_data)
+def _iter_direction_hits(request: TransitScanRequest) -> Iterator[Hit]:
     natal, start, end = request.iso_tuple()
-
-    all_hits = [
+    yield from (
         _hit_from_aspect(hit)
         for hit in solar_arc_natal_aspects(
             natal_ts=natal,
@@ -392,49 +335,12 @@ def api_scan_directions(
             bodies=request.bodies,
             step_days=request.step_days,
         )
-    ]
-
-    total_hits = len(all_hits)
-    page_hits = all_hits[offset : offset + limit]
-
-    export_info = (
-        _export_hits(request.export, all_hits, method="directions")
-        if request.export
-        else None
-    )
-    return ScanResponse(
-        method="directions",
-        hits=page_hits,
-        count=total_hits,
-        export=export_info,
     )
 
 
-@router.post("/transits", response_model=ScanResponse)
-def api_scan_transits(
-    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
-    limit: int = Query(
-        DEFAULT_PAGE_LIMIT,
-        ge=1,
-        le=MAX_PAGE_LIMIT,
-        description=(
-            "Maximum number of hits to return (default {default}, maximum {maximum})."
-            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
-        ),
-    ),
-    offset: int = Query(
-        0,
-        ge=0,
-        description="Number of hits to skip from the start of the result set.",
-    ),
-) -> ScanResponse:
-    request_data = _normalize_scan_payload(payload)
-    request = TransitScanRequest(**request_data)
-
-    if (request.method or "").strip().lower() == "transits":
-        raise HTTPException(status_code=501, detail="Transit scans are not yet available")
+def _iter_transit_hits(request: TransitScanRequest) -> Iterator[Hit]:
     natal, start, end = request.iso_tuple()
-    all_hits = [
+    yield from (
         _hit_from_aspect(hit)
         for hit in scan_transits(
             natal_ts=natal,
@@ -446,46 +352,10 @@ def api_scan_transits(
             targets=request.targets,
             step_days=request.step_days,
         )
-    ]
-
-    total_hits = len(all_hits)
-    page_hits = all_hits[offset : offset + limit]
-
-    export_info = (
-        _export_hits(request.export, all_hits, method="transits")
-        if request.export
-        else None
-    )
-
-    return ScanResponse(
-        method="transits",
-        hits=page_hits,
-        count=total_hits,
-        export=export_info,
     )
 
 
-@router.post("/returns", response_model=ScanResponse)
-def api_scan_returns(
-    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
-    limit: int = Query(
-        DEFAULT_PAGE_LIMIT,
-        ge=1,
-        le=MAX_PAGE_LIMIT,
-        description=(
-            "Maximum number of hits to return (default {default}, maximum {maximum})."
-            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
-        ),
-    ),
-    offset: int = Query(
-        0,
-        ge=0,
-        description="Number of hits to skip from the start of the result set.",
-    ),
-) -> ScanResponse:
-    request_data = _normalize_scan_payload(payload)
-    request = ReturnsScanRequest(**request_data)
-
+def _iter_return_hits(request: ReturnsScanRequest) -> Iterator[Hit]:
     natal_iso, start_iso, end_iso = request.iso_tuple()
     bodies = list(request.bodies or ["Sun"])
 
@@ -494,7 +364,6 @@ def api_scan_returns(
     start_jd = adapter.julian_day(_parse_iso(start_iso))
     end_jd = adapter.julian_day(_parse_iso(end_iso))
 
-    hits: list[Hit] = []
     for body in bodies:
         kind = "solar" if body.lower() == "sun" else "lunar"
         kwargs: dict[str, Any] = {}
@@ -517,8 +386,254 @@ def api_scan_returns(
                 kind=kind,
                 **kwargs,
             )
+        for event in events:
+            yield _hit_from_return(event)
 
-        hits.extend(_hit_from_return(event) for event in events)
+
+def _stream_scan_hits(
+    method: str,
+    hits: Iterable[Hit],
+    *,
+    offset: int,
+    limit: int,
+) -> StreamingResponse:
+    def iterator() -> Iterator[dict[str, Any]]:
+        total = 0
+        returned = 0
+        yield {
+            "event": "metadata",
+            "method": method,
+            "offset": offset,
+            "limit": limit,
+        }
+        for hit in hits:
+            total += 1
+            if total <= offset:
+                continue
+            if returned < limit:
+                returned += 1
+                yield {"event": "hit", "data": _serialize_hit(hit)}
+        yield {
+            "event": "summary",
+            "method": method,
+            "count": total,
+            "returned": returned,
+            "offset": offset,
+            "limit": limit,
+        }
+
+    return ndjson_stream(iterator())
+
+
+@router.post("/progressions", response_model=ScanResponse)
+def api_scan_progressions(
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
+    limit: int = Query(
+        DEFAULT_PAGE_LIMIT,
+        ge=1,
+        le=MAX_PAGE_LIMIT,
+        description=(
+            "Maximum number of hits to return (default {default}, maximum {maximum})."
+            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+        ),
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+        description="Number of hits to skip from the start of the result set.",
+    ),
+    stream: bool = Query(
+        False,
+        description="If true, emit NDJSON lines as hits are detected instead of a JSON body.",
+    ),
+) -> Response | StreamingResponse:
+    request_data = _normalize_scan_payload(payload)
+    request = TransitScanRequest(**request_data)
+    if stream:
+        if request.export is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="streaming responses do not support export payloads",
+            )
+        return _stream_scan_hits(
+            "progressions",
+            _iter_progression_hits(request),
+            offset=offset,
+            limit=limit,
+        )
+
+    all_hits = list(_iter_progression_hits(request))
+    total_hits = len(all_hits)
+    page_hits = all_hits[offset : offset + limit]
+
+    export_info = (
+        _export_hits(request.export, all_hits, method="progressions")
+        if request.export
+        else None
+    )
+    response_model = ScanResponse(
+        method="progressions",
+        hits=page_hits,
+        count=total_hits,
+        export=export_info,
+    )
+    return json_response(response_model.model_dump(mode="json"))
+
+
+@router.post("/directions", response_model=ScanResponse)
+def api_scan_directions(
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
+    limit: int = Query(
+        DEFAULT_PAGE_LIMIT,
+        ge=1,
+        le=MAX_PAGE_LIMIT,
+        description=(
+            "Maximum number of hits to return (default {default}, maximum {maximum})."
+            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+        ),
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+        description="Number of hits to skip from the start of the result set.",
+    ),
+    stream: bool = Query(
+        False,
+        description="If true, emit NDJSON lines as hits are detected instead of a JSON body.",
+    ),
+) -> Response | StreamingResponse:
+    request_data = _normalize_scan_payload(payload)
+    request = TransitScanRequest(**request_data)
+    if stream:
+        if request.export is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="streaming responses do not support export payloads",
+            )
+        return _stream_scan_hits(
+            "directions",
+            _iter_direction_hits(request),
+            offset=offset,
+            limit=limit,
+        )
+
+    all_hits = list(_iter_direction_hits(request))
+    total_hits = len(all_hits)
+    page_hits = all_hits[offset : offset + limit]
+
+    export_info = (
+        _export_hits(request.export, all_hits, method="directions")
+        if request.export
+        else None
+    )
+    response_model = ScanResponse(
+        method="directions",
+        hits=page_hits,
+        count=total_hits,
+        export=export_info,
+    )
+    return json_response(response_model.model_dump(mode="json"))
+
+
+@router.post("/transits", response_model=ScanResponse)
+def api_scan_transits(
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
+    limit: int = Query(
+        DEFAULT_PAGE_LIMIT,
+        ge=1,
+        le=MAX_PAGE_LIMIT,
+        description=(
+            "Maximum number of hits to return (default {default}, maximum {maximum})."
+            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+        ),
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+        description="Number of hits to skip from the start of the result set.",
+    ),
+    stream: bool = Query(
+        False,
+        description="If true, emit NDJSON lines as hits are detected instead of a JSON body.",
+    ),
+) -> Response | StreamingResponse:
+    request_data = _normalize_scan_payload(payload)
+    request = TransitScanRequest(**request_data)
+
+    if (request.method or "").strip().lower() == "transits":
+        raise HTTPException(status_code=501, detail="Transit scans are not yet available")
+    if stream:
+        if request.export is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="streaming responses do not support export payloads",
+            )
+        return _stream_scan_hits(
+            "transits",
+            _iter_transit_hits(request),
+            offset=offset,
+            limit=limit,
+        )
+
+    all_hits = list(_iter_transit_hits(request))
+
+    total_hits = len(all_hits)
+    page_hits = all_hits[offset : offset + limit]
+
+    export_info = (
+        _export_hits(request.export, all_hits, method="transits")
+        if request.export
+        else None
+    )
+
+    response_model = ScanResponse(
+        method="transits",
+        hits=page_hits,
+        count=total_hits,
+        export=export_info,
+    )
+
+    return json_response(response_model.model_dump(mode="json"))
+
+
+@router.post("/returns", response_model=ScanResponse)
+def api_scan_returns(
+    payload: Mapping[str, Any] = Body(..., description="Scan request payload"),
+    limit: int = Query(
+        DEFAULT_PAGE_LIMIT,
+        ge=1,
+        le=MAX_PAGE_LIMIT,
+        description=(
+            "Maximum number of hits to return (default {default}, maximum {maximum})."
+            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+        ),
+    ),
+    offset: int = Query(
+        0,
+        ge=0,
+        description="Number of hits to skip from the start of the result set.",
+    ),
+    stream: bool = Query(
+        False,
+        description="If true, emit NDJSON lines as hits are detected instead of a JSON body.",
+    ),
+) -> Response | StreamingResponse:
+    request_data = _normalize_scan_payload(payload)
+    request = ReturnsScanRequest(**request_data)
+    if stream:
+        if request.export is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="streaming responses do not support export payloads",
+            )
+        return _stream_scan_hits(
+            "returns",
+            _iter_return_hits(request),
+            offset=offset,
+            limit=limit,
+        )
+
+    hits = list(_iter_return_hits(request))
 
     total_hits = len(hits)
     page_hits = hits[offset : offset + limit]
@@ -528,12 +643,13 @@ def api_scan_returns(
         if request.export
         else None
     )
-    return ScanResponse(
+    response_model = ScanResponse(
         method="returns",
         hits=page_hits,
         count=total_hits,
         export=export_info,
     )
+    return json_response(response_model.model_dump(mode="json"))
 
 
 __all__ = [

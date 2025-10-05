@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from ...chart.natal import ChartLocation
@@ -24,7 +24,7 @@ from ...engine.lots.dsl import CompiledProgram
 from ...engine.lots.events import scan_lot_events
 from ...ephemeris.adapter import EphemerisAdapter
 from ...scoring.policy import load_orb_policy
-from .._time import UtcDateTime
+from ...web.responses import conditional_json_response
 
 router = APIRouter(prefix="/lots", tags=["lots"])
 
@@ -161,7 +161,9 @@ def compute_lots(request: LotComputeRequest) -> LotComputeResponse:
 
 
 @router.get("/presets", response_model=list[dict[str, Any]])
-def list_presets() -> list[dict[str, Any]]:
+def list_presets(
+    if_none_match: str | None = Header(default=None, alias="If-None-Match")
+) -> Response:
     presets = [
         {
             "profile_id": profile.profile_id,
@@ -189,7 +191,11 @@ def list_presets() -> list[dict[str, Any]]:
                 "source_refs": profile.source_refs,
             }
         )
-    return presets
+    return conditional_json_response(
+        presets,
+        if_none_match=if_none_match,
+        max_age=86400,
+    )
 
 
 @router.post("/presets", response_model=dict)

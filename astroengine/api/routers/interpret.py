@@ -13,6 +13,7 @@ from ...interpret.loader import RulepackValidationError, lint_rulepack
 from ...interpret.models import InterpretRequest, InterpretResponse, RulepackLintResult, RulepackMeta, RulepackVersionPayload
 from ...interpret.service import InterpretationError, evaluate_relationship
 from ...interpret.store import RulepackStore, get_rulepack_store
+from ...web.responses import conditional_json_response, etag_matches
 
 
 _API_KEY = os.getenv("AE_API_KEY")
@@ -58,8 +59,12 @@ def _store_dependency() -> RulepackStore:
 
 
 @router.get("/rulepacks", response_model=list[RulepackMeta])
-def list_rulepacks(store: RulepackStore = Depends(_store_dependency)) -> list[RulepackMeta]:
-    return store.list_rulepacks()
+def list_rulepacks(
+    if_none_match: str | None = Header(default=None, alias="If-None-Match"),
+    store: RulepackStore = Depends(_store_dependency),
+) -> Response:
+    payload = [meta.model_dump(mode="json") for meta in store.list_rulepacks()]
+    return conditional_json_response(payload, if_none_match=if_none_match, max_age=600)
 
 
 @router.get("/rulepacks/{rulepack_id}", response_model=RulepackVersionPayload)
@@ -76,9 +81,13 @@ def get_rulepack(
         raise HTTPException(
             status_code=404, detail={"code": "RULEPACK_NOT_FOUND", "message": str(exc)}
         ) from exc
-    if if_none_match and if_none_match == payload.etag:
-        return Response(status_code=304, headers={"ETag": payload.etag})
-    response.headers["ETag"] = payload.etag
+    cache_headers = {
+        "ETag": payload.etag,
+        "Cache-Control": "public, max-age=600, immutable",
+    }
+    if etag_matches(payload.etag, if_none_match):
+        return Response(status_code=304, headers=cache_headers)
+    response.headers.update(cache_headers)
     return payload
 
 

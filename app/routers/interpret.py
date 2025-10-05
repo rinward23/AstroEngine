@@ -4,7 +4,7 @@ import os
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Response
 
 from app.schemas.interpret import (
     RulepacksResponse,
@@ -14,6 +14,8 @@ from app.schemas.interpret import (
     FindingOut,
 )
 from core.interpret_plus.engine import interpret, load_rules
+
+from astroengine.web.responses import conditional_json_response
 
 router = APIRouter(prefix="/interpret", tags=["Interpretations"])
 
@@ -56,14 +58,21 @@ def _discover_rulepacks() -> List[RulepackInfo]:
 
 
 @router.get("/rulepacks", response_model=RulepacksResponse, summary="List available rulepacks")
-def list_rulepacks():
+def list_rulepacks(
+    if_none_match: str | None = Header(default=None, alias="If-None-Match")
+) -> Response:
     items = _discover_rulepacks()
-    return RulepacksResponse(
+    payload = RulepacksResponse(
         items=items,
         meta={
             "count": len(items),
             "dirs": [directory for directory in RULEPACK_DIRS if os.path.isdir(directory)],
         },
+    )
+    return conditional_json_response(
+        payload.model_dump(mode="json"),
+        if_none_match=if_none_match,
+        max_age=600,
     )
 
 

@@ -36,3 +36,4 @@ __pycache__/
 inspection/
 triage-report/
 # >>> AUTO-GEN END: perf artifacts ignore v1.0
+astroengine/_version.py
