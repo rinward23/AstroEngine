@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ExportSpec(BaseModel):
@@ -20,8 +20,20 @@ class NatalInline(BaseModel):
     """Inline natal data supplied directly to a scan request."""
 
     ts: str
-    lat: float
-    lon: float
+    lat: float = Field(..., ge=-90.0, le=90.0)
+    lon: float = Field(..., ge=-180.0, le=180.0)
+
+    @field_validator("lat", "lon", mode="before")
+    @classmethod
+    def _coerce_coordinate(cls, value: Any) -> float:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+        if isinstance(value, str):
+            candidate = value.strip()
+            if not candidate:
+                raise ValueError("coordinate must not be empty")
+            return float(candidate)
+        raise TypeError("coordinate must be numeric or numeric string")
 
 
 class ScanRequest(BaseModel):

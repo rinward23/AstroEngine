@@ -7,10 +7,13 @@ import streamlit as st
 import yaml
 
 from astroengine.config import (
+    USE_CASE_PRESETS,
     apply_profile_overlay,
     list_profiles,
     load_profile_overlay,
     load_settings,
+    profile_description,
+    profile_label,
     profiles_home,
     save_user_profile,
 )
@@ -20,32 +23,72 @@ st.title("📚 Profiles & Presets")
 
 api_base = st.session_state.get("API_BASE") or "http://127.0.0.1:8000"
 
+
+def apply_profile_via_api(name: str, *, label: str | None = None) -> None:
+    """Invoke the backend to apply ``name`` and report status."""
+
+    display_name = label or profile_label(name)
+    try:
+        response = requests.post(
+            f"{api_base}/v1/profiles/{name}/apply",
+            timeout=15,
+        )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        st.error(f"Failed to apply {display_name} profile: {exc}")
+    else:
+        st.success(f"{display_name} profile applied and saved.")
+
 left, right = st.columns([2, 3])
 
 with left:
-    st.subheader("Built-in profiles")
     catalog = list_profiles()
     built_in = catalog.get("built_in", [])
     user_profiles = catalog.get("user", [])
 
-    if built_in:
-        default_index = built_in.index("modern_western") if "modern_western" in built_in else 0
+    st.subheader("Use-case presets")
+    use_case_available = [name for name in USE_CASE_PRESETS if name in built_in]
+    if use_case_available:
+        for preset in use_case_available:
+            label = profile_label(preset)
+            description = profile_description(preset)
+            preset_cols = st.columns([3, 1])
+            with preset_cols[0]:
+                st.markdown(f"**{label}**")
+                if description:
+                    st.caption(description)
+            with preset_cols[1]:
+                if st.button(
+                    f"Apply {label}",
+                    key=f"usecase_apply_{preset}",
+                    type="primary",
+                ):
+                    apply_profile_via_api(preset, label=label)
+    else:
+        st.info("No use-case presets available.")
+
+    st.divider()
+    st.subheader("Built-in profiles")
+    selectable_built_in = [
+        name for name in built_in if name not in use_case_available
+    ]
+    if not selectable_built_in:
+        selectable_built_in = built_in
+
+    if selectable_built_in:
+        default_index = (
+            selectable_built_in.index("modern_western")
+            if "modern_western" in selectable_built_in
+            else 0
+        )
         selected_builtin = st.selectbox(
             "Select a built-in profile",
-            built_in,
+            selectable_built_in,
             index=default_index,
+            format_func=profile_label,
         )
         if st.button("Apply built-in profile", type="primary", disabled=not selected_builtin):
-            try:
-                response = requests.post(
-                    f"{api_base}/v1/profiles/{selected_builtin}/apply",
-                    timeout=15,
-                )
-                response.raise_for_status()
-            except requests.RequestException as exc:
-                st.error(f"Failed to apply profile: {exc}")
-            else:
-                st.success("Profile applied and saved.")
+            apply_profile_via_api(selected_builtin)
     else:
         st.info("No built-in profiles available.")
 
@@ -61,16 +104,7 @@ with left:
     cols_actions = st.columns(3)
     with cols_actions[0]:
         if st.button("Apply user profile", disabled=not selected_user):
-            try:
-                response = requests.post(
-                    f"{api_base}/v1/profiles/{selected_user}/apply",
-                    timeout=15,
-                )
-                response.raise_for_status()
-            except requests.RequestException as exc:
-                st.error(f"Failed to apply profile: {exc}")
-            else:
-                st.success("Profile applied and saved.")
+            apply_profile_via_api(selected_user, label=selected_user)
     with cols_actions[1]:
         if st.button("Delete user profile", disabled=not selected_user):
             try:
@@ -129,7 +163,12 @@ with right:
     mode = st.radio("Profile source", ["Built-in", "User"], horizontal=True)
     target_name = None
     if mode == "Built-in" and built_in:
-        target_name = st.selectbox("Preview built-in", built_in, key="preview_builtin")
+        target_name = st.selectbox(
+            "Preview built-in",
+            built_in,
+            key="preview_builtin",
+            format_func=profile_label,
+        )
     elif mode == "User" and user_profiles:
         target_name = st.selectbox("Preview user", user_profiles, key="preview_user")
 

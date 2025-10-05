@@ -29,8 +29,8 @@ class NatalPayload(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     ts: UtcDateTime = Field(validation_alias=AliasChoices("ts", "datetime"))
-    lat: float
-    lon: float
+    lat: float = Field(..., ge=-90.0, le=90.0)
+    lon: float = Field(..., ge=-180.0, le=180.0)
 
     @field_validator("ts", mode="before")
     def _coerce_timestamp(cls, value: Any) -> datetime:
@@ -45,7 +45,12 @@ class NatalPayload(BaseModel):
     def _coerce_float(cls, value: Any) -> float:
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             return float(value)
-        return float(str(value))
+        if isinstance(value, str):
+            candidate = value.strip()
+            if not candidate:
+                raise ValueError("coordinate must not be empty")
+            return float(candidate)
+        raise TypeError("coordinate must be numeric or numeric string")
 
     def as_payload(self) -> dict[str, Any]:
         return {"ts": _to_iso(self.ts), "lat": float(self.lat), "lon": float(self.lon)}
@@ -60,7 +65,7 @@ class SynastryRequest(BaseModel):
 
     bodies: Sequence[str] | None = None
     aspects: Sequence[Any] | None = None
-    orb: float = Field(default=2.0, ge=0.0)
+    orb: float = Field(default=2.0, ge=0.0, le=15.0)
 
 
     def resolved_aspects(self) -> list[int]:

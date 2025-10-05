@@ -1,12 +1,13 @@
 """Lightweight registries for user-supplied aspect and lot plugins."""
-
 from __future__ import annotations
 
+import ast
 import importlib.util
 import inspect
 import logging
 import os
 import sys
+import sysconfig
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
@@ -16,6 +17,21 @@ from typing import Any, Callable, Iterable, Mapping, MutableMapping
 LOGGER = logging.getLogger(__name__)
 
 _USER_PLUGIN_NAMESPACE = "astroengine_user_plugins"
+_STDLIB_PATHS: tuple[Path, ...] = tuple(
+    Path(location).resolve()
+    for key in ("stdlib", "platstdlib")
+    for location in (sysconfig.get_path(key) or "",)
+    if location
+)
+
+_SITE_PACKAGES_PATHS: tuple[Path, ...] = tuple(
+    Path(location).resolve()
+    for key in ("purelib", "platlib")
+    for location in (sysconfig.get_path(key) or "",)
+    if location
+)
+
+_ALLOWED_IMPORT_PREFIXES = ("astroengine", _USER_PLUGIN_NAMESPACE)
 
 
 def _ensure_namespace_package() -> None:
@@ -78,6 +94,75 @@ def _default_plugin_dir() -> Path:
 
 
 PLUGIN_DIRECTORY = _default_plugin_dir()
+
+
+class PluginImportError(RuntimeError):
+    """Raised when a plugin attempts an unsupported import."""
+
+
+def _is_stdlib_module(module: str) -> bool:
+    try:
+        spec = importlib.util.find_spec(module)
+    except (ImportError, AttributeError, ValueError):
+        return False
+    if spec is None:
+        return False
+    if spec.origin in {"built-in", "frozen", None}:
+        return True
+    origin = getattr(spec, "origin", None)
+    if not origin:
+        return False
+    try:
+        resolved = Path(origin).resolve()
+    except (FileNotFoundError, OSError):
+        return False
+    if any(resolved.is_relative_to(std_path) for std_path in _STDLIB_PATHS):
+        if any(resolved.is_relative_to(pkg_path) for pkg_path in _SITE_PACKAGES_PATHS):
+            return False
+        return True
+    return False
+
+
+def _is_allowed_import(module: str | None) -> bool:
+    if module is None:
+        return True
+    candidate = module.strip()
+    if not candidate:
+        return True
+    if any(
+        candidate == prefix or candidate.startswith(f"{prefix}.")
+        for prefix in _ALLOWED_IMPORT_PREFIXES
+    ):
+        return True
+    return _is_stdlib_module(candidate)
+
+
+def _validate_plugin_imports(path: Path) -> None:
+    try:
+        source = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise PluginImportError(f"unable to read plugin file: {exc}") from exc
+    try:
+        tree = ast.parse(source, filename=str(path))
+    except SyntaxError as exc:
+        raise PluginImportError(f"syntax error: {exc.msg}") from exc
+
+    violations: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            modules = [node.module] if node.level == 0 else [None]
+        else:
+            continue
+        for module in modules:
+            if not _is_allowed_import(module):
+                target = module or "relative import"
+                violations.append(f"{target!r} (line {node.lineno})")
+    if violations:
+        raise PluginImportError(
+            "disallowed import(s): " + ", ".join(sorted(set(violations)))
+        )
 
 
 @dataclass(frozen=True)
@@ -304,6 +389,12 @@ LOT_REGISTRY = LotRegistry()
 
 _USER_PLUGINS_IMPORTED = False
 _USER_PLUGIN_MODULES: list[str] = []
+_USER_PLUGIN_ERRORS: list[tuple[str, str]] = []
+
+
+def _record_plugin_error(path: Path, message: str) -> None:
+    LOGGER.warning("Failed to load plugin file %s: %s", path, message)
+    _USER_PLUGIN_ERRORS.append((str(path), message))
 
 
 def load_user_plugins(force: bool = False) -> tuple[str, ...]:
@@ -315,6 +406,7 @@ def load_user_plugins(force: bool = False) -> tuple[str, ...]:
 
     _ensure_namespace_package()
     loaded: list[str] = []
+    _USER_PLUGIN_ERRORS.clear()
     plugin_root = PLUGIN_DIRECTORY
     if not plugin_root.exists():
         _USER_PLUGINS_IMPORTED = True
@@ -327,6 +419,11 @@ def load_user_plugins(force: bool = False) -> tuple[str, ...]:
             loaded.append(module_name)
             continue
         try:
+            _validate_plugin_imports(path)
+        except PluginImportError as exc:
+            _record_plugin_error(path, str(exc))
+            continue
+        try:
             spec = importlib.util.spec_from_file_location(module_name, path)
             if spec is None or spec.loader is None:
                 raise ImportError(f"unable to load spec for {path}")
@@ -335,7 +432,7 @@ def load_user_plugins(force: bool = False) -> tuple[str, ...]:
             spec.loader.exec_module(module)
             loaded.append(module_name)
         except Exception as exc:  # pragma: no cover - defensive guard
-            LOGGER.warning("Failed to load plugin file %s: %s", path, exc)
+            _record_plugin_error(path, str(exc))
             sys.modules.pop(module_name, None)
             continue
     _USER_PLUGINS_IMPORTED = True
@@ -407,6 +504,12 @@ def iter_lot_plugins() -> tuple[LotPluginSpec, ...]:
     return LOT_REGISTRY.iter_all()
 
 
+def get_user_plugin_errors() -> tuple[tuple[str, str], ...]:
+    """Return plugin load errors captured during import."""
+
+    return tuple(_USER_PLUGIN_ERRORS)
+
+
 def apply_plugin_settings(settings: Any | None = None) -> dict[str, tuple[Any, ...]]:
     """Apply configuration toggles to plugin-registered aspects and lots."""
 
@@ -438,5 +541,6 @@ __all__ = [
     "load_user_plugins",
     "register_aspect",
     "register_lot",
+    "get_user_plugin_errors",
 ]
 

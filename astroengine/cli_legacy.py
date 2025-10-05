@@ -75,6 +75,7 @@ from .exporters_ics import (
     write_ics_calendar,
     write_ics_canonical,
 )
+from .infrastructure.storage.sqlite import apply_default_pragmas
 from .infrastructure.storage.sqlite.query import top_events_by_score
 from .mundane import compute_solar_ingress_chart, compute_solar_quartet
 from .narrative import compose_narrative, summarize_top_events
@@ -296,6 +297,7 @@ def cmd_cache_info(_: argparse.Namespace) -> int:
         size = POSITIONS_DB.stat().st_size
         row_count = 0
         con = sqlite3.connect(str(POSITIONS_DB))
+        apply_default_pragmas(con)
         try:
             cur = con.execute("SELECT COUNT(*) FROM positions_daily")
             row = cur.fetchone()

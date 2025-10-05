@@ -144,7 +144,13 @@ class ScoreExtensionRegistry:
 
     def apply(self, inputs: ScoreInputs, result: ScoreResult) -> None:
         for spec in self._extensions:
-            payload = spec.callback(inputs, result) or {}
+            try:
+                payload = spec.callback(inputs, result) or {}
+            except Exception as exc:  # pragma: no cover - plugin isolation
+                LOGGER.warning(
+                    "score extension '%s' raised an exception: %s", spec.name, exc
+                )
+                continue
             for key, value in payload.items():
                 namespaced = f"{spec.namespace}.{key}" if spec.namespace else key
                 if namespaced in result.components:
@@ -332,7 +338,10 @@ class PluginRuntime:
 
     def post_export(self, context: ExportContext) -> None:
         self._ensure_entrypoints()
-        self._pm.hook.post_export(context=context)
+        try:
+            self._pm.hook.post_export(context=context)
+        except Exception as exc:  # pragma: no cover - plugin isolation
+            LOGGER.warning("post_export hook raised an exception: %s", exc)
 
     # ------------------------------------------------------------------
     # Compatibility helpers
