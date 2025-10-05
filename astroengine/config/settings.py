@@ -145,6 +145,30 @@ class RenderingCfg(BaseModel):
     glyph_set: Literal["default", "classic", "modern"] = "default"
 
 
+class MultiWheelCfg(BaseModel):
+    """Multi-wheel visualization toggles."""
+
+    enabled: bool = True
+    max_wheels: int = 3
+    default_wheels: int = 2
+    house_overlay: bool = True
+    orb_policy: Dict[str, Dict[str, float]] | None = None
+    palette: List[str] = Field(
+        default_factory=lambda: ["#f5f5f5", "#ffe082", "#80cbc4"]
+    )
+
+
+class SynastryCfg(BaseModel):
+    """Synastry rendering defaults."""
+
+    house_overlay: Optional[bool] = None
+    declination: bool = False
+    declination_orb: float = 1.0
+    wheel_profiles: List[str] = Field(
+        default_factory=lambda: ["natal", "secondary_progressions", "transits"]
+    )
+
+
 class EphemerisCfg(BaseModel):
     """Ephemeris source configuration."""
 
@@ -178,6 +202,8 @@ class Settings(BaseModel):
     charts: ChartsCfg = Field(default_factory=ChartsCfg)
     narrative: NarrativeCfg = Field(default_factory=NarrativeCfg)
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
+    multiwheel: MultiWheelCfg = Field(default_factory=MultiWheelCfg)
+    synastry: SynastryCfg = Field(default_factory=SynastryCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
 
