@@ -450,10 +450,12 @@ class MaleficAnglesConstraint:
                 True,
                 detail,
             )
+        assert closest is not None  # narrow for type checking
+        closest_body, closest_axis, closest_orb = closest
         detail["closest"] = {
-            "body": closest[0],
-            "axis": closest[1],
-            "orb": closest[2],
+            "body": closest_body,
+            "axis": closest_axis,
+            "orb": closest_orb,
         }
         contact = min_delta <= self.max_orb
         passed = contact if self.allow_contact else not contact
@@ -620,15 +622,16 @@ def _normalize_constraints(payload: Sequence[Mapping[str, Any]]) -> tuple[list[C
                 target_is_axis = True
             aspect_name, angle = _resolve_aspect(str(spec.get("type")))
             max_orb = spec.get("max_orb")
-            constraint = AspectConstraint(
-                body=body,
-                target=target,
-                aspect=aspect_name,
-                angle=angle,
-                max_orb=None if max_orb is None else float(max_orb),
-                target_is_axis=target_is_axis,
+            constraints.append(
+                AspectConstraint(
+                    body=body,
+                    target=target,
+                    aspect=aspect_name,
+                    angle=angle,
+                    max_orb=None if max_orb is None else float(max_orb),
+                    target_is_axis=target_is_axis,
+                )
             )
-            constraints.append(constraint)
             bodies.add(body)
             if target_is_axis:
                 axes.add(target)
@@ -648,12 +651,13 @@ def _normalize_constraints(payload: Sequence[Mapping[str, Any]]) -> tuple[list[C
                     resolved.append(_resolve_body(str(name)))
             else:
                 resolved = ["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"]
-            constraint = MoonVoidConstraint(
-                require_void=require,
-                bodies=resolved,
-                max_orb=orb,
+            constraints.append(
+                MoonVoidConstraint(
+                    require_void=require,
+                    bodies=resolved,
+                    max_orb=orb,
+                )
             )
-            constraints.append(constraint)
             bodies.add("Moon")
             bodies.update(resolved)
             continue
@@ -665,8 +669,9 @@ def _normalize_constraints(payload: Sequence[Mapping[str, Any]]) -> tuple[list[C
             else:
                 allow = bool(spec)
                 orb = 3.0
-            constraint = MaleficAnglesConstraint(allow_contact=allow, max_orb=orb)
-            constraints.append(constraint)
+            constraints.append(
+                MaleficAnglesConstraint(allow_contact=allow, max_orb=orb)
+            )
             bodies.update(["Mars", "Saturn"])
             axes.update(["asc", "desc", "mc", "ic"])
             continue
@@ -679,14 +684,15 @@ def _normalize_constraints(payload: Sequence[Mapping[str, Any]]) -> tuple[list[C
             kind = str(spec.get("type", "antiscia"))
             axis = str(spec.get("axis", DEFAULT_ANTISCIA_AXIS))
             orb = float(spec.get("max_orb", 2.0))
-            constraint = AntisciaConstraint(
-                body=body,
-                target=target,
-                max_orb=orb,
-                kind=kind,
-                axis=axis,
+            constraints.append(
+                AntisciaConstraint(
+                    body=body,
+                    target=target,
+                    max_orb=orb,
+                    kind=kind,
+                    axis=axis,
+                )
             )
-            constraints.append(constraint)
             bodies.update([body, target])
             continue
         if "declination" in entry:
@@ -697,13 +703,14 @@ def _normalize_constraints(payload: Sequence[Mapping[str, Any]]) -> tuple[list[C
             target = _resolve_body(str(spec.get("target")))
             kind = str(spec.get("type", "parallel"))
             orb = float(spec.get("max_orb", 1.0))
-            constraint = DeclinationConstraint(
-                body=body,
-                target=target,
-                kind=kind,
-                max_orb=orb,
+            constraints.append(
+                DeclinationConstraint(
+                    body=body,
+                    target=target,
+                    kind=kind,
+                    max_orb=orb,
+                )
             )
-            constraints.append(constraint)
             bodies.update([body, target])
             continue
         raise ValueError("unknown constraint type")

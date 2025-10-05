@@ -20,5 +20,6 @@ pip install pyinstaller
 # 4) Build EXEs
 pyinstaller packaging/astroengine_cli.spec --noconfirm
 pyinstaller packaging/astroengine_gui.spec --noconfirm
+pyinstaller packaging/astroengine_portal.spec --noconfirm
 
 Write-Host "Build complete. Artifacts in .\\dist\\"
