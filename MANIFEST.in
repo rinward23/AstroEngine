@@ -7,5 +7,5 @@ recursive-include astroengine/exporters/reports/relationship/templates *
 
 # >>> AUTO-GEN END: astroengine manifest data v1.0
 
-recursive-include streamlit/report_builder/templates *.md.j2
-recursive-include streamlit/report_builder/samples *.json
+recursive-include ui/streamlit/report_builder/templates *.md.j2
+recursive-include ui/streamlit/report_builder/samples *.json

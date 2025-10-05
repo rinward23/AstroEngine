@@ -12,7 +12,7 @@ from jinja2 import Environment, StrictUndefined, select_autoescape
 
 from . import sections
 
-TEMPLATE_PACKAGE = "streamlit.report_builder.templates"
+TEMPLATE_PACKAGE = "ui.streamlit.report_builder.templates"
 
 
 @dataclass(slots=True)
