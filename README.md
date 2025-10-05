@@ -43,6 +43,31 @@ The first command pins the SQLite dev database (`dev.db` in the repo root) and
 points Swiss Ephemeris to your local data so neither service falls back to the
 reduced-precision providers. The subshell then launches the FastAPI service and
 Streamlit playground together so the UI can call the freshly started API.
+
+### Docker Compose workflow
+
+The repository now ships a compose bundle that launches the API on `:8000` and
+the Streamlit UI on `:8501` while sharing the host `./data` directory.
+
+1. Populate `./data` with any required assets:
+   ```bash
+   mkdir -p data/ephe
+   cp /path/to/dev.db data/dev.db            # optional, created automatically if missing
+   cp /path/to/sweph/* data/ephe/            # optional Swiss Ephemeris files
+   ```
+
+2. Build and start the API:
+   ```bash
+   docker compose up --build api
+   ```
+
+3. In a separate shell, build and start the UI (Compose will reuse the running API container or start one if needed):
+   ```bash
+   docker compose up --build ui
+   ```
+
+The containers mount `./data` at `/app/data`, so database migrations and
+ephemeris files persist between restarts and remain available to both services.
 # >>> AUTO-GEN END: README Quick Start v1.1
 
 ### First transit sanity check
@@ -141,6 +166,10 @@ channel, and subchannel remains intact and data-backed:
    streamlit run apps/streamlit_transit_scanner.py
    ```
 
+   > **Heads-up:** the repository ships a ``streamlit/`` testing shim for
+   > unit suites. Always start UI scripts with ``streamlit run`` rather than
+   > ``python`` so the real Streamlit package loads before the shim.
+
 * **Scan Transits**: choose provider/time window/bodies/targets; optionally pin an entrypoint; previews canonical events and exports to SQLite/Parquet.
 * **Swiss Smoketest**: runs `scripts/swe_smoketest.py` to validate Swiss setup.
 * The sidebar lists detected scan entrypoints and environment overrides; install `pandas` for the tabular preview.
@@ -177,10 +206,10 @@ High-frequency refinement loops now consult a tiny process-local LRU that
 quantizes Terrestrial Time (TT) into short bins so repeat calls within the same
 window reuse identical Swiss Ephemeris samples. Control the cache via env vars:
 
-- `AE_QCACHE_SEC` – quantization window in seconds (default `1.0`). Lower values
+- `AE_QCACHE_SEC` – quantization window in seconds (default `0.25`). Lower values
   tighten the window; increase to broaden cache hits when input jitter exceeds
-  one second.
-- `AE_QCACHE_SIZE` – maximum cached entries (default `4096`). Raise this if
+  a quarter second.
+- `AE_QCACHE_SIZE` – maximum cached entries (default `16384`). Raise this if
   long-running transit scans churn through the default footprint.
 
 Both knobs act locally per process and can be tuned without code changes when
@@ -194,6 +223,11 @@ endpoints at the `/v1` base path. Launch it via Uvicorn with
 ```bash
 uvicorn app.relationship_api:create_app --factory --host 0.0.0.0 --port 8000
 ```
+
+The Docker entrypoint now auto-detects an appropriate worker count using
+`os.cpu_count()` so container deployments saturate available vCPUs. Override the
+value by exporting `UVICORN_WORKERS` when launching locally or in orchestration
+manifests.
 
 Key routes:
 
@@ -290,7 +324,7 @@ astroengine query --sqlite events.db --limit 5 --natal-id n001
 
 # >>> AUTO-GEN END: Canonical Transit Types v1.0
 
-The CI workflow `.github/workflows/ci.yml` covers Python 3.10–3.12 and archives diagnostics output for each run.
+The CI workflow `.github/workflows/ci.yml` covers Python 3.10–3.11 and archives diagnostics output for each run.
 
 The package exposes a registry-based API for discovering datasets and
 rulesets.  See `astroengine/modules` for details.
@@ -342,10 +376,11 @@ make install-optional
 python scripts/install_optional_dependencies.py --upgrade-pip
 ```
 
-The script installs `requirements-optional.txt`, verifies critical imports such
-as `pymeeus`, `PyYAML`, and `pydantic`, and installs `flatlib==0.2.3` without
-pulling its outdated `pyswisseph==2.08` constraint so the Swiss bindings remain
-on the supported 2.10 series.
+The script installs `requirements-optional.txt`, verifies every optional stack
+import—including exporters like `ics`, reporting libraries such as
+`weasyprint`, and runtime services like `fastapi`—and installs `flatlib==0.2.3`
+without pulling its outdated `pyswisseph==2.08` constraint so the Swiss
+bindings remain on the supported 2.10 series.
 
 ### CLI
 

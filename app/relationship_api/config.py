@@ -32,39 +32,41 @@ class ServiceSettings(BaseModel):
 
     @field_validator("cors_allow_origins", mode="before")
     @classmethod
-    def _normalise_origins(cls, value: str | Iterable[str] | None) -> tuple[str, ...]:
-        if value in (None, ""):
+    def _parse_csv(cls, value: str | Iterable[str] | None) -> tuple[str, ...]:
+        if value is None:
             return tuple()
-
+        if isinstance(value, str):
+            items = (item.strip() for item in value.split(","))
+        else:
+            items = (str(item).strip() for item in value)
+        normalized: list[str] = []
         seen: set[str] = set()
         normalised: list[str] = []
         for item in _iter_items(value):
             if item and item not in seen:
                 normalised.append(item)
                 seen.add(item)
-        return tuple(normalised)
+        return tuple(normalized)
 
     @classmethod
     def from_env(cls) -> "ServiceSettings":
-        """Initialise settings from environment variables."""
-
-        env_get = os.getenv
-        cors_raw = env_get("RELATIONSHIP_CORS_ALLOW_ORIGINS")
-        if cors_raw is None:
-            cors_raw = env_get("CORS_ALLOW_ORIGINS")
-
+        redis_url = os.getenv("RELATIONSHIP_REDIS_URL") or os.getenv("REDIS_URL")
+        rate_limit = int(os.getenv("RELATIONSHIP_RATE_LIMIT", "60"))
+        gzip_min_size = int(os.getenv("RELATIONSHIP_GZIP_MIN", "512"))
+        request_max = int(os.getenv("RELATIONSHIP_REQUEST_MAX", "1000000"))
+        enable_etag = os.getenv("RELATIONSHIP_DISABLE_ETAG") not in {"1", "true", "TRUE"}
+        environment = os.getenv("ENV", "dev")
         settings = cls(
-            cors_allow_origins=cors_raw,
-            environment=env_get("ENV", "dev"),
-            rate_limit_per_minute=max(1, int(env_get("RELATIONSHIP_RATE_LIMIT", "60"))),
-            redis_url=env_get("RELATIONSHIP_REDIS_URL") or env_get("REDIS_URL"),
-            gzip_minimum_size=max(128, int(env_get("RELATIONSHIP_GZIP_MIN", "512"))),
-            request_max_bytes=max(32_768, int(env_get("RELATIONSHIP_REQUEST_MAX", "1000000"))),
-            enable_etag=env_get("RELATIONSHIP_DISABLE_ETAG") not in {"1", "true", "TRUE"},
+            cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS"),
+            rate_limit_per_minute=max(1, rate_limit),
+            redis_url=redis_url,
+            gzip_minimum_size=max(128, gzip_min_size),
+            request_max_bytes=max(32_768, request_max),
+            enable_etag=enable_etag,
+            environment=environment,
         )
-
         if settings.environment == "dev" and not settings.cors_allow_origins:
-            return settings.model_copy(update={"cors_allow_origins": ("*",)})
+            settings = settings.model_copy(update={"cors_allow_origins": ("*",)})
         return settings
 
     def cors_origin_list(self) -> tuple[str, ...]:

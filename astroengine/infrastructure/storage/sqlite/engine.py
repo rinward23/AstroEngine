@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from alembic import command
-from alembic.config import Config
-from alembic.runtime.migration import MigrationContext
+if TYPE_CHECKING:  # pragma: no cover - imported for static type checking only.
+    from alembic.config import Config
 
 
 def _absolute_sqlite_url(db_path: str | Path) -> str:
@@ -16,8 +16,10 @@ def _absolute_sqlite_url(db_path: str | Path) -> str:
     return f"sqlite:///{path}"
 
 
-def get_sqlite_config(db_path: str | Path) -> Config:
+def get_sqlite_config(db_path: str | Path) -> "Config":
     """Build an in-memory Alembic config targeting ``db_path``."""
+
+    from alembic.config import Config
 
     cfg = Config()
     migrations_root = resources.files(__package__) / "migrations"
@@ -34,18 +36,23 @@ class SQLiteMigrator:
 
     db_path: str | Path
 
-    def _config(self) -> Config:
+    def _config(self) -> "Config":
         return get_sqlite_config(self.db_path)
 
     def upgrade(self, revision: str = "head") -> None:
+        from alembic import command
+
         command.upgrade(self._config(), revision)
 
     def downgrade(self, revision: str = "base") -> None:
+        from alembic import command
+
         command.downgrade(self._config(), revision)
 
     def current(self) -> str | None:
         from sqlalchemy import create_engine
         from sqlalchemy.pool import NullPool
+        from alembic.runtime.migration import MigrationContext
 
         engine = create_engine(
             _absolute_sqlite_url(self.db_path), future=True, poolclass=NullPool

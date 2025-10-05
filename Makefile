@@ -1,17 +1,17 @@
 # >>> AUTO-GEN BEGIN: Makefile v1.2
-.PHONY: help setup install-optional hooks fmt lint lint-code test doctor clean deepclean fullcheck repair build
+.PHONY: help setup install-optional hooks fmt lint lint-code test doctor clean deepclean fullcheck repair build run-cli run-api run-ui
 
 help:
-@echo "Targets: setup, install-optional, hooks, fmt, lint, lint-code, test, doctor, clean, deepclean, fullcheck, repair, build"
+	@echo "Targets: setup, install-optional, hooks, fmt, lint, lint-code, test, doctor, clean, deepclean, fullcheck, repair, build, run-cli, run-api, run-ui"
 
 setup:
-python -m pip install --upgrade pip
-@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-@if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e . || true; fi
-python -m astroengine.diagnostics --strict || true
+	python -m pip install --upgrade pip
+	@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+	@if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e . || true; fi
+	python -m astroengine.diagnostics --strict || true
 
 install-optional:
-python scripts/install_optional_dependencies.py
+	python scripts/install_optional_dependencies.py
 
 hooks:
 	python -m pip install -U pre-commit
@@ -54,4 +54,22 @@ repair:
 
 build:
 	python -m astroengine.maint --with-build || true
+
+run-cli: install-optional
+	python -m astroengine --help
+
+run-api: install-optional
+	uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+run-ui: install-optional
+	streamlit run ui/streamlit/altaz_app.py --server.port 8501 --server.address 0.0.0.0
 # >>> AUTO-GEN END: Makefile v1.2
+
+# Custom operational helpers
+.PHONY: migrate cache-warm
+
+migrate:
+	.venv/bin/alembic upgrade head
+
+cache-warm:
+	python -m astroengine.pipeline.cache_warm

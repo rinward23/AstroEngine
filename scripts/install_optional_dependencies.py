@@ -27,15 +27,20 @@ def install_optional_dependencies() -> None:
     )
 
     if REQUIREMENTS_OPTIONAL.exists():
-        install_requirements(REQUIREMENTS_OPTIONAL)
+        installed = install_requirements(REQUIREMENTS_OPTIONAL)
+        if not installed:
+            raise FileNotFoundError(
+                f"Optional requirements file missing: {REQUIREMENTS_OPTIONAL}"
+            )
 
-    # Validate a subset of optional libraries commonly exercised in tests.
+    # Validate the optional stacks by ensuring each library imports successfully.
     for spec, import_name, minimum in (
         ('pymeeus>=0.5.12', 'pymeeus', (0, 5, 12)),
         ('PyYAML>=6.0', 'yaml', (6, 0, 0)),
         ('pydantic>=2.11', 'pydantic', (2, 11)),
         ('skyfield>=1.49', 'skyfield', (1, 49)),
         ('jplephem>=2.21', 'jplephem', (2, 21)),
+        ('mdit-py-plugins>=0.4', 'mdit_py_plugins', (0, 4)),
     ):
         ensure(spec, import_name=import_name, minimum=minimum)
 
