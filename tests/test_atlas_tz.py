@@ -14,6 +14,7 @@ from astroengine.atlas.tz import (
 
 NYC = (40.7128, -74.0060)
 LON = (51.5074, -0.1278)
+SYD = (-33.8688, 151.2093)
 
 
 def test_tzid_basic():
@@ -96,5 +97,65 @@ def test_to_utc_flagged_ambiguous():
     assert flagged.ambiguous
     assert flagged.ambiguous_flagged
     assert flagged.fold == 0
+
+
+@pytest.mark.parametrize(
+    "coords,local_expected,utc_expected",
+    [
+        (
+            NYC,
+            datetime(2021, 3, 14, 2, 0),
+            datetime(2021, 3, 14, 7, 0, tzinfo=timezone.utc),
+        ),
+        (
+            LON,
+            datetime(2021, 3, 28, 1, 30),
+            datetime(2021, 3, 28, 1, 30, tzinfo=timezone.utc),
+        ),
+        (
+            SYD,
+            datetime(2021, 10, 3, 2, 30),
+            datetime(2021, 10, 2, 16, 30, tzinfo=timezone.utc),
+        ),
+    ],
+)
+def test_dst_birth_nonexistent_windows(coords, local_expected, utc_expected):
+    tzid = tzid_for(*coords)
+    assert is_nonexistent(local_expected, tzid)
+    shifted = to_utc(local_expected, *coords, policy="shift_forward")
+    assert shifted == utc_expected
+
+
+@pytest.mark.parametrize(
+    "coords,local_time,earliest_expected,latest_expected",
+    [
+        (
+            NYC,
+            datetime(2021, 11, 7, 1, 30),
+            datetime(2021, 11, 7, 5, 30, tzinfo=timezone.utc),
+            datetime(2021, 11, 7, 6, 30, tzinfo=timezone.utc),
+        ),
+        (
+            LON,
+            datetime(2021, 10, 31, 1, 30),
+            datetime(2021, 10, 31, 0, 30, tzinfo=timezone.utc),
+            datetime(2021, 10, 31, 1, 30, tzinfo=timezone.utc),
+        ),
+        (
+            SYD,
+            datetime(2021, 4, 4, 2, 30),
+            datetime(2021, 4, 3, 15, 30, tzinfo=timezone.utc),
+            datetime(2021, 4, 3, 16, 30, tzinfo=timezone.utc),
+        ),
+    ],
+)
+def test_dst_birth_ambiguous_windows(coords, local_time, earliest_expected, latest_expected):
+    tzid = tzid_for(*coords)
+    assert is_ambiguous(local_time, tzid)
+    earliest = to_utc(local_time, *coords, policy="earliest")
+    latest = to_utc(local_time, *coords, policy="latest")
+    assert earliest == earliest_expected
+    assert latest == latest_expected
+    assert (latest - earliest).total_seconds() == 3600
 
 
