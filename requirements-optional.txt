@@ -12,7 +12,6 @@ astroquery>=0.4
 # exporters
 
 pyarrow>=16
-ics>=0.7
 # document generators
 pypdf>=4.2
 weasyprint>=62
