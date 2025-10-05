@@ -84,8 +84,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             }
             if not result.allowed:
                 adapter.warning("rate.limit.exceeded", extra={"path": request.url.path})
-                payload = ApiError(code="RATE_LIMIT", message="Rate limit exceeded").model_dump()
-                headers = {"Retry-After": str(result.reset_seconds)}
+                payload = ApiError(code="rate_limited", message="Too many requests").model_dump()
+                headers = {"Retry-After": str(int(result.reset_seconds))}
                 headers.update(rate_headers)
                 headers["X-Request-ID"] = request_id
                 return JSONResponse(status_code=429, content=payload, headers=headers)
