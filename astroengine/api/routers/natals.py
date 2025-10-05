@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ...chart.config import ChartConfig
 from ...userdata.vault import BASE as NATAL_BASE
@@ -100,8 +101,12 @@ class NatalPayload(BaseModel):
 
     name: str | None = Field(default=None, description="Display name for the chart owner.")
     utc: datetime = Field(description="Moment of birth in ISO-8601 UTC.")
-    lat: float = Field(description="Latitude in decimal degrees.")
-    lon: float = Field(description="Longitude in decimal degrees.")
+    lat: float = Field(
+        description="Latitude in decimal degrees.", ge=-90.0, le=90.0
+    )
+    lon: float = Field(
+        description="Longitude in decimal degrees.", ge=-180.0, le=180.0
+    )
     tz: str | None = Field(default=None, description="Original timezone identifier, if known.")
     place: str | None = Field(default=None, description="Birth location description.")
     houses: "HouseSettings" = Field(
@@ -129,6 +134,22 @@ class NatalPayload(BaseModel):
                 raise ValueError("coordinate must not be empty")
             return float(value)
         raise TypeError("coordinate must be numeric or numeric string")
+
+    @field_validator("tz", mode="before")
+    @classmethod
+    def _validate_timezone(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, ZoneInfo):
+            return value.key
+        tz = str(value).strip()
+        if not tz:
+            return None
+        try:
+            ZoneInfo(tz)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(f"unrecognized timezone '{tz}'") from exc
+        return tz
 
     @field_serializer("utc")
     def _serialize_utc(self, value: datetime) -> str:
