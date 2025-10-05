@@ -50,6 +50,16 @@ from .settings import (
     load_settings,
     save_settings,
 )
+from .profiles import (
+    PROFILES_DIRNAME,
+    apply_profile_overlay,
+    built_in_profiles,
+    delete_user_profile,
+    list_profiles,
+    load_profile_overlay,
+    profiles_home,
+    save_user_profile,
+)
 
 __all__ = [
     "load_profile_json",
@@ -104,4 +114,12 @@ __all__ = [
     "load_settings",
     "save_settings",
     "ensure_default_config",
+    "PROFILES_DIRNAME",
+    "built_in_profiles",
+    "profiles_home",
+    "list_profiles",
+    "load_profile_overlay",
+    "apply_profile_overlay",
+    "save_user_profile",
+    "delete_user_profile",
 ]

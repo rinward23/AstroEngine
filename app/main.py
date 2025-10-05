@@ -26,6 +26,7 @@ from app.routers import (
     interpret_router,
     lots_router,
     policies_router,
+    profiles_router,
     settings_router,
     reports_router,
     relationship_router,
@@ -60,6 +61,7 @@ app.include_router(settings_router)
 app.include_router(notes_router)
 app.include_router(data_router)
 app.include_router(charts_router)
+app.include_router(profiles_router)
 if DEV_MODE_ENABLED:
     from app.devmode import router as devmode_router
 

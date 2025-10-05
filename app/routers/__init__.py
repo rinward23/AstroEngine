@@ -23,6 +23,7 @@ __all__ = [
     "notes_router",
     "data_router",
     "charts_router",
+    "profiles_router",
     "configure_position_provider",
     "clear_position_provider",
 ]
@@ -72,6 +73,10 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - simple import trampolin
         from .relationship import router as relationship_router
 
         return relationship_router
+    if name == "profiles_router":
+        from .profiles import router as profiles_router
+
+        return profiles_router
     if name == "reports_router":
         from .reports import router as reports_router
 
