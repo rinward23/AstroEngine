@@ -16,6 +16,7 @@ def create_app() -> FastAPI:
     from .routers import lots as lots_router
     from .routers import natals as natals_router
     from .routers import plus as plus_router
+    from .routers import returns as returns_router
     from .routers import scan as scan_router
     from .routers import synastry as synastry_router
     from .routers import topocentric as topocentric_router
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(natals_router.router)
     app.include_router(lots_router.router, prefix="/v1", tags=["lots"])
     app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])
+    app.include_router(returns_router.router)
     app.include_router(synastry_router.router, prefix="/v1/synastry", tags=["synastry"])
     app.include_router(vedic_router.router)
     app.include_router(topocentric_router.router, prefix="/v1", tags=["topocentric"])
