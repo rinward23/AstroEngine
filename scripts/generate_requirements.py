@@ -23,7 +23,7 @@ DEV_ENSURE_LINES = [
     "typing_extensions>=4.9.0  # ENSURE-LINE",
     "pip-tools>=7.4.0  # ENSURE-LINE",
     "pipdeptree>=2.20.0  # ENSURE-LINE",
-    "pyswisseph==2.10.3.2; python_version < \"3.12\"  # ENSURE-LINE",
+    "pyswisseph==2.10.3.2; python_version <= \"3.11\"  # ENSURE-LINE",
 ]
 
 DEV_EXTRA_OVERRIDES = {

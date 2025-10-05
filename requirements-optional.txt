@@ -3,7 +3,7 @@
 # Mirrors pyproject extras for non-pep517 workflows
 
 # [ephem]
-pyswisseph>=2.10; python_version < "3.12"
+pyswisseph>=2.10; python_version <= "3.11"
 pymeeus>=0.5.12
 
 # [skyfield]
@@ -34,6 +34,8 @@ weasyprint>=62
 python-docx>=1.1
 playwright>=1.45
 pypandoc>=1.12
+markdown-it-py>=4.0
+mdit-py-plugins>=0.5
 
 # [streamlit]
 streamlit>=1.35

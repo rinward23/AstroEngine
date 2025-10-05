@@ -1,6 +1,7 @@
 # >>> AUTO-GEN BEGIN: py311 compatibility sweep v1.0
 """
-Scan the repo for Python 3.12-only patterns and make **safe** 3.11 fallbacks:
+Scan the repo for patterns that require Python newer than 3.11 and make **safe**
+3.11 fallbacks:
 - Replace `from typing import override` -> `from typing_extensions import override`.
 - Replace `typing.override` -> `typing_extensions.override`.
 - Detect PEP-695 generic syntax (functions/classes like `def f[T](...)`) and **report** occurrences.
