@@ -80,6 +80,7 @@ __all__ = [
     "Settings",
     "ZodiacCfg",
     "HousesCfg",
+    "DignitiesCfg",
     "BodiesCfg",
     "AspectsCfg",
     "AntisciaCfg",

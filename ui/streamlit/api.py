@@ -146,6 +146,30 @@ class APIClient:
         r.raise_for_status()
         return r.json()
 
+    # ---- Analysis ---------------------------------------------------------
+    def dignities_analysis(self, natal_id: str) -> Dict[str, Any]:
+        """Retrieve Lilly dignity report for a stored natal chart."""
+
+        params = {"natal_id": natal_id}
+        try:
+            response = requests.get(
+                f"{self.base}/v1/analysis/dignities", params=params, timeout=30
+            )
+            response.raise_for_status()
+        except requests.HTTPError as exc:  # pragma: no cover - UI path only
+            message = _extract_error_message(exc.response) or str(exc)
+            raise RuntimeError(message) from exc
+        except requests.RequestException as exc:  # pragma: no cover - UI path only
+            raise RuntimeError(str(exc)) from exc
+
+        try:
+            data = response.json()
+        except ValueError as exc:  # pragma: no cover - UI path only
+            raise RuntimeError("API returned a non-JSON response") from exc
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected payload from /v1/analysis/dignities")
+        return data
+
 
     # ---- Relationship ------------------------------------------------------
     def relationship_synastry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
