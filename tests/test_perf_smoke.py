@@ -4,16 +4,15 @@ import os
 
 import pytest
 
+pytest.importorskip(
+    "swisseph", reason="Install with `.[providers]` or set SE_EPHE_PATH"
+)
+
 pytestmark = [pytest.mark.perf, pytest.mark.swiss]
 
 
-def _have_swiss():
-    try:
-        import swisseph as _  # noqa
-
-        return bool(os.getenv("SE_EPHE_PATH"))
-    except Exception:
-        return False
+def _have_swiss() -> bool:
+    return bool(os.getenv("SE_EPHE_PATH") or os.getenv("SWE_EPH_PATH"))
 
 
 @pytest.mark.skipif(not _have_swiss(), reason="Swiss unavailable")
