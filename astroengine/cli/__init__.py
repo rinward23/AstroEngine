@@ -4,9 +4,23 @@ from __future__ import annotations
 
 import json as _json
 
-from .__main__ import build_parser, main
-
 json = _json
+
+
+def build_parser():
+    """Lazily import the CLI parser builder to avoid early heavy dependencies."""
+
+    from .__main__ import build_parser as _build
+
+    return _build()
+
+
+def main(argv=None):
+    """Lazily import the CLI entrypoint to defer optional dependency loading."""
+
+    from .__main__ import main as _main
+
+    return _main(argv)
 
 
 def console_main() -> None:
