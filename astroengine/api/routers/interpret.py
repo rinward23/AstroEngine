@@ -14,6 +14,7 @@ from ...interpret.loader import RulepackValidationError, lint_rulepack
 from ...interpret.models import InterpretRequest, InterpretResponse, RulepackLintResult, RulepackMeta, RulepackVersionPayload
 from ...interpret.service import InterpretationError, evaluate_relationship
 from ...interpret.store import RulepackStore, get_rulepack_store
+from ...utils.i18n import translate
 from ...web.responses import conditional_json_response, etag_matches
 
 
@@ -24,7 +25,10 @@ def _require_api_key(x_api_key: str | None = Header(default=None)) -> None:
     if _API_KEY and x_api_key != _API_KEY:
         raise HTTPException(
             status_code=401,
-            detail={"code": "UNAUTHORIZED", "message": "invalid or missing API key"},
+            detail={
+                "code": "UNAUTHORIZED",
+                "message": translate("api.error.invalid_api_key"),
+            },
         )
 
 
@@ -40,7 +44,7 @@ class RulepackUploadPayload(BaseModel):
             return self.text.encode("utf-8")
         if self.content is not None:
             return json.dumps(self.content).encode("utf-8")
-        raise ValueError("upload payload missing content")
+        raise ValueError(translate("api.error.missing_content"))
 
 
 class RulepackLintPayload(BaseModel):
@@ -52,7 +56,7 @@ class RulepackLintPayload(BaseModel):
             return self.text.encode("utf-8")
         if self.content is not None:
             return json.dumps(self.content).encode("utf-8")
-        raise ValueError("lint payload missing content")
+        raise ValueError(translate("api.error.missing_lint_content"))
 
 
 def _store_dependency() -> RulepackStore:
@@ -103,26 +107,51 @@ async def _read_rulepack_payload(
         if not isinstance(upload, UploadFile):
             raise HTTPException(
                 status_code=400,
-                detail={"code": "BAD_REQUEST", "message": "multipart payload missing file"},
+                detail={
+                    "code": "BAD_REQUEST",
+                    "message": translate("api.error.missing_file"),
+                },
             )
         return await upload.read(), upload.filename or "upload"
     try:
         data = await request.json()
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=400, detail={"code": "BAD_REQUEST", "message": "invalid JSON"}) from exc
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "BAD_REQUEST",
+                "message": translate("api.error.invalid_json"),
+            },
+        ) from exc
     if not isinstance(data, dict):
-        raise HTTPException(status_code=400, detail={"code": "BAD_REQUEST", "message": "invalid payload"})
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "BAD_REQUEST",
+                "message": translate("api.error.invalid_payload"),
+            },
+        )
     try:
         payload = model.model_validate(data)
     except ValidationError as exc:
         raise HTTPException(
             status_code=400,
-            detail={"code": "BAD_REQUEST", "message": "invalid payload", "errors": exc.errors()},
+            detail={
+                "code": "BAD_REQUEST",
+                "message": translate("api.error.invalid_payload"),
+                "errors": exc.errors(),
+            },
         ) from exc
     try:
         return payload.as_bytes(), "inline"
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail={"code": "BAD_REQUEST", "message": str(exc)}) from exc
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "BAD_REQUEST",
+                "message": str(exc),
+            },
+        ) from exc
 
 
 @router.post(

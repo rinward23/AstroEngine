@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from astroengine.utils.i18n import translate
+
 __all__ = ["build_summary_prompt", "build_template_summary", "event_to_mapping"]
 
 
@@ -26,24 +28,29 @@ def build_summary_prompt(
     profile: str = "transits",
     timelords: Any | None = None,
     context: Mapping[str, Any] | None = None,
+    locale: str | None = None,
 ) -> str:
     """Return a chat-friendly prompt describing the supplied events."""
 
     lines: list[str] = []
+    lines.append(translate("narrative.prompt.intro", locale=locale))
+    lines.append(translate("narrative.prompt.instructions", locale=locale))
     lines.append(
-        "You are an astrology interpreter summarizing key events for the reader."
+        translate("narrative.prompt.context_profile", locale=locale, profile=profile)
     )
-    lines.append(
-        "Highlight the themes, note if aspects are tight or wide, and mention relevant planets."
-    )
-    lines.append(f"Context profile: {profile}.")
     if context:
         context_bits = ", ".join(
             f"{k}={v}" for k, v in context.items() if v not in (None, "")
         )
         if context_bits:
-            lines.append(f"Profile context: {context_bits}.")
-    lines.append("Events:")
+            lines.append(
+                translate(
+                    "narrative.prompt.profile_context",
+                    locale=locale,
+                    context_bits=context_bits,
+                )
+            )
+    lines.append(translate("narrative.prompt.events_header", locale=locale))
     for index, event in enumerate(events, 1):
         payload = event_to_mapping(event)
         timestamp = payload.get("timestamp") or payload.get("ts")
@@ -57,7 +64,17 @@ def build_summary_prompt(
         score = payload.get("score")
         orb = payload.get("orb_abs") or payload.get("orb")
         lines.append(
-            f"{index}. {timestamp} — {moving} vs {target} ({kind}); score={score} orb={orb}"
+            translate(
+                "narrative.prompt.event_line",
+                locale=locale,
+                index=index,
+                timestamp=timestamp,
+                moving=moving,
+                target=target,
+                kind=kind,
+                score=score,
+                orb=orb,
+            )
         )
     if timelords is not None:
         from .profiles import timelord_outline  # avoid circular import at module level
@@ -65,8 +82,14 @@ def build_summary_prompt(
         outline = timelord_outline(timelords)
         summary = outline.get("summary")
         if summary:
-            lines.append(f"Active time-lords: {summary}.")
-    lines.append("Compose a concise narrative of 2-3 sentences.")
+            lines.append(
+                translate(
+                    "narrative.prompt.timelords",
+                    locale=locale,
+                    summary=summary,
+                )
+            )
+    lines.append(translate("narrative.prompt.wrap", locale=locale))
     return "\n".join(filter(None, lines))
 
 
@@ -75,10 +98,11 @@ def build_template_summary(
     *,
     title: str = "Top events",
     timelords: Any | None = None,
+    locale: str | None = None,
 ) -> str:
     """Fallback deterministic formatter when GPT access is unavailable."""
 
-    lines = [title + ":"]
+    lines = [translate("narrative.template.title", locale=locale, title=title)]
     for event in events:
         payload = event_to_mapping(event)
         timestamp = payload.get("timestamp") or payload.get("ts")
@@ -92,11 +116,27 @@ def build_template_summary(
         )
         kind = payload.get("kind") or payload.get("level")
         score = payload.get("score")
-        lines.append(f"- {timestamp}: {moving} → {target} ({kind}), score={score}")
+        lines.append(
+            translate(
+                "narrative.template.event_line",
+                locale=locale,
+                timestamp=timestamp,
+                moving=moving,
+                target=target,
+                kind=kind,
+                score=score,
+            )
+        )
     if timelords is not None:
         from .profiles import timelord_outline
 
         outline = timelord_outline(timelords)
         if outline.get("summary"):
-            lines.append("Time-lords: " + outline["summary"])
+            lines.append(
+                translate(
+                    "narrative.template.timelords",
+                    locale=locale,
+                    summary=outline["summary"],
+                )
+            )
     return "\n".join(lines)
