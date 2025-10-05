@@ -1,0 +1,19 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.log
+.cache
+.venv
+.env
+build/
+dist/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+**/.ruff_cache/
+**/.pytest_cache/
+.git
+.gitignore
+# eph/  # uncomment if you mount these externally instead of COPY
