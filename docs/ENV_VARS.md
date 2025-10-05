@@ -12,9 +12,9 @@
   export DATABASE_URL="sqlite:///./dev.db"  # swap in your Postgres URL when needed
   ```
 
-  The helpers do not read `DB_URL`; ensure automation and developer machines
-  consistently set `DATABASE_URL` so the API and migration stack point at the
-  same datastore.
+  The helpers read only `DATABASE_URL`; ensure automation and developer
+  machines consistently set that variable so the API and migration stack point
+  at the same datastore.
 
 ## Skyfield kernels
 Searched in: `./kernels`, `~/.skyfield`, `~/.astroengine/kernels`. Use helper
