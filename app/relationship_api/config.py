@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import os
 from typing import Iterable
 
+from pydantic import BaseModel, Field, field_validator
 
-@dataclass(slots=True)
-class ServiceSettings:
+
+class ServiceSettings(BaseModel):
     """Container for environment-derived settings."""
 
     cors_allow_origins: tuple[str, ...] = field(default_factory=tuple)
@@ -19,14 +19,25 @@ class ServiceSettings:
     request_max_bytes: int = 1_000_000
     enable_etag: bool = True
 
+    @field_validator("cors_allow_origins", mode="before")
+    @classmethod
+    def _parse_csv(cls, value: str | Iterable[str] | None):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            items = (item.strip() for item in value.split(","))
+        else:
+            items = (str(item).strip() for item in value)
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for item in items:
+            if item and item not in seen:
+                normalized.append(item)
+                seen.add(item)
+        return normalized
+
     @classmethod
     def from_env(cls) -> "ServiceSettings":
-        def _parse_origins(value: str | None) -> tuple[str, ...]:
-            if not value:
-                return tuple()
-            parts = [item.strip() for item in value.split(",")]
-            return tuple(sorted({p for p in parts if p}))
-
         redis_url = os.getenv("RELATIONSHIP_REDIS_URL") or os.getenv("REDIS_URL")
         rate_limit = int(os.getenv("RELATIONSHIP_RATE_LIMIT", "60"))
         gzip_min_size = int(os.getenv("RELATIONSHIP_GZIP_MIN", "512"))
@@ -42,6 +53,9 @@ class ServiceSettings:
             enable_etag=enable_etag,
             environment=environment,
         )
+        if env_name == "dev" and not settings.cors_allow_origins:
+            settings.cors_allow_origins = ["*"]
+        return settings
 
     def cors_origin_list(self) -> Iterable[str]:
         if self.cors_allow_origins:
