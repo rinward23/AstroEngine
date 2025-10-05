@@ -51,7 +51,6 @@ def create_app() -> FastAPI:
     app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])
     app.include_router(returns_router.router)
     app.include_router(synastry_router.router, prefix="/v1/synastry", tags=["synastry"])
-    app.include_router(analysis_router.router)
     app.include_router(vedic_router.router)
     app.include_router(topocentric_router.router, prefix="/v1", tags=["topocentric"])
     app.include_router(transit_overlay_router.router)

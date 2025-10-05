@@ -1,17 +1,4 @@
-"""Convenience exports for analysis helpers.
-
-Historically the :mod:`astroengine.analysis` package exposed a wide selection of
-utility functions by default.  Some of these helpers live in modules that pull
-in optional dependencies (for example Swiss Ephemeris bindings).  Recent
-refactors trimmed these re-exports which in turn caused imports from legacy
-routers and tests to fail when they expected functions such as
-``find_lunations`` or ``aries_ingress_year`` to be available at the package
-level.  To restore that behaviour we explicitly import the public utilities
-here while keeping the optional dependencies lazily evaluated inside their
-respective modules.  The imports below only touch lightweight definitions so
-installations without optional extras continue to work until the first call to
-an optional-heavy helper.
-"""
+"""Analysis utilities exposed via :mod:`astroengine.analysis`."""
 
 from __future__ import annotations
 
@@ -23,12 +10,7 @@ from .astrocartography import (
 from .declinations import DeclinationAspect, declination_aspects, get_declinations
 from .dignities import condition_report, score_accidental, score_essential
 from .midpoints import compute_midpoints, get_midpoint_settings, midpoint_longitude
-from .returns import (
-    ReturnComputationError,
-    aries_ingress_year,
-    lunar_return_datetimes,
-    solar_return_datetime,
-)
+from .returns import aries_ingress_year, lunar_return_datetimes, solar_return_datetime
 from .timeline import (
     VoidOfCourseEvent,
     find_eclipses,

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 from astroengine.plugins.registry import apply_plugin_settings
 
@@ -42,6 +42,15 @@ class HousesCfg(BaseModel):
         "alcabitius",
         "campanus",
     ] = "placidus"
+    topocentric: bool = False
+    house_offset_deg: float = 0.0
+    zero_based_numbering: bool = False
+
+    @field_validator("house_offset_deg", mode="before")
+    @classmethod
+    def _cap_house_offset(cls, value: float) -> float:
+        numeric = float(value)
+        return max(0.0, min(2.0, numeric))
 
 
 class BodiesCfg(BaseModel):
@@ -89,8 +98,67 @@ class AspectsCfg(BaseModel):
             "moon": 8.0,
         }
     )
+    weights_by_aspect: Dict[str, int] = Field(
+        default_factory=lambda: {
+            "conjunction": 5,
+            "opposition": 4,
+            "trine": 3,
+            "square": 3,
+            "sextile": 2,
+            "quincunx": 1,
+            "semisextile": 1,
+            "sesquisquare": 1,
+            "quintile": 1,
+            "biquintile": 1,
+        }
+    )
+    applying_bonus_deg: float = 0.5
+    separating_penalty_deg: float = 0.5
+    orb_scaling: Literal["none", "luminary_priority", "magnitude"] = "luminary_priority"
+    harmonics_n: int = 5
+    pattern_tolerance_deg: float = 2.0
     use_moiety: bool = True
     show_applying: bool = True
+
+    @field_validator("orbs_by_body", mode="before")
+    @classmethod
+    def _cap_orbs_by_body(cls, data: Dict[str, float] | object) -> Dict[str, float] | object:
+        if not isinstance(data, dict):
+            return data
+        return {
+            key: max(0.0, min(15.0, float(value)))
+            for key, value in data.items()
+        }
+
+    @field_validator("weights_by_aspect", mode="before")
+    @classmethod
+    def _cap_aspect_weights(
+        cls, data: Dict[str, int] | object
+    ) -> Dict[str, int] | object:
+        if not isinstance(data, dict):
+            return data
+
+        def _cap(value: int) -> int:
+            return max(-10, min(10, int(value)))
+
+        return {key: _cap(value) for key, value in data.items()}
+
+    @field_validator("applying_bonus_deg", "separating_penalty_deg", mode="before")
+    @classmethod
+    def _cap_bias(cls, value: float) -> float:
+        numeric = float(value)
+        return max(0.0, min(3.0, numeric))
+
+    @field_validator("harmonics_n", mode="before")
+    @classmethod
+    def _cap_harmonics(cls, value: int) -> int:
+        return max(1, min(32, int(value)))
+
+    @field_validator("pattern_tolerance_deg", mode="before")
+    @classmethod
+    def _cap_pattern_tolerance(cls, value: float) -> float:
+        numeric = float(value)
+        return max(0.5, min(5.0, numeric))
 
 
 class AntisciaCfg(BaseModel):
@@ -138,52 +206,12 @@ class NarrativeCfg(BaseModel):
     language: str = "en"
     disclaimers: bool = True
     verbosity: float = 0.5
-    mode: Literal[
-        "data_minimal",
-        "traditional_classical",
-        "modern_psychological",
-        "vedic_parashari",
-        "jungian_archetypal",
-        "esoteric_tarot",
-        "esoteric_numerology",
-        "esoteric_mixed",
-    ] = "modern_psychological"
-    sources: Dict[str, bool] = Field(
-        default_factory=lambda: {
-            "aspects": True,
-            "dignities": True,
-            "sect": True,
-            "lots": True,
-            "fixed_stars": False,
-            "declinations": False,
-            "antiscia": False,
-            "midpoints": True,
-        }
-    )
-    frameworks: Dict[str, bool] = Field(
-        default_factory=lambda: {
-            "jungian": False,
-            "mythic": False,
-            "hellenistic": False,
-            "vedic": False,
-            "psychological": True,
-            "medical": False,
-        }
-    )
-    esoteric: Dict[str, bool | str] = Field(
-        default_factory=lambda: {
-            "tarot_enabled": False,
-            "tarot_deck": "rws",
-            "numerology_enabled": False,
-            "numerology_system": "pythagorean",
-        }
-    )
 
     @field_validator("verbosity", mode="before")
     @classmethod
     def _cap_verbosity(cls, value: float) -> float:
-        value = float(value)
-        return max(0.0, min(1.0, value))
+        numeric = float(value)
+        return max(0.0, min(1.0, numeric))
 
 
 class RenderingCfg(BaseModel):
@@ -201,6 +229,26 @@ class RenderingCfg(BaseModel):
     )
     theme: Literal["dark", "light", "high_contrast"] = "dark"
     glyph_set: Literal["default", "classic", "modern"] = "default"
+    line_thickness: float = 1.5
+    grid_density: int = 5
+    star_mag_limit: float = 6.0
+
+    @field_validator("line_thickness", mode="before")
+    @classmethod
+    def _cap_line_thickness(cls, value: float) -> float:
+        numeric = float(value)
+        return max(0.5, min(5.0, numeric))
+
+    @field_validator("grid_density", mode="before")
+    @classmethod
+    def _cap_grid_density(cls, value: int) -> int:
+        return max(3, min(12, int(value)))
+
+    @field_validator("star_mag_limit", mode="before")
+    @classmethod
+    def _cap_star_magnitude(cls, value: float) -> float:
+        numeric = float(value)
+        return max(-1.5, min(8.0, numeric))
 
 
 class FixedStarsCfg(BaseModel):
@@ -219,6 +267,13 @@ class EphemerisCfg(BaseModel):
     precision: Literal["normal", "high"] = "normal"
 
 
+class SwissCapsCfg(BaseModel):
+    """Swiss Ephemeris capability boundaries."""
+
+    min_year: int = 1800
+    max_year: int = 2200
+
+
 class ReturnsIngressCfg(BaseModel):
     """Feature toggles for return charts and ingress lookups."""
 
@@ -235,6 +290,18 @@ class PerfCfg(BaseModel):
     qcache_size: int = 4096
     qcache_sec: float = 1.0
     max_scan_days: int = 365
+    workers: int = 1
+    batch_size: int = 256
+
+    @field_validator("workers", mode="before")
+    @classmethod
+    def _cap_workers(cls, value: int) -> int:
+        return max(1, min(8, int(value)))
+
+    @field_validator("batch_size", mode="before")
+    @classmethod
+    def _cap_batch_size(cls, value: int) -> int:
+        return max(64, min(8192, int(value)))
 
 
 class AstroCartoCfg(BaseModel):
@@ -282,6 +349,32 @@ class DignitiesCfg(BaseModel):
 
     enabled: bool = True
     scoring: Literal["lilly", "ptolemy", "custom"] = "lilly"
+    show_breakdown: bool = True
+    normalize_to_scale: int = 100
+
+    class Weights(BaseModel):
+        domicile: int = 5
+        exaltation: int = 4
+        triplicity: int = 3
+        term: int = 2
+        face: int = 1
+        detriment: int = -5
+        fall: int = -4
+        angular: int = 5
+        succedent: int = 2
+        cadent: int = -2
+        retrograde: int = -5
+        combustion: int = -5
+        cazimi: int = 5
+        under_beams: int = -2
+        peregrine: int = -1
+
+        @field_validator("*", mode="before")
+        @classmethod
+        def _cap_weights(cls, value: int) -> int:
+            return max(-10, min(10, int(value)))
+
+    weights: Weights = Field(default_factory=Weights)
 
 
 class ArabicPartCustomCfg(BaseModel):
@@ -315,6 +408,9 @@ class ArabicPartCustomCfg(BaseModel):
 
 
 # Backwards compatibility alias – older code imported ``ArabicPartCustom``.
+ArabicPartCustom = ArabicPartCustomCfg
+
+
 ArabicPartCustom = ArabicPartCustomCfg
 
 
@@ -389,6 +485,20 @@ class ForecastStackCfg(BaseModel):
             "solar_arc",
         ]
     )
+    exactness_deg: float = 0.5
+    consolidate_hours: int = 24
+    min_orb_deg: float = 0.25
+
+    @field_validator("exactness_deg", "min_orb_deg", mode="before")
+    @classmethod
+    def _cap_forecast_orbs(cls, value: float) -> float:
+        numeric = float(value)
+        return max(0.0, min(3.0, numeric))
+
+    @field_validator("consolidate_hours", mode="before")
+    @classmethod
+    def _cap_consolidate_hours(cls, value: int) -> int:
+        return max(1, min(168, int(value)))
 
 
 class SynastryCfg(BaseModel):
@@ -404,6 +514,28 @@ class ElectionalCfg(BaseModel):
 
     enabled: bool = False
     constraints: List[Dict[str, object]] = Field(default_factory=list)
+    step_minutes: int = 5
+
+    class Weights(BaseModel):
+        benefic_on_angles: int = 5
+        malefic_on_angles: int = -5
+        moon_void: int = -7
+        dignity_bonus: int = 3
+        retrograde_penalty: int = -3
+        combustion_penalty: int = -4
+        cazimi_bonus: int = 4
+
+        @field_validator("*", mode="before")
+        @classmethod
+        def _cap_weights(cls, value: int) -> int:
+            return max(-10, min(10, int(value)))
+
+    weights: Weights = Field(default_factory=Weights)
+
+    @field_validator("step_minutes", mode="before")
+    @classmethod
+    def _cap_step_minutes(cls, value: int) -> int:
+        return max(1, min(60, int(value)))
 
 
 class PluginCfg(BaseModel):
@@ -442,6 +574,44 @@ class AtlasCfg(BaseModel):
     data_path: Optional[str] = None
 
 
+class ObservabilityCfg(BaseModel):
+    """Observability and telemetry controls."""
+
+    otel_enabled: bool = False
+    sampling_ratio: float = 0.1
+    metrics_histogram_buckets: List[float] = Field(
+        default_factory=lambda: [0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
+    )
+
+    @field_validator("sampling_ratio", mode="before")
+    @classmethod
+    def _cap_sampling_ratio(cls, value: float) -> float:
+        numeric = float(value)
+        return max(0.0, min(1.0, numeric))
+
+
+class ChatCfg(BaseModel):
+    """In-app chat assistant configuration."""
+
+    enabled: bool = True
+    model: str = "gpt-4o-mini"
+    temperature: float = 0.4
+    max_tokens: int = 1000
+    token_budget_session: int = 200000
+    tools_enabled: bool = True
+
+    @field_validator("temperature", mode="before")
+    @classmethod
+    def _cap_temperature(cls, value: float) -> float:
+        numeric = float(value)
+        return max(0.0, min(2.0, numeric))
+
+    @field_validator("max_tokens", "token_budget_session", mode="before")
+    @classmethod
+    def _cap_token_counts(cls, value: int) -> int:
+        return max(1, min(1_000_000, int(value)))
+
+
 class Settings(BaseModel):
     """Top-level settings model persisted on disk."""
 
@@ -462,6 +632,7 @@ class Settings(BaseModel):
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
     fixed_stars: FixedStarsCfg = Field(default_factory=FixedStarsCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
+    swiss_caps: SwissCapsCfg = Field(default_factory=SwissCapsCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
     astrocartography: AstroCartoCfg = Field(default_factory=AstroCartoCfg)
     midpoints: MidpointsCfg = Field(default_factory=MidpointsCfg)
