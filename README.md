@@ -177,10 +177,10 @@ High-frequency refinement loops now consult a tiny process-local LRU that
 quantizes Terrestrial Time (TT) into short bins so repeat calls within the same
 window reuse identical Swiss Ephemeris samples. Control the cache via env vars:
 
-- `AE_QCACHE_SEC` – quantization window in seconds (default `1.0`). Lower values
+- `AE_QCACHE_SEC` – quantization window in seconds (default `0.25`). Lower values
   tighten the window; increase to broaden cache hits when input jitter exceeds
-  one second.
-- `AE_QCACHE_SIZE` – maximum cached entries (default `4096`). Raise this if
+  a quarter second.
+- `AE_QCACHE_SIZE` – maximum cached entries (default `16384`). Raise this if
   long-running transit scans churn through the default footprint.
 
 Both knobs act locally per process and can be tuned without code changes when
@@ -194,6 +194,11 @@ endpoints at the `/v1` base path. Launch it via Uvicorn with
 ```bash
 uvicorn app.relationship_api:create_app --factory --host 0.0.0.0 --port 8000
 ```
+
+The Docker entrypoint now auto-detects an appropriate worker count using
+`os.cpu_count()` so container deployments saturate available vCPUs. Override the
+value by exporting `UVICORN_WORKERS` when launching locally or in orchestration
+manifests.
 
 Key routes:
 
