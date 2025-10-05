@@ -320,7 +320,7 @@ astroengine query --sqlite events.db --limit 5 --natal-id n001
 
 # >>> AUTO-GEN END: Canonical Transit Types v1.0
 
-The CI workflow `.github/workflows/ci.yml` covers Python 3.10–3.12 and archives diagnostics output for each run.
+The CI workflow `.github/workflows/ci.yml` covers Python 3.10–3.11 and archives diagnostics output for each run.
 
 The package exposes a registry-based API for discovering datasets and
 rulesets.  See `astroengine/modules` for details.
@@ -372,10 +372,11 @@ make install-optional
 python scripts/install_optional_dependencies.py --upgrade-pip
 ```
 
-The script installs `requirements-optional.txt`, verifies critical imports such
-as `pymeeus`, `PyYAML`, and `pydantic`, and installs `flatlib==0.2.3` without
-pulling its outdated `pyswisseph==2.08` constraint so the Swiss bindings remain
-on the supported 2.10 series.
+The script installs `requirements-optional.txt`, verifies every optional stack
+import—including exporters like `ics`, reporting libraries such as
+`weasyprint`, and runtime services like `fastapi`—and installs `flatlib==0.2.3`
+without pulling its outdated `pyswisseph==2.08` constraint so the Swiss
+bindings remain on the supported 2.10 series.
 
 ### CLI
 
