@@ -60,7 +60,7 @@ eclipse, cycle, and geo-temporal submodules to preserve data fidelity.
 
 ## Deployment Considerations
 
-* Streamlit app packaged under `ui_streamlit/mundane_app.py`; configured via
+* Streamlit app packaged under `ui/streamlit/mundane_app.py`; configured via
   environment variables for API endpoint, tile server URL, and Redis cache.
 * Supports offline demo mode using cached MBTiles/PMTiles for workshop scenarios.
 * Documented runbook covers dataset refresh, cache warm-up, and export location

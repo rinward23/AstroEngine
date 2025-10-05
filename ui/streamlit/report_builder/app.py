@@ -32,7 +32,9 @@ DEFAULT_REL_BASE = "http://localhost:8000"
 def _read_sample(path: str) -> str:
     from importlib import resources
 
-    return resources.files("streamlit.report_builder.samples").joinpath(path).read_text("utf-8")
+    return resources.files("ui.streamlit.report_builder.samples").joinpath(path).read_text(
+        "utf-8"
+    )
 
 
 def _collect_tags(payload: Mapping[str, Any] | None) -> List[str]:
