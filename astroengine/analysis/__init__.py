@@ -8,6 +8,14 @@ from .astrocartography import (
     compute_astrocartography_lines,
 )
 from .declinations import DeclinationAspect, declination_aspects, get_declinations
+from .fixed_stars import (
+    Star,
+    StarDeclinationAspect,
+    load_catalog as load_fixed_star_catalog,
+    star_declination_aspects,
+    star_hits,
+    star_parans,
+)
 from .dignities import condition_report, score_accidental, score_essential
 from .midpoints import compute_midpoints, get_midpoint_settings, midpoint_longitude
 from .returns import aries_ingress_year, lunar_return_datetimes, solar_return_datetime
@@ -35,6 +43,13 @@ __all__ = [
     "DeclinationAspect",
     "declination_aspects",
     "get_declinations",
+    # Fixed stars
+    "Star",
+    "StarDeclinationAspect",
+    "load_fixed_star_catalog",
+    "star_declination_aspects",
+    "star_hits",
+    "star_parans",
     # Returns & ingresses
     "ReturnComputationError",
     "aries_ingress_year",
