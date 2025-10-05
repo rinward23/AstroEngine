@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import os
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from astroengine.plugins.registry import apply_plugin_settings
 
@@ -423,7 +424,33 @@ class ArabicPartCustomCfg(BaseModel):
 
     name: str
     day_formula: str
-    night_formula: str
+    night_formula: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _alias_legacy_fields(cls, values: Dict[str, object]):
+        """Accept legacy ``day``/``night`` keys alongside the new field names."""
+
+        if isinstance(values, dict):
+            if "day_formula" not in values and "day" in values:
+                values = dict(values)
+                values["day_formula"] = values.pop("day")
+            if "night_formula" not in values and "night" in values:
+                values = dict(values)
+                values["night_formula"] = values.pop("night")
+        return values
+
+    @property
+    def day(self) -> str:
+        return self.day_formula
+
+    @property
+    def night(self) -> str | None:
+        return self.night_formula
+
+
+# Backwards compatibility alias – older code imported ``ArabicPartCustom``.
+ArabicPartCustom = ArabicPartCustomCfg
 
 
 ArabicPartCustom = ArabicPartCustomCfg
@@ -433,7 +460,9 @@ class ArabicPartsCfg(BaseModel):
     """Arabic parts presets and custom definitions."""
 
     enabled: bool = True
-    presets: List[str] = Field(default_factory=lambda: ["fortune", "spirit"])
+    presets: Dict[str, bool] = Field(
+        default_factory=lambda: {"Fortune": True, "Spirit": True}
+    )
     custom: List[ArabicPartCustomCfg] = Field(default_factory=list)
 
 
@@ -884,4 +913,231 @@ def ensure_default_config() -> Path:
     if not target.exists():
         save_settings(default_settings(), target)
     return target
+
+
+# -------------------- Narrative profile overlays --------------------
+
+NARRATIVE_PROFILES_SUBDIR = "profiles/narrative"
+
+
+def narrative_profiles_home() -> Path:
+    """Return the directory where narrative profile overlays are stored."""
+
+    return get_config_home() / NARRATIVE_PROFILES_SUBDIR
+
+
+def built_in_narrative_profiles() -> dict[str, dict]:
+    """Return built-in narrative overlay definitions."""
+
+    return {
+        "data_minimal": {
+            "narrative": {
+                "mode": "data_minimal",
+                "library": "none",
+                "tone": "brief",
+                "length": "short",
+                "verbosity": 0.2,
+                "sources": {
+                    "aspects": True,
+                    "dignities": False,
+                    "sect": False,
+                    "lots": False,
+                    "fixed_stars": False,
+                    "declinations": False,
+                    "antiscia": False,
+                    "midpoints": True,
+                },
+                "frameworks": {
+                    "psychological": False,
+                    "jungian": False,
+                    "hellenistic": False,
+                    "vedic": False,
+                },
+                "disclaimers": True,
+            }
+        },
+        "traditional_classical": {
+            "narrative": {
+                "mode": "traditional_classical",
+                "library": "hellenistic",
+                "tone": "neutral",
+                "length": "medium",
+                "verbosity": 0.5,
+                "sources": {
+                    "aspects": True,
+                    "dignities": True,
+                    "sect": True,
+                    "lots": True,
+                    "fixed_stars": True,
+                },
+                "frameworks": {
+                    "hellenistic": True,
+                    "psychological": False,
+                },
+            }
+        },
+        "modern_psychological": {
+            "narrative": {
+                "mode": "modern_psychological",
+                "library": "western_basic",
+                "tone": "teaching",
+                "length": "medium",
+                "verbosity": 0.7,
+                "sources": {
+                    "aspects": True,
+                    "midpoints": True,
+                    "dignities": True,
+                },
+                "frameworks": {
+                    "psychological": True,
+                    "jungian": False,
+                },
+            }
+        },
+        "vedic_parashari": {
+            "narrative": {
+                "mode": "vedic_parashari",
+                "library": "vedic",
+                "tone": "neutral",
+                "length": "medium",
+                "verbosity": 0.6,
+                "sources": {
+                    "aspects": True,
+                    "lots": False,
+                    "dignities": True,
+                },
+                "frameworks": {
+                    "vedic": True,
+                },
+            }
+        },
+        "jungian_archetypal": {
+            "narrative": {
+                "mode": "jungian_archetypal",
+                "library": "western_basic",
+                "tone": "teaching",
+                "length": "long",
+                "verbosity": 0.8,
+                "sources": {
+                    "aspects": True,
+                    "midpoints": True,
+                    "fixed_stars": False,
+                },
+                "frameworks": {
+                    "psychological": True,
+                    "jungian": True,
+                },
+            }
+        },
+        "esoteric_tarot": {
+            "narrative": {
+                "mode": "esoteric_tarot",
+                "library": "western_basic",
+                "tone": "brief",
+                "length": "short",
+                "verbosity": 0.5,
+                "esoteric": {
+                    "tarot_enabled": True,
+                    "tarot_deck": "rws",
+                    "numerology_enabled": False,
+                },
+            }
+        },
+        "esoteric_numerology": {
+            "narrative": {
+                "mode": "esoteric_numerology",
+                "library": "western_basic",
+                "tone": "brief",
+                "length": "short",
+                "verbosity": 0.5,
+                "esoteric": {
+                    "numerology_enabled": True,
+                    "numerology_system": "pythagorean",
+                    "tarot_enabled": False,
+                },
+            }
+        },
+        "esoteric_mixed": {
+            "narrative": {
+                "mode": "esoteric_mixed",
+                "library": "western_basic",
+                "tone": "teaching",
+                "length": "medium",
+                "verbosity": 0.7,
+                "esoteric": {
+                    "tarot_enabled": True,
+                    "tarot_deck": "rws",
+                    "numerology_enabled": True,
+                    "numerology_system": "pythagorean",
+                },
+            }
+        },
+    }
+
+
+def list_narrative_profiles() -> dict[str, list[str]]:
+    """Return available narrative profile names segregated by origin."""
+
+    built_in = sorted(built_in_narrative_profiles().keys())
+    user: list[str] = []
+    directory = narrative_profiles_home()
+    if directory.exists():
+        for path in directory.glob("*.yaml"):
+            user.append(path.stem)
+    return {"built_in": built_in, "user": sorted(user)}
+
+
+def load_narrative_profile_overlay(name: str) -> dict:
+    """Load a narrative profile overlay by name."""
+
+    built_in = built_in_narrative_profiles()
+    if name in built_in:
+        return deepcopy(built_in[name])
+    profile_path = narrative_profiles_home() / f"{name}.yaml"
+    if not profile_path.exists():
+        raise FileNotFoundError(name)
+    return yaml.safe_load(profile_path.read_text(encoding="utf-8")) or {}
+
+
+def apply_narrative_profile_overlay(base: Settings, overlay: dict) -> Settings:
+    """Apply a narrative overlay to the provided settings model."""
+
+    merged = base.model_dump()
+    current_narrative = merged.get("narrative", {})
+    overlay_narrative = overlay.get("narrative", {})
+    combined = {**current_narrative, **overlay_narrative}
+    for key in ("sources", "frameworks", "esoteric"):
+        if isinstance(current_narrative.get(key), dict) and isinstance(
+            overlay_narrative.get(key), dict
+        ):
+            combined[key] = {
+                **current_narrative.get(key, {}),
+                **overlay_narrative.get(key, {}),
+            }
+    merged["narrative"] = combined
+    return Settings(**merged)
+
+
+def save_user_narrative_profile(name: str, narrative: NarrativeCfg) -> Path:
+    """Persist a user-defined narrative profile overlay to disk."""
+
+    directory = narrative_profiles_home()
+    directory.mkdir(parents=True, exist_ok=True)
+    profile_path = directory / f"{name}.yaml"
+    data = {"narrative": narrative.model_dump()}
+    profile_path.write_text(
+        yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    return profile_path
+
+
+def delete_user_narrative_profile(name: str) -> bool:
+    """Delete a user-defined narrative profile if it exists."""
+
+    profile_path = narrative_profiles_home() / f"{name}.yaml"
+    if profile_path.exists():
+        profile_path.unlink()
+        return True
+    return False
 

@@ -10,6 +10,7 @@ from astroengine.config import load_settings
 from core.viz_plus.wheel_svg import WheelOptions, build_aspect_hits, render_chart_wheel
 from core.viz_plus.aspect_grid import aspect_grid_symbols, render_aspect_grid
 from core.aspects_plus.harmonics import BASE_ASPECTS
+from ui.streamlit.api import APIClient
 
 st.set_page_config(page_title="Chart Wheel & Aspectarian", page_icon="🎡", layout="wide")
 st.title("Chart Wheel & Aspectarian 🎡")
