@@ -440,6 +440,12 @@ astroengine scan --start-utc 2024-01-01T00:00:00Z --end-utc 2024-01-02T00:00:00Z
   --moving Sun Moon --targets natal:Sun natal:Moon --target-frame natal --detector lunations
 ```
 
+Use `astroengine codex tree` to render the module → submodule → channel →
+subchannel hierarchy directly in the terminal, or `astroengine codex show` to
+inspect metadata for specific entries. The command is backed by the same
+`astroengine.codex` helpers that power developer tooling, so every path it
+reports corresponds to real documentation or dataset files in the repository.
+
 > **Licensing note:** Swiss Ephemeris is AGPL/commercial for distribution. Keep data files outside the wheel; users should provide `SWE_EPH_PATH/SE_EPHE_PATH`.
 
 `pyswisseph==2.10.3.2` now ships with the core package, ensuring Swiss

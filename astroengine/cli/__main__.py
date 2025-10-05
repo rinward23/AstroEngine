@@ -6,7 +6,7 @@ import argparse
 import sys
 from typing import Sequence
 
-from . import diagnose, export, scan
+from . import codex, diagnose, export, scan
 from ._compat import cli_legacy_missing_reason, try_import_cli_legacy
 
 
@@ -54,6 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="astroengine", description="AstroEngine CLI")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    codex.add_subparser(sub)
     scan.add_subparser(sub)
     export.add_subparser(sub)
     diagnose.add_subparser(sub)
