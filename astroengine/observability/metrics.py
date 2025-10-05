@@ -10,6 +10,10 @@ __all__ = [
     "EPHEMERIS_CACHE_HITS",
     "EPHEMERIS_CACHE_MISSES",
     "EPHEMERIS_CACHE_COMPUTE_DURATION",
+    "EPHEMERIS_BODY_COMPUTE_DURATION",
+    "ASPECT_COMPUTE_DURATION",
+    "DIRECTION_COMPUTE_DURATION",
+    "COMPUTE_ERRORS",
     "ensure_metrics_registered",
 ]
 
@@ -34,11 +38,43 @@ EPHEMERIS_CACHE_COMPUTE_DURATION = Histogram(
     registry=None,
 )
 
+EPHEMERIS_BODY_COMPUTE_DURATION = Histogram(
+    "ephemeris_body_compute_duration_seconds",
+    "Duration of Swiss Ephemeris body computations.",
+    ("adapter", "operation"),
+    registry=None,
+)
+
+ASPECT_COMPUTE_DURATION = Histogram(
+    "aspect_compute_duration_seconds",
+    "Duration of aspect detection runs.",
+    ("method",),
+    registry=None,
+)
+
+DIRECTION_COMPUTE_DURATION = Histogram(
+    "direction_compute_duration_seconds",
+    "Duration of direction computation runs.",
+    ("method",),
+    registry=None,
+)
+
+COMPUTE_ERRORS = Counter(
+    "astroengine_compute_errors_total",
+    "Total compute failures labelled by component and error type.",
+    ("component", "error"),
+    registry=None,
+)
+
 
 def _iter_metrics() -> Iterable[Counter | Histogram]:
     yield EPHEMERIS_CACHE_HITS
     yield EPHEMERIS_CACHE_MISSES
     yield EPHEMERIS_CACHE_COMPUTE_DURATION
+    yield EPHEMERIS_BODY_COMPUTE_DURATION
+    yield ASPECT_COMPUTE_DURATION
+    yield DIRECTION_COMPUTE_DURATION
+    yield COMPUTE_ERRORS
 
 
 def ensure_metrics_registered(

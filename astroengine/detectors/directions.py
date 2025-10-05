@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
+from time import perf_counter
 
 from ..chart.config import ChartConfig
 from ..chart.natal import DEFAULT_BODIES
 from ..ephemeris import SwissEphemerisAdapter
 from ..events import DirectionEvent
+from ..observability import COMPUTE_ERRORS, DIRECTION_COMPUTE_DURATION
 
 __all__ = ["solar_arc_directions"]
 
@@ -66,49 +68,62 @@ def solar_arc_directions(
         directed longitudes normalised to ``[0, 360)``.
     """
 
-    natal_dt = _parse_iso(natal_iso)
-    start_dt = _parse_iso(start_iso)
-    end_dt = _parse_iso(end_iso)
-    if end_dt <= start_dt:
-        return []
+    method_label = "solar_arc_directions"
+    start_time = perf_counter()
+    try:
+        natal_dt = _parse_iso(natal_iso)
+        start_dt = _parse_iso(start_iso)
+        end_dt = _parse_iso(end_iso)
+        if end_dt <= start_dt:
+            return []
 
-    chart_config = config or ChartConfig()
-    adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
-    body_map = _resolve_bodies(bodies)
+        chart_config = config or ChartConfig()
+        adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
+        body_map = _resolve_bodies(bodies)
 
-    natal_jd = adapter.julian_day(natal_dt)
-    natal_positions = adapter.body_positions(natal_jd, body_map)
-    natal_sun = adapter.body_position(
-        natal_jd, DEFAULT_BODIES["Sun"], body_name="Sun"
-    ).longitude
-
-    events: list[DirectionEvent] = []
-    current = start_dt
-    while current <= end_dt:
-        elapsed_days = (current - natal_dt).total_seconds() / 86400.0
-        progressed_offset_days = elapsed_days / SIDEREAL_YEAR_DAYS
-        progressed_dt = natal_dt + timedelta(days=progressed_offset_days)
-        progressed_jd = adapter.julian_day(progressed_dt)
-        progressed_sun = adapter.body_position(
-            progressed_jd, DEFAULT_BODIES["Sun"], body_name="Sun"
+        natal_jd = adapter.julian_day(natal_dt)
+        natal_positions = adapter.body_positions(natal_jd, body_map)
+        natal_sun = adapter.body_position(
+            natal_jd, DEFAULT_BODIES["Sun"], body_name="Sun"
         ).longitude
 
-        arc = (progressed_sun - natal_sun) % 360.0
-        directed_positions = {
-            name: (pos.longitude + arc) % 360.0 for name, pos in natal_positions.items()
-        }
+        events: list[DirectionEvent] = []
+        current = start_dt
+        while current <= end_dt:
+            elapsed_days = (current - natal_dt).total_seconds() / 86400.0
+            progressed_offset_days = elapsed_days / SIDEREAL_YEAR_DAYS
+            progressed_dt = natal_dt + timedelta(days=progressed_offset_days)
+            progressed_jd = adapter.julian_day(progressed_dt)
+            progressed_sun = adapter.body_position(
+                progressed_jd, DEFAULT_BODIES["Sun"], body_name="Sun"
+            ).longitude
 
-        events.append(
-            DirectionEvent(
-                ts=_iso(current),
-                jd=adapter.julian_day(current),
-                method="solar_arc",
-                arc_degrees=arc,
-                positions=directed_positions,
+            arc = (progressed_sun - natal_sun) % 360.0
+            directed_positions = {
+                name: (pos.longitude + arc) % 360.0
+                for name, pos in natal_positions.items()
+            }
+
+            events.append(
+                DirectionEvent(
+                    ts=_iso(current),
+                    jd=adapter.julian_day(current),
+                    method="solar_arc",
+                    arc_degrees=arc,
+                    positions=directed_positions,
+                )
             )
-        )
 
-        current = _advance_year(current)
+            current = _advance_year(current)
 
-    events.sort(key=lambda event: event.jd)
-    return events
+        events.sort(key=lambda event: event.jd)
+        return events
+    except Exception as exc:
+        COMPUTE_ERRORS.labels(
+            component=f"direction:{method_label}",
+            error=exc.__class__.__name__,
+        ).inc()
+        raise
+    finally:
+        duration = perf_counter() - start_time
+        DIRECTION_COMPUTE_DURATION.labels(method=method_label).observe(duration)

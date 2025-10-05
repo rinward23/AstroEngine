@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from functools import lru_cache
+from time import perf_counter
 from typing import TYPE_CHECKING, ClassVar, Optional
 from types import ModuleType
 
@@ -41,6 +42,7 @@ from .sidereal import (
 )
 from .utils import get_se_ephe_path
 from ..core.bodies import canonical_name
+from ..observability import COMPUTE_ERRORS, EPHEMERIS_BODY_COMPUTE_DURATION
 
 if TYPE_CHECKING:  # pragma: no cover - runtime import avoided for typing only
 
@@ -674,6 +676,8 @@ class SwissEphemerisAdapter:
     ) -> BodyPosition:
         """Compute longitude/latitude/speed data for a single body."""
 
+        adapter_label = self.__class__.__name__
+        start = perf_counter()
         override_code, derived = self._variant_override(body_name)
         effective_code = override_code if override_code is not None else body_code
 
@@ -681,63 +685,83 @@ class SwissEphemerisAdapter:
         swe = _swe()
         flags = self._calc_flags
         try:
-            xx, _, serr = swe_calc(
-                jd_ut=jd_ut, planet_index=effective_code, flag=flags
-            )
-        except RuntimeError:
-            flags = self._fallback_flags
-            xx, _, serr = swe_calc(
-                jd_ut=jd_ut, planet_index=effective_code, flag=flags
-            )
-        if serr:
-            raise RuntimeError(serr)
-
-        lon, lat, dist, speed_lon, speed_lat, speed_dist = xx
-
-        if derived:
-            lon = (lon + 180.0) % 360.0
-            lat = -lat
-            speed_lat = -speed_lat
-
-        equatorial = self.body_equatorial(jd_ut, effective_code)
-
-
-        try:
-            eq_xx, _, serr = swe_calc(
-                jd_ut=jd_ut,
-                planet_index=effective_code,
-                flag=flags | swe.FLG_EQUATORIAL,
-            )
-            _decl, _speed_decl = eq_xx[1], eq_xx[4]
-        except RuntimeError:
-            _decl, _speed_decl = float("nan"), float("nan")
-        else:
+            try:
+                xx, _, serr = swe_calc(
+                    jd_ut=jd_ut, planet_index=effective_code, flag=flags
+                )
+            except RuntimeError:
+                flags = self._fallback_flags
+                xx, _, serr = swe_calc(
+                    jd_ut=jd_ut, planet_index=effective_code, flag=flags
+                )
             if serr:
                 raise RuntimeError(serr)
 
+            lon, lat, dist, speed_lon, speed_lat, speed_dist = xx
 
-        return BodyPosition(
-            body=body_name or str(effective_code),
-            julian_day=jd_ut,
-            longitude=lon % 360.0,
-            latitude=lat,
-            distance_au=dist,
-            speed_longitude=speed_lon,
-            speed_latitude=speed_lat,
-            speed_distance=speed_dist,
-            declination=equatorial.declination,
-            speed_declination=equatorial.speed_declination,
-        )
+            if derived:
+                lon = (lon + 180.0) % 360.0
+                lat = -lat
+                speed_lat = -speed_lat
+
+            equatorial = self.body_equatorial(jd_ut, effective_code)
+
+            try:
+                eq_xx, _, serr = swe_calc(
+                    jd_ut=jd_ut,
+                    planet_index=effective_code,
+                    flag=flags | swe.FLG_EQUATORIAL,
+                )
+                _decl, _speed_decl = eq_xx[1], eq_xx[4]
+            except RuntimeError:
+                _decl, _speed_decl = float("nan"), float("nan")
+            else:
+                if serr:
+                    raise RuntimeError(serr)
+
+            return BodyPosition(
+                body=body_name or str(effective_code),
+                julian_day=jd_ut,
+                longitude=lon % 360.0,
+                latitude=lat,
+                distance_au=dist,
+                speed_longitude=speed_lon,
+                speed_latitude=speed_lat,
+                speed_distance=speed_dist,
+                declination=equatorial.declination,
+                speed_declination=equatorial.speed_declination,
+            )
+        except Exception as exc:
+            COMPUTE_ERRORS.labels(
+                component="ephemeris_body",
+                error=exc.__class__.__name__,
+            ).inc()
+            raise
+        finally:
+            duration = perf_counter() - start
+            EPHEMERIS_BODY_COMPUTE_DURATION.labels(
+                adapter=adapter_label,
+                operation="single",
+            ).observe(duration)
 
     def body_positions(
         self, jd_ut: float, bodies: Mapping[str, int]
     ) -> dict[str, BodyPosition]:
         """Return positions for each body keyed by canonical name."""
 
-        return {
-            name: self.body_position(jd_ut, code, body_name=name)
-            for name, code in bodies.items()
-        }
+        adapter_label = self.__class__.__name__
+        start = perf_counter()
+        try:
+            return {
+                name: self.body_position(jd_ut, code, body_name=name)
+                for name, code in bodies.items()
+            }
+        finally:
+            duration = perf_counter() - start
+            EPHEMERIS_BODY_COMPUTE_DURATION.labels(
+                adapter=adapter_label,
+                operation="batch",
+            ).observe(duration)
 
 
     @staticmethod
