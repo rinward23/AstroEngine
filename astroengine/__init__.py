@@ -30,6 +30,9 @@ def get_version() -> str:
 
 
 from .atlas.tz import (  # noqa: F401
+    FoldPolicy,
+    GapPolicy,
+    LocalTimeResolution,
     Policy,
     from_utc,
     is_ambiguous,
@@ -254,6 +257,9 @@ from .analysis import condition_report, score_accidental, score_essential
 
 __all__ = [
     "__version__",
+    "FoldPolicy",
+    "GapPolicy",
+    "LocalTimeResolution",
     "Policy",
     "tzid_for",
     "to_utc",
