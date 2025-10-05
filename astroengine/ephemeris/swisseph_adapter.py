@@ -6,12 +6,13 @@ import logging
 import os
 import importlib
 import importlib.util
+from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from functools import lru_cache
-from typing import TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, ClassVar, Final, Optional
 from types import ModuleType
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ from .sidereal import (
 )
 from .utils import get_se_ephe_path
 from ..core.bodies import canonical_name
+from ..observability import EPHEMERIS_SWE_CACHE_HIT_RATIO
 
 if TYPE_CHECKING:  # pragma: no cover - runtime import avoided for typing only
 
@@ -60,6 +62,28 @@ __all__ = [
     "resolve_house_code",
     "get_swisseph",
 ]
+
+
+_SWE_CALC_CACHE_SIZE: Final[int] = 4096
+
+
+_SweCalcKey = tuple[float, int, int, bool]
+_SweCalcValue = tuple[tuple[float, ...], int, str]
+
+
+_swe_calc_cache: OrderedDict[_SweCalcKey, _SweCalcValue] = OrderedDict()
+_swe_calc_hits: int = 0
+_swe_calc_misses: int = 0
+
+
+def _update_swe_cache_hit_ratio() -> None:
+    """Update the exported hit ratio gauge for the swe_calc cache."""
+
+    total = _swe_calc_hits + _swe_calc_misses
+    if not total:
+        EPHEMERIS_SWE_CACHE_HIT_RATIO.set(0.0)
+        return
+    EPHEMERIS_SWE_CACHE_HIT_RATIO.set(_swe_calc_hits / total)
 
 
 HOUSE_CODE_BY_NAME: Mapping[str, str] = {
@@ -1054,7 +1078,24 @@ def swe_calc(
 ) -> tuple[tuple[float, ...], int, str]:
     """Invoke Swiss Ephemeris core calculation with normalized arguments."""
 
+    global _swe_calc_hits, _swe_calc_misses
+
     swe = _swe()
+
+    cache_key: _SweCalcKey | None
+    if _SWE_CALC_CACHE_SIZE > 0:
+        cache_key = (jd_ut, planet_index, flag, use_tt)
+        try:
+            cached = _swe_calc_cache[cache_key]
+        except KeyError:
+            cached = None
+        else:
+            _swe_calc_hits += 1
+            _swe_calc_cache.move_to_end(cache_key)
+            _update_swe_cache_hit_ratio()
+            return cached
+    else:
+        cache_key = None
 
     try:
         calc_fn = swe.calc if use_tt else swe.calc_ut
@@ -1074,5 +1115,15 @@ def swe_calc(
         serr = f"Swiss ephemeris returned error code {ret_flag}"
         raise RuntimeError(serr)
     serr = ""
-    return tuple(xx), ret_flag, serr
+    result: _SweCalcValue = (tuple(xx), ret_flag, serr)
+
+    if cache_key is not None:
+        _swe_calc_misses += 1
+        _swe_calc_cache[cache_key] = result
+        _swe_calc_cache.move_to_end(cache_key)
+        if len(_swe_calc_cache) > _SWE_CALC_CACHE_SIZE:
+            _swe_calc_cache.popitem(last=False)
+        _update_swe_cache_hit_ratio()
+
+    return result
 
