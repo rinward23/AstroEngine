@@ -206,3 +206,10 @@ skip_glob = [
 [tool.black]
 line-length = 88
 target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_unused_ignores = true
+exclude = ["generated", "scripts", ".github"]
