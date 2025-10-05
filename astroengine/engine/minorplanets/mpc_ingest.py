@@ -8,17 +8,17 @@ import hashlib
 import math
 import os
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Sequence
 
 import numpy as np
-import pyarrow as pa
-import pyarrow.parquet as pq
 import requests
 from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, func, select
 from sqlalchemy.orm import DeclarativeBase, Session
 
 from astroengine.core.time import julian_day
+from astroengine.core.dependencies import require_dependency
 
 __all__ = [
     "Counts",
@@ -41,6 +41,24 @@ _DEFAULT_MPC_URL = "https://minorplanetcenter.net/Extended_Files/MPCORB.DAT.gz"
 # defined in astronomical units^(3/2) per day, so we convert to and from
 # radians/degrees as needed.
 _GAUSSIAN_GRAVITATIONAL_CONSTANT = 0.01720209895
+
+
+@lru_cache(maxsize=1)
+def _pyarrow_modules():
+    """Return the :mod:`pyarrow` modules required for MPC exports."""
+
+    pa_module = require_dependency(
+        "pyarrow",
+        extras=("exporters", "all"),
+        purpose="process Minor Planet Center catalogues",
+    )
+    pq_module = require_dependency(
+        "pyarrow.parquet",
+        package="pyarrow",
+        extras=("exporters", "all"),
+        purpose="write Minor Planet Center catalogues to Parquet",
+    )
+    return pa_module, pq_module
 
 
 class MinorPlanetBase(DeclarativeBase):
@@ -393,8 +411,9 @@ def export_parquet(rows: Sequence[MpcRow], path: str | os.PathLike[str]) -> Path
 
     path = Path(path)
     data = [row.as_dict() for row in rows]
-    table = pa.Table.from_pylist(data)
-    pq.write_table(table, path)
+    pa_module, pq_module = _pyarrow_modules()
+    table = pa_module.Table.from_pylist(data)
+    pq_module.write_table(table, path)
     return path
 
 

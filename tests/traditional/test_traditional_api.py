@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
+
+pytest.importorskip(
+    "PIL",
+    reason="Pillow not installed; install extras with `pip install -e .[ui,reports]`.",
+)
+
 from fastapi.testclient import TestClient
 
 from astroengine.api import create_app

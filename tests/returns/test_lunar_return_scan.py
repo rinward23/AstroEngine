@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pytest
+
+pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `pip install -e .[ephem,providers]`.",
+)
+
 from astroengine.engine.returns import AttachOptions, GeoLoc, NatalCtx, ScanOptions, scan_returns
 from astroengine.engine.returns._codes import resolve_body_code
 from astroengine.ephemeris import EphemerisAdapter

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Tuple
+
+logger = logging.getLogger(__name__)
 
 try:  # pragma: no cover - optional dependency in some environments
     import swisseph as swe

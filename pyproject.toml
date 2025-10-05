@@ -68,7 +68,7 @@ dependencies = [
 [project.optional-dependencies]
 # Core astroengine stacks
 ephem = [
-  "pyswisseph>=2.10; python_version <= \"3.11\"",
+  "pyswisseph>=2.10.3; python_version < \"3.12\"",
   "pymeeus>=0.5.12",
 ]
 skyfield = [
@@ -123,7 +123,7 @@ api = [
   "httpx>=0.28,<0.29",
 ]
 providers = [
-  "pyswisseph>=2.10",
+  "pyswisseph>=2.10.3; python_version < \"3.12\"",
   "timezonefinder>=8.1",
   "tzdata>=2024.1",
 ]
@@ -136,7 +136,7 @@ dev = [
 ]
 
 all = [
-  "pyswisseph>=2.10; python_version <= \"3.11\"",
+  "pyswisseph>=2.10.3; python_version < \"3.12\"",
   "pymeeus>=0.5.12",
   "skyfield>=1.49",
   "jplephem>=2.21",

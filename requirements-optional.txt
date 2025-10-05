@@ -3,7 +3,7 @@
 # Mirrors pyproject extras for non-pep517 workflows
 
 # [ephem]
-pyswisseph>=2.10; python_version <= "3.11"
+pyswisseph>=2.10.3; python_version < "3.12"
 pymeeus>=0.5.12
 
 # [skyfield]
@@ -52,7 +52,7 @@ icalendar>=6
 httpx>=0.28,<0.29
 
 # [providers]
-pyswisseph>=2.10
+pyswisseph>=2.10.3; python_version < "3.12"
 timezonefinder>=8.1
 tzdata>=2024.1
 

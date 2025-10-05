@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-import swisseph as swe
+import pytest
+
+swe = pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `.[providers]`",
+)
 
 from astroengine.chart.config import ChartConfig
 from astroengine.ephemeris import SwissEphemerisAdapter

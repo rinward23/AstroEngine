@@ -1,3 +1,10 @@
+import pytest
+
+pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `.[providers]`",
+)
+
 from streamlit.testing.v1 import AppTest
 
 

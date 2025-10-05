@@ -3,8 +3,16 @@ from __future__ import annotations
 import datetime as dt
 from pathlib import Path
 
-import pyarrow.parquet as pq
 import pytest
+
+pytest.importorskip(
+    "pyarrow",
+    reason="pyarrow not installed; install extras with `pip install -e .[exporters,providers]`.",
+)
+pq = pytest.importorskip(
+    "pyarrow.parquet",
+    reason="pyarrow not installed; install extras with `pip install -e .[exporters,providers]`.",
+)
 
 from astroengine.engine.minorplanets import mpc_ingest
 

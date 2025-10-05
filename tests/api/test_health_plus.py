@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import pytest
 
+pytest.importorskip(
+    "PIL",
+    reason="Pillow not installed; install extras with `pip install -e .[ui,reports]`.",
+)
+
 try:  # pragma: no cover - optional dependency in test environment
     from fastapi.testclient import TestClient
 except Exception:  # pragma: no cover - FastAPI not installed

@@ -28,6 +28,12 @@ def _swe() -> ModuleType:
         )
     return importlib.import_module("swisseph")
 
+
+def get_swisseph() -> ModuleType:
+    """Return the cached :mod:`swisseph` module, raising if unavailable."""
+
+    return _swe()
+
 from .sidereal import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,
@@ -52,6 +58,7 @@ __all__ = [
     "SwissEphemerisAdapter",
     "VariantConfig",
     "resolve_house_code",
+    "get_swisseph",
 ]
 
 

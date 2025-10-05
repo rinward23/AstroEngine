@@ -4,6 +4,11 @@ from datetime import UTC, datetime
 
 import pytest
 
+pytest.importorskip(
+    "PIL",
+    reason="Pillow not installed; install extras with `pip install -e .[ui,reports]`.",
+)
+
 from astroengine.engine.observational import topocentric_equatorial
 from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
 
