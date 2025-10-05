@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from time import perf_counter
 from typing import Callable
 from uuid import uuid4
@@ -97,9 +98,11 @@ def configure_observability(app: FastAPI) -> None:
     """Install middleware and the /metrics endpoint."""
 
     app.add_middleware(GZipMiddleware)
+    environment = os.getenv("ENV", "dev")
+    allow_origins = ["*"] if environment == "dev" else []
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=allow_origins,
         allow_methods=["*"],
         allow_headers=["*"],
     )
