@@ -25,6 +25,7 @@ from app.routers import (
     health_router,
     interpret_router,
     lots_router,
+    narrative_profiles_router,
     policies_router,
     profiles_router,
     settings_router,
@@ -62,6 +63,7 @@ app.include_router(notes_router)
 app.include_router(data_router)
 app.include_router(charts_router)
 app.include_router(profiles_router)
+app.include_router(narrative_profiles_router)
 if DEV_MODE_ENABLED:
     from app.devmode import router as devmode_router
 

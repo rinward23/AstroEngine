@@ -13,6 +13,7 @@ _APP_INSTANCE: FastAPI | None = None
 def create_app() -> FastAPI:
     from .errors import install_error_handlers
     from .routers import analysis as analysis_router
+    from .routers import forecast as forecast_router
     from .routers import interpret as interpret_router
     from .routers import lots as lots_router
     from .routers import natals as natals_router

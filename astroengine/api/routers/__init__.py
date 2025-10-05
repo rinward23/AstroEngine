@@ -17,5 +17,6 @@ __all__ = [
     "lots",
     "transit_overlay",
     "timeline",
+    "forecast",
 ]
 
