@@ -1,11 +1,22 @@
 from __future__ import annotations
 import os
 from contextlib import contextmanager
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 DB_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
 engine = create_engine(DB_URL, echo=False, future=True)
+
+if engine.url.get_backend_name() == "sqlite":
+
+    @event.listens_for(engine, "connect")
+    def _sqlite_configure(dbapi_connection, connection_record):  # pragma: no cover - depends on driver
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute("PRAGMA journal_mode=WAL;")
+            cursor.execute("PRAGMA synchronous=NORMAL;")
+        finally:
+            cursor.close()
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True)
 
 @contextmanager

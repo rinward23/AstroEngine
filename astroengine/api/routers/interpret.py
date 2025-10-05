@@ -13,8 +13,7 @@ from ...interpret.loader import RulepackValidationError, lint_rulepack
 from ...interpret.models import InterpretRequest, InterpretResponse, RulepackLintResult, RulepackMeta, RulepackVersionPayload
 from ...interpret.service import InterpretationError, evaluate_relationship
 from ...interpret.store import RulepackStore, get_rulepack_store
-from ..errors import ErrorEnvelope
-from ..pagination import Pagination, get_pagination
+from ...web.responses import conditional_json_response, etag_matches
 
 
 _API_KEY = os.getenv("AE_API_KEY")
@@ -59,65 +58,16 @@ def _store_dependency() -> RulepackStore:
     return get_rulepack_store()
 
 
-class RulepackCollection(BaseModel):
-    """Paginated rulepack listing."""
-
-    items: list[RulepackMeta]
-    total: int
-    page: int
-    page_size: int
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "items": [
-                    {
-                        "id": "relationship_basic",
-                        "name": "Relationship Basic",
-                        "version": 1,
-                        "title": "Relationship Essentials",
-                        "description": "Core synastry findings",
-                        "created_at": "2023-01-01T00:00:00+00:00",
-                        "mutable": False,
-                        "available_versions": [1],
-                    }
-                ],
-                "total": 1,
-                "page": 1,
-                "page_size": 25,
-            }
-        }
-    )
-
-
-@router.get(
-    "/rulepacks",
-    response_model=RulepackCollection,
-    operation_id="listRulepacks",
-    summary="List uploaded rulepacks.",
-)
+@router.get("/rulepacks", response_model=list[RulepackMeta])
 def list_rulepacks(
-    pagination: Pagination = Depends(get_pagination),
+    if_none_match: str | None = Header(default=None, alias="If-None-Match"),
     store: RulepackStore = Depends(_store_dependency),
-) -> RulepackCollection:
-    items = store.list_rulepacks()
-    total = len(items)
-    start = pagination.offset
-    end = start + pagination.limit
-    return RulepackCollection(
-        items=items[start:end],
-        total=total,
-        page=pagination.page,
-        page_size=pagination.page_size,
-    )
+) -> Response:
+    payload = [meta.model_dump(mode="json") for meta in store.list_rulepacks()]
+    return conditional_json_response(payload, if_none_match=if_none_match, max_age=600)
 
 
-@router.get(
-    "/rulepacks/{rulepack_id}",
-    response_model=RulepackVersionPayload,
-    operation_id="getRulepack",
-    responses={404: {"model": ErrorEnvelope}},
-)
+@router.get("/rulepacks/{rulepack_id}", response_model=RulepackVersionPayload)
 def get_rulepack(
     rulepack_id: str,
     response: Response,
@@ -131,9 +81,13 @@ def get_rulepack(
         raise HTTPException(
             status_code=404, detail={"code": "RULEPACK_NOT_FOUND", "message": str(exc)}
         ) from exc
-    if if_none_match and if_none_match == payload.etag:
-        return Response(status_code=304, headers={"ETag": payload.etag})
-    response.headers["ETag"] = payload.etag
+    cache_headers = {
+        "ETag": payload.etag,
+        "Cache-Control": "public, max-age=600, immutable",
+    }
+    if etag_matches(payload.etag, if_none_match):
+        return Response(status_code=304, headers=cache_headers)
+    response.headers.update(cache_headers)
     return payload
 
 

@@ -103,3 +103,38 @@ def test_davison_endpoint_with_stub(monkeypatch):
     assert abs(data["positions"]["Venus"]["lon"] - 26.0) < 1e-6
     mid = datetime.fromisoformat(data["mid_when"].replace("Z", "+00:00"))
     assert mid == origin + timedelta(days=5)
+
+
+def test_rate_limit_headers_on_429():
+    settings = ServiceSettings(rate_limit_per_minute=1, enable_etag=False)
+    app = create_app(settings)
+    client = TestClient(app)
+    payload = {
+        "positionsA": {"Sun": {"lon": 10.0}},
+        "positionsB": {"Sun": {"lon": 190.0}},
+    }
+    first = client.post("/v1/relationship/composite", json=payload)
+    assert first.status_code == 200
+    second = client.post("/v1/relationship/composite", json=payload)
+    assert second.status_code == 429
+    assert second.headers.get("X-RateLimit-Reason") == "token_bucket"
+    assert "Retry-After" in second.headers
+
+
+def test_security_headers_with_hsts_enabled():
+    settings = ServiceSettings(
+        rate_limit_per_minute=10,
+        enable_etag=False,
+        tls_terminates_upstream=True,
+        enable_hsts=True,
+        hsts_max_age=86400,
+    )
+    app = create_app(settings)
+    client = TestClient(app)
+    response = client.get("/v1/healthz")
+    assert response.status_code == 200
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
+    assert response.headers["Permissions-Policy"] == "geolocation=(), microphone=()"
+    assert response.headers["Strict-Transport-Security"].startswith("max-age=86400")

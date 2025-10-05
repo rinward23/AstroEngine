@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+from ._time import UtcDateTime
 
 __all__ = [
     "LifeMetadata",
@@ -22,7 +23,7 @@ __all__ = [
 
 
 class TraditionalChartInput(BaseModel):
-    moment: datetime = Field(..., description="Birth moment in ISO-8601")
+    moment: UtcDateTime = Field(..., description="Birth moment in ISO-8601")
     latitude: float = Field(..., ge=-90.0, le=90.0)
     longitude: float = Field(..., ge=-180.0, le=180.0)
     house_system: str | None = Field(None, description="Requested house system")
@@ -40,8 +41,8 @@ class ProfectionSegmentOut(BaseModel):
 
 class ProfectionsRequest(BaseModel):
     natal: TraditionalChartInput
-    start: datetime
-    end: datetime
+    start: UtcDateTime
+    end: UtcDateTime
     mode: Literal["hellenistic", "medieval"] = "hellenistic"
 
 
@@ -65,8 +66,8 @@ class ZodiacalPeriodOut(BaseModel):
 class ZodiacalReleasingRequest(BaseModel):
     natal: TraditionalChartInput
     lot_sign: str
-    start: datetime
-    end: datetime
+    start: UtcDateTime
+    end: UtcDateTime
     levels: int = 2
     source: Literal["Spirit", "Fortune"] = "Spirit"
     include_peaks: bool = True
@@ -80,7 +81,7 @@ class ZodiacalReleasingResponse(BaseModel):
 
 
 class SectRequest(BaseModel):
-    moment: datetime
+    moment: UtcDateTime
     latitude: float
     longitude: float
 

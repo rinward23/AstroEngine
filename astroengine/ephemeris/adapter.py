@@ -9,10 +9,16 @@ from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from time import perf_counter
 from typing import Final, cast
 
 from ..core.angles import AspectMotion, DeltaLambdaTracker, classify_relative_motion
 from ..core.time import TimeConversion, to_tt
+from ..observability import (
+    EPHEMERIS_CACHE_COMPUTE_DURATION,
+    EPHEMERIS_CACHE_HITS,
+    EPHEMERIS_CACHE_MISSES,
+)
 from .swisseph_adapter import swe_calc
 from .sidereal import (
     DEFAULT_SIDEREAL_AYANAMSHA,
@@ -170,6 +176,7 @@ class EphemerisAdapter:
         flags = self._resolve_flags(flags)
         cache_jd = moment.jd_tt if self._use_tt else moment.jd_utc
         cache_key = (cache_jd, body, flags)
+        adapter_label = self.__class__.__name__
         if self._cache_capacity > 0:
             try:
                 cached = self._cache[cache_key]
@@ -177,21 +184,32 @@ class EphemerisAdapter:
                 cached = None
             else:
                 self._cache.move_to_end(cache_key)
+                EPHEMERIS_CACHE_HITS.labels(adapter=adapter_label).inc()
                 return cached
+        else:
+            cached = None
 
         backend = self._select_backend()
-        (
-            longitude,
-            latitude,
-            distance,
-            lon_speed,
-            lat_speed,
-            dist_speed,
-            right_ascension,
-            declination,
-            ra_speed,
-            dec_speed,
-        ) = backend(moment, body, flags)
+        EPHEMERIS_CACHE_MISSES.labels(adapter=adapter_label).inc()
+        start = perf_counter()
+        try:
+            (
+                longitude,
+                latitude,
+                distance,
+                lon_speed,
+                lat_speed,
+                dist_speed,
+                right_ascension,
+                declination,
+                ra_speed,
+                dec_speed,
+            ) = backend(moment, body, flags)
+        finally:
+            duration = perf_counter() - start
+            EPHEMERIS_CACHE_COMPUTE_DURATION.labels(
+                adapter=adapter_label, body=str(body)
+            ).observe(duration)
 
         sample = EphemerisSample(
             jd_tt=moment.jd_tt,

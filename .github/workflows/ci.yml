@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,10 +31,29 @@ jobs:
           isort --check-only --profile black .
       - name: Type check
         run: |
-          pip install mypy pydantic
-          mypy .
-  tests:
+          mypy --config-file mypy.ini --cache-dir=.mypy_cache .
+  db-migration-roundtrip:
     needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -e .
+      - name: Validate migration round-trip
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+        run: python scripts/ci/run_migration_roundtrip.py
+  tests:
+    needs:
+      - lint
+      - db-migration-roundtrip
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

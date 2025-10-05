@@ -10,6 +10,13 @@ class TimeWindow(BaseModel):
     start: datetime = Field(..., description="UTC ISO8601 start time")
     end: datetime = Field(..., description="UTC ISO8601 end time")
 
+    @field_validator("start", "end")
+    @classmethod
+    def _require_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+            raise ValueError("window datetimes must be timezone-aware")
+        return value
+
     @field_validator("end")
     @classmethod
     def _end_after_start(cls, v: datetime, info: ValidationInfo) -> datetime:

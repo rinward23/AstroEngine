@@ -1,10 +1,11 @@
 """Pydantic models for the transit ↔ natal overlay API."""
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, Dict
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from ._time import UtcDateTime
 
 __all__ = [
     "GeoPointModel",
@@ -40,9 +41,9 @@ class TransitOverlayOptionsModel(BaseModel):
 
 
 class TransitOverlayPositionRequest(BaseModel):
-    birth_dt_utc: datetime
+    birth_dt_utc: UtcDateTime
     birth_location: GeoPointModel
-    transit_dt_utc: datetime
+    transit_dt_utc: UtcDateTime
     bodies: list[str]
     options: TransitOverlayOptionsModel | None = None
 
@@ -61,7 +62,7 @@ class OverlayBodyPositionModel(BaseModel):
 
 
 class OverlayFrameModel(BaseModel):
-    timestamp: datetime
+    timestamp: UtcDateTime
     heliocentric: Dict[str, OverlayBodyPositionModel]
     geocentric: Dict[str, OverlayBodyPositionModel]
     metadata: Dict[str, Any] = Field(default_factory=dict)

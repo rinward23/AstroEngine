@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -10,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from ..engine.horary import GeoLocation, evaluate_case, get_profile
 from ..engine.horary.profiles import HoraryProfile, list_profiles, upsert_profile
+from ._time import UtcDateTime
 
 router = APIRouter(prefix="/horary", tags=["horary"])
 
@@ -25,7 +25,7 @@ class LocationModel(BaseModel):
 
 class HoraryCaseRequest(BaseModel):
     question: str
-    asked_at: datetime
+    asked_at: UtcDateTime
     location: LocationModel
     house_system: str = "placidus"
     quesited_house: int

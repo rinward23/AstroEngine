@@ -1,0 +1,107 @@
+[
+  {
+    "timestamp": "2024-03-20T00:00:00Z",
+    "bodies": {
+      "sun": {
+        "jd_tt": 2460389.500800741,
+        "jd_utc": 2460389.500001209,
+        "longitude": 359.87139156858416,
+        "latitude": 0.00010697824572854129,
+        "distance": 0.9958278853627928,
+        "speed_longitude": 0.9935680448021902,
+        "speed_latitude": -9.901637324241512e-06,
+        "speed_distance": 0.00027363579098788944,
+        "right_ascension": 359.88196096101365,
+        "declination": -0.05105809474458075,
+        "speed_right_ascension": 0.9115895890459655,
+        "speed_declination": 0.39519936841594766,
+        "delta_t_seconds": 69.07956898212433
+      },
+      "moon": {
+        "jd_tt": 2460389.500800741,
+        "jd_utc": 2460389.500001209,
+        "longitude": 122.2520230984418,
+        "latitude": 5.048774381778784,
+        "distance": 0.0026795030133732285,
+        "speed_longitude": 12.115400832042807,
+        "speed_latitude": -0.31508248036943587,
+        "speed_distance": 2.1133549658404887e-05,
+        "right_ascension": 125.76810969470328,
+        "declination": 24.57177154599507,
+        "speed_right_ascension": 12.82273800081709,
+        "speed_declination": -3.123182469312947,
+        "delta_t_seconds": 69.07956898212433
+      }
+    }
+  },
+  {
+    "timestamp": "2024-06-21T10:00:00Z",
+    "bodies": {
+      "sun": {
+        "jd_tt": 2460482.9174674074,
+        "jd_utc": 2460482.916668167,
+        "longitude": 90.52267424008903,
+        "latitude": -0.0001655419712317255,
+        "distance": 1.0162297538181726,
+        "speed_longitude": 0.9538940606777072,
+        "speed_latitude": -1.4399018364098352e-05,
+        "speed_distance": 6.348057748871173e-05,
+        "right_ascension": 90.56967575602344,
+        "declination": 23.43718857190909,
+        "speed_right_ascension": 1.0396621452705732,
+        "speed_declination": -0.003786837130615764,
+        "delta_t_seconds": 69.05438303947449
+      },
+      "moon": {
+        "jd_tt": 2460482.9174674074,
+        "jd_utc": 2460482.916668167,
+        "longitude": 262.62741187398467,
+        "latitude": -4.7247123819743395,
+        "distance": 0.0025576812802715677,
+        "speed_longitude": 13.378948835022449,
+        "speed_latitude": -0.39378194742668865,
+        "speed_distance": -2.8273066980830186e-05,
+        "right_ascension": 261.67591526592895,
+        "declination": -27.950321444857575,
+        "speed_right_ascension": 15.043178379711273,
+        "speed_declination": -1.163550234813161,
+        "delta_t_seconds": 69.05438303947449
+      }
+    }
+  },
+  {
+    "timestamp": "2024-12-21T22:27:00Z",
+    "bodies": {
+      "sun": {
+        "jd_tt": 2460666.4362174077,
+        "jd_utc": 2460666.4354187655,
+        "longitude": 270.5561224213366,
+        "latitude": 8.047195707582894e-06,
+        "distance": 0.98369901212973,
+        "speed_longitude": 1.0183416738268334,
+        "speed_latitude": -3.906700208075229e-05,
+        "speed_distance": -5.7242947212962795e-05,
+        "right_ascension": 270.60613227136747,
+        "declination": -23.437252995699602,
+        "speed_right_ascension": 1.1099041177192992,
+        "speed_declination": 0.004245974456396114,
+        "delta_t_seconds": 69.00268346071243
+      },
+      "moon": {
+        "jd_tt": 2460666.4362174077,
+        "jd_utc": 2460666.4354187655,
+        "longitude": 169.73073844575345,
+        "latitude": 1.0834798499357645,
+        "distance": 0.0026791805804558732,
+        "speed_longitude": 11.994208708683825,
+        "speed_latitude": -1.0343737778070368,
+        "speed_distance": 2.0215959830352418e-05,
+        "right_ascension": 170.9889457355478,
+        "declination": 5.06278129506275,
+        "speed_right_ascension": 10.662720059521606,
+        "speed_declination": -5.663155660563764,
+        "delta_t_seconds": 69.00268346071243
+      }
+    }
+  }
+]
