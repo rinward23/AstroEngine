@@ -2,6 +2,9 @@
 """Timezone resolution utilities for atlas channel."""
 
 from .tz import (
+    FoldPolicy,
+    GapPolicy,
+    LocalTimeResolution,
     Policy,
     from_utc,
     is_ambiguous,
@@ -11,6 +14,9 @@ from .tz import (
 )
 
 __all__ = [
+    "FoldPolicy",
+    "GapPolicy",
+    "LocalTimeResolution",
     "Policy",
     "from_utc",
     "is_ambiguous",

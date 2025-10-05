@@ -31,4 +31,9 @@ python -m astroengine.diagnostics --smoketest "2025-01-01T00:00:00Z"
 * Diagnostics never require network access and will not modify your system.
 * The report now surfaces the active ephemeris time-scale (`UTC→TT` by default) and whether the observer is geocentric or topocentric.
 
+## API & UI integrations
+
+* `GET /v1/doctor` returns the same Swiss ephemeris, database, migration, and cache checks as JSON for operators and monitoring agents.
+* The "🩺 System Doctor" Streamlit page (under `ui/streamlit/pages/13_System_Doctor.py`) visualises the live report for dashboard use.
+
 # >>> AUTO-GEN END: Diagnostics Guide v1.0

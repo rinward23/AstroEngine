@@ -1,5 +1,8 @@
+import pytest
+
 from core.lots_plus.engine import eval_formula, norm360
 from core.lots_plus.catalog import compute_lot, compute_lots, LotDef, register_lot, Sect
+from core.lots_plus.parser import FormulaSyntaxError, extract_symbols, parse_formula, validate_formula
 
 
 def test_eval_formula_basic_and_wrap():
@@ -7,6 +10,23 @@ def test_eval_formula_basic_and_wrap():
     # 350 + 20 - 10 = 360 → 0
     val = eval_formula("Asc + Moon - Sun", pos)
     assert abs(val - 0.0) < 1e-9
+
+
+def test_parse_formula_rejects_unknown_tokens():
+    with pytest.raises(FormulaSyntaxError):
+        parse_formula("Asc + Sun * Moon")
+
+
+def test_validate_formula_with_allowlist():
+    allowed = {"Asc", "Sun", "Moon"}
+    validate_formula("Asc + Moon - Sun", allowed_symbols=allowed)
+    with pytest.raises(FormulaSyntaxError):
+        validate_formula("Asc + Jupiter - Sun", allowed_symbols=allowed)
+
+
+def test_extract_symbols_preserves_order():
+    symbols = extract_symbols("Asc + Moon - Sun + Lot_Test")
+    assert symbols == ["Asc", "Moon", "Sun", "Lot_Test"]
 
 
 def test_fortune_and_spirit_day_night():

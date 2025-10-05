@@ -147,10 +147,9 @@ class SwissElectionalProvider:
         if ts < self._start or ts > self._end:
             raise ValueError("timestamp outside configured scan window")
         jd = self._adapter.julian_day(ts)
-        positions: Dict[str, BodyPosition] = {
-            name: self._adapter.body_position(jd, code, body_name=name)
-            for name, code in self._body_codes.items()
-        }
+        positions: Dict[str, BodyPosition] = self._adapter.compute_bodies_many(
+            jd, self._body_codes
+        )
         houses = self._adapter.houses(jd, self._lat, self._lon, system=self._chart.house_system)
         asc = norm360(houses.ascendant)
         mc = norm360(houses.midheaven)

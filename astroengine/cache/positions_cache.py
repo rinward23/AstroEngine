@@ -1,16 +1,23 @@
 # >>> AUTO-GEN BEGIN: positions-cache v1.0
 from __future__ import annotations
 
+import logging
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from datetime import datetime, timezone
+from time import perf_counter
 import numpy as np
 
+from ..canonical import canonical_round, normalize_longitude, normalize_speed_per_day
 from ..ephemeris import SwissEphemerisAdapter
 from ..infrastructure.home import ae_home
+from ..core.time import julian_day
 
 CACHE_DIR = ae_home() / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 DB = CACHE_DIR / "positions.sqlite"
+
+_LOGGER = logging.getLogger(__name__)
 
 _BODY_CODES = {
     "sun": "SUN",
@@ -51,8 +58,7 @@ CREATE INDEX IF NOT EXISTS ix_positions_daily_day_body
 
 def _connect():
     con = sqlite3.connect(str(DB))
-    con.execute("PRAGMA journal_mode=WAL;")
-    con.execute("PRAGMA synchronous=NORMAL;")
+    apply_default_pragmas(con)
     con.executescript(_SQL["init"])
     con.commit()
     return con
@@ -82,9 +88,13 @@ def get_daily_entry(
         row = cur.fetchone()
         if row is not None:
             lon, lat, speed = row
-            lon_f = float(lon)
-            lat_f = None if lat is None else float(lat)
-            speed_f = None if speed is None else float(speed)
+            lon_f = normalize_longitude(float(lon))
+            lat_f = None if lat is None else canonical_round(float(lat))
+            speed_f = (
+                None
+                if speed is None
+                else normalize_speed_per_day(float(speed))
+            )
             return lon_f, lat_f, speed_f
     finally:
         con.close()
@@ -99,9 +109,9 @@ def get_daily_entry(
         raise ValueError(f"Unsupported body '{body}' for daily cache") from exc
     adapter = SwissEphemerisAdapter.get_default_adapter()
     sample = adapter.body_position(float(_day_jd(jd_ut)), code, body_name=body.title())
-    lon = float(sample.longitude)
-    lat = float(sample.latitude)
-    speed = float(sample.speed_longitude)
+    lon = normalize_longitude(float(sample.longitude))
+    lat = canonical_round(float(sample.latitude))
+    speed = normalize_speed_per_day(float(sample.speed_longitude))
     con = _connect()
     try:
         con.execute(
@@ -140,6 +150,64 @@ def warm_daily(bodies: Iterable[str], start_jd: float, end_jd: float) -> int:
             get_daily_entry(day_jd, body)
             count += 1
     return count
+
+
+_BOOTSTRAP_BODIES: tuple[str, ...] = ("sun", "moon", "mercury")
+_BOOTSTRAP_DAY_OFFSETS: tuple[int, ...] = (0, 1)
+
+
+def warm_startup_grid(
+    *,
+    max_duration_ms: float = 150.0,
+    bodies: Sequence[str] | None = None,
+    day_offsets: Sequence[int] | None = None,
+) -> int:
+    """Warm a small JD/body grid for cold starts within ``max_duration_ms``.
+
+    The helper focuses on the most frequently accessed luminaries so
+    subsequent requests can rely on cached Swiss Ephemeris results.  The
+    warm-up stops immediately when ``max_duration_ms`` is exceeded to
+    ensure startup remains bounded.
+    """
+
+    if max_duration_ms <= 0:
+        return 0
+
+    selected_bodies = tuple(
+        body.lower()
+        for body in (bodies or _BOOTSTRAP_BODIES)
+        if supported_body(body)
+    )
+    if not selected_bodies:
+        return 0
+
+    offsets = tuple(int(offset) for offset in (day_offsets or _BOOTSTRAP_DAY_OFFSETS))
+    if not offsets:
+        return 0
+
+    start = perf_counter()
+    warmed = 0
+
+    base_day = int(julian_day(datetime.now(tz=timezone.utc)))
+
+    for offset in offsets:
+        for body in selected_bodies:
+            elapsed_ms = (perf_counter() - start) * 1000.0
+            if elapsed_ms >= max_duration_ms:
+                return warmed
+            day_jd = float(base_day + offset)
+            try:
+                get_daily_entry(day_jd, body)
+            except RuntimeError:
+                _LOGGER.debug("Startup warm skipped; Swiss ephemeris unavailable.")
+                return warmed
+            except Exception as exc:  # pragma: no cover - defensive guard
+                _LOGGER.warning(
+                    "Startup warm failed for %s @ JD %s: %s", body, day_jd, exc
+                )
+                return warmed
+            warmed += 1
+    return warmed
 
 
 # >>> AUTO-GEN END: positions-cache v1.0

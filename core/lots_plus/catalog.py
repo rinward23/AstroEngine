@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, Iterable, Optional, Set
 
 from core.lots_plus.engine import eval_formula
+from core.lots_plus.parser import extract_symbols
 
 
 @dataclass
@@ -48,20 +49,6 @@ class Sect:
     NIGHT = "night"
 
 
-def _extract_symbols(expr: str) -> Set[str]:
-    symbols: Set[str] = set()
-    for raw in expr.replace('+', ' ').replace('-', ' ').split():
-        token = raw.strip()
-        if not token:
-            continue
-        try:
-            float(token)
-        except ValueError:
-            if token.replace('_', '').isalnum():
-                symbols.add(token)
-    return symbols
-
-
 def compute_lot(name: str, pos: Dict[str, float], sect: str, _stack: Optional[Set[str]] = None) -> float:
     if sect not in (Sect.DAY, Sect.NIGHT):
         raise ValueError(f"Invalid sect: {sect}")
@@ -78,7 +65,7 @@ def compute_lot(name: str, pos: Dict[str, float], sect: str, _stack: Optional[Se
 
     # Prepare a working copy of positions so we can inject dependent lot values.
     working_pos = dict(pos)
-    for symbol in _extract_symbols(expr):
+    for symbol in extract_symbols(expr):
         if symbol in working_pos or symbol == name:
             continue
         if symbol in REGISTRY:

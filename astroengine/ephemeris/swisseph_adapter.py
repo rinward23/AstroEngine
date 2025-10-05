@@ -6,13 +6,13 @@ import logging
 import os
 import importlib
 import importlib.util
+from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from functools import lru_cache
-from time import perf_counter
-from typing import TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, ClassVar, Final, Optional
 from types import ModuleType
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ from .sidereal import (
 )
 from .utils import get_se_ephe_path
 from ..core.bodies import canonical_name
-from ..observability import COMPUTE_ERRORS, EPHEMERIS_BODY_COMPUTE_DURATION
+from ..observability import EPHEMERIS_SWE_CACHE_HIT_RATIO
 
 if TYPE_CHECKING:  # pragma: no cover - runtime import avoided for typing only
 
@@ -62,6 +62,28 @@ __all__ = [
     "resolve_house_code",
     "get_swisseph",
 ]
+
+
+_SWE_CALC_CACHE_SIZE: Final[int] = 4096
+
+
+_SweCalcKey = tuple[float, int, int, bool]
+_SweCalcValue = tuple[tuple[float, ...], int, str]
+
+
+_swe_calc_cache: OrderedDict[_SweCalcKey, _SweCalcValue] = OrderedDict()
+_swe_calc_hits: int = 0
+_swe_calc_misses: int = 0
+
+
+def _update_swe_cache_hit_ratio() -> None:
+    """Update the exported hit ratio gauge for the swe_calc cache."""
+
+    total = _swe_calc_hits + _swe_calc_misses
+    if not total:
+        EPHEMERIS_SWE_CACHE_HIT_RATIO.set(0.0)
+        return
+    EPHEMERIS_SWE_CACHE_HIT_RATIO.set(_swe_calc_hits / total)
 
 
 HOUSE_CODE_BY_NAME: Mapping[str, str] = {
@@ -744,24 +766,93 @@ class SwissEphemerisAdapter:
                 operation="single",
             ).observe(duration)
 
+    def compute_bodies_many(
+        self, jd_ut: float, bodies: Mapping[str, int]
+    ) -> dict[str, BodyPosition]:
+        """Return body positions for ``bodies`` using shared Swiss calls."""
+
+        if not bodies:
+            return {}
+
+        self._apply_sidereal_mode()
+        swe = _swe()
+        calc_flags = self._calc_flags
+        fallback_flags = self._fallback_flags
+        equatorial_flag = swe.FLG_EQUATORIAL
+
+        body_specs: list[tuple[str, int, bool]] = []
+        unique_codes: set[int] = set()
+        for name, raw_code in bodies.items():
+            override_code, derived = self._variant_override(name)
+            effective = int(override_code if override_code is not None else raw_code)
+            body_specs.append((name, effective, derived))
+            unique_codes.add(effective)
+
+        ecliptic_data: dict[int, tuple[float, ...]] = {}
+        equatorial_data: dict[int, tuple[float, ...]] = {}
+        for code in unique_codes:
+            try:
+                xx, _, serr = swe_calc(
+                    jd_ut=jd_ut, planet_index=code, flag=calc_flags
+                )
+            except RuntimeError:
+                xx, _, serr = swe_calc(
+                    jd_ut=jd_ut, planet_index=code, flag=fallback_flags
+                )
+            if serr:
+                raise RuntimeError(serr)
+            ecliptic_data[code] = xx
+
+            try:
+                eq_xx, _, serr_eq = swe_calc(
+                    jd_ut=jd_ut,
+                    planet_index=code,
+                    flag=calc_flags | equatorial_flag,
+                )
+            except RuntimeError:
+                eq_xx, _, serr_eq = swe_calc(
+                    jd_ut=jd_ut,
+                    planet_index=code,
+                    flag=fallback_flags | equatorial_flag,
+                )
+            if serr_eq:
+                raise RuntimeError(serr_eq)
+            equatorial_data[code] = eq_xx
+
+        positions: dict[str, BodyPosition] = {}
+        for name, effective_code, derived in body_specs:
+            lon, lat, dist, speed_lon, speed_lat, speed_dist = ecliptic_data[
+                effective_code
+            ]
+            if derived:
+                lon = (lon + 180.0) % 360.0
+                lat = -lat
+                speed_lat = -speed_lat
+
+            eq_xx = equatorial_data[effective_code]
+            _, decl, _, _, speed_decl, _ = eq_xx
+
+            positions[name] = BodyPosition(
+                body=name,
+                julian_day=jd_ut,
+                longitude=lon % 360.0,
+                latitude=lat,
+                distance_au=dist,
+                speed_longitude=speed_lon,
+                speed_latitude=speed_lat,
+                speed_distance=speed_dist,
+                declination=decl,
+                speed_declination=speed_decl,
+            )
+
+        return positions
+
     def body_positions(
         self, jd_ut: float, bodies: Mapping[str, int]
     ) -> dict[str, BodyPosition]:
         """Return positions for each body keyed by canonical name."""
 
-        adapter_label = self.__class__.__name__
-        start = perf_counter()
-        try:
-            return {
-                name: self.body_position(jd_ut, code, body_name=name)
-                for name, code in bodies.items()
-            }
-        finally:
-            duration = perf_counter() - start
-            EPHEMERIS_BODY_COMPUTE_DURATION.labels(
-                adapter=adapter_label,
-                operation="batch",
-            ).observe(duration)
+        return self.compute_bodies_many(jd_ut, bodies)
 
 
     @staticmethod
@@ -1078,7 +1169,24 @@ def swe_calc(
 ) -> tuple[tuple[float, ...], int, str]:
     """Invoke Swiss Ephemeris core calculation with normalized arguments."""
 
+    global _swe_calc_hits, _swe_calc_misses
+
     swe = _swe()
+
+    cache_key: _SweCalcKey | None
+    if _SWE_CALC_CACHE_SIZE > 0:
+        cache_key = (jd_ut, planet_index, flag, use_tt)
+        try:
+            cached = _swe_calc_cache[cache_key]
+        except KeyError:
+            cached = None
+        else:
+            _swe_calc_hits += 1
+            _swe_calc_cache.move_to_end(cache_key)
+            _update_swe_cache_hit_ratio()
+            return cached
+    else:
+        cache_key = None
 
     try:
         calc_fn = swe.calc if use_tt else swe.calc_ut
@@ -1098,5 +1206,15 @@ def swe_calc(
         serr = f"Swiss ephemeris returned error code {ret_flag}"
         raise RuntimeError(serr)
     serr = ""
-    return tuple(xx), ret_flag, serr
+    result: _SweCalcValue = (tuple(xx), ret_flag, serr)
+
+    if cache_key is not None:
+        _swe_calc_misses += 1
+        _swe_calc_cache[cache_key] = result
+        _swe_calc_cache.move_to_end(cache_key)
+        if len(_swe_calc_cache) > _SWE_CALC_CACHE_SIZE:
+            _swe_calc_cache.popitem(last=False)
+        _update_swe_cache_hit_ratio()
+
+    return result
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Iterable, Protocol, Sequence
 
+from ..canonical import canonical_round, normalize_longitude
 from .pdf import AspectEntry, ChartReportContext, WheelEntry
 
 __all__ = [
@@ -48,7 +49,7 @@ _ASPECT_NAMES = {0: "Conjunction", 60: "Sextile", 90: "Square", 120: "Trine", 18
 
 
 def _normalise_longitude(value: float) -> float:
-    return value % 360.0
+    return normalize_longitude(value)
 
 
 def _sign_name(longitude: float) -> str:
@@ -57,7 +58,7 @@ def _sign_name(longitude: float) -> str:
 
 
 def _sign_degree(longitude: float) -> float:
-    return _normalise_longitude(longitude) % 30.0
+    return canonical_round(_normalise_longitude(longitude) % 30.0)
 
 
 def _house_for(longitude: float, cusps: Sequence[float]) -> int | None:
@@ -82,7 +83,7 @@ def build_wheel_entries(natal) -> list[WheelEntry]:
     cusps = list(getattr(natal.houses, "cusps", []) or [])
     entries: list[WheelEntry] = []
     for body, position in natal.positions.items():
-        longitude = _normalise_longitude(position.longitude)
+        longitude = canonical_round(_normalise_longitude(position.longitude))
         entries.append(
             WheelEntry(
                 body=body,
