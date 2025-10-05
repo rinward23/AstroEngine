@@ -19,6 +19,7 @@ from ..detectors_aspects import AspectHit
 from ..ephemeris import EphemerisAdapter, EphemerisConfig, EphemerisSample
 from ..ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from ..ephemeris.refinement import SECONDS_PER_DAY, RefineResult, refine_event
+from .accuracy import ACCURACY_PROFILES, AccuracyProfile
 from .angles import classify_relative_motion, signed_delta
 from .angles import normalize_degrees as _normalize_degrees
 from .api import TransitEvent as LegacyTransitEvent
@@ -390,6 +391,7 @@ def scan_transits(
     bodies: Iterable[str] | None = None,
     targets: Iterable[str] | None = None,
     step_days: float = 1.0,
+    accuracy_budget: str = "default",
 ) -> list[AspectHit]:
     """Scan transit contacts against natal longitudes.
 
@@ -414,6 +416,9 @@ def scan_transits(
     step_days:
         Coarse sampling cadence forwarded to
         :meth:`TransitEngine.scan_longitude_crossing` in **days**.
+    accuracy_budget:
+        Accuracy profile controlling refinement tolerance and coarse cadence.
+        Accepted values are ``"fast"``, ``"default"``, and ``"high"``.
     """
 
     start_dt = _parse_iso8601(start_ts)
@@ -423,7 +428,30 @@ def scan_transits(
 
     natal_dt = _parse_iso8601(natal_ts)
     adapter = SwissEphemerisAdapter.get_default_adapter()
-    engine = TransitEngine.with_default_adapter()
+
+    accuracy_key = str(accuracy_budget or "default").lower()
+    profile: AccuracyProfile = ACCURACY_PROFILES.get(
+        accuracy_key, ACCURACY_PROFILES["default"]
+    )
+    default_profile = ACCURACY_PROFILES["default"]
+    baseline_config = TransitEngineConfig()
+
+    coarse_scale = profile.coarse_step_sec / default_profile.coarse_step_sec
+    tol_scale = profile.tol_arcsec / default_profile.tol_arcsec
+
+    config = TransitEngineConfig(
+        coarse_step_hours=max(float(step_days) * 24.0 * coarse_scale, 1.0),
+        refinement_mode="accurate",
+        accurate_iterations=max(int(profile.max_iter), 1),
+        accurate_min_step_seconds=max(
+            float(baseline_config.accurate_min_step_seconds * tol_scale), 1.0
+        ),
+        fast_min_step_seconds=max(
+            float(baseline_config.fast_min_step_seconds * coarse_scale), 1.0
+        ),
+        cache_samples=baseline_config.cache_samples,
+    )
+    engine = TransitEngine.with_default_adapter(engine_config=config)
 
     moving_map = _body_name_map(bodies)
     target_map = _body_name_map(targets) if targets is not None else dict(moving_map)
@@ -440,7 +468,7 @@ def scan_transits(
     if not aspect_defs:
         return []
 
-    step_hours = max(float(step_days) * 24.0, 1.0)
+    step_hours = max(float(step_days) * 24.0 * coarse_scale, 1.0)
     orb_allow = max(float(orb_deg), 0.0)
     partile_limit = min(orb_allow, 0.1)
 

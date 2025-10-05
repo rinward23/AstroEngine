@@ -1522,14 +1522,15 @@ def cmd_transits(args: argparse.Namespace) -> int:
             "parameters": {
                 "start_timestamp": args.start,
                 "end_timestamp": args.end,
-                "moving": args.moving,
-                "target": args.target,
-                "provider": args.provider,
-                "target_longitude": args.target_longitude,
-                "target_frame": args.target_frame,
-            },
-            "events": events_to_dicts(events),
-        }
+            "moving": args.moving,
+            "target": args.target,
+            "provider": args.provider,
+            "target_longitude": args.target_longitude,
+            "target_frame": args.target_frame,
+            "accuracy_budget": args.accuracy,
+        },
+        "events": events_to_dicts(events),
+    }
         if narrative_bundle is not None:
             payload["narrative"] = narrative_bundle.to_dict()
         Path(args.json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -1615,6 +1616,7 @@ def cmd_scan(args: argparse.Namespace) -> int:
             sidereal=args.sidereal if args.sidereal is not None else None,
             ayanamsha=args.ayanamsha or None,
             entrypoints=entrypoints or None,
+            accuracy_budget=args.accuracy,
             return_used_entrypoint=True,
         )
     except RuntimeError as exc:  # pragma: no cover - exercised in integration tests
@@ -2366,6 +2368,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=60,
         help="Sampling cadence in minutes (default: %(default)s)",
+    )
+    scan.add_argument(
+        "--accuracy",
+        choices=["fast", "default", "high"],
+        default="default",
+        help="Accuracy budget to trade precision for speed (default: %(default)s)",
     )
     scan.add_argument("--export-json", help="Write canonical events to a JSON file")
     scan.add_argument("--export-sqlite", help="Write canonical events to a SQLite file")

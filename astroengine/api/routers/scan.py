@@ -93,6 +93,12 @@ class TransitScanRequest(TimeWindow):
     aspects: Sequence[Any] | None = None
     orb: float = Field(default=1.0, ge=0.0, description="Maximum aspect orb in degrees")
     step_days: float = Field(default=1.0, gt=0.0)
+    accuracy_budget: Literal["fast", "default", "high"] = Field(
+        default="default",
+        description=(
+            "Trade precision for speed ('fast') or quality ('high')."
+        ),
+    )
     export: ExportOptions | None = None
 
     model_config = ConfigDict(extra="ignore")
@@ -455,6 +461,7 @@ def api_scan_transits(
             bodies=request.bodies,
             targets=request.targets,
             step_days=request.step_days,
+            accuracy_budget=request.accuracy_budget,
         )
     ]
 

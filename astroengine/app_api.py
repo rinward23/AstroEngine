@@ -138,6 +138,7 @@ def _filter_kwargs_for(fn, proposed: dict[str, Any]) -> dict[str, Any]:
         "ayanamsha": ["ayanamsha", "ayanamsa", "sidereal_ayanamsha"],
         "detectors": ["detectors", "detector_flags", "features", "feature_flags"],
         "target_frames": ["target_frames", "target_frame", "frames", "target_contexts"],
+        "accuracy_budget": ["accuracy"],
     }
 
     final: dict[str, Any] = {}
@@ -241,6 +242,7 @@ def run_scan_or_raise(
     ayanamsha: str | None = None,
     entrypoints: Iterable[ScanSpec] | None = None,
     return_used_entrypoint: bool = False,
+    accuracy_budget: str | None = None,
     zodiac: str | None = None,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], ScanCandidate]:
     """
@@ -284,6 +286,8 @@ def run_scan_or_raise(
             optional_kwargs["sidereal"] = bool(sidereal)
         if ayanamsha:
             optional_kwargs["ayanamsha"] = ayanamsha
+        if accuracy_budget:
+            optional_kwargs["accuracy_budget"] = accuracy_budget
         kwargs.update(optional_kwargs)
         call_kwargs = _filter_kwargs_for(fn, kwargs)
         try:

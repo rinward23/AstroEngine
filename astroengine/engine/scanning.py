@@ -16,6 +16,7 @@ from itertools import tee
 from typing import Any, TYPE_CHECKING
 
 from ..chart.config import ChartConfig
+from ..core.accuracy import ACCURACY_PROFILES, AccuracyProfile
 from ..core.bodies import canonical_name
 from ..core.engine import get_active_aspect_angles
 from ..detectors import CoarseHit
@@ -616,6 +617,7 @@ def scan_contacts(
     chart_sect: str | None = None,
     nodes_variant: str = "mean",
     lilith_variant: str = "mean",
+    accuracy_budget: str = "default",
 ) -> list[LegacyTransitEvent]:
     """Scan for declination, antiscia, and aspect contacts between two bodies."""
 
@@ -708,7 +710,15 @@ def scan_contacts(
     if moving not in supported_set or target not in supported_set:
         return events
 
+    accuracy_key = str(accuracy_budget or "default").lower()
+    profile_settings: AccuracyProfile = ACCURACY_PROFILES.get(
+        accuracy_key, ACCURACY_PROFILES["default"]
+    )
+    default_profile = ACCURACY_PROFILES["default"]
+    step_factor = profile_settings.coarse_step_sec / default_profile.coarse_step_sec
+
     requested_step = int(step_minutes) if step_minutes is not None else 60
+    requested_step = max(int(round(requested_step * step_factor)), 1)
     gated_step_minutes, gated_resolution = _gated_step_minutes(requested_step, moving)
 
     tick_source = _iso_ticks(
