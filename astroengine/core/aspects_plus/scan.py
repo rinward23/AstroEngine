@@ -22,6 +22,11 @@ from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS, harmonic_angle
 from astroengine.core.aspects_plus.provider_wrappers import PositionProvider
 
 
+def _require_timezone_aware(value: datetime, label: str) -> None:
+    if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+        raise ValueError(f"{label} must be timezone-aware")
+
+
 @dataclass(slots=True)
 class TimeWindow:
     """Inclusive time window used by scan routines."""
@@ -30,6 +35,8 @@ class TimeWindow:
     end: datetime
 
     def __post_init__(self) -> None:
+        _require_timezone_aware(self.start, "start")
+        _require_timezone_aware(self.end, "end")
         if self.end <= self.start:
             raise ValueError("end must be after start")
 

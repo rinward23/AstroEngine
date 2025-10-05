@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Response
+
+from astroengine.web.responses import conditional_json_response
 
 from app.schemas.lots import (
     LotDefIn,
@@ -23,7 +25,9 @@ router = APIRouter(prefix="", tags=["Plus"])
 
 
 @router.get("/lots/catalog", response_model=LotsCatalogResponse, summary="List Arabic Lots catalog")
-def lots_catalog():
+def lots_catalog(
+    if_none_match: str | None = Header(default=None, alias="If-None-Match")
+) -> Response:
     items: List[LotDefOut] = []
     for name, lot in REGISTRY.items():
         items.append(
@@ -35,7 +39,12 @@ def lots_catalog():
             )
         )
     items.sort(key=lambda x: x.name.lower())
-    return LotsCatalogResponse(lots=items, meta={"count": len(items)})
+    payload = LotsCatalogResponse(lots=items, meta={"count": len(items)})
+    return conditional_json_response(
+        payload.model_dump(mode="json"),
+        if_none_match=if_none_match,
+        max_age=86400,
+    )
 
 
 def _persist_custom_lots(custom_lots: List[LotDefIn]) -> Dict[str, LotDef]:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from ...chart.natal import ChartLocation
@@ -24,6 +24,7 @@ from ...engine.lots.dsl import CompiledProgram
 from ...engine.lots.events import scan_lot_events
 from ...ephemeris.adapter import EphemerisAdapter
 from ...scoring.policy import load_orb_policy
+from ...web.responses import conditional_json_response
 
 router = APIRouter(prefix="/lots", tags=["lots"])
 
@@ -46,7 +47,7 @@ class ChartInput(BaseModel):
     angles: dict[str, float] | None = None
     is_day: bool | None = None
     sun_altitude: float | None = None
-    moment: datetime | None = None
+    moment: UtcDateTime | None = None
     latitude: float | None = None
     longitude: float | None = None
     zodiac: str | None = None
@@ -95,8 +96,8 @@ class EventScanRequest(BaseModel):
     lot_name: str
     lot_longitude: float
     bodies: list[str]
-    start: datetime
-    end: datetime
+    start: UtcDateTime
+    end: UtcDateTime
     harmonics: list[int] = Field(default_factory=lambda: [1, 2])
     policy: dict[str, Any] | None = None
     step_hours: float | None = None
@@ -160,7 +161,9 @@ def compute_lots(request: LotComputeRequest) -> LotComputeResponse:
 
 
 @router.get("/presets", response_model=list[dict[str, Any]])
-def list_presets() -> list[dict[str, Any]]:
+def list_presets(
+    if_none_match: str | None = Header(default=None, alias="If-None-Match")
+) -> Response:
     presets = [
         {
             "profile_id": profile.profile_id,
@@ -188,7 +191,11 @@ def list_presets() -> list[dict[str, Any]]:
                 "source_refs": profile.source_refs,
             }
         )
-    return presets
+    return conditional_json_response(
+        presets,
+        if_none_match=if_none_match,
+        max_age=86400,
+    )
 
 
 @router.post("/presets", response_model=dict)

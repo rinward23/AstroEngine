@@ -22,10 +22,10 @@ help:
 >@echo "  make test            # run pytest suite"
 
 setup:
->$(PYTHON) -m pip install --upgrade pip
->@if [ -f requirements.txt ]; then $(PIP) install -r requirements.txt; fi
->@if [ -f requirements-dev.txt ]; then $(PIP) install -r requirements-dev.txt; fi
->$(PIP) install -e ".[api,providers,ui]" || $(PIP) install -e .
+	python -m pip install --upgrade pip
+	@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+	@if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e ".[api,providers,ui]" || pip install -e .; fi
+	python -m astroengine.diagnostics --strict || true
 
 install-optional:
 >$(PYTHON) scripts/install_optional_dependencies.py
@@ -53,7 +53,19 @@ migrate:
 >$(ALEMBIC) upgrade head
 
 cache-warm:
->$(PYTHON) -m astroengine.pipeline.cache_warm
+	@:
+
+doctor:
+$(PY) - <<PY
+try:
+    import astroengine
+    print("astroengine OK")
+except Exception as e:
+    print("astroengine import failed:", e)
+PY
+
+run-cli:
+$(PY) -m astroengine --help || true
 
 run-api:
 >$(UVICORN) $(APP_MODULE) --host $(API_HOST) --port $(API_PORT) --reload
@@ -65,4 +77,25 @@ clean:
 >rm -rf .mypy_cache .pytest_cache **/__pycache__ dist build *.egg-info
 
 build:
->$(PYTHON) -m build
+	python -m astroengine.maint --with-build || true
+
+run-cli: install-optional
+	python -m astroengine --help
+
+run-api: install-optional
+	uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+run-ui: install-optional
+	streamlit run ui/streamlit/altaz_app.py --server.port 8501 --server.address 0.0.0.0
+# >>> AUTO-GEN END: Makefile v1.2
+
+# Custom operational helpers
+.PHONY: migrate cache-warm
+
+migrate:
+	.venv/bin/alembic upgrade head
+
+cache-warm:
+	AE_WARM_START=$${AE_WARM_START:-1900-01-01} \
+	AE_WARM_END=$${AE_WARM_END:-2100-12-31} \
+	python -m astroengine.pipeline.cache_warm

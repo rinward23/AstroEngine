@@ -211,11 +211,19 @@ High-frequency refinement loops now consult a tiny process-local LRU that
 quantizes Terrestrial Time (TT) into short bins so repeat calls within the same
 window reuse identical Swiss Ephemeris samples. Control the cache via env vars:
 
-- `AE_QCACHE_SEC` – quantization window in seconds (default `0.25`). Lower values
+- `AE_QCACHE_SEC` – quantization window in seconds (default `1.0`). Lower values
   tighten the window; increase to broaden cache hits when input jitter exceeds
-  a quarter second.
-- `AE_QCACHE_SIZE` – maximum cached entries (default `16384`). Raise this if
+  a second.
+- `AE_QCACHE_SIZE` – maximum cached entries (default `4096`). Raise this if
   long-running transit scans churn through the default footprint.
+
+Heavy relationship or mundane timeline scans benefit from a denser cache. For
+those workloads export `AE_QCACHE_SEC=0.25 AE_QCACHE_SIZE=16384` to mirror the
+container tuned defaults.
+
+Daily Swiss-ephemeris lookups can be precomputed on disk across the 1900‑2100
+span via `make cache-warm`. Override the range with `AE_WARM_START` and
+`AE_WARM_END` when you need narrower warms (e.g. CI disk quotas).
 
 Both knobs act locally per process and can be tuned without code changes when
 profiling heavy refinement workloads.

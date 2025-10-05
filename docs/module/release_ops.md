@@ -19,6 +19,28 @@ This plan documents the concrete release steps supported by the repository today
 
 The core package depends on `pyswisseph`, `numpy`, `pydantic>=2`, `python-dateutil`, `timezonefinder`, `tzdata`, `pyyaml`, `click`, `rich`, `orjson`, `pyarrow`, and `duckdb` as declared in `pyproject.toml`. Additional extras (e.g., provider-specific dependencies) should be added alongside documentation updates once implementations land.
 
+Versioning is managed by [`setuptools-scm`](https://github.com/pypa/setuptools_scm):
+
+- Publish releases from annotated git tags so the generated version matches the
+  governance artefacts. Untagged builds fall back to `0.0.0`, eliminating the
+  `0+unknown` metadata previously produced by ad-hoc wheels.
+- Keep `astroengine/_version.py` untracked locally; it is generated during build
+  and allows runtime components to expose the exact release number without
+  importing packaging metadata.
+
+Dependency lockfiles are produced with `pip-compile` to guarantee reproducible
+builds:
+
+```bash
+pip-compile --resolver=backtracking --generate-hashes --extra dev \
+  --output-file requirements.lock/py311.txt pyproject.toml
+```
+
+Hashing is required; in air-gapped environments `uv pip compile` with hash
+output is an acceptable substitute. Commit the updated lockfile alongside release
+tags so downstream images resolve the same versions recorded in Solar Fire
+comparison artefacts.
+
 ## Registry compatibility snapshot
 
 The default registry currently exposes the following modules:

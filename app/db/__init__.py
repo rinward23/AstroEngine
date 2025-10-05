@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-from .base import Base
+from .base import Base, NAMING
 from . import models as models
 
-__all__ = ["Base", "models"]
+__all__ = ["Base", "models", "NAMING"]
 

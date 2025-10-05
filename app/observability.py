@@ -2,21 +2,152 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
+from datetime import datetime, timezone
 from time import perf_counter
-from typing import Callable
+from typing import Any, Callable
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from prometheus_client import Counter, Histogram, make_asgi_app
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 
+from astroengine.observability import ensure_metrics_registered
+
 
 _LOGGER = logging.getLogger("astroengine.app")
+
+
+class JSONLogFormatter(logging.Formatter):
+    """Serialize log records as JSON with contextual metadata."""
+
+    _RESERVED_KEYS = {
+        "args",
+        "asctime",
+        "created",
+        "exc_info",
+        "exc_text",
+        "filename",
+        "funcName",
+        "levelname",
+        "levelno",
+        "lineno",
+        "module",
+        "msecs",
+        "message",
+        "msg",
+        "name",
+        "pathname",
+        "process",
+        "processName",
+        "relativeCreated",
+        "stack_info",
+        "thread",
+        "threadName",
+    }
+
+    def format(self, record: logging.LogRecord) -> str:  # noqa: D401 - brief docstring above
+        payload: dict[str, Any] = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+
+        if record.exc_info:
+            payload["exc_info"] = self.formatException(record.exc_info)
+        if record.stack_info:
+            payload["stack"] = self.formatStack(record.stack_info)
+
+        for key, value in record.__dict__.items():
+            if key in self._RESERVED_KEYS:
+                continue
+            payload[key] = value
+
+        return json.dumps(payload, default=str)
+
+
+class RequestContextLoggerAdapter(logging.LoggerAdapter):
+    """Ensure middleware logs consistently include request context."""
+
+    def process(self, msg: str, kwargs: Any) -> tuple[str, dict[str, Any]]:
+        extra = kwargs.setdefault("extra", {})
+        for key, value in self.extra.items():
+            extra.setdefault(key, value)
+        return msg, kwargs
+
+
+def _configure_logging() -> None:
+    """Install a JSON formatter on the root logger once per process."""
+
+    if getattr(_configure_logging, "_configured", False):  # type: ignore[attr-defined]
+        return
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(JSONLogFormatter())
+
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(handler)
+    level_name = os.getenv("LOG_LEVEL", "INFO").upper()
+    root.setLevel(getattr(logging, level_name, logging.INFO))
+
+    # Quiet overly verbose default handlers when structured logs are enabled.
+    logging.getLogger("uvicorn.error").handlers.clear()
+    logging.getLogger("uvicorn.access").handlers.clear()
+    logging.getLogger("uvicorn").propagate = True
+
+    _configure_logging._configured = True  # type: ignore[attr-defined]
+
+
+def _configure_opentelemetry(app: FastAPI) -> None:
+    """Configure OpenTelemetry exporters and instrumentation."""
+
+    if getattr(app.state, "_otel_configured", False):
+        return
+
+    try:  # pragma: no cover - instrumentation exercised in integration tests
+        from opentelemetry import metrics, trace
+        from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
+            OTLPMetricExporter,
+        )
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter,
+        )
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.instrumentation.requests import RequestsInstrumentor
+        from opentelemetry.sdk.metrics import MeterProvider
+        from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    except ImportError:  # pragma: no cover - optional dependency
+        _LOGGER.warning(
+            "observability.opentelemetry_missing",
+            extra={"err_code": "OTEL_DEPENDENCY_MISSING"},
+        )
+        app.state._otel_configured = True
+        return
+
+    resource = Resource.create({"service.name": "astroengine-api"})
+
+    tracer_provider = TracerProvider(resource=resource)
+    tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(tracer_provider)
+
+    metric_reader = PeriodicExportingMetricReader(OTLPMetricExporter())
+    meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
+    metrics.set_meter_provider(meter_provider)
+
+    excluded = r"/(metrics|healthz|readyz)"
+    FastAPIInstrumentor.instrument_app(app, excluded_urls=excluded)
+    RequestsInstrumentor().instrument()
+
+    app.state._otel_configured = True
 
 
 REQUEST_COUNT = Counter(
@@ -44,7 +175,10 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable):  # type: ignore[override]
         request_id = request.headers.get("x-request-id") or uuid4().hex
         request.state.request_id = request_id
-        logger = logging.LoggerAdapter(_LOGGER, {"request_id": request_id})
+        user_agent = request.headers.get("user-agent", "")
+        logger = RequestContextLoggerAdapter(
+            _LOGGER, {"request_id": request_id, "user_agent": user_agent}
+        )
         request.state.logger = logger
         logger.info(
             "request.start",
@@ -52,6 +186,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
                 "method": request.method,
                 "path": request.url.path,
                 "length": request.headers.get("content-length", "0"),
+                "user_agent": user_agent,
             },
         )
         start = perf_counter()
@@ -76,9 +211,18 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
             raise
         finally:
             duration_ms = (perf_counter() - start) * 1000.0
+            status_code = (
+                getattr(response, "status_code", None)
+                if "response" in locals()
+                else None
+            )
             logger.info(
                 "request.end",
-                extra={"path": request.url.path, "duration_ms": f"{duration_ms:.2f}"},
+                extra={
+                    "path": request.url.path,
+                    "duration_ms": round(duration_ms, 2),
+                    "status_code": status_code,
+                },
             )
         response.headers.setdefault("X-Request-ID", request_id)
         return response
@@ -97,9 +241,15 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             duration = perf_counter() - start
             REQUEST_COUNT.labels(method=method, path=path_template, status=str(exc.status_code)).inc()
             REQUEST_LATENCY.labels(method=method, path=path_template).observe(duration)
-            _LOGGER.warning(
+            logger = getattr(request.state, "logger", _LOGGER)
+            logger.warning(
                 "metrics.http_error",
-                extra={"err_code": "HTTP_ERROR", "status": exc.status_code},
+                extra={
+                    "err_code": "HTTP_ERROR",
+                    "status": exc.status_code,
+                    "method": method,
+                    "path": path_template,
+                },
                 exc_info=True,
             )
             raise
@@ -107,9 +257,14 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             duration = perf_counter() - start
             REQUEST_COUNT.labels(method=method, path=path_template, status="500").inc()
             REQUEST_LATENCY.labels(method=method, path=path_template).observe(duration)
-            _LOGGER.exception(
+            logger = getattr(request.state, "logger", _LOGGER)
+            logger.exception(
                 "metrics.unexpected_error",
-                extra={"err_code": "UNEXPECTED"},
+                extra={
+                    "err_code": "UNEXPECTED",
+                    "method": method,
+                    "path": path_template,
+                },
             )
             raise
         duration = perf_counter() - start
@@ -125,6 +280,8 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 def configure_observability(app: FastAPI) -> None:
     """Install middleware and the /metrics endpoint."""
 
+    _configure_logging()
+    _configure_opentelemetry(app)
     app.add_middleware(GZipMiddleware)
     environment = os.getenv("ENV", "dev")
     allow_origins = ["*"] if environment == "dev" else []
@@ -136,6 +293,7 @@ def configure_observability(app: FastAPI) -> None:
     )
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(MetricsMiddleware)
+    ensure_metrics_registered()
     metrics_app = make_asgi_app()
     app.mount("/metrics", metrics_app)
 
