@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from typing import Sequence
 
 from . import diagnose, export, scan
-from .. import cli_legacy
+from ._compat import cli_legacy_missing_reason, try_import_cli_legacy
 
 
 def _add_legacy_subparser(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -18,20 +19,34 @@ def _add_legacy_subparser(sub: argparse._SubParsersAction[argparse.ArgumentParse
             "are forwarded verbatim to the legacy parser."
         ),
     )
-    legacy_parser.add_argument(
-        "legacy_args",
-        nargs=argparse.REMAINDER,
-        metavar="legacy-args",
-        help="Arguments passed directly to the legacy CLI",
-    )
-    legacy_parser.set_defaults(func=_run_legacy)
+    module = try_import_cli_legacy()
+    if module is None:
+        reason = cli_legacy_missing_reason()
+        legacy_parser.description += "\n\nUnavailable: {reason}".format(reason=reason)
+        legacy_parser.set_defaults(func=_legacy_unavailable, _cli_error=reason)
+    else:
+        legacy_parser.add_argument(
+            "legacy_args",
+            nargs=argparse.REMAINDER,
+            metavar="legacy-args",
+            help="Arguments passed directly to the legacy CLI",
+        )
+        legacy_parser.set_defaults(func=_run_legacy, _cli_legacy=module)
 
 
 def _run_legacy(parsed: argparse.Namespace) -> int:
+    module = getattr(parsed, "_cli_legacy")
     argv = list(parsed.legacy_args or [])
     if argv and argv[0] == "--":
         argv = argv[1:]
-    return cli_legacy.main(argv if argv else None)
+    return module.main(argv if argv else None)
+
+
+def _legacy_unavailable(parsed: argparse.Namespace) -> int:
+    reason = getattr(parsed, "_cli_error", cli_legacy_missing_reason())
+    message = reason or "Legacy CLI unavailable"
+    print(message, file=sys.stderr)
+    return 2
 
 
 def build_parser() -> argparse.ArgumentParser:

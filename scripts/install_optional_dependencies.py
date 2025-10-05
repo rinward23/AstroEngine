@@ -36,6 +36,7 @@ def install_optional_dependencies() -> None:
         ('pydantic>=2.11', 'pydantic', (2, 11)),
         ('skyfield>=1.49', 'skyfield', (1, 49)),
         ('jplephem>=2.21', 'jplephem', (2, 21)),
+        ('mdit-py-plugins>=0.4', 'mdit_py_plugins', (0, 4)),
     ):
         ensure(spec, import_name=import_name, minimum=minimum)
 
