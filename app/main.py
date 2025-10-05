@@ -12,7 +12,9 @@ from starlette.responses import Response
 
 from astroengine.ephemeris.adapter import EphemerisAdapter, EphemerisConfig
 
+from app.db.session import engine
 from app.observability import configure_observability
+from app.telemetry import setup_tracing
 
 from app.routers import (
     aspects_router,
@@ -33,6 +35,7 @@ from app.routers.aspects import (  # re-exported for convenience
 
 app = FastAPI(title="AstroEngine Plus API")
 configure_observability(app)
+setup_tracing(app, sqlalchemy_engine=engine)
 app.include_router(aspects_router)
 app.include_router(electional_router)
 app.include_router(events_router)

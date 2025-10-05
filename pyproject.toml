@@ -114,6 +114,15 @@ ui = [
   "plotly>=5.20",
 ]
 
+# Observability helpers
+obs = [
+  "opentelemetry-sdk>=1.26",
+  "opentelemetry-exporter-otlp>=1.26",
+  "opentelemetry-instrumentation-fastapi>=0.48b0",
+  "opentelemetry-instrumentation-requests>=0.48b0",
+  "opentelemetry-instrumentation-sqlalchemy>=0.48b0",
+]
+
 # Release bundles
 api = [
   "fastapi[all]>=0.117,<0.118",
@@ -133,6 +142,11 @@ dev = [
   "ruff",
   "mypy",
   "pytest-benchmark>=4.0",
+  "opentelemetry-sdk>=1.26",
+  "opentelemetry-exporter-otlp>=1.26",
+  "opentelemetry-instrumentation-fastapi>=0.48b0",
+  "opentelemetry-instrumentation-requests>=0.48b0",
+  "opentelemetry-instrumentation-sqlalchemy>=0.48b0",
 ]
 
 all = [
@@ -167,6 +181,11 @@ all = [
   "ruff",
   "mypy",
   "pytest-benchmark>=4.0",
+  "opentelemetry-sdk>=1.26",
+  "opentelemetry-exporter-otlp>=1.26",
+  "opentelemetry-instrumentation-fastapi>=0.48b0",
+  "opentelemetry-instrumentation-requests>=0.48b0",
+  "opentelemetry-instrumentation-sqlalchemy>=0.48b0",
 ]
 
 [project.urls]

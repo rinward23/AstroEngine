@@ -9,6 +9,7 @@ from typing import Any, Type
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from ..errors import ErrorEnvelope
 from ...interpret.loader import RulepackValidationError, lint_rulepack
 from ...interpret.models import InterpretRequest, InterpretResponse, RulepackLintResult, RulepackMeta, RulepackVersionPayload
 from ...interpret.service import InterpretationError, evaluate_relationship
