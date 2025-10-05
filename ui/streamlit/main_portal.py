@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
+from typing import Callable, Dict
 
 import requests
 import streamlit as st
 
-from astroengine.config import load_settings
+ROOT_DIR = Path(__file__).resolve().parents[2]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
+
 from ui.streamlit.components.chatgpt_panel import chatgpt_panel
 
 st.set_page_config(page_title="AstroEngine Portal", layout="wide")
@@ -23,75 +29,147 @@ st.markdown(
 )
 
 st.title("🌌 AstroEngine — Main Portal")
-settings = load_settings()
+
+
+def _api_base() -> str:
+    return os.environ.get("ASTROENGINE_API", "http://127.0.0.1:8000").rstrip("/")
+
+
+def _render_chart() -> None:
+    st.markdown("**Chart Wheel**")
+    url = f"{_api_base()}/v1/plots/wheel"
+    try:
+        r = requests.get(url, timeout=3)
+        if r.status_code == 200 and r.headers.get("content-type", "").startswith("image/"):
+            st.image(r.content, caption="Current Chart")
+        else:
+            st.info("Chart image endpoint not available yet. Add /v1/plots/wheel to the API to enable.")
+    except Exception:
+        st.info("Chart endpoint unreachable.")
+
+
+def _render_aspects() -> None:
+    st.markdown("**Aspect Grid**")
+    url = f"{_api_base()}/v1/plots/aspects"
+    try:
+        r = requests.get(url, timeout=3)
+        if r.status_code == 200 and r.headers.get("content-type", "").startswith("image/"):
+            st.image(r.content, caption="Aspect Grid")
+        else:
+            st.info("Aspect grid not available yet. Add /v1/plots/aspects.")
+    except Exception:
+        st.info("Aspect endpoint unreachable.")
+
+
+def _render_timeline() -> None:
+    st.markdown("**Timeline**")
+    url = f"{_api_base()}/v1/timeline?from=now-30d&to=now+30d"
+    try:
+        r = requests.get(url, timeout=4)
+        if r.ok:
+            data = r.json()
+            st.json(data[:25] if isinstance(data, list) else data)
+        else:
+            st.info("Timeline endpoint not ready. See Task 7/10.")
+    except Exception:
+        st.info("Timeline endpoint unreachable.")
+
+
+def _render_map() -> None:
+    st.markdown("**Astrocartography Map**")
+    try:
+        import pydeck as pdk
+
+        url = f"{_api_base()}/v1/astrocartography"
+        r = requests.get(url, timeout=5)
+        if r.ok:
+            geo = r.json()
+            layer = pdk.Layer("GeoJsonLayer", geo, pickable=True)
+            view_state = pdk.ViewState(latitude=0, longitude=0, zoom=0.8)
+            st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state))
+        else:
+            st.info("Map endpoint not ready. See Task 12.")
+    except Exception:
+        st.info("pydeck not installed or map endpoint unreachable.")
+
+
+def _render_custom() -> None:
+    st.markdown("**Custom Panel**")
+    st.caption("Bring your own graphic here — embed images, tables, or KPIs.")
+    st.write("")
+
+
+PANE_RENDERERS: Dict[str, Callable[[], None]] = {
+    "Chart": _render_chart,
+    "Aspects": _render_aspects,
+    "Timeline": _render_timeline,
+    "Map": _render_map,
+    "Custom": _render_custom,
+}
+
+
+DEFAULT_LAYOUT = {
+    "Top Left": "Chart",
+    "Top Right": "Timeline",
+    "Bottom Left": "Map",
+    "Bottom Right": "Aspects",
+}
+
+
+def _init_dashboard_state() -> None:
+    if "dashboard_slots" not in st.session_state:
+        st.session_state.dashboard_slots = DEFAULT_LAYOUT.copy()
+
+
+def _layout_controls() -> None:
+    with st.expander("Dashboard Layout", expanded=False):
+        st.markdown(
+            "Select which insight appears in each quadrant. Choose **Empty** to clear a slot."
+        )
+        options = ["Empty", *PANE_RENDERERS.keys()]
+        for slot in DEFAULT_LAYOUT:
+            current = st.session_state.dashboard_slots.get(slot, "Empty")
+            selected = st.selectbox(
+                slot,
+                options=options,
+                index=options.index(current) if current in options else 0,
+                key=f"dashboard_slot_{slot.replace(' ', '_').lower()}",
+            )
+            st.session_state.dashboard_slots[slot] = selected
+
+
+def _render_slot(slot: str, pane_key: str) -> None:
+    with st.container(border=True):
+        if pane_key == "Empty":
+            st.info("Select a panel from the layout controls to populate this slot.")
+            return
+        renderer = PANE_RENDERERS.get(pane_key)
+        if not renderer:
+            st.warning(f"Unknown panel: {pane_key}")
+            return
+        renderer()
+
+
+_init_dashboard_state()
 
 left, right = st.columns([7, 5], gap="large")
 
-# --- Left: Multi-graphic gallery -------------------------------------------
+# --- Left: Configurable dashboard ------------------------------------------
 with left:
     st.subheader("Visuals")
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Chart", "Aspects", "Timeline", "Map", "Custom"])
+    _layout_controls()
 
-    with tab1:
-        st.markdown("**Chart Wheel**")
-        # If your API exposes an image, render it. Otherwise, placeholder.
-        url = os.environ.get("ASTROENGINE_API", "http://127.0.0.1:8000").rstrip("/") + "/v1/plots/wheel"
-        try:
-            r = requests.get(url, timeout=3)
-            if r.status_code == 200 and r.headers.get("content-type", "").startswith("image/"):
-                st.image(r.content, caption="Current Chart")
-            else:
-                st.info("Chart image endpoint not available yet. Add /v1/plots/wheel to the API to enable.")
-        except Exception:
-            st.info("Chart endpoint unreachable.")
+    top = st.columns(2)
+    with top[0]:
+        _render_slot("Top Left", st.session_state.dashboard_slots.get("Top Left", "Empty"))
+    with top[1]:
+        _render_slot("Top Right", st.session_state.dashboard_slots.get("Top Right", "Empty"))
 
-    with tab2:
-        st.markdown("**Aspect Grid**")
-        url = os.environ.get("ASTROENGINE_API", "http://127.0.0.1:8000").rstrip("/") + "/v1/plots/aspects"
-        try:
-            r = requests.get(url, timeout=3)
-            if r.status_code == 200 and r.headers.get("content-type", "").startswith("image/"):
-                st.image(r.content, caption="Aspect Grid")
-            else:
-                st.info("Aspect grid not available yet. Add /v1/plots/aspects.")
-        except Exception:
-            st.info("Aspect endpoint unreachable.")
-
-    with tab3:
-        st.markdown("**Timeline**")
-        url = os.environ.get("ASTROENGINE_API", "http://127.0.0.1:8000").rstrip("/") + "/v1/timeline?from=now-30d&to=now+30d"
-        try:
-            r = requests.get(url, timeout=4)
-            if r.ok:
-                data = r.json()
-                st.json(data[:25] if isinstance(data, list) else data)
-            else:
-                st.info("Timeline endpoint not ready. See Task 7/10.")
-        except Exception:
-            st.info("Timeline endpoint unreachable.")
-
-    with tab4:
-        st.markdown("**Astrocartography Map**")
-        try:
-            import pydeck as pdk
-
-            # Expect GeoJSON FeatureCollection from /v1/astrocartography
-            url = os.environ.get("ASTROENGINE_API", "http://127.0.0.1:8000").rstrip("/") + "/v1/astrocartography"
-            r = requests.get(url, timeout=5)
-            if r.ok:
-                geo = r.json()
-                layer = pdk.Layer("GeoJsonLayer", geo, pickable=True)
-                view_state = pdk.ViewState(latitude=0, longitude=0, zoom=0.8)
-                st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state))
-            else:
-                st.info("Map endpoint not ready. See Task 12.")
-        except Exception:
-            st.info("pydeck not installed or map endpoint unreachable.")
-
-    with tab5:
-        st.markdown("**Custom**")
-        st.caption("Bring your own graphic here — embed images, tables, or KPIs.")
-        st.write("")
+    bottom = st.columns(2)
+    with bottom[0]:
+        _render_slot("Bottom Left", st.session_state.dashboard_slots.get("Bottom Left", "Empty"))
+    with bottom[1]:
+        _render_slot("Bottom Right", st.session_state.dashboard_slots.get("Bottom Right", "Empty"))
 
 # --- Right: ChatGPT ---------------------------------------------------------
 with right:
