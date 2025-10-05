@@ -31,15 +31,16 @@ def _add_legacy_subparser(sub: argparse._SubParsersAction[argparse.ArgumentParse
             metavar="legacy-args",
             help="Arguments passed directly to the legacy CLI",
         )
-        legacy_parser.set_defaults(func=_run_legacy, _cli_legacy=module)
+        legacy_parser.set_defaults(func=_run_legacy)
 
 
 def _run_legacy(parsed: argparse.Namespace) -> int:
-    module = getattr(parsed, "_cli_legacy")
     argv = list(parsed.legacy_args or [])
     if argv and argv[0] == "--":
         argv = argv[1:]
-    return module.main(argv if argv else None)
+    from .. import cli_legacy
+
+    return cli_legacy.main(argv if argv else None)
 
 
 def _legacy_unavailable(parsed: argparse.Namespace) -> int:
