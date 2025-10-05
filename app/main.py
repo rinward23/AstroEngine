@@ -10,6 +10,7 @@ from typing import Awaitable, Callable
 from fastapi import FastAPI, Request
 from starlette.responses import Response
 
+from astroengine.config import load_settings
 from astroengine.ephemeris.adapter import EphemerisAdapter, EphemerisConfig
 
 from app.db.session import engine
@@ -24,6 +25,7 @@ from app.routers import (
     interpret_router,
     lots_router,
     policies_router,
+    settings_router,
     reports_router,
     relationship_router,
     transits_router,
@@ -46,6 +48,7 @@ app.include_router(relationship_router)
 app.include_router(interpret_router)
 app.include_router(reports_router)
 app.include_router(health_router)
+app.include_router(settings_router)
 
 
 @app.on_event("startup")
@@ -53,6 +56,7 @@ def _init_singletons() -> None:
     """Initialize application-wide state on startup."""
 
     app.state.trust_proxy = os.getenv("TRUST_PROXY", "0").lower() in {"1", "true", "yes"}
+    app.state.settings = load_settings()
 
 
 @app.middleware("http")
