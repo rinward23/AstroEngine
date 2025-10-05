@@ -17,22 +17,27 @@ def _provider_instance(name: str, node_policy: str):
     if name == "swiss":
         try:
             from astroengine.providers.swiss_provider import SwissProvider
-        except Exception as exc:  # pragma: no cover - optional dependency
+        except ImportError as exc:  # pragma: no cover - optional dependency
             raise RuntimeError("Swiss ephemeris unavailable") from exc
         provider = SwissProvider()
         if hasattr(provider, "configure"):
             try:
                 provider.configure(nodes_variant=node_policy)
-            except Exception as exc:  # pragma: no cover - configuration failure
+            except (AttributeError, ValueError, RuntimeError) as exc:  # pragma: no cover - configuration failure
                 get_logger().warning(
                     "swiss.configure.failed",
-                    extra={"error": str(exc), "request_id": "-"},
+                    extra={
+                        "error": str(exc),
+                        "request_id": "-",
+                        "err_code": "SWISS_CONFIG",
+                    },
+                    exc_info=True,
                 )
         return provider
     if name == "skyfield":
         try:
             from astroengine.providers.skyfield_provider import SkyfieldProvider
-        except Exception as exc:  # pragma: no cover - optional dependency
+        except ImportError as exc:  # pragma: no cover - optional dependency
             raise RuntimeError("Skyfield ephemeris unavailable") from exc
         return SkyfieldProvider()
     raise ValueError(f"Unsupported ephemeris '{name}'")

@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 import logging
 from typing import Dict, List
 
+LOG = logging.getLogger(__name__)
+
 from astroengine.canonical import BodyPosition
 from astroengine.core.time import TimeConversion, to_tt
 from astroengine.ephemeris import (
@@ -21,7 +23,12 @@ from .swisseph_adapter import VariantConfig, se_body_id_for
 
 try:
     import swisseph as swe  # pyswisseph imports the module name 'swisseph'
-except Exception:  # pragma: no cover
+except ImportError:
+    LOG.info(
+        "pyswisseph not installed",
+        extra={"err_code": "SWISS_IMPORT"},
+        exc_info=True,
+    )
     swe = None
 
 try:  # pragma: no cover - exercised via runtime fallback
@@ -38,7 +45,12 @@ try:  # pragma: no cover - exercised via runtime fallback
     from pymeeus.Venus import Venus as _Venus
 
     _PYMEEUS_AVAILABLE = True
-except Exception:  # pragma: no cover
+except ImportError:
+    LOG.info(
+        "pymeeus fallback unavailable",
+        extra={"err_code": "PYMEEUS_IMPORT"},
+        exc_info=True,
+    )
     Epoch = None  # type: ignore[assignment]
     (
         _Mercury,
@@ -57,8 +69,6 @@ except Exception:  # pragma: no cover
     _PYMEEUS_AVAILABLE = False
 
 from . import register_provider
-
-LOG = logging.getLogger(__name__)
 
 
 _BODY_IDS: Dict[str, int] = {

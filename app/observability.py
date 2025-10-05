@@ -7,7 +7,7 @@ from time import perf_counter
 from typing import Callable
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from prometheus_client import Counter, Histogram, make_asgi_app
@@ -56,8 +56,22 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         start = perf_counter()
         try:
             response = await call_next(request)
+        except HTTPException as exc:  # pragma: no cover - defensive logging
+            logger.warning(
+                "request.http_error",
+                extra={
+                    "error": str(exc.detail),
+                    "status": exc.status_code,
+                    "err_code": "HTTP_ERROR",
+                },
+                exc_info=True,
+            )
+            raise
         except Exception as exc:  # pragma: no cover - defensive logging
-            logger.exception("request.error", extra={"error": str(exc)})
+            logger.exception(
+                "request.error",
+                extra={"error": str(exc), "err_code": "UNEXPECTED"},
+            )
             raise
         finally:
             duration_ms = (perf_counter() - start) * 1000.0
@@ -78,10 +92,24 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         method = request.method
         try:
             response = await call_next(request)
+        except HTTPException as exc:
+            duration = perf_counter() - start
+            REQUEST_COUNT.labels(method=method, path=path_template, status=str(exc.status_code)).inc()
+            REQUEST_LATENCY.labels(method=method, path=path_template).observe(duration)
+            _LOGGER.warning(
+                "metrics.http_error",
+                extra={"err_code": "HTTP_ERROR", "status": exc.status_code},
+                exc_info=True,
+            )
+            raise
         except Exception:
             duration = perf_counter() - start
             REQUEST_COUNT.labels(method=method, path=path_template, status="500").inc()
             REQUEST_LATENCY.labels(method=method, path=path_template).observe(duration)
+            _LOGGER.exception(
+                "metrics.unexpected_error",
+                extra={"err_code": "UNEXPECTED"},
+            )
             raise
         duration = perf_counter() - start
         REQUEST_COUNT.labels(
