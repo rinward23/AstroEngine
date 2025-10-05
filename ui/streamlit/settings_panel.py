@@ -147,6 +147,20 @@ length = st.selectbox(
 )
 language = st.text_input("Language (IETF)", current_settings.narrative.language)
 
+fixed_star_enabled = st.toggle(
+    "Show fixed star hits in aspectarian",
+    value=current_settings.fixed_stars.enabled,
+    help="Highlight close fixed-star contacts when available in charts.",
+)
+fixed_star_orb = st.slider(
+    "Fixed star orb (deg)",
+    min_value=0.1,
+    max_value=5.0,
+    value=float(current_settings.fixed_stars.orb_deg),
+    step=0.1,
+    disabled=not fixed_star_enabled,
+)
+
 render_layers = current_settings.rendering.layers.copy()
 layer_columns = st.columns(3)
 for idx, key in enumerate(list(render_layers.keys())):
@@ -210,6 +224,11 @@ if st.button("💾 Save Settings", type="primary"):
             "layers": render_layers,
             "theme": current_settings.rendering.theme,
             "glyph_set": current_settings.rendering.glyph_set,
+        },
+        fixed_stars={
+            "enabled": fixed_star_enabled,
+            "orb_deg": fixed_star_orb,
+            "catalog": current_settings.fixed_stars.catalog,
         },
         ephemeris={
             "source": ephemeris_source,

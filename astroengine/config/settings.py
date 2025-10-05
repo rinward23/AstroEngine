@@ -145,6 +145,14 @@ class RenderingCfg(BaseModel):
     glyph_set: Literal["default", "classic", "modern"] = "default"
 
 
+class FixedStarsCfg(BaseModel):
+    """Fixed star visibility and orb defaults."""
+
+    enabled: bool = False
+    orb_deg: float = 1.0
+    catalog: str = "robson"
+
+
 class EphemerisCfg(BaseModel):
     """Ephemeris source configuration."""
 
@@ -178,6 +186,7 @@ class Settings(BaseModel):
     charts: ChartsCfg = Field(default_factory=ChartsCfg)
     narrative: NarrativeCfg = Field(default_factory=NarrativeCfg)
     rendering: RenderingCfg = Field(default_factory=RenderingCfg)
+    fixed_stars: FixedStarsCfg = Field(default_factory=FixedStarsCfg)
     ephemeris: EphemerisCfg = Field(default_factory=EphemerisCfg)
     perf: PerfCfg = Field(default_factory=PerfCfg)
 
