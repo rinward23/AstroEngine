@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from prometheus_client import CollectorRegistry, Counter, Histogram, REGISTRY
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, REGISTRY
 
 __all__ = [
     "EPHEMERIS_CACHE_HITS",
     "EPHEMERIS_CACHE_MISSES",
     "EPHEMERIS_CACHE_COMPUTE_DURATION",
+    "EPHEMERIS_SWE_CACHE_HIT_RATIO",
     "ensure_metrics_registered",
 ]
 
@@ -34,11 +35,18 @@ EPHEMERIS_CACHE_COMPUTE_DURATION = Histogram(
     registry=None,
 )
 
+EPHEMERIS_SWE_CACHE_HIT_RATIO = Gauge(
+    "ephemeris_core_cache_hit_ratio",
+    "Instantaneous hit ratio of the low-level swe_calc cache.",
+    registry=None,
+)
 
-def _iter_metrics() -> Iterable[Counter | Histogram]:
+
+def _iter_metrics() -> Iterable[Counter | Gauge | Histogram]:
     yield EPHEMERIS_CACHE_HITS
     yield EPHEMERIS_CACHE_MISSES
     yield EPHEMERIS_CACHE_COMPUTE_DURATION
+    yield EPHEMERIS_SWE_CACHE_HIT_RATIO
 
 
 def ensure_metrics_registered(

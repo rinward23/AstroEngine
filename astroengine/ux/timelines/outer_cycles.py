@@ -92,13 +92,6 @@ def _angular_gap(lon_a: float, lon_b: float, aspect: float) -> float:
     return gap
 
 
-def _lon_and_speed(
-    adapter: SwissEphemerisAdapter, jd_ut: float, body_code: int, body_name: str
-) -> tuple[float, float]:
-    position = adapter.body_position(jd_ut, body_code, body_name)
-    return position.longitude, position.speed_longitude
-
-
 def _refine_event(
     adapter: SwissEphemerisAdapter,
     start: datetime,
@@ -111,17 +104,20 @@ def _refine_event(
 ) -> tuple[datetime, float]:
     low = _moment_to_utc(start)
     high = _moment_to_utc(end)
+    pair_codes = {name: codes[name] for name in bodies}
     for _ in range(max_iter):
         mid = low + (high - low) / 2
         jd_mid = adapter.julian_day(mid)
-        lon_a, _ = _lon_and_speed(adapter, jd_mid, codes[bodies[0]], bodies[0])
-        lon_b, _ = _lon_and_speed(adapter, jd_mid, codes[bodies[1]], bodies[1])
+        mid_positions = adapter.compute_bodies_many(jd_mid, pair_codes)
+        lon_a = mid_positions[bodies[0]].longitude
+        lon_b = mid_positions[bodies[1]].longitude
         gap = _angular_gap(lon_a, lon_b, aspect)
         if abs(gap) < 1e-3:
             return mid, gap
         jd_low = adapter.julian_day(low)
-        lon_a_low, _ = _lon_and_speed(adapter, jd_low, codes[bodies[0]], bodies[0])
-        lon_b_low, _ = _lon_and_speed(adapter, jd_low, codes[bodies[1]], bodies[1])
+        low_positions = adapter.compute_bodies_many(jd_low, pair_codes)
+        lon_a_low = low_positions[bodies[0]].longitude
+        lon_b_low = low_positions[bodies[1]].longitude
         gap_low = _angular_gap(lon_a_low, lon_b_low, aspect)
         if gap_low * gap <= 0:
             high = mid
@@ -161,12 +157,9 @@ def outer_cycle_events(
     prev: dict[tuple[tuple[str, str], float], tuple[datetime, float]] = {}
     while current <= end_utc:
         jd = adapter.julian_day(current)
-        longitudes: dict[str, float] = {}
-        speeds: dict[str, float] = {}
-        for body in bodies:
-            lon, speed = _lon_and_speed(adapter, jd, codes[body], body)
-            longitudes[body] = lon
-            speeds[body] = speed
+        positions = adapter.compute_bodies_many(jd, codes)
+        longitudes = {body: positions[body].longitude for body in bodies}
+        speeds = {body: positions[body].speed_longitude for body in bodies}
 
         for a, b in combinations(bodies, 2):
             for aspect_deg, label in aspects.items():
@@ -185,19 +178,26 @@ def outer_cycle_events(
                             aspect=aspect_deg,
                         )
                         jd_event = adapter.julian_day(refined_time)
-                        lon_a, speed_a = _lon_and_speed(adapter, jd_event, codes[a], a)
-                        lon_b, speed_b = _lon_and_speed(adapter, jd_event, codes[b], b)
+                        pair_positions = adapter.compute_bodies_many(
+                            jd_event, {name: codes[name] for name in (a, b)}
+                        )
+                        pos_a = pair_positions[a]
+                        pos_b = pair_positions[b]
                         events.append(
                             OuterCycleEvent(
                                 timestamp=refined_time,
                                 bodies=(a, b),
                                 aspect_deg=aspect_deg,
                                 aspect_label=label,
-                                orb_deg=abs(_angular_gap(lon_a, lon_b, aspect_deg)),
-                                longitude_a=lon_a,
-                                longitude_b=lon_b,
-                                speed_a=speed_a,
-                                speed_b=speed_b,
+                                orb_deg=abs(
+                                    _angular_gap(
+                                        pos_a.longitude, pos_b.longitude, aspect_deg
+                                    )
+                                ),
+                                longitude_a=pos_a.longitude,
+                                longitude_b=pos_b.longitude,
+                                speed_a=pos_a.speed_longitude,
+                                speed_b=pos_b.speed_longitude,
                                 metadata={"step_days": step_days},
                             )
                         )

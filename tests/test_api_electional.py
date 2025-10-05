@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
@@ -86,3 +87,40 @@ def test_electional_search_forbidden_penalty_and_voc_toggle():
     assert r.status_code == 200
     data = r.json()
     assert len(data["windows"]) == 1
+
+
+def test_electional_search_rate_limit(monkeypatch):
+    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    eph = LinearEphemeris(
+        t0,
+        base={"Sun": 0.0, "Moon": 0.0},
+        rates={"Sun": 0.0, "Moon": 13.0},
+    )
+    app = build_app(eph)
+    client = TestClient(app)
+
+    monkeypatch.setattr("app.routers.electional.search_best_windows", lambda *args, **kwargs: [])
+
+    payload = {
+        "window": {"start": t0.isoformat(), "end": (t0 + timedelta(days=1)).isoformat()},
+        "window_minutes": 60,
+        "step_minutes": 60,
+        "top_k": 1,
+        "avoid_voc_moon": False,
+        "allowed_weekdays": None,
+        "allowed_utc_ranges": None,
+        "orb_policy_inline": {"per_aspect": {}},
+        "required_aspects": [],
+        "forbidden_aspects": [],
+    }
+
+    for _ in range(10):
+        ok = client.post("/electional/search", json=payload)
+        assert ok.status_code == 200
+
+    limited = client.post("/electional/search", json=payload)
+    assert limited.status_code == 429
+    detail = limited.json()["detail"]
+    assert detail["code"] == "rate_limited"
+    assert "please try again" in detail["message"].lower()
+    assert int(limited.headers["Retry-After"]) >= 0

@@ -57,6 +57,33 @@ def test_fixed_star_matches_native_computation() -> None:
     assert star.flags == retflags
 
 
+def test_compute_bodies_many_matches_single_calls() -> None:
+    adapter = SwissEphemerisAdapter()
+    jd = swe.julday(2024, 2, 1, 0.0)
+    bodies = {
+        "Sun": int(swe.SUN),
+        "Moon": int(swe.MOON),
+        "Mars": int(swe.MARS),
+    }
+    aggregated = adapter.compute_bodies_many(jd, bodies)
+    assert set(aggregated) == set(bodies)
+    for name, code in bodies.items():
+        single = adapter.body_position(jd, int(code), body_name=name)
+        combined = aggregated[name]
+        assert combined.body == single.body
+        assert combined.julian_day == pytest.approx(single.julian_day)
+        assert combined.longitude == pytest.approx(single.longitude)
+        assert combined.latitude == pytest.approx(single.latitude)
+        assert combined.distance_au == pytest.approx(single.distance_au)
+        assert combined.speed_longitude == pytest.approx(single.speed_longitude)
+        assert combined.speed_latitude == pytest.approx(single.speed_latitude)
+        assert combined.speed_distance == pytest.approx(single.speed_distance)
+        assert combined.declination == pytest.approx(single.declination)
+        assert combined.speed_declination == pytest.approx(
+            single.speed_declination
+        )
+
+
 def test_ayanamsa_variants() -> None:
     adapter = SwissEphemerisAdapter(zodiac="sidereal", ayanamsa="lahiri")
     jd = swe.julday(2024, 5, 10, 0.0)

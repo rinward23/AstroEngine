@@ -5,13 +5,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Iterable, Literal
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from ...analysis import AstrocartographyResult, MapLine, compute_astrocartography_lines
 from ...config import load_settings
 from ...ephemeris import SwissEphemerisAdapter
 from ...userdata.vault import Natal, load_natal
+from ..rate_limit import heavy_endpoint_rate_limiter
 
 router = APIRouter(prefix="/v1/astrocartography", tags=["astrocartography"])
 
@@ -76,6 +77,14 @@ def _paran_to_feature(paran: dict[str, object]) -> Feature:
     response_model=FeatureCollection,
     summary="Render astrocartography linework as GeoJSON.",
     operation_id="astrocartographyLines",
+    dependencies=[
+        Depends(
+            heavy_endpoint_rate_limiter(
+                "astrocartography",
+                message="Astrocartography map generation is temporarily limited while we process other requests.",
+            )
+        )
+    ],
 )
 def astrocartography_geojson(
     natal_id: str = Query(..., description="Identifier of the natal chart."),

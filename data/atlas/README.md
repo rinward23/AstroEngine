@@ -34,3 +34,19 @@ sqlite3 offline_sample.sqlite < offline_sample.sql
 
 The resulting `offline_sample.sqlite` file can be referenced via the settings
 panel or CLI configuration when exercising offline atlas lookups.
+
+## Selecting the dataset in the UI
+
+The Streamlit settings panel now enumerates SQLite files discovered under
+`data/atlas` so you can choose the bundled sample without retyping paths. Pick a
+package from the **Bundled offline atlases** dropdown or enter a custom path in
+the adjacent text field if your dataset lives elsewhere.
+
+## Online fallback controls
+
+Online geocoding is disabled by default to prioritize reproducible, offline
+results. Enable the "Allow online fallback geocoding" toggle in the settings UI
+only when you have the `geopy` extra installed and are comfortable querying the
+network. When the fallback remains disabled, atlas lookups fail fast with a
+message directing you to refresh the offline dataset instead of silently
+contacting external services.

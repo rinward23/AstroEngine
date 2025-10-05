@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from app.db.session import session_scope
 from astroengine.cache import positions_cache
+from astroengine.infrastructure.storage.sqlite import apply_default_pragmas
 from astroengine.ephemeris.utils import get_se_ephe_path
 
 router = APIRouter(tags=["observability"])
@@ -34,6 +35,7 @@ def _check_database() -> dict[str, Any]:
 def _check_cache() -> dict[str, Any]:
     try:
         connection = sqlite3.connect(str(positions_cache.DB))
+        apply_default_pragmas(connection)
         try:
             connection.execute("SELECT 1")
         finally:
