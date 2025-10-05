@@ -57,7 +57,7 @@ __all__ = [
 LOG = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class EphemerisConfig:
     """Ephemeris configuration passed to :class:`EphemerisAdapter`."""
 
@@ -71,7 +71,7 @@ class EphemerisConfig:
     sidereal_mode: str | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TimeScaleContext:
     """Describe the input/output time scales used by the adapter."""
 
@@ -94,7 +94,7 @@ class TimeScaleContext:
         return f"{self.input_scale}→{self.ephemeris_scale}"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ObserverLocation:
     """Observer location used when topocentric calculations are requested."""
 
@@ -106,7 +106,7 @@ class ObserverLocation:
         return (self.longitude_deg, self.latitude_deg, self.elevation_m)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class EphemerisSample:
     """Ephemeris sample returned by :class:`EphemerisAdapter`."""
 

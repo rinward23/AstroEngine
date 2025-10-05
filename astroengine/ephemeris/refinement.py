@@ -16,7 +16,7 @@ __all__ = [
 SECONDS_PER_DAY: float = 86_400.0
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RefineResult:
     """Result metadata returned by :func:`refine_root` and :func:`refine_event`.
 
