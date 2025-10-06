@@ -448,9 +448,9 @@ def api_scan_progressions(
     request = TransitScanRequest(**request_data)
     if stream:
         if request.export is not None:
-            raise HTTPException(
+            return json_response(
+                {"detail": "streaming responses do not support export payloads"},
                 status_code=400,
-                detail="streaming responses do not support export payloads",
             )
         return _stream_scan_hits(
             "progressions",
@@ -503,9 +503,9 @@ def api_scan_directions(
     request = TransitScanRequest(**request_data)
     if stream:
         if request.export is not None:
-            raise HTTPException(
+            return json_response(
+                {"detail": "streaming responses do not support export payloads"},
                 status_code=400,
-                detail="streaming responses do not support export payloads",
             )
         return _stream_scan_hits(
             "directions",
@@ -561,9 +561,9 @@ def api_scan_transits(
         raise HTTPException(status_code=501, detail="Transit scans are not yet available")
     if stream:
         if request.export is not None:
-            raise HTTPException(
+            return json_response(
+                {"detail": "streaming responses do not support export payloads"},
                 status_code=400,
-                detail="streaming responses do not support export payloads",
             )
         return _stream_scan_hits(
             "transits",
@@ -619,9 +619,9 @@ def api_scan_returns(
     request = ReturnsScanRequest(**request_data)
     if stream:
         if request.export is not None:
-            raise HTTPException(
+            return json_response(
+                {"detail": "streaming responses do not support export payloads"},
                 status_code=400,
-                detail="streaming responses do not support export payloads",
             )
         return _stream_scan_hits(
             "returns",

@@ -63,7 +63,7 @@ def _check_swisseph(settings: Settings) -> DoctorCheck:
     """Verify pyswisseph availability and ability to compute within configured caps."""
 
     try:
-        swe = import_module("swisseph")
+        swe_module = import_module("swisseph")
     except ModuleNotFoundError as exc:
         return DoctorCheck(
             name="swiss_ephemeris",
@@ -79,7 +79,17 @@ def _check_swisseph(settings: Settings) -> DoctorCheck:
             data={"error": f"{type(exc).__name__}: {exc}"},
         )
 
-    version = getattr(swe, "__version__", "unknown")
+    runtime = swe_module() if callable(swe_module) else swe_module
+    julday = getattr(runtime, "julday", None)
+    if not callable(julday):
+        return DoctorCheck(
+            name="swiss_ephemeris",
+            status="error",
+            detail="pyswisseph does not expose a callable julday() helper",
+            data={"error": "missing julday"},
+        )
+
+    version = getattr(swe_module, "__version__", "unknown")
     ephe_path = get_se_ephe_path()
     path_info: dict[str, Any] = {"configured": ephe_path}
     path_status: Status = "ok"
@@ -106,10 +116,12 @@ def _check_swisseph(settings: Settings) -> DoctorCheck:
             data={"error": f"{type(exc).__name__}: {exc}"},
         )
 
+    sun_code = getattr(runtime, "SUN", getattr(swe_module, "SUN", 0))
+
     for year in {settings.swiss_caps.min_year, settings.swiss_caps.max_year}:
         try:
-            jd = swe().julday(int(year), 1, 1, 0.0)
-            sample = adapter.body_position(jd, int(swe.SUN), "Sun")
+            jd = float(julday(int(year), 1, 1, 0.0))
+            sample = adapter.body_position(jd, int(sun_code), "Sun")
         except Exception as exc:  # pragma: no cover - runtime failure reported in detail
             compute_status = "error"
             samples.append(

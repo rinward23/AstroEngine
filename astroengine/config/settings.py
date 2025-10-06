@@ -378,6 +378,10 @@ class AstroCartoCfg(BaseModel):
 
     enabled: bool = False
     show_parans: bool = False
+    line_types: list[str] = Field(
+        default_factory=lambda: ["ASC", "DSC", "MC", "IC"],
+        description="Default astrocartography line kinds to render.",
+    )
 
 
 class AstrocartographyCfg(AstroCartoCfg):
@@ -396,6 +400,7 @@ class MidpointsCfg(BaseModel):
 
     enabled: bool = True
     tree: MidpointTreeCfg = Field(default_factory=MidpointTreeCfg)
+    include_nodes: bool = False
 
 
 class FixedStarsCfg(BaseModel):
@@ -655,6 +660,13 @@ class ReportsCfg(BaseModel):
 
     pdf_enabled: bool = False
     template: Literal["classic", "minimal"] = "classic"
+    disclaimers: list[str] = Field(
+        default_factory=lambda: [
+            "Astrological insights support personal reflection and should not replace qualified professional advice.",
+            "All chart positions are computed from provided birth data using the Swiss Ephemeris; verify source accuracy before applying results.",
+        ],
+        description="Default legal disclaimers appended to generated reports.",
+    )
 
 
 class AtlasCfg(BaseModel):
