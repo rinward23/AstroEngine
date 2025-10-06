@@ -108,7 +108,7 @@ def _check_swisseph(settings: Settings) -> DoctorCheck:
 
     for year in {settings.swiss_caps.min_year, settings.swiss_caps.max_year}:
         try:
-            jd = swe.julday(int(year), 1, 1, 0.0)
+            jd = swe().julday(int(year), 1, 1, 0.0)
             sample = adapter.body_position(jd, int(getattr(swe, "SUN")), "Sun")
         except Exception as exc:  # pragma: no cover - runtime failure reported in detail
             compute_status = "error"

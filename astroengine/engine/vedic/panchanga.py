@@ -125,7 +125,7 @@ def _sun_sign(adapter: SwissEphemerisAdapter, jd_ut: float) -> tuple[int, str]:
         raise RuntimeError(
             "Swiss Ephemeris is required for panchanga calculations. Install astroengine[ephem]."
         ) from exc
-    position = adapter.body_position(jd_ut, swe.SUN, body_name="Sun")
+    position = adapter.body_position(jd_ut, swe().SUN, body_name="Sun")
     idx = _sign_index(position.longitude)
     return idx, _SIDEREAL_SIGNS[idx]
 

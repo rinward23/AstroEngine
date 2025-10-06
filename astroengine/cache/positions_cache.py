@@ -10,6 +10,7 @@ import numpy as np
 
 from ..canonical import canonical_round, normalize_longitude, normalize_speed_per_day
 from ..ephemeris import SwissEphemerisAdapter
+from ..ephemeris.swe import swe
 from ..infrastructure.home import ae_home
 from ..core.time import julian_day
 
@@ -101,8 +102,6 @@ def get_daily_entry(
 
     if not _ensure_swiss_available():
         raise RuntimeError("Swiss ephemeris unavailable for cache compute")
-    import swisseph as swe  # type: ignore
-
     try:
         code = int(getattr(swe, _BODY_CODES[normalized]))
     except (KeyError, AttributeError) as exc:

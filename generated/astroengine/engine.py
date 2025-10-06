@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from ._cache import calc_ut_lon, set_ephe_from_env  # ENSURE-LINE
 
 try:
-    import swisseph as swe  # type: ignore
+    from astroengine.ephemeris.swe import swe
 except Exception:  # pragma: no cover
     swe = None
 
@@ -18,7 +18,7 @@ def _jd_from_utc(ts: dt.datetime) -> float:
         ts = ts.astimezone(dt.UTC).replace(tzinfo=None)
     y, m, d = ts.year, ts.month, ts.day
     h = ts.hour + ts.minute / 60 + (ts.second + ts.microsecond / 1e6) / 3600
-    return swe.julday(y, m, d, h) if swe else 0.0
+    return swe().julday(y, m, d, h) if swe else 0.0
 
 
 def _angnorm(a: float) -> float:
@@ -33,7 +33,7 @@ def _signed_delta(a: float, b: float) -> float:
 
 @dataclass(frozen=True)
 class ScanConfig:
-    body: int  # e.g., swe.SUN
+    body: int  # e.g., swe().SUN
     natal_lon_deg: float  # 0..360
     aspect_angle_deg: float  # e.g., 0,60,90,120,180
     orb_deg: float = 6.0
@@ -113,7 +113,7 @@ def fast_scan(
             br = _bracket_zero(prev_jd, jd, cfg)
             if br:
                 jx = _bisection(br[0], br[1], cfg)
-                y, m, d_, h = swe.revjul(jx, 1)
+                y, m, d_, h = swe().revjul(jx, 1)
                 hh = int(h)
                 mm = int((h - hh) * 60)
                 ss = int(round(((h - hh) * 60 - mm) * 60))

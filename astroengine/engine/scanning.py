@@ -26,6 +26,7 @@ from ..detectors_aspects import AspectHit, detect_aspects
 
 from ..ephemeris import EphemerisConfig, SwissEphemerisAdapter
 from ..ephemeris.support import filter_supported
+from astroengine.ephemeris.swe import has_swe, swe
 
 from ..exporters import LegacyTransitEvent
 from ..plugins import DetectorContext, get_plugin_manager
@@ -53,7 +54,7 @@ except Exception:  # pragma: no cover - SyntaxError/import failures treated as o
 
 
 try:  # pragma: no cover - optional for environments without pyswisseph
-    import swisseph as swe  # type: ignore
+    from astroengine.ephemeris.swe import swe
 except Exception:  # pragma: no cover
     swe = None  # type: ignore
 
@@ -165,7 +166,9 @@ class _TickCachingProvider:
         return getattr(self._provider, name)
 
 
-if swe is not None:  # pragma: no cover - availability tested via swiss-marked tests
+_SWE_MODULE = swe() if has_swe() else None
+
+if _SWE_MODULE is not None:  # pragma: no cover - availability tested via swiss-marked tests
     for attr, name in (
         ("CERES", "ceres"),
         ("PALLAS", "pallas"),
@@ -173,7 +176,7 @@ if swe is not None:  # pragma: no cover - availability tested via swiss-marked t
         ("VESTA", "vesta"),
         ("CHIRON", "chiron"),
     ):
-        code = getattr(swe, attr, None)
+        code = getattr(_SWE_MODULE, attr, None)
         if code is not None:
             _BODY_CODE_TO_NAME[int(code)] = name
 

@@ -5,10 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 
-try:  # pragma: no cover - exercised via runtime availability checks
-    import swisseph as swe  # type: ignore
-except Exception:  # pragma: no cover
-    swe = None  # type: ignore
+from astroengine.ephemeris.swe import has_swe, swe
 
 from ..events import EclipseEvent
 from ..ephemeris.cache import calc_ut_cached
@@ -22,10 +19,10 @@ Location = tuple[float, float] | tuple[float, float, float]
 def _moon_latitude(jd_ut: float) -> float:
     """Return Moon ecliptic latitude in degrees."""
 
-    if swe is None:
+    if not has_swe():
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
-    flag = swe.FLG_SWIEPH | swe.FLG_SPEED
-    xx, ret_flag = calc_ut_cached(jd_ut, int(swe.MOON), flag)
+    flag = swe().FLG_SWIEPH | swe().FLG_SPEED
+    xx, ret_flag = calc_ut_cached(jd_ut, int(swe().MOON), flag)
     if ret_flag < 0:
         raise RuntimeError(f"Swiss ephemeris returned error code {ret_flag}")
     if len(xx) < 2:
@@ -49,19 +46,19 @@ def _normalize_location(
 def _visible_at_location(
     jd_ut: float, eclipse_type: str, location: tuple[float, float, float] | None
 ) -> bool | None:
-    if swe is None or location is None:
+    if not has_swe() or location is None:
         return None
 
     lon, lat, alt = location
     geopos = (lon, lat, alt)
-    flags = swe.FLG_SWIEPH
+    flags = swe().FLG_SWIEPH
     start = jd_ut - 0.5
 
     try:
         if eclipse_type == "solar":
-            retflag, tret, _ = swe.sol_eclipse_when_loc(start, geopos, flags)
+            retflag, tret, _ = swe().sol_eclipse_when_loc(start, geopos, flags)
         else:
-            retflag, tret, _ = swe.lun_eclipse_when_loc(start, geopos, flags)
+            retflag, tret, _ = swe().lun_eclipse_when_loc(start, geopos, flags)
     except Exception:
         return None
 
@@ -72,7 +69,7 @@ def _visible_at_location(
     if math.isnan(max_time) or abs(max_time - jd_ut) > 1.0:
         return False
 
-    return bool(retflag & swe.ECL_VISIBLE)
+    return bool(retflag & swe().ECL_VISIBLE)
 
 
 def _solar_eclipses(
@@ -82,10 +79,10 @@ def _solar_eclipses(
 ) -> list[EclipseEvent]:
     events: list[EclipseEvent] = []
     jd = start_jd
-    flags = swe.FLG_SWIEPH
+    flags = swe().FLG_SWIEPH
 
     while True:
-        retflag, tret = swe.sol_eclipse_when_glob(jd, flags)
+        retflag, tret = swe().sol_eclipse_when_glob(jd, flags)
         if retflag == 0:
             break
         max_jd = float(tret[0])
@@ -121,10 +118,10 @@ def _lunar_eclipses(
 ) -> list[EclipseEvent]:
     events: list[EclipseEvent] = []
     jd = start_jd
-    flags = swe.FLG_SWIEPH
+    flags = swe().FLG_SWIEPH
 
     while True:
-        retflag, tret = swe.lun_eclipse_when(jd, flags)
+        retflag, tret = swe().lun_eclipse_when(jd, flags)
         if retflag == 0:
             break
         max_jd = float(tret[0])

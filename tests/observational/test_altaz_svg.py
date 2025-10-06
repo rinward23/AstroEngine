@@ -23,7 +23,7 @@ def test_altaz_diagram_output() -> None:
 
     diagram = render_altaz_diagram(
         adapter,
-        swe.MARS,
+        swe().MARS,
         start,
         end,
         observer,

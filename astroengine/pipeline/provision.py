@@ -17,7 +17,7 @@ def get_ephemeris_meta() -> dict[str, Any]:
     meta: dict[str, Any] = {"ok": bool(ok)}
     if not ok:
         return meta
-    import swisseph as swe  # type: ignore
+from astroengine.ephemeris.swe import swe
 
     meta.update(
         {

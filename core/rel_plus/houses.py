@@ -7,7 +7,7 @@ relationship charts.  The implementation follows SPEC-B-010:
 * Davison charts use the midpoint time and location produced by
   :func:`core.rel_plus.composite.davison_chart` / :class:`DavisonResult`.
 * Composite charts are time free; we derive an ARMC midpoint from the natal
-  birth events and compute houses with :func:`swe.houses_armc`.
+  birth events and compute houses with :func:`swe().houses_armc`.
 * Systems fall back in the order Placidus → Koch → Porphyry → Regiomontanus →
   Whole Sign, forcing Whole Sign if every system fails (STEP-A-040).
 
@@ -22,11 +22,11 @@ from datetime import datetime, timezone
 import math
 from typing import Dict, Iterable, Mapping, MutableMapping, Optional, Sequence
 
-try:  # pragma: no cover - optional dependency guard
-    import swisseph as swe  # type: ignore
-except Exception as exc:  # pragma: no cover - exercised in tests via monkeypatch
-    swe = None  # type: ignore
-    _SWISSEPH_IMPORT_ERROR = exc
+from astroengine.ephemeris.swe import has_swe, swe
+
+_HAS_SWE = has_swe()
+if not _HAS_SWE:
+    _SWISSEPH_IMPORT_ERROR = RuntimeError("pyswisseph is not available")
 else:
     _SWISSEPH_IMPORT_ERROR = None
 
@@ -61,7 +61,7 @@ class HouseError(RuntimeError):
 
 
 def _require_swe() -> None:
-    if swe is None:  # pragma: no cover - guarded by optional dependency tests
+    if not _HAS_SWE:  # pragma: no cover - guarded by optional dependency tests
         raise HouseError("Swiss Ephemeris (pyswisseph) is not available") from _SWISSEPH_IMPORT_ERROR
 
 
@@ -93,25 +93,25 @@ def _julian_day(dt: datetime) -> float:
         + ts.second / 3600.0
         + ts.microsecond / 3_600_000_000.0
     )
-    return swe.julday(ts.year, ts.month, ts.day, frac)
+    return swe().julday(ts.year, ts.month, ts.day, frac)
 
 
 def _sidereal_time_deg(jd_ut: float) -> float:
     _require_swe()
-    return (swe.sidtime(jd_ut) * 15.0) % TAU
+    return (swe().sidtime(jd_ut) * 15.0) % TAU
 
 
 def _houses_ex(jd_ut: float, lat: float, lon: float, system: str) -> tuple[tuple[float, ...], tuple[float, ...]]:
     _require_swe()
     code = _SYSTEM_CODES[system]
-    cusps, ascmc = swe.houses_ex(jd_ut, lat, lon, code)
+    cusps, ascmc = swe().houses_ex(jd_ut, lat, lon, code)
     return cusps, ascmc
 
 
 def _houses_armc(armc: float, lat: float, eps: float, system: str) -> tuple[tuple[float, ...], tuple[float, ...]]:
     _require_swe()
     code = _SYSTEM_CODES[system]
-    cusps, ascmc = swe.houses_armc(armc, lat, eps, code)
+    cusps, ascmc = swe().houses_armc(armc, lat, eps, code)
     return cusps, ascmc
 
 
@@ -172,10 +172,10 @@ def _midpoint_armc(a: BirthEvent, b: BirthEvent) -> tuple[float, float, float, D
 def _obliquity_deg(jd_ut: float) -> float:
     _require_swe()
     if hasattr(swe, "obl_ecl"):
-        eps, _ = swe.obl_ecl(jd_ut)  # type: ignore[call-arg]
+        eps, _ = swe().obl_ecl(jd_ut)  # type: ignore[call-arg]
         return float(eps)
     # Fallback for Swiss Ephemeris variants without ``obl_ecl`` helper
-    values, _ = swe.calc_ut(jd_ut, swe.ECL_NUT, swe.FLG_SWIEPH)
+    values, _ = swe().calc_ut(jd_ut, swe().ECL_NUT, swe().FLG_SWIEPH)
     return float(values[0])
 
 

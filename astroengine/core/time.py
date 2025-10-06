@@ -23,6 +23,8 @@ import datetime as _dt
 from dataclasses import dataclass
 from typing import Final
 
+from astroengine.ephemeris.swe import swe
+
 __all__ = [
     "TimeConversion",
     "ensure_utc",
@@ -98,25 +100,8 @@ def to_tt(moment: _dt.datetime) -> TimeConversion:
     utc_moment = ensure_utc(moment)
 
     try:
-        import swisseph as swe
-
-        jd_tt, jd_ut1 = swe.utc_to_jd(
-            utc_moment.year,
-            utc_moment.month,
-            utc_moment.day,
-            utc_moment.hour,
-            utc_moment.minute,
-            utc_moment.second + utc_moment.microsecond / 1e6,
-            swe.GREG_CAL,
-        )
-        delta_t = (jd_tt - jd_ut1) * SECONDS_PER_DAY
-        return TimeConversion(
-            utc_datetime=utc_moment,
-            jd_utc=jd_ut1,
-            jd_tt=jd_tt,
-            delta_t_seconds=delta_t,
-        )
-    except ModuleNotFoundError:
+        swe_module = swe()
+    except RuntimeError:
         jd_utc = julian_day(utc_moment)
         delta_t = _approx_delta_t_seconds(utc_moment)
         jd_tt = jd_utc + delta_t / SECONDS_PER_DAY
@@ -126,3 +111,19 @@ def to_tt(moment: _dt.datetime) -> TimeConversion:
             jd_tt=jd_tt,
             delta_t_seconds=delta_t,
         )
+    jd_tt, jd_ut1 = swe_module.utc_to_jd(
+        utc_moment.year,
+        utc_moment.month,
+        utc_moment.day,
+        utc_moment.hour,
+        utc_moment.minute,
+        utc_moment.second + utc_moment.microsecond / 1e6,
+        swe_module.GREG_CAL,
+    )
+    delta_t = (jd_tt - jd_ut1) * SECONDS_PER_DAY
+    return TimeConversion(
+        utc_datetime=utc_moment,
+        jd_utc=jd_ut1,
+        jd_tt=jd_tt,
+        delta_t_seconds=delta_t,
+    )

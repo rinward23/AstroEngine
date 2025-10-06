@@ -11,12 +11,13 @@ import streamlit as st
 from astroengine.analysis import compute_astrocartography_lines
 from astroengine.config import load_settings
 from astroengine.ephemeris import SwissEphemerisAdapter
+from astroengine.ephemeris.swe import has_swe
 from astroengine.userdata.vault import list_natals, load_natal
 
-try:  # pragma: no cover - Streamlit runtime only
-    import swisseph  # noqa: F401
-except ModuleNotFoundError:  # pragma: no cover - Streamlit runtime only
+if not has_swe():  # pragma: no cover - Streamlit runtime only
     swisseph = None
+else:
+    swisseph = "available"
 
 st.set_page_config(page_title="Astrocartography Explorer", layout="wide")
 

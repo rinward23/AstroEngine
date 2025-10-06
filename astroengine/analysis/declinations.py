@@ -11,10 +11,7 @@ from ..astro.declination import ecl_to_dec, is_contraparallel, is_parallel
 from ..chart.config import ChartConfig
 from ..ephemeris.swisseph_adapter import SwissEphemerisAdapter, get_swisseph
 
-try:  # Optional Swiss Ephemeris dependency
-    import swisseph as swe  # type: ignore
-except ModuleNotFoundError:  # pragma: no cover - handled dynamically
-    swe = None  # type: ignore[assignment]
+from astroengine.ephemeris.swe import has_swe, swe
 
 __all__ = ["DeclinationAspect", "declination_aspects", "get_declinations"]
 
@@ -192,7 +189,7 @@ def _declinations_from_positions(
 
     swe_module = None
     adapter: SwissEphemerisAdapter | None = None
-    if jd_ut is not None and swe is not None:
+    if jd_ut is not None and has_swe():
         try:
             swe_module = get_swisseph()
             adapter = _adapter_for_chart(

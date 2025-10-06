@@ -50,9 +50,9 @@ def test_sidereal_mode_configures_swiss_backend() -> None:
     adapter = EphemerisAdapter(
         EphemerisConfig(sidereal=True, sidereal_mode="lahiri"),
     )
-    sample = adapter.sample(swe.SUN, moment)
+    sample = adapter.sample(swe().SUN, moment)
     conv = to_tt(moment)
-    swe.set_sid_mode(swe.SIDM_LAHIRI, 0.0, 0.0)
-    values, _ = swe.calc_ut(conv.jd_utc, swe.SUN, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
+    swe().set_sid_mode(swe().SIDM_LAHIRI, 0.0, 0.0)
+    values, _ = swe().calc_ut(conv.jd_utc, swe().SUN, swe().FLG_SWIEPH | swe().FLG_SIDEREAL)
     expected = float(values[0]) % 360.0
     assert abs(sample.longitude - expected) < 1e-6

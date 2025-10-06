@@ -45,7 +45,7 @@ _ROOT_TOL_SECONDS = 1.0
 _ORBITAL_ZERO_TOL = 1e-6
 
 try:  # pragma: no cover - import fallback mirrors other packages
-    import swisseph as swe
+    from astroengine.ephemeris.swe import swe
 except Exception:  # pragma: no cover - tests rely on dependency stub
     swe = None
 

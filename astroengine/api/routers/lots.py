@@ -236,23 +236,25 @@ def scan_aspects(request: AspectScanRequest) -> AspectScanResponse:
     )
 
 
-try:  # pragma: no cover - optional dependency
-    import swisseph as swe
-except Exception:  # pragma: no cover
-    swe = None
+from astroengine.ephemeris.swe import has_swe, swe
 
+
+if has_swe():
+    swe_module = swe()
+else:
+    swe_module = None
 
 _BODY_CODES = {
-    "sun": getattr(swe, "SUN", None) if swe is not None else None,
-    "moon": getattr(swe, "MOON", None) if swe is not None else None,
-    "mercury": getattr(swe, "MERCURY", None) if swe is not None else None,
-    "venus": getattr(swe, "VENUS", None) if swe is not None else None,
-    "mars": getattr(swe, "MARS", None) if swe is not None else None,
-    "jupiter": getattr(swe, "JUPITER", None) if swe is not None else None,
-    "saturn": getattr(swe, "SATURN", None) if swe is not None else None,
-    "uranus": getattr(swe, "URANUS", None) if swe is not None else None,
-    "neptune": getattr(swe, "NEPTUNE", None) if swe is not None else None,
-    "pluto": getattr(swe, "PLUTO", None) if swe is not None else None,
+    "sun": getattr(swe_module, "SUN", None) if swe_module is not None else None,
+    "moon": getattr(swe_module, "MOON", None) if swe_module is not None else None,
+    "mercury": getattr(swe_module, "MERCURY", None) if swe_module is not None else None,
+    "venus": getattr(swe_module, "VENUS", None) if swe_module is not None else None,
+    "mars": getattr(swe_module, "MARS", None) if swe_module is not None else None,
+    "jupiter": getattr(swe_module, "JUPITER", None) if swe_module is not None else None,
+    "saturn": getattr(swe_module, "SATURN", None) if swe_module is not None else None,
+    "uranus": getattr(swe_module, "URANUS", None) if swe_module is not None else None,
+    "neptune": getattr(swe_module, "NEPTUNE", None) if swe_module is not None else None,
+    "pluto": getattr(swe_module, "PLUTO", None) if swe_module is not None else None,
 }
 
 

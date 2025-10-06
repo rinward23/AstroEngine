@@ -8,11 +8,7 @@ from datetime import UTC, datetime
 from typing import Iterable, Mapping, Sequence
 
 from astroengine.ephemeris import SwissEphemerisAdapter
-
-try:  # pragma: no cover - optional dependency guard
-    import swisseph as swe
-except Exception:  # pragma: no cover - exercised when locational extra missing
-    swe = None  # type: ignore[assignment]
+from astroengine.ephemeris.swe import has_swe, swe
 
 __all__ = [
     "AstrocartographyResult",
@@ -34,6 +30,8 @@ _DEFAULT_BODIES: tuple[str, ...] = (
     "neptune",
     "pluto",
 )
+
+_HAS_SWE = has_swe()
 
 _BODY_RESOLVERS: Mapping[str, str] = {
     "sun": "SUN",
@@ -87,7 +85,7 @@ class AstrocartographyResult:
 
 
 def _require_swisseph() -> None:
-    if swe is None:  # pragma: no cover - dependency guard
+    if not _HAS_SWE:  # pragma: no cover - dependency guard
         raise RuntimeError(
             "Astrocartography helpers require pyswisseph. Install AstroEngine with "
             "the 'locational' extra to enable maps."
@@ -99,7 +97,8 @@ def _resolve_body_code(name: str) -> int:
     if resolver is None:
         raise KeyError(f"Unsupported body for locational maps: {name}")
     _require_swisseph()
-    code = getattr(swe, resolver, None)
+    swe_module = swe()
+    code = getattr(swe_module, resolver, None)
     if code is None:
         raise KeyError(f"Swiss Ephemeris does not expose constant '{resolver}'")
     return int(code)
@@ -213,7 +212,8 @@ def compute_astrocartography_lines(
         raise ValueError("At least one line type must be requested")
 
     jd_ut = adapter.julian_day(_moment_to_utc(moment))
-    gst_hours = swe.sidtime(jd_ut)
+    swe_module = swe()
+    gst_hours = swe_module.sidtime(jd_ut)
     gst_deg = (gst_hours * 15.0) % 360.0
 
     lines: list[MapLine] = []

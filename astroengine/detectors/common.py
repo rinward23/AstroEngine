@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from ..ephemeris import SwissEphemerisAdapter
+from ..ephemeris.swe import swe
+from ..ephemeris.utils import get_se_ephe_path
 
 __all__ = [
     "norm360",
@@ -114,13 +116,9 @@ def _ensure_swiss() -> bool:
     if _SWISS.ok:
         return True
     try:
-        import swisseph as swe  # type: ignore
-
-        from ..ephemeris.utils import get_se_ephe_path
-
         ephe = get_se_ephe_path(None)
         if ephe:
-            swe.set_ephe_path(ephe)
+            swe().set_ephe_path(ephe)
         _SWISS.ok = True
         return True
     except Exception:
@@ -132,10 +130,9 @@ def sun_lon(jd_ut: float) -> float:
 
     if not _ensure_swiss():  # pragma: no cover - exercised via tests
         raise RuntimeError("pyswisseph unavailable; install extras: astroengine[ephem]")
-    import swisseph as swe  # type: ignore
 
     adapter = SwissEphemerisAdapter.get_default_adapter()
-    return adapter.body_position(jd_ut, swe.SUN, body_name="Sun").longitude
+    return adapter.body_position(jd_ut, swe().SUN, body_name="Sun").longitude
 
 
 def moon_lon(jd_ut: float) -> float:
@@ -143,10 +140,9 @@ def moon_lon(jd_ut: float) -> float:
 
     if not _ensure_swiss():  # pragma: no cover - exercised via tests
         raise RuntimeError("pyswisseph unavailable; install extras: astroengine[ephem]")
-    import swisseph as swe  # type: ignore
 
     adapter = SwissEphemerisAdapter.get_default_adapter()
-    return adapter.body_position(jd_ut, swe.MOON, body_name="Moon").longitude
+    return adapter.body_position(jd_ut, swe().MOON, body_name="Moon").longitude
 
 
 def _resolve_body_code(name: str, swe_module) -> int:
@@ -186,9 +182,6 @@ def body_lon(jd_ut: float, body_name: str) -> float:
 
     if not _ensure_swiss():
         raise RuntimeError("Swiss ephemeris unavailable (data files required)")
-
-    import swisseph as swe  # type: ignore
-
     code = _resolve_body_code(body_name, swe)
     return adapter.body_position(jd_ut, code, body_name=body_name.title()).longitude
 

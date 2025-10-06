@@ -32,7 +32,7 @@ def _ensure_swisseph_path() -> None:
     from pathlib import Path
 
     ephe_dir = Path(__file__).resolve().parents[3] / "datasets" / "swisseph_stub"
-    swe.set_ephe_path(str(ephe_dir))
+    swe().set_ephe_path(str(ephe_dir))
     _SWE_INITIALISED = True
 
 
@@ -56,14 +56,14 @@ def lilith_mean(moment: datetime) -> float:
     """Return the mean Black Moon Lilith longitude in degrees."""
 
     swe = get_swisseph()
-    return _calc_apogee_longitude(moment, swe.MEAN_APOG)
+    return _calc_apogee_longitude(moment, swe().MEAN_APOG)
 
 
 def lilith_true(moment: datetime) -> float:
     """Return the oscillating Black Moon Lilith longitude in degrees."""
 
     swe = get_swisseph()
-    return _calc_apogee_longitude(moment, swe.OSCU_APOG)
+    return _calc_apogee_longitude(moment, swe().OSCU_APOG)
 
 
 @dataclass(frozen=True, slots=True)

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Tuple
 import streamlit as st
 
 from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
+from astroengine.ephemeris.swe import has_swe, swe
 from astroengine.engine.observational import (
     EventOptions,
     HeliacalProfile,
@@ -23,19 +24,17 @@ from astroengine.engine.observational import (
 
 from .components import location_picker
 
-try:
-    import swisseph as swe
-except ModuleNotFoundError:  # pragma: no cover - Streamlit app executed manually
-    swe = None
+_HAS_SWE = has_swe()
+_SWE_MODULE = swe() if _HAS_SWE else None
 
 _BODY_CHOICES = {
-    "Sun": getattr(swe, "SUN", 0),
-    "Moon": getattr(swe, "MOON", 1),
-    "Mercury": getattr(swe, "MERCURY", 2),
-    "Venus": getattr(swe, "VENUS", 3),
-    "Mars": getattr(swe, "MARS", 4),
-    "Jupiter": getattr(swe, "JUPITER", 5),
-    "Saturn": getattr(swe, "SATURN", 6),
+    "Sun": getattr(_SWE_MODULE, "SUN", 0) if _SWE_MODULE else 0,
+    "Moon": getattr(_SWE_MODULE, "MOON", 1) if _SWE_MODULE else 1,
+    "Mercury": getattr(_SWE_MODULE, "MERCURY", 2) if _SWE_MODULE else 2,
+    "Venus": getattr(_SWE_MODULE, "VENUS", 3) if _SWE_MODULE else 3,
+    "Mars": getattr(_SWE_MODULE, "MARS", 4) if _SWE_MODULE else 4,
+    "Jupiter": getattr(_SWE_MODULE, "JUPITER", 5) if _SWE_MODULE else 5,
+    "Saturn": getattr(_SWE_MODULE, "SATURN", 6) if _SWE_MODULE else 6,
 }
 
 _TZ_LABEL = "UTC"

@@ -14,7 +14,7 @@ from astroengine.analysis.astrocartography import (
 from astroengine.ephemeris import SwissEphemerisAdapter
 
 try:  # pragma: no cover - optional dependency guard
-    import swisseph as swe
+    from astroengine.ephemeris.swe import swe
 except Exception:  # pragma: no cover - exercised when locational extra missing
     swe = None  # type: ignore[assignment]
 
@@ -121,7 +121,7 @@ def astrocartography_lines(
 
 
 def _sidereal_time_degrees(jd_ut: float, longitude: float) -> float:
-    gst_hours = swe.sidtime(jd_ut)
+    gst_hours = swe().sidtime(jd_ut)
     return (gst_hours * 15.0 + longitude) % 360.0
 
 

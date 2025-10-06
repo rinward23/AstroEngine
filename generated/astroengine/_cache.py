@@ -9,7 +9,7 @@ _SE_SET = False
 
 def _lazy_import_swe():
     try:
-        import swisseph as swe  # type: ignore
+        from astroengine.ephemeris.swe import swe
 
         return swe
     except Exception as e:
@@ -36,7 +36,7 @@ def calc_ut_lon(jd: float, body: int, flag: int = 0) -> float:
     Cache key uses exact jd—upstream should quantize ticks if desired.
     """
     swe = _lazy_import_swe()
-    lon = swe.calc_ut(jd, body, flag)[0][0]
+    lon = swe().calc_ut(jd, body, flag)[0][0]
     return lon % 360.0
 
 
