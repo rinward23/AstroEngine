@@ -18,7 +18,7 @@ from astroengine.ephemeris.adapter import EphemerisAdapter, EphemerisConfig
 
 from app.db.session import engine
 from app.observability import configure_observability
-from app.telemetry import setup_tracing
+from app.telemetry import resolve_observability_config, setup_tracing
 from astroengine.web.middleware import configure_compression
 
 LOGGER = logging.getLogger(__name__)
