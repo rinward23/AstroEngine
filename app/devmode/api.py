@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import time
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from astroengine.infrastructure import retention
@@ -20,15 +20,27 @@ from .backups import (
 )
 from .gitops import GitOps
 from .history import Entry, append_changelog, append_history, read_history
-from .security import is_allowed, is_blocked, is_protected, require_dev_pin
+from .security import is_allowed, is_blocked, is_protected
 from .validate import pipeline
 
 router = APIRouter(
     prefix="/v1/dev",
     tags=["dev"],
     include_in_schema=False,
-    dependencies=[Depends(require_dev_pin)],
 )
+
+DEV_PIN = os.getenv("DEV_PIN")
+
+
+def _guard(request: Request) -> None:
+    """Ensure dev mode is enabled and enforce the optional developer PIN."""
+
+    if not os.getenv("DEV_MODE"):
+        raise HTTPException(status_code=403, detail="Dev mode disabled")
+    if DEV_PIN:
+        provided = request.headers.get("X-Dev-Pin") or request.query_params.get("pin")
+        if provided != DEV_PIN:
+            raise HTTPException(status_code=403, detail="Invalid dev PIN")
 
 CONFIRM_PHRASE = os.environ.get(
     "DEV_CORE_EDIT_CONFIRM", "I UNDERSTAND THIS MAY BREAK THE APP"
@@ -62,27 +74,26 @@ class RetentionRequest(BaseModel):
 
 
 @router.get("/history")
-async def history() -> list[dict]:
+async def history(request: Request) -> list[dict]:
     """Return dev history entries."""
 
+    _guard(request)
     return read_history(".")
 
 
 @router.post("/validate")
-async def dev_validate() -> dict:
+async def dev_validate(request: Request) -> dict:
     """Run the validation pipeline without applying a patch."""
 
-    if not os.getenv("DEV_MODE"):
-        raise HTTPException(status_code=403, detail="Dev mode disabled")
+    _guard(request)
     return pipeline()
 
 
 @router.post("/apply")
-async def dev_apply(req: PatchRequest) -> dict:
+async def dev_apply(req: PatchRequest, request: Request) -> dict:
     """Apply a unified diff via the dev mode pipeline."""
 
-    if not os.getenv("DEV_MODE"):
-        raise HTTPException(status_code=403, detail="Dev mode disabled")
+    _guard(request)
 
     if not req.diff.strip():
         raise HTTPException(status_code=400, detail="diff payload is empty")
@@ -168,11 +179,10 @@ async def dev_apply(req: PatchRequest) -> dict:
 
 
 @router.post("/restore")
-async def dev_restore(req: RestoreRequest) -> dict:
+async def dev_restore(req: RestoreRequest, request: Request) -> dict:
     """Restore a previous commit recorded in the dev history."""
 
-    if not os.getenv("DEV_MODE"):
-        raise HTTPException(status_code=403, detail="Dev mode disabled")
+    _guard(request)
 
     git = GitOps(".")
     ok, message = git.restore_commit(req.commit)
@@ -182,9 +192,8 @@ async def dev_restore(req: RestoreRequest) -> dict:
 
 
 @router.get("/backups")
-async def dev_backups() -> dict[str, object]:
-    if not os.getenv("DEV_MODE"):
-        raise HTTPException(status_code=403, detail="Dev mode disabled")
+async def dev_backups(request: Request) -> dict[str, object]:
+    _guard(request)
     schedule = schedule_status()
     backups = list_backups()
     retention_policy = retention.load_policy()
@@ -198,17 +207,17 @@ async def dev_backups() -> dict[str, object]:
 
 
 @router.post("/backups/run")
-async def dev_run_backup() -> dict[str, object]:
-    if not os.getenv("DEV_MODE"):
-        raise HTTPException(status_code=403, detail="Dev mode disabled")
+async def dev_run_backup(request: Request) -> dict[str, object]:
+    _guard(request)
     archive = create_backup_zip(".")
     return {"status": "created", "archive": str(archive)}
 
 
 @router.post("/backups/schedule")
-async def dev_schedule_backup(req: BackupScheduleRequest) -> dict[str, object]:
-    if not os.getenv("DEV_MODE"):
-        raise HTTPException(status_code=403, detail="Dev mode disabled")
+async def dev_schedule_backup(
+    req: BackupScheduleRequest, request: Request
+) -> dict[str, object]:
+    _guard(request)
     start_at: float | None = None
     if req.start_in_hours is not None and req.start_in_hours > 0:
         start_at = time.time() + (req.start_in_hours * 3600)
@@ -223,9 +232,10 @@ async def dev_schedule_backup(req: BackupScheduleRequest) -> dict[str, object]:
 
 
 @router.post("/backups/restore")
-async def dev_restore_backup(req: BackupRestoreRequest) -> dict[str, object]:
-    if not os.getenv("DEV_MODE"):
-        raise HTTPException(status_code=403, detail="Dev mode disabled")
+async def dev_restore_backup(
+    req: BackupRestoreRequest, request: Request
+) -> dict[str, object]:
+    _guard(request)
     try:
         restored = restore_backup_zip(req.archive_path, ".")
     except FileNotFoundError as exc:
@@ -236,25 +246,24 @@ async def dev_restore_backup(req: BackupRestoreRequest) -> dict[str, object]:
 
 
 @router.delete("/backups/schedule")
-async def dev_cancel_backup_schedule() -> dict[str, object]:
-    if not os.getenv("DEV_MODE"):
-        raise HTTPException(status_code=403, detail="Dev mode disabled")
+async def dev_cancel_backup_schedule(request: Request) -> dict[str, object]:
+    _guard(request)
     return cancel_backup_schedule()
 
 
 @router.get("/retention")
-async def dev_retention_status() -> dict[str, object]:
-    if not os.getenv("DEV_MODE"):
-        raise HTTPException(status_code=403, detail="Dev mode disabled")
+async def dev_retention_status(request: Request) -> dict[str, object]:
+    _guard(request)
     policy = retention.load_policy()
     preview = retention.purge_temporary_derivatives(dry_run=True)
     return {"policy": policy, "preview": preview}
 
 
 @router.post("/retention")
-async def dev_update_retention(req: RetentionRequest) -> dict[str, object]:
-    if not os.getenv("DEV_MODE"):
-        raise HTTPException(status_code=403, detail="Dev mode disabled")
+async def dev_update_retention(
+    req: RetentionRequest, request: Request
+) -> dict[str, object]:
+    _guard(request)
     policy = retention.load_policy()
     if req.temporary_derivatives_days is not None:
         policy["temporary_derivatives_days"] = req.temporary_derivatives_days
