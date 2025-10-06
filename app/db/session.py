@@ -14,9 +14,9 @@ DB_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
 engine = create_engine(DB_URL, echo=False, future=True)
 
 if engine.url.get_backend_name() == "sqlite":
-
-    @event.listens_for(engine, "connect")
-    def _sqlite_configure(dbapi_connection, connection_record):  # pragma: no cover - depends on driver
+    # Apply PRAGMAs on each connection (Windows-friendly performance tuning)
+    @event.listens_for(engine, "connect")  # pragma: no cover - driver dependent
+    def _sqlite_configure(dbapi_connection, connection_record):
         apply_default_pragmas(dbapi_connection)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True)
 
