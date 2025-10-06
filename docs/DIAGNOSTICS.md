@@ -33,7 +33,7 @@ python -m astroengine.diagnostics --smoketest "2025-01-01T00:00:00Z"
 
 ## API & UI integrations
 
-* `GET /v1/doctor` returns the same Swiss ephemeris, database, migration, and cache checks as JSON for operators and monitoring agents.
-* The "🩺 System Doctor" Streamlit page (under `ui/streamlit/pages/13_System_Doctor.py`) visualises the live report for dashboard use.
+* `GET /v1/doctor` returns Swiss ephemeris probes, database connectivity, migration status, cache metrics, settings ranges, and disk usage as JSON for operators and monitoring agents.
+* The "🩺 System Doctor" Streamlit page (under `ui/streamlit/pages/13_System_Doctor.py`) delegates rendering to `ui/streamlit/doctor.py` for consistent visuals and remediation guidance.
 
 # >>> AUTO-GEN END: Diagnostics Guide v1.0
