@@ -6,9 +6,14 @@ py -3.11 -m venv .venv
 call .venv\Scripts\activate.bat
 python -m pip install --upgrade pip wheel setuptools
 
-REM Install app + extras
+REM Install app + deps (Windows-friendly)
 pip install -e .
-pip install -r requirements.txt
+if exist packaging\windows\requirements-win.txt (
+  pip install -r packaging\windows\requirements-win.txt
+) else (
+  pip install -r requirements.txt
+  pip install pyinstaller==6.10.*
+)
 if exist requirements-optional.txt pip install -r requirements-optional.txt
 
 REM Build launcher
