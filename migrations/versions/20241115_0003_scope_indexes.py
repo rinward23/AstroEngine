@@ -22,30 +22,43 @@ def _drop_unique(table: str, name: str, columns: list[str]) -> None:
     """Drop the unique rule portably, tolerating name differences on SQLite."""
 
     bind = op.get_bind()
-    insp = sa.inspect(bind)
+    inspector = sa.inspect(bind)
     dialect = bind.dialect.name
 
-    if dialect == "sqlite":
-        try:
-            op.drop_index(name, table_name=table)
-            return
-        except Exception:  # pragma: no cover - fallback handling
-            pass
+    def _matching_index() -> str | None:
+        """Return the name of a matching unique index, if any."""
 
         wanted = [column.lower() for column in columns]
-        for idx in insp.get_indexes(table):
-            if idx.get("unique") and [col.lower() for col in idx["column_names"]] == wanted:
-                op.drop_index(idx["name"], table_name=table)
-                return
+        for idx in inspector.get_indexes(table):
+            if not idx.get("unique"):
+                continue
+            if idx["name"] == name:
+                return idx["name"]
+            if [col.lower() for col in idx["column_names"]] == wanted:
+                return idx["name"]
+        return None
+
+    index_name = _matching_index()
+    has_constraint = _unique_constraint_exists(inspector, table, name)
+
+    if dialect == "sqlite":
+        if index_name is not None:
+            op.drop_index(index_name, table_name=table)
+            return
+        if has_constraint:
+            with op.batch_alter_table(table, recreate="always") as batch:
+                batch.drop_constraint(name, type_="unique")
         return
 
-    try:
-        op.drop_constraint(name, table_name=table, type_="unique")
-    except Exception:  # pragma: no cover - backend-specific fallback
-        for idx in insp.get_indexes(table):
-            if idx["name"] == name and idx.get("unique"):
-                op.drop_index(name, table_name=table)
-                break
+    if has_constraint:
+        try:
+            op.drop_constraint(name, table_name=table, type_="unique")
+            return
+        except Exception:  # pragma: no cover - backend-specific fallback
+            pass
+
+    if index_name is not None:
+        op.drop_index(index_name, table_name=table)
 
 
 def _events_time_column(inspector: Inspector) -> str:
