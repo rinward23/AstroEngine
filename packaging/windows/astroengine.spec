@@ -15,11 +15,29 @@ hidden += collect_submodules("streamlit")
 hidden += collect_submodules("uvicorn")
 hidden += collect_submodules("anyio")
 hidden += collect_submodules("pkg_resources")  # quiets altgraph/pkg_resources warning
+hidden += collect_submodules("pywebview")
+hidden += collect_submodules("pystray")
+hidden += collect_submodules("PIL")
 
 # Data files from our own package
 astro_data = collect_data_files(
     "astroengine",
-    includes=["**/*.yaml", "**/*.yml", "**/*.json", "**/*.csv", "**/*.toml"],
+    includes=[
+        "**/*.yaml",
+        "**/*.yml",
+        "**/*.json",
+        "**/*.csv",
+        "**/*.toml",
+        "**/*.html",
+        "**/*.md",
+        "**/*.txt",
+    ],
+    excludes=["**/__pycache__/**"],
+)
+
+desktop_data = collect_data_files(
+    "app.desktop",
+    includes=["**/*.yaml", "**/*.json"],
     excludes=["**/__pycache__/**"],
 )
 
@@ -37,7 +55,7 @@ def tree(src, dst_prefix):
 ui_tree = tree(os.path.join(root, "ui"), "ui")
 streamlit_cfg = tree(os.path.join(root, ".streamlit"), ".streamlit") if os.path.isdir(".streamlit") else []
 
-datas = astro_data + ui_tree + streamlit_cfg
+datas = astro_data + desktop_data + ui_tree + streamlit_cfg
 
 a = Analysis(
     [launcher],

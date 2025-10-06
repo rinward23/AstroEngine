@@ -86,6 +86,14 @@ diagnostics inside a WebView2-powered desktop window. Launch it locally with:
 python -m app.desktop.launch_desktop
 ```
 
+To build the Windows 11 installer, run `packaging\windows\make.bat` from a
+Developer Command Prompt. The script creates `dist\AstroEngine\AstroEngine.exe`
+using PyInstaller (pointing at the native desktop shell) and, if Inno Setup is
+available, emits an installer at `packaging\windows\Output` that places
+shortcuts in the Start menu and on the desktop. Double-clicking the bundled
+`AstroEngine.exe` brings up the self-contained desktop app—no browser is opened
+and the FastAPI/Streamlit processes are orchestrated by the embedded shell.
+
 Key behaviour:
 
 * **Native menus & tray.** Start/stop the API, reopen the embedded UI, tail
@@ -100,9 +108,13 @@ Key behaviour:
   viewers are available from the menus, and a one-click issue report bundles an
   anonymised diagnostics snapshot for support.
 * **Bundled portal launcher.** CI publishes a PyInstaller build generated from
-  `packaging/astroengine_portal.spec`. The executable ships the Streamlit
-  `main_portal.py` experience with the Swiss ephemeris stub baked in and keeps
-  user data under `%LOCALAPPDATA%/AstroEngine`.
+  `packaging/windows/astroengine.spec`. The executable ships the Streamlit
+  `main_portal.py` experience inside the desktop shell with the Swiss ephemeris
+  stub baked in and keeps user data under `%LOCALAPPDATA%/AstroEngine`.
+* **Ruleset parity.** The PyInstaller spec now copies every packaged ruleset,
+  dataset, schema, and HTML asset so the desktop API uses the same
+  data-backed modules as source installs—no functionality is lost in the
+  Windows bundle.
 * **ChatGPT copilot.** The dockable copilot panel can tail logs, run
   diagnostics, summarise API errors, and explain endpoints. Provide an OpenAI
   API key and model in Settings to enable remote completions; otherwise the
