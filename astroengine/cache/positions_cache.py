@@ -14,6 +14,7 @@ from ..core.time import julian_day
 from ..ephemeris import SwissEphemerisAdapter
 from ..ephemeris.swe import swe
 from ..infrastructure.home import ae_home
+from ..infrastructure.storage.sqlite import apply_default_pragmas
 
 CACHE_DIR = ae_home() / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)

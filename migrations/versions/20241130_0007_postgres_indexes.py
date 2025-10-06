@@ -7,8 +7,8 @@ from alembic import op
 from sqlalchemy.engine import Inspector
 from sqlalchemy.exc import SQLAlchemyError
 
-revision = "20241130_0006"
-down_revision = "20241122_0005"
+revision = "20241130_0007"
+down_revision = "20241130_0006"
 branch_labels = None
 depends_on = None
 

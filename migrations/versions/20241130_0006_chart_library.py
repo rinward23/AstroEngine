@@ -13,13 +13,24 @@ depends_on = None
 
 def upgrade() -> None:
     op.add_column("charts", sa.Column("name", sa.String(length=120), nullable=True))
-    op.add_column("charts", sa.Column("tags", sa.String(length=240), nullable=True))
+    op.add_column(
+        "charts",
+        sa.Column(
+            "tags",
+            sa.JSON(),
+            nullable=False,
+            server_default=sa.text("'[]'"),
+        ),
+    )
     op.add_column("charts", sa.Column("memo", sa.Text(), nullable=True))
     op.add_column("charts", sa.Column("gender", sa.String(length=32), nullable=True))
     op.add_column(
         "charts",
         sa.Column(
-            "settings_snapshot", sa.JSON(), nullable=False, server_default=sa.text("'{}'"),
+            "settings_snapshot",
+            sa.JSON(),
+            nullable=False,
+            server_default=sa.text("'{}'"),
         ),
     )
     op.add_column(
@@ -45,11 +56,14 @@ def upgrade() -> None:
     op.create_index("ix_charts_kind_name", "charts", ["kind", "name"])
 
     # Drop server defaults to avoid future inserts inheriting stringified JSON.
-    op.alter_column("charts", "settings_snapshot", server_default=None)
-    op.alter_column("charts", "bodies", server_default=None)
-    op.alter_column("charts", "houses", server_default=None)
-    op.alter_column("charts", "aspects", server_default=None)
-    op.alter_column("charts", "patterns", server_default=None)
+    op.execute("UPDATE charts SET tags = '[]' WHERE tags IS NULL")
+    with op.batch_alter_table("charts") as batch:
+        batch.alter_column("tags", server_default=None)
+        batch.alter_column("settings_snapshot", server_default=None)
+        batch.alter_column("bodies", server_default=None)
+        batch.alter_column("houses", server_default=None)
+        batch.alter_column("aspects", server_default=None)
+        batch.alter_column("patterns", server_default=None)
 
 
 def downgrade() -> None:
