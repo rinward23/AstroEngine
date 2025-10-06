@@ -9,7 +9,7 @@ verifiable sources.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Final, Mapping
 
 __all__ = [
     "ReferenceSource",
@@ -53,6 +53,54 @@ class ReferenceEntry:
     tags: tuple[str, ...] = ()
 
 
+# Consolidated ``ReferenceSource`` definitions reused across multiple catalog
+# sections.  The constants keep citations in sync whenever a module appears in
+# several reference groups.
+
+_NATAL_MODULE_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="AstroEngine natal chart module",
+    citation="AstroEngine maintainers. (2025). Natal chart computation pipeline.",
+    repository_path="astroengine/chart/natal.py",
+)
+_SWISS_EPHEMERIS_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Swiss Ephemeris for Programmers",
+    citation="Astrodienst AG. (2023). Swiss Ephemeris for Programmers: Technical documentation.",
+    url="https://www.astro.com/swisseph/swephprg.htm",
+)
+_NATAL_CHART_SOURCES: Final[tuple[ReferenceSource, ReferenceSource]] = (
+    _NATAL_MODULE_SOURCE,
+    _SWISS_EPHEMERIS_SOURCE,
+)
+
+_PROGRESSION_MODULE_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="AstroEngine progression module",
+    citation="AstroEngine maintainers. (2025). Secondary progression computation routine.",
+    repository_path="astroengine/chart/progressions.py",
+)
+_PROGRESSION_TEXT_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="The Only Way to Learn Astrology, Volume 3",
+    citation="March, M. D., & McEvers, J. (1980). The Only Way to Learn Astrology, Vol. 3. ACS Publications. Chapter 1.",
+)
+_PROGRESSION_SOURCES: Final[tuple[ReferenceSource, ReferenceSource]] = (
+    _PROGRESSION_MODULE_SOURCE,
+    _PROGRESSION_TEXT_SOURCE,
+)
+
+_RETURN_MODULE_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="AstroEngine return chart module",
+    citation="AstroEngine maintainers. (2025). Return chart computation pipeline.",
+    repository_path="astroengine/chart/returns.py",
+)
+_RETURN_TEXT_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Solar Returns",
+    citation="Carter, C. E. O. (1971). Solar Returns. Regulus Publishing Company.",
+)
+_RETURN_CHART_SOURCES: Final[tuple[ReferenceSource, ReferenceSource]] = (
+    _RETURN_MODULE_SOURCE,
+    _RETURN_TEXT_SOURCE,
+)
+
+
 GLOSSARY: Mapping[str, ReferenceEntry] = {
     "natal_chart": ReferenceEntry(
         term="Natal chart",
@@ -61,18 +109,7 @@ GLOSSARY: Mapping[str, ReferenceEntry] = {
             "using the Swiss Ephemeris adapter, documented orb policy, and house "
             "configuration captured in ``ChartConfig``."
         ),
-        sources=(
-            ReferenceSource(
-                name="AstroEngine natal chart module",
-                citation="AstroEngine maintainers. (2025). Natal chart computation pipeline.",
-                repository_path="astroengine/chart/natal.py",
-            ),
-            ReferenceSource(
-                name="Swiss Ephemeris for Programmers",
-                citation="Astrodienst AG. (2023). Swiss Ephemeris for Programmers: Technical documentation.",
-                url="https://www.astro.com/swisseph/swephprg.htm",
-            ),
-        ),
+        sources=_NATAL_CHART_SOURCES,
         related=(
             "profiles/base_profile.yaml",
             "schemas/orbs_policy.json",
@@ -110,17 +147,7 @@ GLOSSARY: Mapping[str, ReferenceEntry] = {
             "``astroengine.chart.progressions.compute_secondary_progression`` "
             "using the day-for-a-year method mirrored from Solar Fire outputs."
         ),
-        sources=(
-            ReferenceSource(
-                name="AstroEngine progression module",
-                citation="AstroEngine maintainers. (2025). Secondary progression computation routine.",
-                repository_path="astroengine/chart/progressions.py",
-            ),
-            ReferenceSource(
-                name="The Only Way to Learn Astrology, Volume 3",
-                citation="March, M. D., & McEvers, J. (1980). The Only Way to Learn Astrology, Vol. 3. ACS Publications. Chapter 1.",
-            ),
-        ),
+        sources=_PROGRESSION_SOURCES,
         related=(
             "qa/artifacts/solarfire/2025-10-02/cross_engine.json",
             "profiles/base_profile.yaml",
@@ -134,17 +161,7 @@ GLOSSARY: Mapping[str, ReferenceEntry] = {
             "when the transiting Sun revisits its natal longitude; used for Solar Fire "
             "parity checks in the maintainer QA artifacts."
         ),
-        sources=(
-            ReferenceSource(
-                name="AstroEngine return chart module",
-                citation="AstroEngine maintainers. (2025). Return chart computation pipeline.",
-                repository_path="astroengine/chart/returns.py",
-            ),
-            ReferenceSource(
-                name="Solar Returns",
-                citation="Carter, C. E. O. (1971). Solar Returns. Regulus Publishing Company.",
-            ),
-        ),
+        sources=_RETURN_CHART_SOURCES,
         related=(
             "qa/artifacts/solarfire/2025-10-02/cross_engine.json",
         ),
@@ -231,18 +248,7 @@ CHART_TYPES: Mapping[str, ReferenceEntry] = {
             "anchor every downstream timing technique and feed the transit, "
             "progression, and synastry modules."
         ),
-        sources=(
-            ReferenceSource(
-                name="AstroEngine natal chart module",
-                citation="AstroEngine maintainers. (2025). Natal chart computation pipeline.",
-                repository_path="astroengine/chart/natal.py",
-            ),
-            ReferenceSource(
-                name="Swiss Ephemeris for Programmers",
-                citation="Astrodienst AG. (2023). Swiss Ephemeris for Programmers: Technical documentation.",
-                url="https://www.astro.com/swisseph/swephprg.htm",
-            ),
-        ),
+        sources=_NATAL_CHART_SOURCES,
         related=(
             "astroengine/modules/data_packs/__init__.py",
         ),
@@ -254,17 +260,7 @@ CHART_TYPES: Mapping[str, ReferenceEntry] = {
             "Chart advanced using the Solar Fire style day-for-a-year key via "
             "``astroengine.chart.progressions.compute_secondary_progression``."
         ),
-        sources=(
-            ReferenceSource(
-                name="AstroEngine progression module",
-                citation="AstroEngine maintainers. (2025). Secondary progression computation routine.",
-                repository_path="astroengine/chart/progressions.py",
-            ),
-            ReferenceSource(
-                name="The Only Way to Learn Astrology, Volume 3",
-                citation="March, M. D., & McEvers, J. (1980). The Only Way to Learn Astrology, Vol. 3. ACS Publications. Chapter 1.",
-            ),
-        ),
+        sources=_PROGRESSION_SOURCES,
         related=(
             "astroengine/modules/predictive/__init__.py",
         ),
@@ -277,17 +273,7 @@ CHART_TYPES: Mapping[str, ReferenceEntry] = {
             "exact moment a selected body revisits its natal longitude (solar, lunar, "
             "or custom returns)."
         ),
-        sources=(
-            ReferenceSource(
-                name="AstroEngine return chart module",
-                citation="AstroEngine maintainers. (2025). Return chart computation pipeline.",
-                repository_path="astroengine/chart/returns.py",
-            ),
-            ReferenceSource(
-                name="Solar Returns",
-                citation="Carter, C. E. O. (1971). Solar Returns. Regulus Publishing Company.",
-            ),
-        ),
+        sources=_RETURN_CHART_SOURCES,
         related=(
             "astroengine/modules/event_detectors/__init__.py",
         ),
