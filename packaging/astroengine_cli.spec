@@ -14,9 +14,11 @@ hiddenimports += collect_submodules("pyswisseph")
 
 datas = []
 datas += collect_data_files("alembic")
+datas += collect_data_files("astroengine", includes=["py.typed"])
 datas += [("alembic.ini", "alembic.ini", "DATA")]
 datas += [("migrations", "migrations")]
 datas += [("ui/streamlit", "ui/streamlit")]
+datas += [("datasets/swisseph_stub", "resources/ephemeris")]
 
 
 a = Analysis(
@@ -27,8 +29,8 @@ a = Analysis(
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
-    hookspath=[],
-    runtime_hooks=[],
+    hookspath=["packaging/hooks"],
+    runtime_hooks=["packaging/hooks/rthook-astroengine-portal.py"],
     excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
