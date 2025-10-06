@@ -1,0 +1,9 @@
+{
+  "$schema": "https://astroengine.io/schemas/installer/python-manifest-v1.json",
+  "_comment": "Populate sha256 with the verified checksum for the targeted Python embed distribution before cutting an installer build.",
+  "python": {
+    "version": "3.11.8",
+    "url": "https://www.python.org/ftp/python/3.11.8/python-3.11.8-embed-amd64.zip",
+    "sha256": ""
+  }
+}
