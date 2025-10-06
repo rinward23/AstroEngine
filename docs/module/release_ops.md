@@ -47,8 +47,12 @@ comparison artefacts.
   `ubuntu-latest` and `windows-latest` whenever a `v*` tag is pushed. Each job
   installs the provider extras, runs the pytest suite, builds the sdist/wheel
   set, and (on Windows) packages the new PyInstaller portal bundle that targets
-  `ui/streamlit/main_portal.py` with bundled ephemeris data. The resulting
-  artifacts are published to a draft GitHub release for review.
+  `ui/streamlit/main_portal.py` with bundled ephemeris data. Windows builds pin
+  `pyinstaller==6.10.*`, mirroring the local scripts (`scripts/build_windows.ps1`
+  and `packaging/windows/make.bat`). When running the packaging flow manually,
+  install that version explicitly to avoid "pyinstaller is not recognized"
+  errors. The resulting artifacts are published to a draft GitHub release for
+  review.
 - `.github/workflows/nightly-smoke-bench.yml` runs daily and records the timing
   of deterministic electional searches and forecast stack builds using the
   Swiss ephemeris stub. The JSON trend file is stored under

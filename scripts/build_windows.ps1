@@ -15,7 +15,8 @@ if ($WithObs) { $extras = "$extras,obs" }
 pip install -e ".[${extras}]"
 
 # 3) PyInstaller
-pip install pyinstaller
+# Pin to the vetted 6.10 series so the build finds the CLI entry points.
+pip install 'pyinstaller==6.10.*'
 
 # 4) Build EXEs
 pyinstaller packaging/astroengine_cli.spec --noconfirm
