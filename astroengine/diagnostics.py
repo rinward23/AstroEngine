@@ -42,6 +42,7 @@ from astroengine.ephemeris.swisseph_adapter import swe_calc
 from astroengine.ephemeris.utils import DEFAULT_ENV_KEYS, get_se_ephe_path
 from astroengine.infrastructure.home import ae_home
 from astroengine.infrastructure.paths import project_root
+from astroengine.utils.dependencies import DependencySpec, inspect_dependencies
 
 
 @dataclass
@@ -136,30 +137,82 @@ def check_core_imports() -> list[Check]:
     return out
 
 
+_DEPENDENCY_SPECS: tuple[DependencySpec, ...] = (
+    DependencySpec("numpy>=1.26", min_version="1.26"),
+    DependencySpec("pandas>=2.2", min_version="2.2"),
+    DependencySpec(
+        "pyarrow>=16",
+        min_version="16",
+        required=False,
+        note="Arrow exports and Parquet ingestion",
+    ),
+    DependencySpec("duckdb>=0.10", min_version="0.10"),
+    DependencySpec("SQLAlchemy>=2.0", import_name="sqlalchemy", min_version="2.0"),
+    DependencySpec("alembic>=1.13", min_version="1.13"),
+    DependencySpec("orjson>=3.10", min_version="3.10"),
+    DependencySpec("fastapi>=0.117", min_version="0.117"),
+    DependencySpec("httpx>=0.28", min_version="0.28"),
+    DependencySpec("jinja2>=3.1", min_version="3.1"),
+    DependencySpec("pydantic>=2.7", min_version="2.7"),
+    DependencySpec(
+        "PyYAML>=6.0",
+        import_name="yaml",
+        min_version="6.0",
+        required=False,
+        note="YAML profiles & rule ingestion",
+    ),
+    DependencySpec(
+        "astropy>=5.0",
+        min_version="5.0",
+        required=False,
+        note="Solar Fire catalogue crosswalks",
+    ),
+    DependencySpec(
+        "numba>=0.58",
+        min_version="0.58",
+        required=False,
+        note="Accelerates ephemeris transforms",
+    ),
+    DependencySpec(
+        "skyfield>=1.49",
+        min_version="1.49",
+        required=False,
+        note="Satellite & mundane overlays",
+    ),
+    DependencySpec(
+        "swisseph",
+        import_name="swisseph",
+        required=False,
+        note="Swiss ephemeris extension (see dedicated checks for ephe path)",
+    ),
+)
+
+
 def check_optional_deps() -> list[Check]:
-    names = ["numpy", "pandas", "pyarrow"]
+    statuses = inspect_dependencies(_DEPENDENCY_SPECS)
     out: list[Check] = []
-    for n in names:
-        ok, m, err = _try_import(n)
+    for status in statuses:
+        name = f"Dependency {status.spec.distribution()}"
         out.append(
             Check(
-                name=f"Optional {n}",
-                status="PASS" if ok else "WARN",
-                detail=f"{'found' if ok else 'not installed'}",
-                data={
-                    "version": getattr(m, "__version__", None),
-                    "error": None if ok else err,
-                },
+                name=name,
+                status=status.status,
+                detail=status.detail,
+                data=status.data(),
             )
         )
     # sqlite3 is stdlib, but verify load
     try:
         import sqlite3  # noqa: F401
 
-        out.append(Check(name="sqlite3", status="PASS", detail="available (stdlib)"))
+        out.append(Check(name="Dependency sqlite3", status="PASS", detail="available (stdlib)"))
     except Exception as e:  # pragma: no cover - defensive surface only
         out.append(
-            Check(name="sqlite3", status="FAIL", detail=f"sqlite3 unavailable: {e}")
+            Check(
+                name="Dependency sqlite3",
+                status="FAIL",
+                detail=f"sqlite3 unavailable: {e}",
+            )
         )
     return out
 
