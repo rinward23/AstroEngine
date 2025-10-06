@@ -2,13 +2,13 @@ from __future__ import annotations
 import os, sys, subprocess, threading, time, webbrowser, signal
 from pathlib import Path
 
-# Resolve app root whether frozen (PyInstaller) or source
+# Resolve paths both when frozen (PyInstaller) and from source
 if getattr(sys, "frozen", False):
-    BASE = Path(sys._MEIPASS)  # type: ignore[attr-defined]
-    ROOT = Path(sys.executable).parent  # dist/AstroEngine
+    APP_DIR = Path(sys.executable).parent  # dist/AstroEngine
+    BASE = APP_DIR  # app root (contains bundled files)
 else:
     BASE = Path(__file__).resolve().parents[2]
-    ROOT = BASE
+    APP_DIR = BASE
 
 # Default ports
 API_PORT = int(os.environ.get("ASTROENGINE_API_PORT", "8000"))
@@ -43,13 +43,13 @@ def start_api():
     global api_proc
     # Use uvicorn programmatically via module to avoid path issues
     cmd = [sys.executable, "-m", "uvicorn", API_APP, "--host", "127.0.0.1", "--port", str(API_PORT), "--log-level", "warning"]
-    api_proc = subprocess.Popen(cmd, cwd=str(ROOT), env=env)
+    api_proc = subprocess.Popen(cmd, cwd=str(APP_DIR), env=env)
 
 
 def start_ui():
     global ui_proc
     cmd = [sys.executable, "-m", "streamlit", "run", str(STREAMLIT_ENTRY), "--server.port", str(UI_PORT), "--server.headless", "true"]
-    ui_proc = subprocess.Popen(cmd, cwd=str(ROOT), env=env)
+    ui_proc = subprocess.Popen(cmd, cwd=str(APP_DIR), env=env)
 
 
 def open_browser():
