@@ -699,17 +699,17 @@ def smoketest_positions(iso_utc: str = "2025-01-01T00:00:00Z") -> list[dict[str,
     try:
         ephe = os.environ.get("SE_EPHE_PATH", "")
         if ephe:
-            swe.set_ephe_path(ephe)
+            swe().set_ephe_path(ephe)
         y, m, d, ut = _parse_iso_utc(iso_utc)
-        jd = swe.julday(y, m, d, ut)  # UT
+        jd = swe().julday(y, m, d, ut)  # UT
         ids = [
-            ("Sun", swe.SUN),
-            ("Moon", swe.MOON),
-            ("Mercury", swe.MERCURY),
-            ("Venus", swe.VENUS),
-            ("Mars", swe.MARS),
-            ("Jupiter", swe.JUPITER),
-            ("Saturn", swe.SATURN),
+            ("Sun", swe().SUN),
+            ("Moon", swe().MOON),
+            ("Mercury", swe().MERCURY),
+            ("Venus", swe().VENUS),
+            ("Mars", swe().MARS),
+            ("Jupiter", swe().JUPITER),
+            ("Saturn", swe().SATURN),
         ]
         out: list[dict[str, Any]] = []
         for name, pid in ids:

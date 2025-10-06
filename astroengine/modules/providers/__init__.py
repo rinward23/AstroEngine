@@ -89,7 +89,7 @@ def register_providers_module(registry: AstroRegistry) -> None:
             "keys": [
                 "providers.default",
                 "providers.skyfield.cache_path",
-                "providers.swe.enabled",
+                "providers.swe().enabled",
                 "providers.*.cadence_hours",
             ],
         },

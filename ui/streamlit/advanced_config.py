@@ -442,11 +442,10 @@ with swiss_col_max:
 with swiss_col_btn:
     if st.button("Probe capability"):
         try:
-            import swisseph as swe
-
+            from astroengine.ephemeris.swe import swe
             def _can(year: int) -> bool:
-                jd = swe.julday(year, 1, 1, 12.0)
-                position = swe.calc_ut(jd, swe.SUN)
+                jd = swe().julday(year, 1, 1, 12.0)
+                position = swe().calc_ut(jd, swe().SUN)
                 return isinstance(position, tuple) and not any(
                     math.isnan(val) for val in position[0]
                 )

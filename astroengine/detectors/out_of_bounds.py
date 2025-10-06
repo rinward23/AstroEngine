@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-try:  # pragma: no cover - runtime availability guard
-    import swisseph as swe  # type: ignore
-except Exception:  # pragma: no cover
-    swe = None  # type: ignore
+from astroengine.ephemeris.swe import has_swe, swe
 
 from ..events import OutOfBoundsEvent
 from ..ephemeris.cache import calc_ut_cached
@@ -15,16 +12,18 @@ from .common import jd_to_iso, solve_zero_crossing
 
 __all__ = ["find_out_of_bounds"]
 
+_HAS_SWE = has_swe()
+
 _BODY_CODES = {
-    "moon": swe.MOON if swe is not None else None,
-    "mercury": swe.MERCURY if swe is not None else None,
-    "venus": swe.VENUS if swe is not None else None,
-    "mars": swe.MARS if swe is not None else None,
-    "jupiter": swe.JUPITER if swe is not None else None,
-    "saturn": swe.SATURN if swe is not None else None,
-    "uranus": swe.URANUS if swe is not None else None,
-    "neptune": swe.NEPTUNE if swe is not None else None,
-    "pluto": swe.PLUTO if swe is not None else None,
+    "moon": swe().MOON if _HAS_SWE else None,
+    "mercury": swe().MERCURY if _HAS_SWE else None,
+    "venus": swe().VENUS if _HAS_SWE else None,
+    "mars": swe().MARS if _HAS_SWE else None,
+    "jupiter": swe().JUPITER if _HAS_SWE else None,
+    "saturn": swe().SATURN if _HAS_SWE else None,
+    "uranus": swe().URANUS if _HAS_SWE else None,
+    "neptune": swe().NEPTUNE if _HAS_SWE else None,
+    "pluto": swe().PLUTO if _HAS_SWE else None,
 }
 
 
@@ -36,7 +35,7 @@ def _vector(jd_ut: float, code: int, flag: int) -> tuple[float, ...]:
 
 
 def _declination(jd_ut: float, code: int) -> tuple[float, float]:
-    flag = swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_EQUATORIAL
+    flag = swe().FLG_SWIEPH | swe().FLG_SPEED | swe().FLG_EQUATORIAL
     xx = _vector(jd_ut, code, flag)
     dec = float(xx[1])
     speed_dec = float(xx[4]) if len(xx) > 4 else float("nan")
@@ -44,7 +43,7 @@ def _declination(jd_ut: float, code: int) -> tuple[float, float]:
 
 
 def _tropic_limit(jd_ut: float) -> float:
-    xx, ret_flag = calc_ut_cached(jd_ut, int(swe.ECL_NUT), 0)
+    xx, ret_flag = calc_ut_cached(jd_ut, int(swe().ECL_NUT), 0)
     if ret_flag < 0:
         raise RuntimeError(f"Swiss ephemeris returned error code {ret_flag}")
     return abs(float(xx[0]))
@@ -72,7 +71,7 @@ def find_out_of_bounds(
 
     if end_jd <= start_jd:
         return []
-    if swe is None:
+    if not _HAS_SWE:
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
 
     body_names = [

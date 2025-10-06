@@ -6,10 +6,9 @@ import math
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
-try:  # pragma: no cover - exercised indirectly via Swiss-enabled tests
-    import swisseph as swe  # type: ignore
-except Exception:  # pragma: no cover - optional dependency at runtime
-    swe = None  # type: ignore
+from astroengine.ephemeris.swe import has_swe, swe
+
+_HAS_SWE = has_swe()
 
 from ..events import IngressEvent
 from .common import body_lon, delta_deg, jd_to_iso, norm360, solve_zero_crossing
@@ -247,7 +246,7 @@ def find_sign_ingresses(
 
     if step_hours <= 0:
         raise ValueError("step_hours must be positive")
-    if swe is None:
+    if not _HAS_SWE:
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
 
     body_list = tuple(bodies or _DEFAULT_BODIES)
@@ -356,7 +355,7 @@ def find_house_ingresses(
 
     if end_jd <= start_jd:
         return []
-    if swe is None:
+    if not _HAS_SWE:
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
 
     cusps = _normalise_cusps(house_cusps)

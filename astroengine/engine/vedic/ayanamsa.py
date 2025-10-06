@@ -61,42 +61,42 @@ class _LazySiderealPresets(Mapping[AyanamsaPreset, AyanamsaInfo]):
             mapping: dict[AyanamsaPreset, AyanamsaInfo] = {
                 AyanamsaPreset.LAHIRI: AyanamsaInfo(
                     preset=AyanamsaPreset.LAHIRI,
-                    swe_mode=int(swe.SIDM_LAHIRI),
+                    swe_mode=int(swe().SIDM_LAHIRI),
                     label="Lahiri",
                 ),
                 AyanamsaPreset.KRISHNAMURTI: AyanamsaInfo(
                     preset=AyanamsaPreset.KRISHNAMURTI,
-                    swe_mode=int(swe.SIDM_KRISHNAMURTI),
+                    swe_mode=int(swe().SIDM_KRISHNAMURTI),
                     label="Krishnamurti",
                 ),
                 AyanamsaPreset.RAMAN: AyanamsaInfo(
                     preset=AyanamsaPreset.RAMAN,
-                    swe_mode=int(swe.SIDM_RAMAN),
+                    swe_mode=int(swe().SIDM_RAMAN),
                     label="B. V. Raman",
                 ),
                 AyanamsaPreset.FAGAN_BRADLEY: AyanamsaInfo(
                     preset=AyanamsaPreset.FAGAN_BRADLEY,
-                    swe_mode=int(swe.SIDM_FAGAN_BRADLEY),
+                    swe_mode=int(swe().SIDM_FAGAN_BRADLEY),
                     label="Fagan/Bradley",
                 ),
                 AyanamsaPreset.YUKTESHWAR: AyanamsaInfo(
                     preset=AyanamsaPreset.YUKTESHWAR,
-                    swe_mode=int(swe.SIDM_YUKTESHWAR),
+                    swe_mode=int(swe().SIDM_YUKTESHWAR),
                     label="Sri Yukteshwar",
                 ),
                 AyanamsaPreset.GALACTIC_CENTER_0_SAG: AyanamsaInfo(
                     preset=AyanamsaPreset.GALACTIC_CENTER_0_SAG,
-                    swe_mode=int(swe.SIDM_GALCENT_0SAG),
+                    swe_mode=int(swe().SIDM_GALCENT_0SAG),
                     label="Galactic Center 0° Sag",
                 ),
                 AyanamsaPreset.SASSANIAN: AyanamsaInfo(
                     preset=AyanamsaPreset.SASSANIAN,
-                    swe_mode=int(swe.SIDM_SASSANIAN),
+                    swe_mode=int(swe().SIDM_SASSANIAN),
                     label="Sassanian",
                 ),
                 AyanamsaPreset.DELUCE: AyanamsaInfo(
                     preset=AyanamsaPreset.DELUCE,
-                    swe_mode=int(swe.SIDM_DELUCE),
+                    swe_mode=int(swe().SIDM_DELUCE),
                     label="De Luce",
                 ),
             }
@@ -158,7 +158,7 @@ def ayanamsa_value(
     info = SIDEREAL_PRESETS[normalize_ayanamsa(preset)]
     jd_ut = _julian_day(moment)
     swe = get_swisseph()
-    _ret, value = swe.get_ayanamsa_ex_ut(jd_ut, info.swe_mode)
+    _ret, value = swe().get_ayanamsa_ex_ut(jd_ut, info.swe_mode)
     return value % 360.0
 
 

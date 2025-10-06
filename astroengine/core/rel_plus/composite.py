@@ -321,27 +321,28 @@ class SwissEphemerisAdapter:
     """Ephemeris backed by :mod:`pyswisseph` (Swiss Ephemeris)."""
 
     def __init__(self, ephemeris_path: Optional[str] = None) -> None:
-        try:  # pragma: no cover - import guarded for optional dependency
-            import swisseph as swe  # type: ignore
-        except Exception as exc:  # pragma: no cover - optional dependency
-            raise EphemerisError("Swiss Ephemeris (pyswisseph) is not available") from exc
+        from astroengine.ephemeris.swe import has_swe, swe
 
-        self._swe = swe
+        if not has_swe():  # pragma: no cover - optional dependency
+            raise EphemerisError("Swiss Ephemeris (pyswisseph) is not available")
+
+        swe_module = swe()
+        self._swe = swe_module
         if ephemeris_path:
-            swe.set_ephe_path(ephemeris_path)
-        self._flags = swe.SEFLG_SWIEPH | swe.SEFLG_SPEED
+            swe_module.set_ephe_path(ephemeris_path)
+        self._flags = swe_module.SEFLG_SWIEPH | swe_module.SEFLG_SPEED
         self._body_codes = {
-            "sun": swe.SUN,
-            "moon": swe.MOON,
-            "mercury": swe.MERCURY,
-            "venus": swe.VENUS,
-            "mars": swe.MARS,
-            "jupiter": swe.JUPITER,
-            "saturn": swe.SATURN,
-            "uranus": swe.URANUS,
-            "neptune": swe.NEPTUNE,
-            "pluto": swe.PLUTO,
-            "chiron": swe.CHIRON,
+            "sun": swe_module.SUN,
+            "moon": swe_module.MOON,
+            "mercury": swe_module.MERCURY,
+            "venus": swe_module.VENUS,
+            "mars": swe_module.MARS,
+            "jupiter": swe_module.JUPITER,
+            "saturn": swe_module.SATURN,
+            "uranus": swe_module.URANUS,
+            "neptune": swe_module.NEPTUNE,
+            "pluto": swe_module.PLUTO,
+            "chiron": swe_module.CHIRON,
         }
 
     def _julian_day(self, when: datetime) -> float:

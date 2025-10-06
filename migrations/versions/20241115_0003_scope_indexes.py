@@ -209,6 +209,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
     with op.batch_alter_table("export_jobs", schema=None) as batch:
         batch.drop_constraint("uq_export_jobs_scope_key", type_="unique")
     op.drop_index("ix_export_jobs_completed_at", table_name="export_jobs")
@@ -226,11 +229,15 @@ def downgrade() -> None:
     op.drop_index("ix_events_event_time_scope", table_name="events")
     op.drop_index("ix_events_scope_full", table_name="events")
 
-    _drop_unique(
-        "ruleset_versions",
-        "uq_ruleset_versions_scope_key_version",
-        ["module", "submodule", "channel", "subchannel", "key", "version"],
-    )
+    existing_unique = {
+        constraint["name"] for constraint in inspector.get_unique_constraints("ruleset_versions")
+    }
+    if "uq_ruleset_versions_scope_key_version" in existing_unique:
+        _drop_unique(
+            "ruleset_versions",
+            "uq_ruleset_versions_scope_key_version",
+            ["module", "submodule", "channel", "subchannel", "key", "version"],
+        )
     op.drop_index("ix_ruleset_versions_created_at", table_name="ruleset_versions")
     op.drop_index("ix_ruleset_versions_scope_full", table_name="ruleset_versions")
 

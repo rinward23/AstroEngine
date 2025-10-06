@@ -7,14 +7,11 @@ from typing import Iterable, Sequence
 
 from ...ephemeris.adapter import EphemerisAdapter, ObserverLocation
 from .events import EventOptions, rise_set_times
-
-try:  # pragma: no cover - optional Swiss Ephemeris dependency
-    import swisseph as swe
-except ModuleNotFoundError:  # pragma: no cover - fallback for tests without swe
-    swe = None
+from astroengine.ephemeris.swe import has_swe, swe
 
 
-_SUN_ID = getattr(swe, "SUN", 0)
+_HAS_SWE = has_swe()
+_SUN_ID = int(getattr(swe(), "SUN", 0)) if _HAS_SWE else 0
 _DEFAULT_DEPRESSION_DEG = -0.8333
 _DAY_OFFSETS: Sequence[int] = tuple(range(-3, 4))
 _DEFAULT_ADAPTER: EphemerisAdapter | None = None

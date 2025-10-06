@@ -12,7 +12,7 @@ from astroengine.ephemeris import SwissEphemerisAdapter
 from astroengine.timeline import TransitWindow, window_envelope
 
 try:  # pragma: no cover - pyswisseph guard
-    import swisseph as swe
+    from astroengine.ephemeris.swe import swe
 except Exception:  # pragma: no cover - exercised when ephemeris missing
     swe = None  # type: ignore[assignment]
 

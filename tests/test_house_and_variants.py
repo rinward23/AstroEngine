@@ -15,7 +15,7 @@ def test_house_fallback_records_whole_sign(monkeypatch: pytest.MonkeyPatch) -> N
     adapter = SwissEphemerisAdapter(chart_config=ChartConfig(house_system="placidus"))
     jd = adapter.julian_day(datetime(2024, 1, 1, tzinfo=UTC))
 
-    original = swe.houses_ex
+    original = swe().houses_ex
 
     def patched_houses_ex(jd_ut: float, lat: float, lon: float, code):
         token = code.decode("ascii") if isinstance(code, (bytes, bytearray)) else str(code)
@@ -44,9 +44,9 @@ def test_variant_selection_changes_positions() -> None:
 
     jd = mean_adapter.julian_day(moment)
 
-    mean_node = mean_adapter.body_position(jd, swe.MEAN_NODE, body_name="mean_node")
-    true_node = true_adapter.body_position(jd, swe.TRUE_NODE, body_name="true_node")
-    south_node = true_adapter.body_position(jd, swe.TRUE_NODE, body_name="south_node")
+    mean_node = mean_adapter.body_position(jd, swe().MEAN_NODE, body_name="mean_node")
+    true_node = true_adapter.body_position(jd, swe().TRUE_NODE, body_name="true_node")
+    south_node = true_adapter.body_position(jd, swe().TRUE_NODE, body_name="south_node")
 
     assert not math.isclose(mean_node.longitude, true_node.longitude, abs_tol=1e-6)
     assert math.isclose(
@@ -56,6 +56,6 @@ def test_variant_selection_changes_positions() -> None:
     )
     assert math.isclose(south_node.latitude, -true_node.latitude, rel_tol=1e-6)
 
-    mean_lilith = mean_adapter.body_position(jd, swe.MEAN_APOG, body_name="mean_lilith")
-    true_lilith = true_adapter.body_position(jd, swe.OSCU_APOG, body_name="true_lilith")
+    mean_lilith = mean_adapter.body_position(jd, swe().MEAN_APOG, body_name="mean_lilith")
+    true_lilith = true_adapter.body_position(jd, swe().OSCU_APOG, body_name="true_lilith")
     assert not math.isclose(mean_lilith.longitude, true_lilith.longitude, abs_tol=1e-6)

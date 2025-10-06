@@ -148,14 +148,14 @@ def _lilith_variant_codes() -> Mapping[str, int]:
 def _rise_transit_events() -> Mapping[str, int]:
     swe = _swe()
     return {
-        "rise": swe.CALC_RISE,
-        "set": swe.CALC_SET,
-        "transit": swe.CALC_MTRANSIT,
-        "upper_transit": swe.CALC_MTRANSIT,
-        "meridian_transit": swe.CALC_MTRANSIT,
-        "culmination": swe.CALC_MTRANSIT,
-        "antitransit": swe.CALC_ITRANSIT,
-        "lower_transit": swe.CALC_ITRANSIT,
+        "rise": swe().CALC_RISE,
+        "set": swe().CALC_SET,
+        "transit": swe().CALC_MTRANSIT,
+        "upper_transit": swe().CALC_MTRANSIT,
+        "meridian_transit": swe().CALC_MTRANSIT,
+        "culmination": swe().CALC_MTRANSIT,
+        "antitransit": swe().CALC_ITRANSIT,
+        "lower_transit": swe().CALC_ITRANSIT,
     }
 
 
@@ -343,14 +343,14 @@ class SwissEphemerisAdapter:
         if cls._AYANAMSHA_MODES is None:
             swe = _swe()
             cls._AYANAMSHA_MODES = {
-                "lahiri": swe.SIDM_LAHIRI,
-                "fagan_bradley": swe.SIDM_FAGAN_BRADLEY,
-                "krishnamurti": swe.SIDM_KRISHNAMURTI,
-                "raman": swe.SIDM_RAMAN,
-                "deluce": swe.SIDM_DELUCE,
-                "yukteshwar": swe.SIDM_YUKTESHWAR,
-                "galactic_center_0_sag": swe.SIDM_GALCENT_0SAG,
-                "sassanian": swe.SIDM_SASSANIAN,
+                "lahiri": swe().SIDM_LAHIRI,
+                "fagan_bradley": swe().SIDM_FAGAN_BRADLEY,
+                "krishnamurti": swe().SIDM_KRISHNAMURTI,
+                "raman": swe().SIDM_RAMAN,
+                "deluce": swe().SIDM_DELUCE,
+                "yukteshwar": swe().SIDM_YUKTESHWAR,
+                "galactic_center_0_sag": swe().SIDM_GALCENT_0SAG,
+                "sassanian": swe().SIDM_SASSANIAN,
             }
         return cls._AYANAMSHA_MODES
 
@@ -436,11 +436,11 @@ class SwissEphemerisAdapter:
         self._last_house_metadata: Optional[dict[str, object]] = None
 
         swe = _swe()
-        self._calc_flags = swe.FLG_SWIEPH | swe.FLG_SPEED
-        self._fallback_flags = swe.FLG_MOSEPH | swe.FLG_SPEED
+        self._calc_flags = swe().FLG_SWIEPH | swe().FLG_SPEED
+        self._fallback_flags = swe().FLG_MOSEPH | swe().FLG_SPEED
         if self._is_sidereal:
-            self._calc_flags |= swe.FLG_SIDEREAL
-            self._fallback_flags |= swe.FLG_SIDEREAL
+            self._calc_flags |= swe().FLG_SIDEREAL
+            self._fallback_flags |= swe().FLG_SIDEREAL
 
         self.ephemeris_path = self._configure_ephemeris_path(ephemeris_path)
         if self._is_sidereal:
@@ -573,26 +573,26 @@ class SwissEphemerisAdapter:
         if self._sidereal_mode is None:
             return
         swe = _swe()
-        swe.set_sid_mode(self._sidereal_mode, 0.0, 0.0)
+        swe().set_sid_mode(self._sidereal_mode, 0.0, 0.0)
 
     def _configure_ephemeris_path(
         self, ephemeris_path: str | os.PathLike[str] | None
     ) -> str | None:
         swe = _swe()
         if ephemeris_path is not None:
-            swe.set_ephe_path(str(ephemeris_path))
+            swe().set_ephe_path(str(ephemeris_path))
             return str(ephemeris_path)
 
         env_path = get_se_ephe_path()
         if env_path:
             candidate = Path(env_path)
             if candidate.exists():
-                swe.set_ephe_path(str(candidate))
+                swe().set_ephe_path(str(candidate))
                 return str(candidate)
 
         for candidate in self._DEFAULT_PATHS:
             if candidate.exists():
-                swe.set_ephe_path(str(candidate))
+                swe().set_ephe_path(str(candidate))
                 return str(candidate)
         return None
 
@@ -615,7 +615,7 @@ class SwissEphemerisAdapter:
     def _apply_sidereal_mode(self) -> None:
         if self._sidereal_mode is not None:
             swe = _swe()
-            swe.set_sid_mode(self._sidereal_mode, 0.0, 0.0)
+            swe().set_sid_mode(self._sidereal_mode, 0.0, 0.0)
 
     # ------------------------------------------------------------------
     # Public helpers
@@ -624,7 +624,7 @@ class SwissEphemerisAdapter:
         """Explicitly set the ephemeris search path."""
 
         swe = _swe()
-        swe.set_ephe_path(str(ephemeris_path))
+        swe().set_ephe_path(str(ephemeris_path))
         self.ephemeris_path = str(ephemeris_path)
         return self.ephemeris_path
 
@@ -647,7 +647,7 @@ class SwissEphemerisAdapter:
             + moment_utc.microsecond / 3.6e9
         )
         swe = _swe()
-        return swe.julday(moment_utc.year, moment_utc.month, moment_utc.day, hour)
+        return swe().julday(moment_utc.year, moment_utc.month, moment_utc.day, hour)
 
     @staticmethod
 
@@ -655,7 +655,7 @@ class SwissEphemerisAdapter:
         """Convert a Julian Day in UT back to a timezone-aware datetime."""
 
         swe = _swe()
-        year, month, day, hour = swe.revjul(jd_ut, swe.GREG_CAL)
+        year, month, day, hour = swe().revjul(jd_ut, swe().GREG_CAL)
         base = datetime(year, month, day, tzinfo=UTC)
         seconds = hour * 3600.0
         return base + timedelta(seconds=seconds)
@@ -667,13 +667,13 @@ class SwissEphemerisAdapter:
         self._apply_sidereal_mode()
 
         swe = _swe()
-        flags = self._calc_flags | swe.FLG_EQUATORIAL
+        flags = self._calc_flags | swe().FLG_EQUATORIAL
         try:
             xx, _, serr = swe_calc(
                 jd_ut=jd_ut, planet_index=body_code, flag=flags
             )
         except RuntimeError:
-            flags = self._fallback_flags | swe.FLG_EQUATORIAL
+            flags = self._fallback_flags | swe().FLG_EQUATORIAL
             xx, _, serr = swe_calc(
                 jd_ut=jd_ut, planet_index=body_code, flag=flags
             )
@@ -727,7 +727,7 @@ class SwissEphemerisAdapter:
                 eq_xx, _, serr = swe_calc(
                     jd_ut=jd_ut,
                     planet_index=effective_code,
-                    flag=flags | swe.FLG_EQUATORIAL,
+                    flag=flags | swe().FLG_EQUATORIAL,
                 )
                 _decl, _speed_decl = eq_xx[1], eq_xx[4]
             except RuntimeError:
@@ -773,7 +773,7 @@ class SwissEphemerisAdapter:
         swe = _swe()
         calc_flags = self._calc_flags
         fallback_flags = self._fallback_flags
-        equatorial_flag = swe.FLG_EQUATORIAL
+        equatorial_flag = swe().FLG_EQUATORIAL
 
         body_specs: list[tuple[str, int, bool]] = []
         unique_codes: set[int] = set()
@@ -847,7 +847,7 @@ class SwissEphemerisAdapter:
         """Return the Swiss Ephemeris display name for ``body_code``."""
 
         swe = _swe()
-        return swe.get_planet_name(body_code)
+        return swe().get_planet_name(body_code)
 
     def ayanamsa(self, jd_ut: float, *, true_longitude: bool = False) -> float:
         """Return the ayanamsa value for ``jd_ut`` in degrees."""
@@ -855,9 +855,9 @@ class SwissEphemerisAdapter:
         self._apply_sidereal_mode()
         swe = _swe()
         if true_longitude:
-            delta_t = swe.deltat(jd_ut)
-            return swe.get_ayanamsa(jd_ut + delta_t)
-        return swe.get_ayanamsa_ut(jd_ut)
+            delta_t = swe().deltat(jd_ut)
+            return swe().get_ayanamsa(jd_ut + delta_t)
+        return swe().get_ayanamsa_ut(jd_ut)
 
     def ayanamsa_details(self, jd_ut: float) -> Mapping[str, float | int | None]:
         """Return ayanamsa metadata including Swiss mode flags."""
@@ -865,9 +865,9 @@ class SwissEphemerisAdapter:
         self._apply_sidereal_mode()
         swe = _swe()
         if self._sidereal_mode is None:
-            value = swe.get_ayanamsa_ut(jd_ut)
+            value = swe().get_ayanamsa_ut(jd_ut)
             return {"value": value, "mode": None, "flags": None}
-        flags, value = swe.get_ayanamsa_ex_ut(jd_ut, self._sidereal_mode)
+        flags, value = swe().get_ayanamsa_ex_ut(jd_ut, self._sidereal_mode)
         return {"value": value, "mode": self._sidereal_mode, "flags": flags}
 
     def rise_transit(
@@ -914,11 +914,11 @@ class SwissEphemerisAdapter:
         flags_value = flags if flags is not None else self._calc_flags
         swe = _swe()
         if self._is_sidereal:
-            flags_value |= swe.FLG_SIDEREAL
+            flags_value |= swe().FLG_SIDEREAL
 
         self._apply_sidereal_mode()
         geopos = (float(longitude), float(latitude), float(elevation))
-        status, tret = swe.rise_trans(
+        status, tret = swe().rise_trans(
             jd_ut,
             effective_body,
             rsmi,
@@ -959,12 +959,12 @@ class SwissEphemerisAdapter:
         flags_value = flags if flags is not None else self._calc_flags
         swe = _swe()
         if self._is_sidereal:
-            flags_value |= swe.FLG_SIDEREAL
+            flags_value |= swe().FLG_SIDEREAL
 
         if use_ut:
-            values, resolved_name, retflags = swe.fixstar_ut(name, jd_ut, flags_value)
+            values, resolved_name, retflags = swe().fixstar_ut(name, jd_ut, flags_value)
         else:
-            values, resolved_name, retflags = swe.fixstar(name, jd_ut, flags_value)
+            values, resolved_name, retflags = swe().fixstar(name, jd_ut, flags_value)
 
         lon, lat, dist, speed_lon, speed_lat, speed_dist = values
         return FixedStarPosition(
@@ -1033,7 +1033,7 @@ class SwissEphemerisAdapter:
 
         try:
             swe = _swe()
-            cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, used_code)
+            cusps, angles = swe().houses_ex(jd_ut, latitude, longitude, used_code)
         except Exception as exc:
             # Certain quadrant systems fail at extreme latitudes; fallback to Whole Sign.
             if used_key != "whole_sign":
@@ -1052,7 +1052,7 @@ class SwissEphemerisAdapter:
                     }
                 )
                 swe = _swe()
-                cusps, angles = swe.houses_ex(jd_ut, latitude, longitude, used_code)
+                cusps, angles = swe().houses_ex(jd_ut, latitude, longitude, used_code)
             else:
                 raise
 
@@ -1190,7 +1190,7 @@ def swe_calc(
         cache_key = None
 
     try:
-        calc_fn = swe.calc if use_tt else swe.calc_ut
+        calc_fn = swe().calc if use_tt else swe().calc_ut
         xx, ret_flag = calc_fn(jd_ut, planet_index, flag)
     except Exception as exc:  # pragma: no cover - pass through detailed context
         serr = str(exc)
@@ -1198,7 +1198,7 @@ def swe_calc(
             f"Swiss ephemeris failed for body index {planet_index} at JD {jd_ut}: {serr}"
         ) from exc
 
-    # ``swe.calc_ut`` mirrors the C ``swe_calc`` contract returning the calculation flag
+    # ``swe().calc_ut`` mirrors the C ``swe_calc`` contract returning the calculation flag
     # and populating an error string for negative return codes.  ``pyswisseph`` surfaces
     # the flag directly, but the error text is only visible via the raised exception.
     # Maintain the ``serr`` placeholder for downstream callers to keep the canonical

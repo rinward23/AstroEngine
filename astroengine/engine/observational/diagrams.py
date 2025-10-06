@@ -13,11 +13,7 @@ from ...ephemeris.adapter import EphemerisAdapter, ObserverLocation
 from ...core.dependencies import require_dependency
 from .events import rise_set_times, transit_time
 from .topocentric import MetConditions, horizontal_from_equatorial, topocentric_equatorial
-
-try:  # pragma: no cover - optional Swiss Ephemeris dependency
-    import swisseph as swe
-except ModuleNotFoundError:  # pragma: no cover
-    swe = None
+from astroengine.ephemeris.swe import has_swe, swe
 
 if TYPE_CHECKING:  # pragma: no cover - imported for static typing only
     from PIL import ImageDraw as PILImageDraw
@@ -26,7 +22,8 @@ else:  # pragma: no cover - fallbacks used at runtime without Pillow
     PILImageDraw = Any
     PILImageFont = Any
 
-_SUN_ID = getattr(swe, "SUN", 0)
+_HAS_SWE = has_swe()
+_SUN_ID = int(getattr(swe(), "SUN", 0)) if _HAS_SWE else 0
 
 
 @lru_cache(maxsize=1)

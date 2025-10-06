@@ -8,25 +8,24 @@ from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
-try:  # pragma: no cover - optional dependency in some environments
-    import swisseph as swe
-except ImportError:
+from astroengine.ephemeris.swe import has_swe, swe
+
+if not has_swe():  # pragma: no cover - optional dependency in some environments
     logger.info(
         "pyswisseph not installed",
         extra={"err_code": "SWISSEPH_IMPORT"},
         exc_info=True,
     )
-    swe = None
 
 from ..core.bodies import canonical_name
 from ..ephemeris.cache import calc_ut_cached
 
-SE_SUN = getattr(swe, "SUN", 0) if swe else 0
-SE_MOON = getattr(swe, "MOON", 1) if swe else 1
-SE_MEAN_NODE = getattr(swe, "MEAN_NODE", 10) if swe else 10
-SE_TRUE_NODE = getattr(swe, "TRUE_NODE", 11) if swe else 11
-SE_MEAN_APOG = getattr(swe, "MEAN_APOG", 12) if swe else 12
-SE_OSCU_APOG = getattr(swe, "OSCU_APOG", 13) if swe else 13
+SE_SUN = int(getattr(swe(), "SUN", 0)) if has_swe() else 0
+SE_MOON = int(getattr(swe(), "MOON", 1)) if has_swe() else 1
+SE_MEAN_NODE = int(getattr(swe(), "MEAN_NODE", 10)) if has_swe() else 10
+SE_TRUE_NODE = int(getattr(swe(), "TRUE_NODE", 11)) if has_swe() else 11
+SE_MEAN_APOG = int(getattr(swe(), "MEAN_APOG", 12)) if has_swe() else 12
+SE_OSCU_APOG = int(getattr(swe(), "OSCU_APOG", 13)) if has_swe() else 13
 
 
 @dataclass(frozen=True)

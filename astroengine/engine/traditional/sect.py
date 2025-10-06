@@ -15,7 +15,7 @@ def _sun_altitude(moment: datetime, location: GeoLocation, adapter: SwissEphemer
     adapter = adapter or SwissEphemerisAdapter.get_default_adapter()
     jd_ut = adapter.julian_day(moment.astimezone(UTC))
     swe = get_swisseph()
-    sun_equatorial = adapter.body_equatorial(jd_ut, swe.SUN)
+    sun_equatorial = adapter.body_equatorial(jd_ut, swe().SUN)
     lst = _sidereal_time_degrees(jd_ut, location.longitude)
     hour_angle = (lst - sun_equatorial.right_ascension) % 360.0
     _, altitude = _horizontal_coordinates(

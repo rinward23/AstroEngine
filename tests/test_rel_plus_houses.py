@@ -25,13 +25,13 @@ def _julian_day(dt: datetime) -> float:
         + ts.second / 3600.0
         + ts.microsecond / 3_600_000_000.0
     )
-    return swe.julday(ts.year, ts.month, ts.day, frac)
+    return swe().julday(ts.year, ts.month, ts.day, frac)
 
 
 def _obliquity(jd_ut: float) -> float:
     if hasattr(swe, "obl_ecl"):
-        return swe.obl_ecl(jd_ut)[0]  # type: ignore[call-arg]
-    values, _ = swe.calc_ut(jd_ut, swe.ECL_NUT, swe.FLG_SWIEPH)
+        return swe().obl_ecl(jd_ut)[0]  # type: ignore[call-arg]
+    values, _ = swe().calc_ut(jd_ut, swe().ECL_NUT, swe().FLG_SWIEPH)
     return values[0]
 
 
@@ -41,7 +41,7 @@ def test_davison_houses_matches_swe():
     houses = davison_houses(result, "O")
 
     jd = _julian_day(dt)
-    cusps_ref, ascmc_ref = swe.houses_ex(jd, result.mid_lat, result.mid_lon, b"O")
+    cusps_ref, ascmc_ref = swe().houses_ex(jd, result.mid_lat, result.mid_lon, b"O")
 
     assert pytest.approx(houses.ascendant, rel=0, abs=1e-6) == (ascmc_ref[0] % 360.0)
     assert pytest.approx(houses.midheaven, rel=0, abs=1e-6) == (ascmc_ref[1] % 360.0)
@@ -56,13 +56,13 @@ def test_composite_houses_armc_midpoint_matches_reference():
 
     jd_a = _julian_day(event_a.when)
     jd_b = _julian_day(event_b.when)
-    lst_a = (swe.sidtime(jd_a) * 15.0 + event_a.lon) % 360.0
-    lst_b = (swe.sidtime(jd_b) * 15.0 + event_b.lon) % 360.0
+    lst_a = (swe().sidtime(jd_a) * 15.0 + event_a.lon) % 360.0
+    lst_b = (swe().sidtime(jd_b) * 15.0 + event_b.lon) % 360.0
     armc = circular_midpoint(lst_a, lst_b)
     mid_lat, _ = geodesic_midpoint(event_a.lat, event_a.lon, event_b.lat, event_b.lon)
     jd_mid = _julian_day(midpoint_time(event_a.when, event_b.when))
     eps = _obliquity(jd_mid)
-    cusps_ref, ascmc_ref = swe.houses_armc(armc, mid_lat, eps, b"O")
+    cusps_ref, ascmc_ref = swe().houses_armc(armc, mid_lat, eps, b"O")
 
     assert pytest.approx(houses.ascendant, rel=0, abs=1e-6) == (ascmc_ref[0] % 360.0)
     assert pytest.approx(houses.midheaven, rel=0, abs=1e-6) == (ascmc_ref[1] % 360.0)

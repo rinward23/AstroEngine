@@ -17,7 +17,7 @@ from astroengine.engine.vedic import (
 
 
 def _jd(moment: datetime) -> float:
-    return swe.julday(moment.year, moment.month, moment.day, moment.hour + moment.minute / 60.0)
+    return swe().julday(moment.year, moment.month, moment.day, moment.hour + moment.minute / 60.0)
 
 
 def test_ayanamsa_matches_swisseph():
@@ -29,7 +29,7 @@ def test_ayanamsa_matches_swisseph():
     for moment in moments:
         jd = _jd(moment)
         for preset, info in SIDEREAL_PRESETS.items():
-            _flags, expected = swe.get_ayanamsa_ex_ut(jd, info.swe_mode)
+            _flags, expected = swe().get_ayanamsa_ex_ut(jd, info.swe_mode)
             result = ayanamsa_value(preset, moment)
             assert abs(result - expected) < 1e-4
 

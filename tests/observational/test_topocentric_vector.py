@@ -28,7 +28,7 @@ def _angular_delta(a: float, b: float) -> float:
 def test_topocentric_matches_swiss_ephemeris() -> None:
     observer = ObserverLocation(latitude_deg=51.4779, longitude_deg=-0.0015, elevation_m=46.0)
     moment = datetime(2024, 3, 20, 5, 30, tzinfo=UTC)
-    body = swe.MOON
+    body = swe().MOON
 
     geo_adapter = _adapter(False, None)
     topo_equ = topocentric_equatorial(geo_adapter, body, moment, observer)

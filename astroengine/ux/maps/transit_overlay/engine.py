@@ -6,10 +6,7 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Dict, Mapping, Sequence
 
-try:  # pragma: no cover - optional dependency during docs builds
-    import swisseph as swe  # type: ignore
-except ModuleNotFoundError:  # pragma: no cover - handled at runtime
-    swe = None
+from astroengine.ephemeris.swe import has_swe, swe
 
 from ....chart.config import ChartConfig
 from ....chart.natal import ChartLocation
@@ -214,7 +211,8 @@ def compute_overlay_frames(
 # ---------------------------------------------------------------------------
 
 _PLANET_CODES: dict[str, int] = {}
-if swe is not None:  # pragma: no branch - evaluated once at import time
+if has_swe():  # pragma: no branch - evaluated once at import time
+    swe_module = swe()
     for name in (
         "sun",
         "moon",
@@ -229,10 +227,10 @@ if swe is not None:  # pragma: no branch - evaluated once at import time
         "pluto",
     ):
         attr = name.upper()
-        code = getattr(swe, attr, None)
+        code = getattr(swe_module, attr, None)
         if code is not None:
             _PLANET_CODES[name] = int(code)
-    chiron = getattr(swe, "CHIRON", None)
+    chiron = getattr(swe_module, "CHIRON", None)
     if chiron is not None:
         _PLANET_CODES["chiron"] = int(chiron)
 

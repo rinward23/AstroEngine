@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import os
 import sys
 import types
@@ -8,6 +9,9 @@ import warnings
 from pathlib import Path
 
 import pytest
+
+if importlib.util.find_spec("swisseph") is None:
+    pytest.skip("pyswisseph not installed", allow_module_level=True)
 
 import st_shim as _st_shim
 

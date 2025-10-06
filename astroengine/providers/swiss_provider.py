@@ -21,15 +21,16 @@ from astroengine.ephemeris.support import SupportIssue
 from astroengine.core.bodies import canonical_name
 from .swisseph_adapter import VariantConfig, se_body_id_for
 
-try:
-    import swisseph as swe  # pyswisseph imports the module name 'swisseph'
-except ImportError:
+from astroengine.ephemeris.swe import has_swe, swe
+
+_HAS_SWE = has_swe()
+
+if not _HAS_SWE:
     LOG.info(
         "pyswisseph not installed",
         extra={"err_code": "SWISS_IMPORT"},
         exc_info=True,
     )
-    swe = None
 
 try:  # pragma: no cover - exercised via runtime fallback
     from pymeeus.Epoch import Epoch
@@ -84,7 +85,8 @@ _BODY_IDS: Dict[str, int] = {
     "pluto": 9,
 }
 
-if swe is not None:  # pragma: no cover - depends on installed ephemeris
+if _HAS_SWE:  # pragma: no cover - depends on installed ephemeris
+    swe_module = swe()
     for attr, name in (
         ("CERES", "ceres"),
         ("PALLAS", "pallas"),
@@ -101,18 +103,18 @@ if swe is not None:  # pragma: no cover - depends on installed ephemeris
         ("ORCUS", "orcus"),
         ("IXION", "ixion"),
     ):
-        code = getattr(swe, attr, None)
+        code = getattr(swe_module, attr, None)
         if code is not None:
             _BODY_IDS[name] = int(code)
 
 
 class SwissProvider:
     def __init__(self) -> None:
-        if swe is None:
+        if not _HAS_SWE:
             raise ImportError("pyswisseph is not installed")
         eph = get_se_ephe_path()
         if eph:
-            swe.set_ephe_path(eph)
+            swe().set_ephe_path(eph)
         self._config = EphemerisConfig(ephemeris_path=str(eph) if eph else None)
         self._adapter = EphemerisAdapter(self._config)
         self._body_ids = dict(_BODY_IDS)
@@ -358,7 +360,7 @@ class SwissFallbackProvider:
 
 
 def _register() -> None:
-    if swe is not None:
+    if _HAS_SWE:
         register_provider("swiss", SwissProvider())
     elif _PYMEEUS_AVAILABLE:
         register_provider("swiss", SwissFallbackProvider())

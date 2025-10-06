@@ -1,16 +1,17 @@
-"""Swiss Ephemeris call caches."""
-
 from __future__ import annotations
 
 from functools import lru_cache
 
 from .swe import swe
 
-__all__ = ["calc_ut_cached"]
-
 
 @lru_cache(maxsize=200_000)
 def calc_ut_cached(jd: float, ipl: int, flags: int = 0):
-    """Return cached :func:`swisseph.calc_ut` results for ``(jd, ipl, flags)``."""
-
+    """Cached wrapper for swe().calc_ut; speeds up transit/electional scans."""
     return swe().calc_ut(jd, ipl, flags)
+
+
+@lru_cache(maxsize=200_000)
+def julday_cached(y: int, m: int, d: int, ut: float):
+    """Cached wrapper for swe().julday; avoids recomputing repeated JDs."""
+    return swe().julday(y, m, d, ut)
