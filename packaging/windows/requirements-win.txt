@@ -1,0 +1,4 @@
+--only-binary :all:
+-r requirements.txt
+timezonefinder==6.2.*
+pyinstaller==6.10.*
