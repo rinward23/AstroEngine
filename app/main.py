@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
-from typing import Awaitable, Callable
+from typing import Any, Awaitable, Callable
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -95,12 +96,39 @@ if DEV_MODE_ENABLED:
     app.include_router(devmode_router)
 
 
+def _log_ephemeris_path(state: Any) -> None:
+    """Record Swiss ephemeris path configuration and surface startup warnings."""
+
+    ephe_raw = os.getenv("SE_EPHE_PATH")
+    state.se_ephe_path = ephe_raw
+    if not ephe_raw:
+        state.se_ephe_path_resolved = None
+        state.se_ephe_path_exists = False
+        LOGGER.warning(
+            "Swiss Ephemeris path not configured; set SE_EPHE_PATH to enable high-precision Swiss data."
+        )
+        return
+
+    candidate = Path(ephe_raw).expanduser()
+    state.se_ephe_path_resolved = str(candidate)
+    exists = candidate.exists()
+    state.se_ephe_path_exists = exists
+    if exists:
+        LOGGER.info("Swiss Ephemeris path resolved to %s", candidate)
+    else:
+        LOGGER.warning(
+            "Swiss Ephemeris path %s does not exist; Swiss calculations may fall back to bundled data.",
+            candidate,
+        )
+
+
 @app.on_event("startup")
 def _init_singletons() -> None:
     """Initialize application-wide state on startup."""
 
     app.state.trust_proxy = os.getenv("TRUST_PROXY", "0").lower() in {"1", "true", "yes"}
     app.state.settings = load_settings()
+    _log_ephemeris_path(app.state)
     app.state.safe_mode = SAFE_MODE
     if SAFE_MODE:
         app.state.plugin_registry = None

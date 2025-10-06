@@ -24,6 +24,8 @@ make cache-warm  # populate ephemeris cache with verified data
 make run-api  # start the FastAPI service on http://127.0.0.1:8000
 make run-ui   # launch the Streamlit workspace on http://127.0.0.1:8501
 export SE_EPHE_PATH=/path/to/se/data   # optional for precision; falls back if missing
+# Windows (PowerShell): $env:SE_EPHE_PATH="C:/AstroEngine/ephe"
+# Windows (Command Prompt, persistent): setx SE_EPHE_PATH "C:\AstroEngine\ephe"
 ```
 
 ### One-command usability check
@@ -192,7 +194,9 @@ channel, and subchannel remains intact and data-backed:
 2. Ensure Swiss ephemeris files exist and set `SE_EPHE_PATH` (if using swiss provider):
 
    ```bash
-   export SE_EPHE_PATH="$HOME/.sweph/ephe"    # Windows: $env:SE_EPHE_PATH="C:/sweph"
+   export SE_EPHE_PATH="$HOME/.sweph/ephe"
+   # Windows (PowerShell): $env:SE_EPHE_PATH="C:/AstroEngine/ephe"
+   # Windows (Command Prompt, persistent): setx SE_EPHE_PATH "C:\AstroEngine\ephe"
    ```
 
 3. (Optional) Pin scan functions by exporting `ASTROENGINE_SCAN_ENTRYPOINTS` (comma/space separated `module:function`):
