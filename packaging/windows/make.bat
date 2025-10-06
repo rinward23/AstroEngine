@@ -12,6 +12,8 @@ pip install -r requirements.txt
 if exist requirements-optional.txt pip install -r requirements-optional.txt
 
 REM Build launcher
+REM Ensure the expected PyInstaller toolchain is available.
+pip install "pyinstaller==6.10.*"
 pyinstaller packaging\windows\astroengine.spec --noconfirm
 if errorlevel 1 goto :error
 
