@@ -12,6 +12,7 @@ The developer platform module guarantees that external integrations are driven b
 - `developer_platform.cli.workflows.transit_scan`
 - `developer_platform.devportal.surfaces.{docs,playground,collections}`
 - `developer_platform.webhooks.contracts.{jobs,verification}`
+- `developer_platform.installers.windows.one_click`
 
 The registry entries currently mark these surfaces as planned deliverables while anchoring them to the documentation listed in this file.
 
@@ -30,6 +31,7 @@ The remainder of this document routes readers to the submodule specifications an
 | `cli` | `workflows` | Python-based CLI commands aligned with runtime modules (`scan`, `events`, `election`, `progressions`, `returns`, `export`). |
 | `devportal` | `docs`, `playground`, `collections` | Developer portal assets (Docusaurus site, runnable playground, Postman/Insomnia collections). |
 | `webhooks` | `jobs`, `verification` | Optional webhook delivery contracts and signature verification helpers. |
+| `installers` | `windows` | Desktop installer experiences, beginning with the SPEC-02 Windows one-click workflow. |
 
 Each submodule document contains:
 
