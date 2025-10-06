@@ -1,8 +1,8 @@
 # >>> AUTO-GEN BEGIN: AE Providers Registry v1.0
 from __future__ import annotations
 
-from collections.abc import Iterable
 import logging
+from collections.abc import Iterable
 from typing import Protocol
 
 from ..canonical import BodyPosition

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -12,21 +12,21 @@ class EventIntervalOut(BaseModel):
     kind: Literal["voc_moon", "cazimi", "combust", "under_beams", "return"]
     start: datetime
     end: datetime
-    meta: Dict[str, Any] = Field(default_factory=dict)
+    meta: dict[str, Any] = Field(default_factory=dict)
 
 
 class VoCMoonRequest(BaseModel):
     window: TimeWindow
-    aspects: List[AspectName] = Field(
+    aspects: list[AspectName] = Field(
         ..., description="Aspect set to consider for VoC determination"
     )
-    other_objects: List[str] = Field(
+    other_objects: list[str] = Field(
         ..., description="Bodies Moon may aspect (e.g., Sun,Mercury,...) not including Moon"
     )
     step_minutes: int = Field(60, ge=1, le=720)
 
-    orb_policy_id: Optional[int] = None
-    orb_policy_inline: Optional[OrbPolicyInline] = None
+    orb_policy_id: int | None = None
+    orb_policy_inline: OrbPolicyInline | None = None
 
     model_config = ConfigDict(
         json_schema_extra={

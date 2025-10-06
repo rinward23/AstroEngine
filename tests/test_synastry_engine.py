@@ -1,8 +1,8 @@
 from core.relationship_plus.synastry import (
+    overlay_positions,
     synastry_grid,
     synastry_hits,
     synastry_score,
-    overlay_positions,
 )
 
 POS_A = {"Sun": 350.0, "Moon": 20.0, "Mars": 100.0}

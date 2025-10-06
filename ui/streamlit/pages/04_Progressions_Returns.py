@@ -1,21 +1,23 @@
 from __future__ import annotations
+
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from ui.streamlit.api import APIClient
 from core.charts_plus.progressions import (
     secondary_progressed_datetime,
     secondary_progressed_positions,
     solar_arc_positions,
 )
-from core.charts_plus.returns import find_next_return, find_returns_in_window, ReturnWindow
+from core.charts_plus.returns import ReturnWindow, find_next_return, find_returns_in_window
+from ui.streamlit.api import APIClient
+
 
 # ---------------------------------------------------------------------------
 # Demo provider — linear ecliptic motion in deg/day
@@ -25,10 +27,10 @@ class LinearEphemeris:
     """Minimal linear ephemeris for demos and verification."""
 
     t0: datetime
-    base: Dict[str, float]
-    rates: Dict[str, float]
+    base: dict[str, float]
+    rates: dict[str, float]
 
-    def __call__(self, ts: datetime) -> Dict[str, float]:
+    def __call__(self, ts: datetime) -> dict[str, float]:
         dt_days = (ts - self.t0).total_seconds() / 86400.0
         return {
             k: (self.base.get(k, 0.0) + self.rates.get(k, 0.0) * dt_days) % 360.0
@@ -107,7 +109,7 @@ with st.sidebar:
         )
 
 st.sidebar.header("Ephemeris (demo)")
-now = datetime.now(timezone.utc)
+now = datetime.now(UTC)
 
 default_base = {
     "Sun": 10.0,
@@ -152,7 +154,7 @@ rates = dict(default_rates)
 rates.update({"Sun": adj_sun, "Moon": adj_moon, "Mercury": adj_mer})
 
 provider = LinearEphemeris(
-    t0=datetime(int(start_year), int(start_month), int(start_day), tzinfo=timezone.utc),
+    t0=datetime(int(start_year), int(start_month), int(start_day), tzinfo=UTC),
     base=default_base,
     rates=rates,
 )
@@ -163,7 +165,7 @@ default_objects = st.session_state.get("progressions_objects")
 if not default_objects:
     default_objects = ["Sun", "Moon", "Mercury", "Venus", "Mars"]
     st.session_state["progressions_objects"] = default_objects
-sel_objects: List[str] = st.multiselect(
+sel_objects: list[str] = st.multiselect(
     "Objects",
     ALL_OBJECTS,
     default=default_objects,
@@ -180,7 +182,7 @@ with TAB1:
     st.subheader("Progressions")
     col1, col2, col3 = st.columns(3)
 
-    natal_dt = col1.datetime_input("Natal datetime (UTC)", value=datetime(now.year-30, 6, 1, 12, 0, tzinfo=timezone.utc))
+    natal_dt = col1.datetime_input("Natal datetime (UTC)", value=datetime(now.year-30, 6, 1, 12, 0, tzinfo=UTC))
     target_dt = col2.datetime_input("Target datetime (UTC)", value=now)
     mode = col3.selectbox("Mode", ["Secondary", "Solar Arc"], index=0)
 

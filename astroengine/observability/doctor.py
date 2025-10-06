@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+import sqlite3
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from importlib import import_module
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Literal, Mapping
-
-import sqlite3
 from shutil import disk_usage
+from typing import TYPE_CHECKING, Any, Literal
 
 from astroengine.config import Settings, get_config_home, load_settings
 from astroengine.ephemeris.utils import get_se_ephe_path
@@ -53,7 +53,7 @@ def _merge_status(values: Iterable[Status]) -> Status:
     return worst  # type: ignore[return-value]
 
 
-def _get_default_adapter() -> "_SwissEphemerisAdapter":
+def _get_default_adapter() -> _SwissEphemerisAdapter:
     from astroengine.ephemeris import SwissEphemerisAdapter
 
     return SwissEphemerisAdapter.get_default_adapter()
@@ -109,7 +109,7 @@ def _check_swisseph(settings: Settings) -> DoctorCheck:
     for year in {settings.swiss_caps.min_year, settings.swiss_caps.max_year}:
         try:
             jd = swe().julday(int(year), 1, 1, 0.0)
-            sample = adapter.body_position(jd, int(getattr(swe, "SUN")), "Sun")
+            sample = adapter.body_position(jd, int(swe.SUN), "Sun")
         except Exception as exc:  # pragma: no cover - runtime failure reported in detail
             compute_status = "error"
             samples.append(
@@ -195,6 +195,7 @@ def _check_migrations() -> DoctorCheck:
         from alembic.config import Config
         from alembic.runtime.migration import MigrationContext
         from alembic.script import ScriptDirectory
+
         from app.db.session import engine
     except Exception as exc:  # pragma: no cover - alembic optional in some envs
         return DoctorCheck(

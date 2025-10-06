@@ -1,10 +1,10 @@
 """Position engine powering the transit ↔ natal overlay."""
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import lru_cache
-from typing import Dict, Mapping, Sequence
 
 from astroengine.ephemeris.swe import has_swe, swe
 
@@ -15,6 +15,8 @@ from ....core.time import ensure_utc
 from ....ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from ....providers.swisseph_adapter import (
     VariantConfig as ProviderVariantConfig,
+)
+from ....providers.swisseph_adapter import (
     position_vec,
     position_with_variants,
 )
@@ -53,14 +55,14 @@ class OverlayOptions:
             object.__setattr__(self, "orb_conjunction", float(self.orb_conjunction))
         if self.orb_opposition is not None:
             object.__setattr__(self, "orb_opposition", float(self.orb_opposition))
-        overrides: Dict[str, float] = {}
+        overrides: dict[str, float] = {}
         for key, value in dict(self.orb_overrides or {}).items():
             canonical = canonical_name(str(key))
             overrides[canonical] = float(value)
         object.__setattr__(self, "orb_overrides", overrides)
 
     @classmethod
-    def from_mapping(cls, payload: Mapping[str, object] | None) -> "OverlayOptions":
+    def from_mapping(cls, payload: Mapping[str, object] | None) -> OverlayOptions:
         if payload is None:
             return cls()
         if isinstance(payload, OverlayOptions):

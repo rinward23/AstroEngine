@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
-from ..ephemeris import BodyPosition, HousePositions
 from ..detectors.ingresses import sign_index, sign_name
+from ..ephemeris import BodyPosition, HousePositions
 from .aspects import GrahaYuddhaOutcome
 from .data import (
     COMBUSTION_LIMITS,

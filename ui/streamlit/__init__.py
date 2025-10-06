@@ -73,7 +73,7 @@ def _install_error_wrapper() -> None:
         _render_error_id(result, error_id)
 
         try:  # pragma: no cover - attribute may not exist on shim
-            setattr(result, "error_id", error_id)
+            result.error_id = error_id
         except Exception:
             pass
 

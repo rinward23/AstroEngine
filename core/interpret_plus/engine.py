@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
-from collections import defaultdict
-from copy import deepcopy
 import json
 import math
 import os
+from collections import defaultdict
+from collections.abc import Mapping, MutableMapping, Sequence
+from copy import deepcopy
+from dataclasses import dataclass
+from typing import Any
 
 try:  # pragma: no cover - optional dependency for richer rulepacks
     import yaml  # type: ignore
@@ -24,18 +25,18 @@ class Finding:
     title: str
     text: str
     score: float
-    tags: List[str]
-    meta: Dict[str, Any]
+    tags: list[str]
+    meta: dict[str, Any]
 
 
-Rule = Dict[str, Any]
-Request = Dict[str, Any]
-SynastryHit = Dict[str, Any]
-Pack = Dict[str, Any]
+Rule = dict[str, Any]
+Request = dict[str, Any]
+SynastryHit = dict[str, Any]
+Pack = dict[str, Any]
 
 
 # --------------------------- Constants -------------------------------------
-ASPECT_SYMBOLS: Dict[str, str] = {
+ASPECT_SYMBOLS: dict[str, str] = {
     "conjunction": "☌",
     "opposition": "☍",
     "trine": "△",
@@ -44,7 +45,7 @@ ASPECT_SYMBOLS: Dict[str, str] = {
     "quincunx": "⚻",
 }
 
-ARCHETYPES: Dict[str, str] = {
+ARCHETYPES: dict[str, str] = {
     "Sun": "Core Self",
     "Moon": "Emotional Body",
     "Mercury": "Mind & Speech",
@@ -59,7 +60,7 @@ ARCHETYPES: Dict[str, str] = {
     "MC": "Midheaven",
 }
 
-ASPECT_ALIASES: Dict[Any, str] = {
+ASPECT_ALIASES: dict[Any, str] = {
     0: "conjunction",
     30: "semi-sextile",
     45: "semi-square",
@@ -76,13 +77,13 @@ ASPECT_ALIASES: Dict[Any, str] = {
     "180": "opposition",
 }
 
-ASPECT_FAMILIES: Dict[str, Sequence[str]] = {
+ASPECT_FAMILIES: dict[str, Sequence[str]] = {
     "harmonious": ("sextile", "trine"),
     "challenging": ("square", "opposition", "sesquiquadrate", "semi-square"),
     "neutral": ("conjunction", "quincunx", "semi-sextile"),
 }
 
-ASPECT_TO_FAMILY: Dict[str, str] = {
+ASPECT_TO_FAMILY: dict[str, str] = {
     aspect: family
     for family, aspects in ASPECT_FAMILIES.items()
     for aspect in aspects
@@ -99,7 +100,7 @@ def _fmt(template: str, ctx: Mapping[str, Any]) -> str:
         return template
 
 
-def _coerce_seq(raw: Any) -> Tuple[str, ...]:
+def _coerce_seq(raw: Any) -> tuple[str, ...]:
     if raw is None:
         return ()
     if isinstance(raw, (list, tuple, set)):
@@ -107,7 +108,7 @@ def _coerce_seq(raw: Any) -> Tuple[str, ...]:
     return (str(raw),)
 
 
-def _normalise_aspect(value: Any) -> Optional[str]:
+def _normalise_aspect(value: Any) -> str | None:
     if value is None:
         return None
     if isinstance(value, (int, float)):
@@ -116,13 +117,13 @@ def _normalise_aspect(value: Any) -> Optional[str]:
     return ASPECT_ALIASES.get(value_str) or value_str
 
 
-def _aspect_family(aspect: Optional[str]) -> Optional[str]:
+def _aspect_family(aspect: str | None) -> str | None:
     if aspect is None:
         return None
     return ASPECT_TO_FAMILY.get(aspect.lower())
 
 
-def _strength_transform(strength: float, spec: Optional[str]) -> float:
+def _strength_transform(strength: float, spec: str | None) -> float:
     if spec is None or spec == "linear":
         return strength
     if spec.startswith("cosine"):
@@ -170,7 +171,7 @@ def _merge_profiles(base: MutableMapping[str, Any], extra: Mapping[str, Any]) ->
 
 
 def _load_raw(path: str) -> Any:
-    with open(path, "r", encoding="utf-8") as handle:
+    with open(path, encoding="utf-8") as handle:
         raw = handle.read()
     if path.endswith(".json") or yaml is None:
         return json.loads(raw)
@@ -199,10 +200,10 @@ def _normalise_pack(data: Any, *, source: str, stack: Sequence[str] = ()) -> Pac
     includes = data.get("includes") or []
     base_dir = os.path.dirname(source)
 
-    combined_rules: List[Rule] = []
-    combined_tag_map: Dict[str, Any] = {}
-    combined_profiles: Dict[str, Any] = {}
-    combined_meta: Dict[str, Any] = {}
+    combined_rules: list[Rule] = []
+    combined_tag_map: dict[str, Any] = {}
+    combined_profiles: dict[str, Any] = {}
+    combined_meta: dict[str, Any] = {}
 
     for entry in includes:
         include_path = entry.get("path")
@@ -269,7 +270,7 @@ def load_rules(path: str, _stack: Sequence[str] = ()) -> Pack:
 
 
 # --------------------------- DSL Normalisation ------------------------------
-def _extract_result(rule: Rule) -> Dict[str, Any]:
+def _extract_result(rule: Rule) -> dict[str, Any]:
     result = rule.get("then") or {}
     if not result:
         result = {
@@ -323,14 +324,14 @@ def _matches_bodies(hit: SynastryHit, cond: Mapping[str, Any]) -> bool:
     return {a, b} == bodies
 
 
-def _match_synastry_condition(cond: Mapping[str, Any], hits: Sequence[SynastryHit]) -> List[SynastryHit]:
+def _match_synastry_condition(cond: Mapping[str, Any], hits: Sequence[SynastryHit]) -> list[SynastryHit]:
     aspect_names = {_normalise_aspect(item) for item in cond.get("aspects", [])}
     aspect_in = {str(name).lower() for name in cond.get("aspect_in", [])}
     aspect_names.discard(None)
     families = {str(name).lower() for name in cond.get("family", [])}
     min_severity = float(cond.get("min_severity", 0.0))
 
-    matches: List[SynastryHit] = []
+    matches: list[SynastryHit] = []
     for hit in hits:
         aspect = _normalise_aspect(hit.get("aspect"))
         if aspect_names and aspect not in aspect_names:
@@ -354,14 +355,14 @@ def _match_synastry_condition(cond: Mapping[str, Any], hits: Sequence[SynastryHi
     return matches
 
 
-def _evaluate_group(cond: Mapping[str, Any], hits: Sequence[SynastryHit]) -> List[SynastryHit]:
+def _evaluate_group(cond: Mapping[str, Any], hits: Sequence[SynastryHit]) -> list[SynastryHit]:
     block = cond.get("group") or {}
     if not block:
         return []
 
     if "any" in block:
         subconditions = block["any"] or []
-        matched: Dict[Tuple[str, str, str], SynastryHit] = {}
+        matched: dict[tuple[str, str, str], SynastryHit] = {}
         for sub in subconditions:
             for hit in _match_synastry_condition(sub, hits):
                 key = (hit.get("a"), hit.get("b"), hit.get("aspect"))
@@ -384,7 +385,7 @@ def _evaluate_group(cond: Mapping[str, Any], hits: Sequence[SynastryHit]) -> Lis
     return matches
 
 
-def _match_synastry(rule: Rule, hits: Sequence[SynastryHit]) -> List[Dict[str, Any]]:
+def _match_synastry(rule: Rule, hits: Sequence[SynastryHit]) -> list[dict[str, Any]]:
     cond = rule.get("when", {}) or {}
 
     group_matches = _evaluate_group(cond, hits)
@@ -402,7 +403,7 @@ def _match_synastry(rule: Rule, hits: Sequence[SynastryHit]) -> List[Dict[str, A
         return []
 
     matches = _match_synastry_condition(cond, hits)
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     for hit in matches:
         results.append(
             {
@@ -415,7 +416,7 @@ def _match_synastry(rule: Rule, hits: Sequence[SynastryHit]) -> List[Dict[str, A
     return results
 
 
-def _match_chart(rule: Rule, request: Request) -> List[Dict[str, Any]]:
+def _match_chart(rule: Rule, request: Request) -> list[dict[str, Any]]:
     cond = rule.get("when", {}) or {}
     positions = request.get("positions", {}) or {}
     houses_data = request.get("houses", {}) or {}
@@ -431,7 +432,7 @@ def _match_chart(rule: Rule, request: Request) -> List[Dict[str, Any]]:
         angles_any = [str(item) for item in house_block.get("angles_any", house_block.get("angle", []))]
         orb = float(house_block.get("orb", 2.0))
 
-        matches: List[Dict[str, Any]] = []
+        matches: list[dict[str, Any]] = []
         for body in target_bodies:
             info = houses_data.get(body)
             if isinstance(info, Mapping):
@@ -462,7 +463,7 @@ def _match_chart(rule: Rule, request: Request) -> List[Dict[str, Any]]:
     bodies = _coerce_seq(cond.get("bodies") or cond.get("body"))
     ranges = cond.get("longitude_ranges") or []
     normalised_ranges = [tuple(map(float, window)) for window in ranges]
-    matches: List[Dict[str, Any]] = []
+    matches: list[dict[str, Any]] = []
     for body in bodies:
         if body not in positions:
             continue
@@ -481,14 +482,14 @@ def _match_chart(rule: Rule, request: Request) -> List[Dict[str, Any]]:
 
 
 # --------------------------- Scoring Helpers -------------------------------
-def _profile_multiplier(tags: Sequence[str], pack: Pack, profile_name: Optional[str]) -> float:
+def _profile_multiplier(tags: Sequence[str], pack: Pack, profile_name: str | None) -> float:
     profile = pack.get("profiles", {}).get(profile_name or "", {})
     if not profile:
         profile = pack.get("profiles", {}).get(pack.get("default_profile", "default"), {})
     tags_weights = profile.get("tags", {}) if isinstance(profile, Mapping) else {}
 
     tag_map = pack.get("tag_map", {})
-    weights: List[float] = []
+    weights: list[float] = []
     for tag in tags:
         entry = tag_map.get(tag, {})
         bucket = entry.get("bucket") if isinstance(entry, Mapping) else None
@@ -501,7 +502,7 @@ def _profile_multiplier(tags: Sequence[str], pack: Pack, profile_name: Optional[
     return sum(weights) / len(weights)
 
 
-def _apply_boost(score: float, boost: Optional[Mapping[str, Any]]) -> float:
+def _apply_boost(score: float, boost: Mapping[str, Any] | None) -> float:
     if not boost:
         return score
     factor = float(boost.get("by", 1.0))
@@ -512,7 +513,7 @@ def _apply_boost(score: float, boost: Optional[Mapping[str, Any]]) -> float:
     return adjusted
 
 
-def _build_conflict_key(match: Mapping[str, Any], rule: Rule, scope: str) -> Tuple[Any, ...]:
+def _build_conflict_key(match: Mapping[str, Any], rule: Rule, scope: str) -> tuple[Any, ...]:
     if match.get("kind") == "synastry":
         primary = match.get("primary", {})
         pair = tuple(sorted((primary.get("a"), primary.get("b"))))
@@ -524,7 +525,7 @@ def _build_conflict_key(match: Mapping[str, Any], rule: Rule, scope: str) -> Tup
     return (scope, body)
 
 
-def _pair_key(match: Mapping[str, Any]) -> Optional[Tuple[str, str]]:
+def _pair_key(match: Mapping[str, Any]) -> tuple[str, str] | None:
     primary = match.get("primary")
     if not isinstance(primary, Mapping):
         return None
@@ -540,8 +541,8 @@ def _prepare_candidate(
     match: Mapping[str, Any],
     pack: Pack,
     scope: str,
-    profile: Optional[str],
-) -> Optional[Dict[str, Any]]:
+    profile: str | None,
+) -> dict[str, Any] | None:
     then = rule.get("then", {}) or {}
     tags = list(then.get("tags", []))
 
@@ -617,8 +618,8 @@ def _prepare_candidate(
     return candidate
 
 
-def _resolve_conflicts(candidates: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    by_key: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
+def _resolve_conflicts(candidates: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_key: dict[tuple[Any, ...], dict[str, Any]] = {}
     for cand in candidates:
         key = cand.get("conflict_key")
         existing = by_key.get(key)
@@ -633,9 +634,9 @@ def _resolve_conflicts(candidates: Sequence[Dict[str, Any]]) -> List[Dict[str, A
     return list(by_key.values())
 
 
-def _apply_limits(candidates: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    counts: Dict[Tuple[str, str], int] = defaultdict(int)
-    results: List[Dict[str, Any]] = []
+def _apply_limits(candidates: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts: dict[tuple[str, str], int] = defaultdict(int)
+    results: list[dict[str, Any]] = []
     for cand in sorted(candidates, key=lambda item: (-item["score"], item["rule_id"])):
         limit = cand.get("limit") or {}
         pair_key = cand.get("pair_key")
@@ -650,7 +651,7 @@ def _apply_limits(candidates: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 # --------------------------- Engine ----------------------------------------
-def interpret(request: Request, rules: Sequence[Rule] | Pack) -> List[Finding]:
+def interpret(request: Request, rules: Sequence[Rule] | Pack) -> list[Finding]:
     """Evaluate the supplied rules or rulepack against the request payload."""
 
     if isinstance(rules, Mapping) and "rules" in rules:
@@ -668,7 +669,7 @@ def interpret(request: Request, rules: Sequence[Rule] | Pack) -> List[Finding]:
     scope = request.get("scope")
     profile = request.get("profile")
 
-    matches: List[Dict[str, Any]] = []
+    matches: list[dict[str, Any]] = []
     for raw_rule in pack.get("rules", []):
         rule = _normalise_rule(raw_rule)
         if rule.get("scope") != scope:
@@ -689,7 +690,7 @@ def interpret(request: Request, rules: Sequence[Rule] | Pack) -> List[Finding]:
     resolved = _resolve_conflicts(matches)
     limited = _apply_limits(resolved)
 
-    findings: List[Finding] = []
+    findings: list[Finding] = []
     for cand in limited:
         findings.append(
             Finding(

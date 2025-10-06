@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from math import cos, pi
-from typing import Any, Iterable
+from typing import Any
 
 from .loader import Rule, Rulepack, iter_rulepack_rules
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 from ..codex import (
     UnknownCodexPath,
@@ -107,7 +107,7 @@ def add_subparser(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> N
 
 def _dispatch(args: argparse.Namespace) -> int:
     try:
-        handler = getattr(args, "handler")
+        handler = args.handler
     except AttributeError:  # pragma: no cover - argparse guards this
         parser = args.__dict__.get("_parser")
         if parser is not None:

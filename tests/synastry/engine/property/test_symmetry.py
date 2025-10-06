@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from astroengine.synastry.engine import (
-    ChartPositions,
     DEFAULT_ASPECT_SET,
     DEFAULT_ORB_POLICY,
+    ChartPositions,
     detect_hits,
 )
 

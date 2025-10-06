@@ -1,13 +1,12 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
-from app.routers.relationship import router as relationship_router
 from app.routers import aspects as aspects_module
+from app.routers.relationship import router as relationship_router
 
 
 class LinearEphemeris:
@@ -81,12 +80,12 @@ def test_composite_houses_response():
         "posA": POS_A,
         "posB": POS_B,
         "eventA": {
-            "when": datetime(1990, 1, 1, 12, tzinfo=timezone.utc).isoformat(),
+            "when": datetime(1990, 1, 1, 12, tzinfo=UTC).isoformat(),
             "lat_deg": 40.0,
             "lon_deg_east": -74.0,
         },
         "eventB": {
-            "when": datetime(1992, 6, 10, 6, tzinfo=timezone.utc).isoformat(),
+            "when": datetime(1992, 6, 10, 6, tzinfo=UTC).isoformat(),
             "lat_deg": 34.0,
             "lon_deg_east": -118.0,
         },
@@ -99,7 +98,7 @@ def test_composite_houses_response():
 
 
 def test_davison_endpoint_mid_time_positions():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(t0, base={"Sun": 10.0, "Venus": 40.0}, rates={"Sun": 1.0, "Venus": 1.2})
     app = build_app(eph)
     client = TestClient(app)
@@ -121,7 +120,7 @@ def test_davison_endpoint_mid_time_positions():
 
 def test_davison_houses_response():
     pytest.importorskip("swisseph")
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(t0, base={"Sun": 10.0}, rates={"Sun": 1.0})
     app = build_app(eph)
     client = TestClient(app)

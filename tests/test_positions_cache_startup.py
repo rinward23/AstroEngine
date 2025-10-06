@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from typing import List, Tuple
-
 from astroengine.cache import positions_cache
 
 
 def test_warm_startup_grid_respects_time_budget(monkeypatch):
-    calls: List[Tuple[float, str]] = []
+    calls: list[tuple[float, str]] = []
     current = {"value": 0.0}
 
     def fake_perf_counter() -> float:

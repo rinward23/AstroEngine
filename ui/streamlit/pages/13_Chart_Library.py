@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from typing import Any, List
 
 import streamlit as st
 
@@ -23,7 +22,7 @@ def _parse_iso(timestamp: str | None) -> str:
     return value.strftime("%Y-%m-%d %H:%M UTC")
 
 
-def _normalize_tags(text: str) -> List[str]:
+def _normalize_tags(text: str) -> list[str]:
     return [chunk.strip().lower() for chunk in text.split(",") if chunk.strip()]
 
 

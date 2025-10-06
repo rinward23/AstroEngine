@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from astroengine.engine.notes.crdt import CRDTDocument, merge_documents
 
 
 def test_three_way_merge_is_deterministic():
-    base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    base_time = datetime(2024, 1, 1, tzinfo=UTC)
     device_a = CRDTDocument(device_id="A")
     device_b = CRDTDocument(device_id="B")
     device_c = CRDTDocument(device_id="C")

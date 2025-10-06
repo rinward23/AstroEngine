@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Iterable, Sequence
+
+from astroengine.ephemeris.swe import has_swe, swe
 
 from ...ephemeris.adapter import EphemerisAdapter, ObserverLocation
 from .events import EventOptions, rise_set_times
-from astroengine.ephemeris.swe import has_swe, swe
-
 
 _HAS_SWE = has_swe()
 _SUN_ID = int(getattr(swe(), "SUN", 0)) if _HAS_SWE else 0

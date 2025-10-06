@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
 from . import codex, diagnose, export, scan
 from ._compat import cli_legacy_missing_reason, try_import_cli_legacy
@@ -22,7 +22,7 @@ def _add_legacy_subparser(sub: argparse._SubParsersAction[argparse.ArgumentParse
     module = try_import_cli_legacy()
     if module is None:
         reason = cli_legacy_missing_reason()
-        legacy_parser.description += "\n\nUnavailable: {reason}".format(reason=reason)
+        legacy_parser.description += f"\n\nUnavailable: {reason}"
         legacy_parser.set_defaults(func=_legacy_unavailable, _cli_error=reason)
     else:
         legacy_parser.add_argument(

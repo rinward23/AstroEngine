@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
-import math
 
 from ...core.time import julian_day
 
@@ -25,10 +25,10 @@ class Vec3:
     def as_tuple(self) -> tuple[float, float, float]:
         return (self.x, self.y, self.z)
 
-    def scaled(self, factor: float) -> "Vec3":
+    def scaled(self, factor: float) -> Vec3:
         return Vec3(self.x * factor, self.y * factor, self.z * factor)
 
-    def minus(self, other: "Vec3") -> "Vec3":
+    def minus(self, other: Vec3) -> Vec3:
         return Vec3(self.x - other.x, self.y - other.y, self.z - other.z)
 
     def magnitude(self) -> float:

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from math import sin
-from typing import Any, Callable, Iterable, Tuple
+from typing import Any
 
 from ...core.time import TimeConversion, ensure_utc, to_tt
 from ...ephemeris import EphemerisAdapter, RefineResult, refine_root
@@ -124,7 +125,7 @@ def guess_window(
     body: str,
     last_return: datetime | None,
     around: datetime,
-) -> Tuple[datetime, datetime]:
+) -> tuple[datetime, datetime]:
     """Return a coarse search window centred around the expected return."""
 
     key = body.lower()
@@ -234,7 +235,7 @@ def find_return_instant(
     ephem: EphemerisAdapter,
     body: str,
     lambda_natal_deg: float,
-    t_window: Tuple[datetime, datetime],
+    t_window: tuple[datetime, datetime],
     *,
     tz_hint: str | None = None,
     tol_seconds: float = 0.25,

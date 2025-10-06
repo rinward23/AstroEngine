@@ -1,12 +1,13 @@
 from __future__ import annotations
+
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Callable, Dict, Iterable, List, Tuple
+from datetime import UTC, datetime, timedelta
 
 from .catalog import Star
 from .geometry import approximate_transit_times
 
-PositionProvider = Callable[[datetime], Dict[str, float]]  # returns ecliptic longitudes for planets
+PositionProvider = Callable[[datetime], dict[str, float]]  # returns ecliptic longitudes for planets
 
 @dataclass
 class Location:
@@ -24,27 +25,27 @@ class ParanPair:
 class ParanEvent:
     kind: str
     time: datetime
-    meta: Dict[str, object]
+    meta: dict[str, object]
 
 
 def detect_parans(
     date_start: datetime,
     date_end: datetime,
     location: Location,
-    stars: Dict[str, Star],
-    provider_radec: Callable[[datetime, str], Tuple[float, float]],  # planet → (RA,Dec) provider
+    stars: dict[str, Star],
+    provider_radec: Callable[[datetime, str], tuple[float, float]],  # planet → (RA,Dec) provider
     pairs: Iterable[ParanPair],
     tol_minutes: float = 8.0,
     step_days: int = 1,
-) -> List[ParanEvent]:
+) -> list[ParanEvent]:
     """Scan dates [start,end] (UTC) for parans matching the `pairs` at `location`.
 
     MVP: For each UTC date, compute star and planet event times (rise/set/culm) using their RA/Dec
     and report matches when the absolute time difference ≤ tol_minutes.
     """
-    out: List[ParanEvent] = []
-    cur = date_start.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    end = date_end.astimezone(timezone.utc)
+    out: list[ParanEvent] = []
+    cur = date_start.astimezone(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    end = date_end.astimezone(UTC)
 
     while cur <= end:
         for pair in pairs:

@@ -1,8 +1,8 @@
 from __future__ import annotations
+
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from itertools import combinations
-from typing import Dict, List, Tuple
 
 import pandas as pd
 import streamlit as st
@@ -29,13 +29,13 @@ DEFAULT_ASPECTS = [
     "contra_antiscia",
 ]
 
-objects: List[str] = st.sidebar.multiselect("Objects", DEFAULT_OBJECTS, default=["Sun","Moon","Mars","Venus"])
-aspects: List[str] = st.sidebar.multiselect("Aspects", DEFAULT_ASPECTS, default=["sextile","trine","square"])
+objects: list[str] = st.sidebar.multiselect("Objects", DEFAULT_OBJECTS, default=["Sun","Moon","Mars","Venus"])
+aspects: list[str] = st.sidebar.multiselect("Aspects", DEFAULT_ASPECTS, default=["sextile","trine","square"])
 harmonics_str = st.sidebar.text_input("Harmonics (comma-sep)", value="5,7,13")
 
 col1, col2 = st.sidebar.columns(2)
-start_date = col1.date_input("Start (UTC)", value=datetime.now(timezone.utc).date())
-end_date = col2.date_input("End (UTC)", value=(datetime.now(timezone.utc) + timedelta(days=90)).date())
+start_date = col1.date_input("Start (UTC)", value=datetime.now(UTC).date())
+end_date = col2.date_input("End (UTC)", value=(datetime.now(UTC) + timedelta(days=90)).date())
 
 step_minutes = st.sidebar.slider("Step (minutes)", min_value=5, max_value=240, value=60, step=5)
 order_by = st.sidebar.selectbox("Order by", options=["time","severity","orb"], index=0)
@@ -43,7 +43,7 @@ limit = st.sidebar.slider("Limit", min_value=50, max_value=2000, value=500, step
 offset = st.sidebar.number_input("Offset", min_value=0, value=0, step=100)
 
 pair_source = objects if len(objects) >= 2 else DEFAULT_OBJECTS
-pair_options: Dict[str, Tuple[str, str]] = {
+pair_options: dict[str, tuple[str, str]] = {
     f"{a}–{b}": (a, b) for a, b in combinations(pair_source, 2)
 }
 selected_pairs = st.sidebar.multiselect(
@@ -63,7 +63,7 @@ with st.sidebar.expander("Orb Policy (inline)", expanded=False):
     adaptive_out = st.slider("outers_factor", 0.5, 1.5, 1.1, 0.05)
     adaptive_minor = st.slider("minor_aspect_factor", 0.5, 1.5, 0.9, 0.05)
 
-harmonics: List[int] = []
+harmonics: list[int] = []
 harmonics_parse_error = False
 if harmonics_str.strip():
     try:
@@ -73,10 +73,10 @@ if harmonics_str.strip():
         harmonics_parse_error = True
         st.sidebar.error("Invalid harmonics list; use comma-separated integers.")
 
-start_dt = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
-end_dt = datetime(end_date.year, end_date.month, end_date.day, tzinfo=timezone.utc)
+start_dt = datetime(start_date.year, start_date.month, start_date.day, tzinfo=UTC)
+end_dt = datetime(end_date.year, end_date.month, end_date.day, tzinfo=UTC)
 
-validation_errors: List[str] = []
+validation_errors: list[str] = []
 if len(objects) < 2:
     validation_errors.append("Select at least two objects.")
 if not aspects:
@@ -86,7 +86,7 @@ if start_dt >= end_dt:
 if harmonics_parse_error:
     validation_errors.append("Fix the harmonics list before running the search.")
 
-def _safe_dataframe(rows: List[Dict[str, object]] | List[object]) -> pd.DataFrame | None:
+def _safe_dataframe(rows: list[dict[str, object]] | list[object]) -> pd.DataFrame | None:
     """Build a DataFrame from arbitrary rows, returning ``None`` on schema errors."""
 
     if not rows:
@@ -99,7 +99,7 @@ def _safe_dataframe(rows: List[Dict[str, object]] | List[object]) -> pd.DataFram
         return None
 
 
-pairs_payload: List[Tuple[str, str]] | None = None
+pairs_payload: list[tuple[str, str]] | None = None
 if selected_pairs:
     valid_labels = [label for label in selected_pairs if label in pair_options]
     if valid_labels:

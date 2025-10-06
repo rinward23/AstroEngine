@@ -1,8 +1,8 @@
 """Streamlit scaffolding for the diary experience."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, List
 
 from astroengine.api.notes import NoteRequest, NotesAPI
 
@@ -22,6 +22,6 @@ class DiaryStreamlitApp:
         request = NoteRequest(note_id=note_id, owner_id=self.state.owner_id, patch={"title": title, "body": body, "tags": list(tags)})
         self.api.post_note(request)
 
-    def search(self, query: str = "", tags: Iterable[str] | None = None) -> List[str]:
+    def search(self, query: str = "", tags: Iterable[str] | None = None) -> list[str]:
         responses = self.api.get_notes(owner_id=self.state.owner_id, query=query, tags=tags)
         return [response.title for response in responses]

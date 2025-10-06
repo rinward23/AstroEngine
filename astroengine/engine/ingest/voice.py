@@ -3,13 +3,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 
 @dataclass
 class VoiceIntent:
     intent: str
-    payload: Dict[str, str]
+    payload: dict[str, str]
     transcript: str
 
 
@@ -20,7 +19,7 @@ class VoiceIntentParser:
         "voc_detect": re.compile(r"voc\s+(?P<day>today|tomorrow|(?P<weekday>monday|tuesday|wednesday|thursday|friday|saturday|sunday))", re.I),
     }
 
-    def parse(self, transcript: str) -> Optional[VoiceIntent]:
+    def parse(self, transcript: str) -> VoiceIntent | None:
         transcript = transcript.strip()
         for intent, pattern in self.PATTERNS.items():
             match = pattern.search(transcript)

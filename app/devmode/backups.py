@@ -6,13 +6,13 @@ import json
 import shutil
 import time
 import zipfile
+from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path
-from typing import Iterable, Iterator, Sequence
 
-from astroengine.infrastructure.home import ae_home
-from astroengine.scheduler.queue import cancel, enqueue, get
-from astroengine.scheduler.db import now as queue_now
 from astroengine.infrastructure import retention
+from astroengine.infrastructure.home import ae_home
+from astroengine.scheduler.db import now as queue_now
+from astroengine.scheduler.queue import cancel, enqueue, get
 
 BACKUP_GLOB_TARGETS: Sequence[Path] = (
     Path("profiles"),

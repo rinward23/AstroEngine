@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from functools import lru_cache
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 from .core.angles import DeltaLambdaTracker, classify_relative_motion, signed_delta
@@ -13,11 +13,13 @@ from .infrastructure.paths import profiles_dir
 from .refine import adaptive_corridor_width
 from .utils.io import load_json_document
 from .vca.houses import (
-    HouseSystem,
     DomainW,
-    blend as blend_domains,
+    HouseSystem,
     load_house_profile,
     weights_for_body,
+)
+from .vca.houses import (
+    blend as blend_domains,
 )
 
 __all__ = ["AspectHit", "detect_aspects"]

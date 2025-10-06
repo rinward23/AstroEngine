@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+import math
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-import math
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any
 
 PositionProvider = Callable[[datetime], Mapping[str, float]]
 
-_ASPECT_ANGLES: Dict[str, float] = {
+_ASPECT_ANGLES: dict[str, float] = {
     "conjunction": 0.0,
     "opposition": 180.0,
     "square": 90.0,
@@ -23,7 +24,7 @@ _ASPECT_ANGLES: Dict[str, float] = {
     "biquintile": 144.0,
 }
 
-_MAJOR_ASPECTS: Tuple[str, ...] = (
+_MAJOR_ASPECTS: tuple[str, ...] = (
     "conjunction",
     "opposition",
     "square",
@@ -47,7 +48,7 @@ def _angle_distance(a: float, b: float) -> float:
 def _sample_range(start: datetime, end: datetime, step_minutes: int) -> Sequence[datetime]:
     if step_minutes <= 0:
         raise ValueError("step_minutes must be positive")
-    samples: List[datetime] = []
+    samples: list[datetime] = []
     delta = timedelta(minutes=step_minutes)
     cursor = start
     while cursor <= end:
@@ -83,12 +84,12 @@ def _align_backward(moment: datetime, base: datetime, step_minutes: int) -> date
 
 
 def _merge_ranges(
-    ranges: Sequence[Tuple[datetime, datetime, float]]
-) -> list[Tuple[datetime, datetime, float]]:
+    ranges: Sequence[tuple[datetime, datetime, float]]
+) -> list[tuple[datetime, datetime, float]]:
     if not ranges:
         return []
     ordered = sorted(ranges, key=lambda item: item[0])
-    merged: list[Tuple[datetime, datetime, float]] = []
+    merged: list[tuple[datetime, datetime, float]] = []
     for start, end, score in ordered:
         if not merged:
             merged.append((start, end, score))
@@ -105,10 +106,10 @@ def _split_range(
     start: datetime,
     end: datetime,
     max_span: timedelta | None,
-) -> list[Tuple[datetime, datetime]]:
+) -> list[tuple[datetime, datetime]]:
     if max_span is None or max_span.total_seconds() <= 0:
         return [(start, end)]
-    segments: list[Tuple[datetime, datetime]] = []
+    segments: list[tuple[datetime, datetime]] = []
     cursor = start
     while cursor <= end:
         segment_end = min(end, cursor + max_span)
@@ -119,8 +120,8 @@ def _split_range(
     return segments
 
 
-def _parse_ranges(ranges: Optional[List[Tuple[str, str]]]) -> List[Tuple[int, int]]:
-    parsed: List[Tuple[int, int]] = []
+def _parse_ranges(ranges: list[tuple[str, str]] | None) -> list[tuple[int, int]]:
+    parsed: list[tuple[int, int]] = []
     if not ranges:
         return parsed
     for start_s, end_s in ranges:
@@ -134,7 +135,7 @@ def _minute_of_day(ts: datetime) -> int:
     return ts.hour * 60 + ts.minute
 
 
-def _in_ranges(minute: int, ranges: Sequence[Tuple[int, int]]) -> bool:
+def _in_ranges(minute: int, ranges: Sequence[tuple[int, int]]) -> bool:
     if not ranges:
         return True
     for start, end in ranges:
@@ -172,9 +173,9 @@ class ElectionalRules:
     step_minutes: int
     top_k: int
     avoid_voc_moon: bool = False
-    allowed_weekdays: Optional[Sequence[int]] = None
-    allowed_utc_ranges: Optional[List[Tuple[str, str]]] = None
-    orb_policy: Optional[Dict[str, Any]] = None
+    allowed_weekdays: Sequence[int] | None = None
+    allowed_utc_ranges: list[tuple[str, str]] | None = None
+    orb_policy: dict[str, Any] | None = None
     required_aspects: Sequence[AspectRule] = field(default_factory=list)
     forbidden_aspects: Sequence[ForbiddenRule] = field(default_factory=list)
 
@@ -184,8 +185,8 @@ class InstantResult:
     ts: datetime
     score: float
     reason: str | None = None
-    matches: List[Dict[str, Any]] = field(default_factory=list)
-    violations: List[Dict[str, Any]] = field(default_factory=list)
+    matches: list[dict[str, Any]] = field(default_factory=list)
+    violations: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -195,11 +196,11 @@ class WindowResult:
     score: float
     samples: int
     avg_score: float
-    top_instants: List[InstantResult]
-    breakdown: Dict[str, Any] = field(default_factory=dict)
+    top_instants: list[InstantResult]
+    breakdown: dict[str, Any] = field(default_factory=dict)
 
 
-def _gather_objects(rules: ElectionalRules) -> List[str]:
+def _gather_objects(rules: ElectionalRules) -> list[str]:
     objs: set[str] = set()
     for rule in list(rules.required_aspects) + list(rules.forbidden_aspects):
         objs.add(rule.a)
@@ -234,14 +235,14 @@ def _evaluate_required(
     positions: Mapping[str, float],
     per_aspect: Mapping[str, float],
     default_orb: float,
-) -> Tuple[float, List[Dict[str, Any]]]:
+) -> tuple[float, list[dict[str, Any]]]:
     pa = positions.get(rule.a)
     pb = positions.get(rule.b)
     if pa is None or pb is None:
         return 0.0, []
     separation = _norm360(pa - pb)
     best_score = 0.0
-    best: Dict[str, Any] | None = None
+    best: dict[str, Any] | None = None
     for aspect_name in rule.aspects:
         angle = _ASPECT_ANGLES.get(aspect_name)
         if angle is None:
@@ -272,14 +273,14 @@ def _evaluate_forbidden(
     positions: Mapping[str, float],
     per_aspect: Mapping[str, float],
     default_orb: float,
-) -> Tuple[float, List[Dict[str, Any]]]:
+) -> tuple[float, list[dict[str, Any]]]:
     pa = positions.get(rule.a)
     pb = positions.get(rule.b)
     if pa is None or pb is None:
         return 0.0, []
     separation = _norm360(pa - pb)
     total_penalty = 0.0
-    hits: List[Dict[str, Any]] = []
+    hits: list[dict[str, Any]] = []
     for aspect_name in rule.aspects:
         angle = _ASPECT_ANGLES.get(aspect_name)
         if angle is None:
@@ -310,11 +311,11 @@ def _score_instant(
     rules: ElectionalRules,
     provider: PositionProvider,
     allowed_weekdays: set[int] | None,
-    allowed_ranges: Sequence[Tuple[int, int]],
+    allowed_ranges: Sequence[tuple[int, int]],
     tracked_objects: Sequence[str],
     per_aspect: Mapping[str, float],
     default_orb: float,
-) -> Tuple[float, str | None, List[Dict[str, Any]], List[Dict[str, Any]]]:
+) -> tuple[float, str | None, list[dict[str, Any]], list[dict[str, Any]]]:
     if allowed_weekdays is not None and ts.weekday() not in allowed_weekdays:
         return 0.0, "weekday_filtered", [], []
 
@@ -327,8 +328,8 @@ def _score_instant(
     if rules.avoid_voc_moon and _is_voc(positions, per_aspect, default_orb, tracked_objects):
         return 0.0, "void_of_course_moon", [], []
 
-    matches: List[Dict[str, Any]] = []
-    violations: List[Dict[str, Any]] = []
+    matches: list[dict[str, Any]] = []
+    violations: list[dict[str, Any]] = []
     score = 0.0
     for rule in rules.required_aspects:
         contribution, hits = _evaluate_required(rule, positions, per_aspect, default_orb)
@@ -351,17 +352,17 @@ def _score_window(
     rules: ElectionalRules,
     provider: PositionProvider,
     allowed_weekdays: set[int] | None,
-    allowed_ranges: Sequence[Tuple[int, int]],
+    allowed_ranges: Sequence[tuple[int, int]],
     tracked_objects: Sequence[str],
     per_aspect: Mapping[str, float],
     default_orb: float,
     collect_details: bool,
-) -> Tuple[float, int, int, int, List[InstantResult] | None]:
+) -> tuple[float, int, int, int, list[InstantResult] | None]:
     samples = _sample_range(window_start, window_end, sample_step_minutes)
     total_score = 0.0
     match_count = 0
     violation_count = 0
-    instants: List[InstantResult] | None = [] if collect_details else None
+    instants: list[InstantResult] | None = [] if collect_details else None
 
     for ts in samples:
         score, reason, matches, violations = _score_instant(
@@ -408,7 +409,7 @@ def search_best_windows(
     *,
     max_scan_days: float | None = None,
     workers: int = 1,
-) -> List[WindowResult]:
+) -> list[WindowResult]:
     start = rules.window.start
     end = rules.window.end
     if start >= end:
@@ -432,7 +433,7 @@ def search_best_windows(
     coarse_sample_minutes = max(rules.step_minutes, coarse_step_minutes)
     coarse_delta = timedelta(minutes=coarse_step_minutes)
 
-    coarse_hits: list[Tuple[datetime, float]] = []
+    coarse_hits: list[tuple[datetime, float]] = []
     cursor = start
     while cursor <= last_start_allowed:
         window_start = cursor
@@ -455,7 +456,7 @@ def search_best_windows(
         cursor += coarse_delta
 
     if coarse_hits:
-        candidate_ranges: list[Tuple[datetime, datetime, float]] = []
+        candidate_ranges: list[tuple[datetime, datetime, float]] = []
         for coarse_start, coarse_score in coarse_hits:
             range_start = max(start, coarse_start - coarse_delta)
             range_end = min(last_start_allowed, coarse_start + coarse_delta)
@@ -469,22 +470,22 @@ def search_best_windows(
     if max_scan_days is not None and max_scan_days > 0:
         max_span_td = timedelta(days=float(max_scan_days))
 
-    segments: list[Tuple[datetime, datetime]] = []
+    segments: list[tuple[datetime, datetime]] = []
     for range_start, range_end, _score in merged:
         segments.extend(_split_range(range_start, range_end, max_span_td))
 
     if not segments:
         return []
 
-    windows: List[WindowResult] = []
+    windows: list[WindowResult] = []
 
-    def _refine(segment: Tuple[datetime, datetime]) -> List[WindowResult]:
+    def _refine(segment: tuple[datetime, datetime]) -> list[WindowResult]:
         seg_start, seg_end = segment
         aligned_start = _align_forward(seg_start, start, rules.step_minutes)
         aligned_end = _align_backward(seg_end, start, rules.step_minutes)
         if aligned_start > aligned_end or aligned_start > last_start_allowed:
             return []
-        results: List[WindowResult] = []
+        results: list[WindowResult] = []
         cursor_start = max(aligned_start, start)
         cursor_end = min(aligned_end, last_start_allowed)
         cursor_local = cursor_start

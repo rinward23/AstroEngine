@@ -1,8 +1,6 @@
-from datetime import datetime, timezone
-
+from datetime import UTC, datetime
 
 import pytest
-
 
 from astroengine.atlas.tz import (
     from_utc,
@@ -53,7 +51,7 @@ def test_nonexistent_spring_forward_shift():
 
 
 def test_round_trip():
-    utc_dt = datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc)
+    utc_dt = datetime(2025, 6, 1, 12, 0, tzinfo=UTC)
     local = from_utc(utc_dt, *NYC)
     round_tripped = to_utc(local.replace(tzinfo=None), *NYC)
     assert round_tripped.utc == utc_dt
@@ -97,21 +95,21 @@ def test_to_utc_ambiguous_golden_values():
     dt = datetime(2025, 11, 2, 1, 30)
     earliest = to_utc(dt, *NYC, ambiguous="earliest")
     latest = to_utc(dt, *NYC, ambiguous="latest")
-    assert earliest.utc == datetime(2025, 11, 2, 5, 30, tzinfo=timezone.utc)
-    assert latest.utc == datetime(2025, 11, 2, 6, 30, tzinfo=timezone.utc)
+    assert earliest.utc == datetime(2025, 11, 2, 5, 30, tzinfo=UTC)
+    assert latest.utc == datetime(2025, 11, 2, 6, 30, tzinfo=UTC)
 
 
 def test_to_utc_shift_forward_golden_value():
     dt = datetime(2025, 3, 9, 2, 30)
     shifted = to_utc(dt, *NYC, nonexistent="post")
-    assert shifted.utc == datetime(2025, 3, 9, 7, 30, tzinfo=timezone.utc)
+    assert shifted.utc == datetime(2025, 3, 9, 7, 30, tzinfo=UTC)
 
 
 def test_to_utc_pre_gap_policy():
     dt = datetime(2025, 3, 9, 2, 30)
     pre_policy = to_utc(dt, *NYC, nonexistent="pre")
     assert pre_policy.nonexistent
-    assert pre_policy.utc == datetime(2025, 3, 9, 6, 30, tzinfo=timezone.utc)
+    assert pre_policy.utc == datetime(2025, 3, 9, 6, 30, tzinfo=UTC)
 
 
 def test_to_utc_flagged_ambiguous():
@@ -128,17 +126,17 @@ def test_to_utc_flagged_ambiguous():
         (
             NYC,
             datetime(2021, 3, 14, 2, 0),
-            datetime(2021, 3, 14, 7, 0, tzinfo=timezone.utc),
+            datetime(2021, 3, 14, 7, 0, tzinfo=UTC),
         ),
         (
             LON,
             datetime(2021, 3, 28, 1, 30),
-            datetime(2021, 3, 28, 1, 30, tzinfo=timezone.utc),
+            datetime(2021, 3, 28, 1, 30, tzinfo=UTC),
         ),
         (
             SYD,
             datetime(2021, 10, 3, 2, 30),
-            datetime(2021, 10, 2, 16, 30, tzinfo=timezone.utc),
+            datetime(2021, 10, 2, 16, 30, tzinfo=UTC),
         ),
     ],
 )
@@ -155,20 +153,20 @@ def test_dst_birth_nonexistent_windows(coords, local_expected, utc_expected):
         (
             NYC,
             datetime(2021, 11, 7, 1, 30),
-            datetime(2021, 11, 7, 5, 30, tzinfo=timezone.utc),
-            datetime(2021, 11, 7, 6, 30, tzinfo=timezone.utc),
+            datetime(2021, 11, 7, 5, 30, tzinfo=UTC),
+            datetime(2021, 11, 7, 6, 30, tzinfo=UTC),
         ),
         (
             LON,
             datetime(2021, 10, 31, 1, 30),
-            datetime(2021, 10, 31, 0, 30, tzinfo=timezone.utc),
-            datetime(2021, 10, 31, 1, 30, tzinfo=timezone.utc),
+            datetime(2021, 10, 31, 0, 30, tzinfo=UTC),
+            datetime(2021, 10, 31, 1, 30, tzinfo=UTC),
         ),
         (
             SYD,
             datetime(2021, 4, 4, 2, 30),
-            datetime(2021, 4, 3, 15, 30, tzinfo=timezone.utc),
-            datetime(2021, 4, 3, 16, 30, tzinfo=timezone.utc),
+            datetime(2021, 4, 3, 15, 30, tzinfo=UTC),
+            datetime(2021, 4, 3, 16, 30, tzinfo=UTC),
         ),
     ],
 )

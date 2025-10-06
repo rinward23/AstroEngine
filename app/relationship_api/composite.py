@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
-from core.relationship_plus.composite import Geo, composite_positions, davison_midpoints, davison_positions
+from core.relationship_plus.composite import (
+    Geo,
+    composite_positions,
+    davison_midpoints,
+    davison_positions,
+)
 
 from .errors import ServiceError
 from .models import (
@@ -19,7 +22,7 @@ from .providers import make_position_provider
 from .synastry import chart_longitudes
 
 
-def _positions_to_chart(mapping: Dict[str, float]) -> ChartPositions:
+def _positions_to_chart(mapping: dict[str, float]) -> ChartPositions:
     payload = {name: EclipticPos(lon=float(lon)) for name, lon in mapping.items()}
     return ChartPositions.model_validate(payload)
 

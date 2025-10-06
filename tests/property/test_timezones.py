@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -12,8 +12,8 @@ settings = hypothesis.settings
 st = hypothesis.strategies
 
 atlas_tz = pytest.importorskip("astroengine.atlas.tz")
-TO_UTC = getattr(atlas_tz, "to_utc")
-FROM_UTC = getattr(atlas_tz, "from_utc")
+TO_UTC = atlas_tz.to_utc
+FROM_UTC = atlas_tz.from_utc
 _TO_UTC_PARAMS = inspect.signature(TO_UTC).parameters
 
 COORDS = st.tuples(
@@ -23,7 +23,7 @@ COORDS = st.tuples(
 INSTANTS = st.datetimes(
     min_value=datetime(1970, 1, 1),
     max_value=datetime(2035, 12, 31),
-    timezones=st.just(timezone.utc),
+    timezones=st.just(UTC),
 )
 
 

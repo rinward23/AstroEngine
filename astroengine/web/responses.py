@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Iterable, Iterator
-from typing import Any, Mapping
+from collections.abc import Iterable, Iterator, Mapping
+from typing import Any
 
 from fastapi.responses import Response, StreamingResponse
 

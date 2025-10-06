@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Dict, Iterable, List
 
 
 @dataclass(frozen=True)
@@ -15,7 +15,7 @@ class AspectInfo:
     family: str
 
 
-ASPECTS: Dict[str, AspectInfo] = {
+ASPECTS: dict[str, AspectInfo] = {
     "conjunction": AspectInfo("conjunction", "Conjunction (0°)", 0.0, "☌", "neutral"),
     "sextile": AspectInfo("sextile", "Sextile (60°)", 60.0, "⚹", "harmonious"),
     "square": AspectInfo("square", "Square (90°)", 90.0, "□", "challenging"),
@@ -28,7 +28,7 @@ ASPECTS: Dict[str, AspectInfo] = {
     "biquintile": AspectInfo("biquintile", "Bi-quintile (144°)", 144.0, "✶", "harmonious"),
 }
 
-MAJOR_ASPECTS: List[str] = [
+MAJOR_ASPECTS: list[str] = [
     "conjunction",
     "sextile",
     "square",
@@ -36,7 +36,7 @@ MAJOR_ASPECTS: List[str] = [
     "opposition",
 ]
 
-EXTENDED_ASPECTS: List[str] = MAJOR_ASPECTS + [
+EXTENDED_ASPECTS: list[str] = MAJOR_ASPECTS + [
     "quincunx",
     "semisquare",
     "sesquisquare",
@@ -51,5 +51,5 @@ FAMILY_LABELS = {
 }
 
 
-def aspect_choices(keys: Iterable[str]) -> List[str]:
+def aspect_choices(keys: Iterable[str]) -> list[str]:
     return [ASPECTS[key].label for key in keys if key in ASPECTS]

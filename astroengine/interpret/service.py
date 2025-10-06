@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS
 from astroengine.core.aspects_plus.matcher import angular_sep_deg

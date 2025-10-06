@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -35,7 +35,7 @@ POLICY = {"per_object": {}, "per_aspect": {"sextile": 3.0}, "adaptive_rules": {}
 
 
 def test_find_single_sextile_with_bisection():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Mars": 10.0, "Venus": 0.0},
@@ -68,7 +68,7 @@ def test_timewindow_requires_timezone():
 
 
 def test_multi_pair_scan_wrapper():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Mars": 10.0, "Venus": 0.0, "Sun": 0.0},
@@ -90,7 +90,7 @@ def test_multi_pair_scan_wrapper():
 
 
 def test_scan_time_range_includes_antiscia_hits():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Mars": 10.0, "Venus": 100.0},

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+from .aspects import find_star_aspects, star_longitudes
 from .catalog import Star, load_catalog
-from .aspects import star_longitudes, find_star_aspects
-from .parans import Location, ParanPair, ParanEvent, detect_parans
 from .geometry import (
     approximate_transit_times,
     gmst_deg,
@@ -14,6 +13,7 @@ from .geometry import (
     radec_to_ecliptic_lon_deg,
     rise_set_hour_angle_deg,
 )
+from .parans import Location, ParanEvent, ParanPair, detect_parans
 
 __all__ = [
     "Star",

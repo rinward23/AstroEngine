@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from datetime import UTC, datetime
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
@@ -54,7 +54,7 @@ class ChartRepo(BaseRepo[Chart]):
         chart = self.get(db, chart_id)
         if chart is None:
             return None
-        chart.deleted_at = datetime.now(timezone.utc)
+        chart.deleted_at = datetime.now(UTC)
         db.flush()
         return chart
 
@@ -73,7 +73,7 @@ class ChartRepo(BaseRepo[Chart]):
         if chart is None:
             raise ValueError(f"Chart {chart_id} not found")
         chart.tags = _normalize_tags(tags)
-        chart.updated_at = datetime.now(timezone.utc)
+        chart.updated_at = datetime.now(UTC)
         db.flush()
         return chart
 

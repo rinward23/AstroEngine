@@ -1,4 +1,4 @@
-from core.viz_plus.wheel_svg import render_chart_wheel, build_aspect_hits, WheelOptions
+from core.viz_plus.wheel_svg import WheelOptions, build_aspect_hits, render_chart_wheel
 
 POLICY = {
     "per_object": {},

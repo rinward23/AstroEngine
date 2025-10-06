@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import streamlit as st
 
@@ -88,7 +88,7 @@ with builder_tab:
         st.session_state["lots_location_lon"] = float(longitude)
         moment = st.text_input(
             "Moment (ISO UTC)",
-            value=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            value=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         )
         if st.button("Evaluate", key="eval_button"):
             try:
@@ -202,11 +202,11 @@ with events_tab:
             default=["Sun", "Mars"],
         )
         start = st.text_input(
-            "Start (ISO UTC)", value=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            "Start (ISO UTC)", value=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         )
         end = st.text_input(
             "End (ISO UTC)",
-            value=(datetime.now(timezone.utc).replace(hour=0, minute=0, second=0) + timedelta(days=30)).strftime(
+            value=(datetime.now(UTC).replace(hour=0, minute=0, second=0) + timedelta(days=30)).strftime(
                 "%Y-%m-%dT%H:%M:%SZ"
             ),
         )

@@ -15,7 +15,6 @@ from astroengine.vca.houses import (
     load_house_profile,
 )
 
-
 pytest.importorskip("swisseph")
 
 

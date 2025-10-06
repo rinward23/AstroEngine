@@ -3,12 +3,10 @@ from types import SimpleNamespace
 import pytest
 
 from astroengine.engine.vedic import (
-
     VARGA_DEFINITIONS,
     compute_varga,
     dasamsa_sign,
     navamsa_sign,
-
 )
 
 

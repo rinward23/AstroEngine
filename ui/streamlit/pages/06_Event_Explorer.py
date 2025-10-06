@@ -1,6 +1,7 @@
 from __future__ import annotations
+
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pandas as pd
 import plotly.express as px
@@ -15,7 +16,7 @@ api = APIClient()
 DEFAULT_ASPECTS = ["conjunction","opposition","square","trine","sextile"]
 DEFAULT_OTHERS = ["Sun","Mercury","Venus","Mars","Jupiter","Saturn"]
 
-TAB1, TAB2, TAB3 = st.tabs(["VoC Moon", "Combust/Cazimi", "Returns"]) 
+TAB1, TAB2, TAB3 = st.tabs(["VoC Moon", "Combust/Cazimi", "Returns"])
 
 # --------------------------- Helpers ---------------------------------------
 def _render_intervals(df: pd.DataFrame, title: str) -> None:
@@ -48,7 +49,7 @@ def _render_intervals(df: pd.DataFrame, title: str) -> None:
 # --------------------------- Tab 1: VoC Moon -------------------------------
 with TAB1:
     st.subheader("Void‑of‑Course Moon")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     col1, col2 = st.columns(2)
     start = col1.datetime_input("Start (UTC)", value=now)
     end = col2.datetime_input("End (UTC)", value=now + timedelta(days=3))
@@ -90,7 +91,7 @@ with TAB1:
 # --------------------------- Tab 2: Combust/Cazimi -------------------------
 with TAB2:
     st.subheader("Combust / Cazimi / Under‑Beams")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     col1, col2 = st.columns(2)
     start = col1.datetime_input("Start (UTC)", value=now)
     end = col2.datetime_input("End (UTC)", value=now + timedelta(days=20))
@@ -120,7 +121,7 @@ with TAB2:
 # --------------------------- Tab 3: Returns --------------------------------
 with TAB3:
     st.subheader("Returns")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     col1, col2 = st.columns(2)
     start = col1.datetime_input("Start (UTC)", value=now - timedelta(days=5))
     end = col2.datetime_input("End (UTC)", value=now + timedelta(days=400))

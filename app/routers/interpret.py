@@ -2,26 +2,25 @@ from __future__ import annotations
 
 import os
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Response
 
 from app.schemas.interpret import (
-    RulepacksResponse,
-    RulepackInfo,
+    FindingOut,
     FindingsRequest,
     FindingsResponse,
-    FindingOut,
+    RulepackInfo,
+    RulepacksResponse,
 )
-from core.interpret_plus.engine import interpret, load_rules
-
 from astroengine.web.responses import conditional_json_response
+from core.interpret_plus.engine import interpret, load_rules
 
 router = APIRouter(prefix="/interpret", tags=["Interpretations"])
 
 # Directory roots containing rulepacks (YAML/JSON).
 if env_dir := os.getenv("RULEPACK_DIR"):
-    RULEPACK_DIRS: List[str] = [os.path.abspath(env_dir)]
+    RULEPACK_DIRS: list[str] = [os.path.abspath(env_dir)]
 else:
     base = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     RULEPACK_DIRS = [
@@ -31,7 +30,7 @@ else:
     ]
 
 
-def _load_pack_info(path: str) -> Optional[RulepackInfo]:
+def _load_pack_info(path: str) -> RulepackInfo | None:
     try:
         pack = load_rules(path)
     except Exception:
@@ -41,8 +40,8 @@ def _load_pack_info(path: str) -> Optional[RulepackInfo]:
     return RulepackInfo(id=str(rid), path=path, description=desc)
 
 
-def _discover_rulepacks() -> List[RulepackInfo]:
-    items: List[RulepackInfo] = []
+def _discover_rulepacks() -> list[RulepackInfo]:
+    items: list[RulepackInfo] = []
     for directory in RULEPACK_DIRS:
         if not os.path.isdir(directory):
             continue
@@ -98,7 +97,7 @@ def relationship_findings(req: FindingsRequest):
         rules = load_rules(match.path)
 
     # Build request for engine
-    ireq: Dict[str, Any] = {"scope": req.scope}
+    ireq: dict[str, Any] = {"scope": req.scope}
     if req.scope == "synastry":
         ireq["hits"] = req.hits
     else:

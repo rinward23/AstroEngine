@@ -4,9 +4,9 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.aspects import (
+    AspectHit,
     AspectSearchRequest,
     AspectSearchResponse,
-    AspectHit,
     DayBin,
     Paging,
     TimeWindow,

@@ -273,7 +273,7 @@ class DesktopConfigManager:
             )
         else:
             theme_value = "dark" if theme == "dark" else "light"
-            config_text = "[theme]\nbase = \"{value}\"\n".format(value=theme_value)
+            config_text = f"[theme]\nbase = \"{theme_value}\"\n"
         self.streamlit_config_path.write_text(config_text, encoding="utf-8")
 
     def _apply_autostart(self, enabled: bool) -> None:

@@ -14,15 +14,15 @@ from real ephemeris kernels installed in the runtime environment.
 
 from __future__ import annotations
 
+import json
+import logging
+import math
+import statistics
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-import json
-import logging
-import math
 from pathlib import Path
-import statistics
 from typing import Protocol, runtime_checkable
 
 LOG = logging.getLogger(__name__)
@@ -360,7 +360,7 @@ def render_markdown(result: MatrixResult, path: Path) -> None:
     """Render a summary Markdown report for human inspection."""
 
     lines = [
-        f"# Cross-Engine Validation Report",
+        "# Cross-Engine Validation Report",
         "",
         f"Reference adapter: `{result.reference}`",
         "",
@@ -384,15 +384,7 @@ def render_markdown(result: MatrixResult, path: Path) -> None:
         decl_p99 = report.decl_stats.get("p99", float("nan"))
         breach_count = len(report.breaches)
         lines.append(
-            "| {adapter} | {samples} | {lon_mean:.3f} | {lon_p99:.3f} | {lon_max:.3f} | {decl_p99:.3f} | {breach_count} |".format(
-                adapter=report.adapter,
-                samples=report.sample_count,
-                lon_mean=lon_mean,
-                lon_p99=lon_p99,
-                lon_max=lon_max,
-                decl_p99=decl_p99,
-                breach_count=breach_count,
-            )
+            f"| {report.adapter} | {report.sample_count} | {lon_mean:.3f} | {lon_p99:.3f} | {lon_max:.3f} | {decl_p99:.3f} | {breach_count} |"
         )
     lines.append("")
 
@@ -404,15 +396,7 @@ def render_markdown(result: MatrixResult, path: Path) -> None:
         for report in result.adapters:
             for sample in report.breaches:
                 lines.append(
-                    "| {adapter} | {body} | {ts} | {lon:.3f} | {decl:.3f} | {lon_tol:.3f} | {decl_tol:.3f} |".format(
-                        adapter=report.adapter,
-                        body=sample.body,
-                        ts=sample.timestamp,
-                        lon=sample.lon_arcsec or 0.0,
-                        decl=sample.decl_arcsec or 0.0,
-                        lon_tol=sample.tolerance_lon_arcsec or 0.0,
-                        decl_tol=sample.tolerance_decl_arcsec or 0.0,
-                    )
+                    f"| {report.adapter} | {sample.body} | {sample.timestamp} | {sample.lon_arcsec or 0.0:.3f} | {sample.decl_arcsec or 0.0:.3f} | {sample.tolerance_lon_arcsec or 0.0:.3f} | {sample.tolerance_decl_arcsec or 0.0:.3f} |"
                 )
         lines.append("")
 

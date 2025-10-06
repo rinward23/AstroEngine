@@ -1,8 +1,13 @@
 import pytest
 
-from core.lots_plus.engine import eval_formula, norm360
-from core.lots_plus.catalog import compute_lot, compute_lots, LotDef, register_lot, Sect
-from core.lots_plus.parser import FormulaSyntaxError, extract_symbols, parse_formula, validate_formula
+from core.lots_plus.catalog import LotDef, Sect, compute_lot, compute_lots, register_lot
+from core.lots_plus.engine import eval_formula
+from core.lots_plus.parser import (
+    FormulaSyntaxError,
+    extract_symbols,
+    parse_formula,
+    validate_formula,
+)
 
 
 def test_eval_formula_basic_and_wrap():

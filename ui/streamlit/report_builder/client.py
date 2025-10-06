@@ -1,8 +1,9 @@
 """HTTP client for relationship interpretation APIs."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 import requests
 
@@ -12,7 +13,7 @@ class APIError(Exception):
     """Lightweight exception for surfacing API failures."""
 
     message: str
-    status: Optional[int] = None
+    status: int | None = None
 
     def __str__(self) -> str:  # pragma: no cover - trivial
         if self.status is None:
@@ -26,7 +27,7 @@ def _normalise_base(url: str) -> str:
     return url.rstrip("/") if url else ""
 
 
-def _extract_detail(response: Optional[requests.Response]) -> Optional[str]:
+def _extract_detail(response: requests.Response | None) -> str | None:
     """Attempt to pull a human friendly error message from a response."""
 
     if response is None:
@@ -64,7 +65,7 @@ class RelationshipClient:
 
     # ------------------------------------------------------------------
     # REST helpers
-    def _post(self, base: str, path: str, payload: Dict[str, Any], *, timeout: int) -> Dict[str, Any] | List[Any]:
+    def _post(self, base: str, path: str, payload: dict[str, Any], *, timeout: int) -> dict[str, Any] | list[Any]:
         url = f"{base}{path}" if path.startswith("/") else f"{base}/{path}"
         try:
             response = requests.post(url, json=payload, timeout=timeout)
@@ -80,7 +81,7 @@ class RelationshipClient:
         except ValueError as exc:  # pragma: no cover - defensive
             raise APIError("API returned a non-JSON response") from exc
 
-    def _get(self, base: str, path: str, *, timeout: int) -> Dict[str, Any] | List[Any]:
+    def _get(self, base: str, path: str, *, timeout: int) -> dict[str, Any] | list[Any]:
         url = f"{base}{path}" if path.startswith("/") else f"{base}/{path}"
         try:
             response = requests.get(url, timeout=timeout)
@@ -98,7 +99,7 @@ class RelationshipClient:
 
     # ------------------------------------------------------------------
     # Public endpoints
-    def synastry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def synastry(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Invoke the B-003 synastry endpoint and return the response body."""
 
         data = self._post(self.relationship_base, "/v1/relationship/synastry", payload, timeout=90)
@@ -106,7 +107,7 @@ class RelationshipClient:
             raise APIError("Unexpected response payload from synastry endpoint")
         return data
 
-    def interpret(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def interpret(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Invoke the B-006 relationship interpretation endpoint."""
 
         data = self._post(self.interpretation_base, "/v1/interpret/relationship", payload, timeout=90)
@@ -114,7 +115,7 @@ class RelationshipClient:
             raise APIError("Unexpected response payload from interpret endpoint")
         return data
 
-    def list_rulepacks(self) -> List[Dict[str, Any]]:
+    def list_rulepacks(self) -> list[dict[str, Any]]:
         """Return available rulepacks for relationship interpretations."""
 
         data = self._get(self.interpretation_base, "/v1/interpret/rulepacks", timeout=60)

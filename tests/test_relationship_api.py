@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -74,7 +74,7 @@ def test_composite_endpoint_midpoint():
 
 def test_davison_endpoint_with_stub(monkeypatch):
     client = build_client()
-    origin = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    origin = datetime(2025, 1, 1, tzinfo=UTC)
     stub = LinearEphemeris(
         origin,
         base={"Sun": 10.0, "Venus": 20.0},

@@ -7,8 +7,8 @@ scenes without pulling in heavyweight dependencies.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Tuple
 
 SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -24,11 +24,11 @@ class SvgElement:
     """
 
     tag: str
-    attributes: Dict[str, str] = field(default_factory=dict)
-    children: List["SvgElement"] = field(default_factory=list)
-    text: Optional[str] = None
+    attributes: dict[str, str] = field(default_factory=dict)
+    children: list[SvgElement] = field(default_factory=list)
+    text: str | None = None
 
-    def set(self, **attrs: object) -> "SvgElement":
+    def set(self, **attrs: object) -> SvgElement:
         """Assign attributes on the element and return ``self``.
 
         Values are converted to strings using ``repr`` for floats to
@@ -47,14 +47,14 @@ class SvgElement:
                 self.attributes[key] = str(value)
         return self
 
-    def add(self, *children: "SvgElement") -> "SvgElement":
+    def add(self, *children: SvgElement) -> SvgElement:
         self.children.extend(children)
         return self
 
     def to_string(self, indent: int = 0, pretty: bool = True) -> str:
         pad = "  " * indent if pretty else ""
         child_pad = "  " * (indent + 1) if pretty else ""
-        parts: List[str] = []
+        parts: list[str] = []
         attrs = "".join(
             f" {name}={_quote(value)}" for name, value in sorted(self.attributes.items())
         )
@@ -93,9 +93,9 @@ class SvgDocument:
 
     width: float
     height: float
-    viewbox: Optional[Tuple[float, float, float, float]] = None
-    background: Optional[str] = None
-    metadata: Dict[str, str] = field(default_factory=dict)
+    viewbox: tuple[float, float, float, float] | None = None
+    background: str | None = None
+    metadata: dict[str, str] = field(default_factory=dict)
     root: SvgElement = field(init=False)
 
     def __post_init__(self) -> None:
@@ -183,7 +183,7 @@ class SvgDocument:
     def to_bytes(self, pretty: bool = True) -> bytes:
         return self.to_string(pretty=pretty).encode("utf-8")
 
-    def viewbox_tuple(self) -> Tuple[float, float, float, float]:
+    def viewbox_tuple(self) -> tuple[float, float, float, float]:
         if self.viewbox is not None:
             return self.viewbox
         return (0.0, 0.0, self.width, self.height)

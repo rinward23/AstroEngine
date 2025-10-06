@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Sequence
 
-from ..detectors.common import delta_deg, moon_lon, solve_zero_crossing, body_lon
+from ..detectors.common import body_lon, delta_deg, moon_lon, solve_zero_crossing
 from ..detectors.eclipses import find_eclipses as _detector_eclipses
 from ..detectors.ingresses import sign_index, sign_name
 from ..detectors.lunations import find_lunations as _detector_lunations

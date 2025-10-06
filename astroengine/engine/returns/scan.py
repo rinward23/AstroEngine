@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Iterable, Mapping, Sequence
 
 from ...core.bodies import canonical_name
 from ...core.charts_plus.returns import ReturnWindow as LegacyReturnWindow
@@ -15,7 +15,7 @@ from ...scoring.policy import OrbPolicy, load_orb_policy
 from ..angles.houses import GeoLoc, HousesResult, compute_angles_houses
 from ._codes import resolve_body_code
 from .attach import attach_aspects_to_natal, attach_transiting_aspects
-from .finder import ReturnInstant, ReturnNotFoundError, find_return_instant, guess_window
+from .finder import ReturnInstant, ReturnNotFoundError, find_return_instant
 
 __all__ = [
     "AttachOptions",

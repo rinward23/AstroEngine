@@ -1,8 +1,8 @@
 # >>> AUTO-GEN BEGIN: AE Skyfield Provider v1.0
 from __future__ import annotations
 
-from collections.abc import Iterable
 import logging
+from collections.abc import Iterable
 
 LOG = logging.getLogger(__name__)
 

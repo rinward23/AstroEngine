@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Iterable, Mapping
 
-from ..ephemeris import BodyPosition, HousePositions
 from ..chart.natal import NatalChart
+from ..ephemeris import BodyPosition, HousePositions
 from .aspects import GrahaYuddhaOutcome, compute_srishti_aspects, detect_graha_yuddha
 from .karaka import match_karakas
 from .lords import determine_house_lords, house_occupants

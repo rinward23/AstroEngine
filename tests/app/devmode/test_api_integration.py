@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import importlib
 import json
 import textwrap
 from pathlib import Path
 
-import importlib
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -19,9 +19,9 @@ def devmode_app(tmp_path, monkeypatch):
     monkeypatch.setenv("DEV_VALIDATE_COMMANDS", "echo ok")
     monkeypatch.setenv("DEV_PIN", "1234")
 
+    import app.devmode.api as api_mod
     import app.devmode.backups as backups_mod
     import astroengine.infrastructure.retention as retention_mod
-    import app.devmode.api as api_mod
 
     importlib.reload(retention_mod)
     importlib.reload(backups_mod)

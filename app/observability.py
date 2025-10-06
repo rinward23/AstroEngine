@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from time import perf_counter
-from typing import Any, Callable
+from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
@@ -16,8 +17,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 
-from astroengine.observability import ensure_metrics_registered
 from app.telemetry import resolve_observability_config, setup_tracing
+from astroengine.observability import ensure_metrics_registered
 
 try:  # pragma: no cover - optional dependency
     from opentelemetry import trace as _otel_trace
@@ -58,7 +59,7 @@ class JSONLogFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:  # noqa: D401 - brief docstring above
         payload: dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

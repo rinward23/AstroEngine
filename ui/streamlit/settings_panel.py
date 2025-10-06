@@ -7,7 +7,6 @@ from pathlib import Path
 import streamlit as st
 
 from astroengine.config import (
-    PluginCfg,
     Settings,
     config_path,
     load_settings,

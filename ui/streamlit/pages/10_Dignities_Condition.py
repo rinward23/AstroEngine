@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -41,8 +41,8 @@ if not settings.get("enabled", False):
     st.warning("Server configuration has dignity scoring disabled.")
     st.stop()
 
-chart_meta: Dict[str, Any] = payload.get("chart", {})
-natal_meta: Dict[str, Any] = payload.get("natal", {})
+chart_meta: dict[str, Any] = payload.get("chart", {})
+natal_meta: dict[str, Any] = payload.get("natal", {})
 sect = chart_meta.get("sect", {})
 label = sect.get("label", "day").title()
 col1, col2, col3 = st.columns(3)
@@ -64,7 +64,7 @@ with st.expander("Chart context", expanded=True):
             "sun_altitude_deg": sect.get("sun_altitude_deg"),
         })
 
-planets: Dict[str, Any] = payload.get("planets", {})
+planets: dict[str, Any] = payload.get("planets", {})
 rows = []
 for planet, info in planets.items():
     rows.append(

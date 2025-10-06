@@ -4,7 +4,12 @@ from datetime import UTC, datetime
 
 from astroengine.chart.natal import ChartLocation, NatalChart
 from astroengine.engine.horary.judgement import score_testimonies
-from astroengine.engine.horary.models import DignityStatus, RadicalityCheck, Significator, SignificatorSet
+from astroengine.engine.horary.models import (
+    DignityStatus,
+    RadicalityCheck,
+    Significator,
+    SignificatorSet,
+)
 from astroengine.engine.horary.profiles import get_profile
 from astroengine.ephemeris.swisseph_adapter import BodyPosition, HousePositions
 

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any
 
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS
 from astroengine.core.aspects_plus.matcher import angular_sep_deg
@@ -27,7 +28,7 @@ class SynastryHit:
 
 
 def _pair_weight(
-    weights: Optional[Mapping[Tuple[str, str], float]],
+    weights: Mapping[tuple[str, str], float] | None,
     a: str,
     b: str,
 ) -> float:
@@ -46,8 +47,8 @@ def _best_aspect(
     delta: float,
     aspects: Iterable[str],
     policy: Mapping[str, Any],
-) -> Optional[Tuple[str, float, float]]:
-    best: Optional[Tuple[str, float, float]] = None
+) -> tuple[str, float, float] | None:
+    best: tuple[str, float, float] | None = None
     for asp in aspects:
         key = asp.lower()
         angle = BASE_ASPECTS.get(key)
@@ -66,12 +67,12 @@ def synastry_hits(
     *,
     aspects: Iterable[str],
     policy: Mapping[str, Any],
-    per_aspect_weight: Optional[Mapping[str, float]] = None,
-    per_pair_weight: Optional[Mapping[Tuple[str, str], float]] = None,
-) -> List[SynastryHit]:
+    per_aspect_weight: Mapping[str, float] | None = None,
+    per_pair_weight: Mapping[tuple[str, str], float] | None = None,
+) -> list[SynastryHit]:
     """Return matched aspects for all A×B pairs within the configured policy."""
 
-    hits: List[SynastryHit] = []
+    hits: list[SynastryHit] = []
     for name_a, lon_a in pos_a.items():
         if lon_a is None:
             continue
@@ -105,10 +106,10 @@ def synastry_hits(
     return hits
 
 
-def synastry_grid(hits: Iterable[SynastryHit]) -> Dict[str, Dict[str, str]]:
+def synastry_grid(hits: Iterable[SynastryHit]) -> dict[str, dict[str, str]]:
     """Return a simple grid summarising the dominant aspect per pair."""
 
-    best: Dict[str, Dict[str, SynastryHit]] = {}
+    best: dict[str, dict[str, SynastryHit]] = {}
     for hit in hits:
         row = best.setdefault(hit.a, {})
         current = row.get(hit.b)
@@ -120,12 +121,12 @@ def synastry_grid(hits: Iterable[SynastryHit]) -> Dict[str, Dict[str, str]]:
     }
 
 
-def overlay_positions(pos_a: Mapping[str, float], pos_b: Mapping[str, float]) -> Dict[str, Dict[str, float]]:
+def overlay_positions(pos_a: Mapping[str, float], pos_b: Mapping[str, float]) -> dict[str, dict[str, float]]:
     """Return overlay of chart positions keyed by body."""
 
-    overlay: Dict[str, Dict[str, float]] = {}
+    overlay: dict[str, dict[str, float]] = {}
     for name in sorted(set(pos_a.keys()) | set(pos_b.keys())):
-        entry: Dict[str, float] = {}
+        entry: dict[str, float] = {}
         if name in pos_a and pos_a[name] is not None:
             entry["A"] = float(pos_a[name])
         if name in pos_b and pos_b[name] is not None:
@@ -140,12 +141,12 @@ def overlay_positions(pos_a: Mapping[str, float], pos_b: Mapping[str, float]) ->
     return overlay
 
 
-def synastry_score(hits: Iterable[SynastryHit]) -> Dict[str, Any]:
+def synastry_score(hits: Iterable[SynastryHit]) -> dict[str, Any]:
     """Aggregate severity across the hit list."""
 
     total = 0.0
-    per_aspect: Dict[str, float] = {}
-    per_pair: Dict[str, float] = {}
+    per_aspect: dict[str, float] = {}
+    per_pair: dict[str, float] = {}
     count = 0
     for hit in hits:
         severity = float(hit.severity)

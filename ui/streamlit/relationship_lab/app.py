@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Mapping
+from datetime import UTC, datetime, timedelta
 
 import pandas as pd
-from datetime import UTC, datetime, timedelta, timezone
-from collections.abc import Iterable, Mapping
-from typing import Any, Dict
 
 try:  # pragma: no cover - Streamlit import guarded for tests
     import streamlit as st
@@ -18,7 +17,7 @@ except Exception:  # pragma: no cover - surfaced to CLI when dependencies missin
 from .api import build_backend
 from .constants import ASPECTS, EXTENDED_ASPECTS, MAJOR_ASPECTS
 from .samples import DEFAULT_PAIR, get_sample, sample_labels
-from .state import get_state, update_state, export_state_payload
+from .state import export_state_payload, get_state, update_state
 from .views import (
     build_summary_markdown,
     filter_hits,
@@ -31,7 +30,7 @@ from .views import (
 from .wheels import render_wheel_svg
 
 
-def _parse_positions(text: str) -> Dict[str, float]:
+def _parse_positions(text: str) -> dict[str, float]:
     if not text.strip():
         return {}
     try:
@@ -40,7 +39,7 @@ def _parse_positions(text: str) -> Dict[str, float]:
         raise ValueError(f"Invalid JSON payload: {exc}") from exc
     if not isinstance(data, Mapping):
         raise ValueError("Positions JSON must be an object mapping names to degrees")
-    result: Dict[str, float] = {}
+    result: dict[str, float] = {}
     for key, value in data.items():
         try:
             result[str(key)] = float(value)
@@ -85,7 +84,7 @@ def _positions_editor(column, label: str, state_attr: str, default_sample: str) 
     return text
 
 
-def _weights_payload(profile: str, aspects: Iterable[str]) -> Dict[str, float] | None:
+def _weights_payload(profile: str, aspects: Iterable[str]) -> dict[str, float] | None:
     if profile == "flat":
         return {aspect: 1.0 for aspect in aspects}
     return None
@@ -282,7 +281,7 @@ def run() -> None:
 
     with tabs[2]:
         st.subheader("Davison — midpoint chart")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         col_dt_a, col_dt_b = st.columns(2)
         dt_a = col_dt_a.datetime_input("Chart A datetime (UTC)", value=now - timedelta(days=7))
         dt_b = col_dt_b.datetime_input("Chart B datetime (UTC)", value=now)

@@ -1,4 +1,4 @@
-from astroengine.viz.core.labeler import LabelRequest, Labeler
+from astroengine.viz.core.labeler import Labeler, LabelRequest
 
 
 def test_labeler_avoids_overlaps_in_primary_band():

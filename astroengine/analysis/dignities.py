@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 from collections import OrderedDict
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import UTC, timezone
+from datetime import UTC
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from ..chart.natal import NatalChart
 from ..config import load_settings
@@ -386,7 +387,7 @@ def condition_report(chart: NatalChart) -> dict[str, Any]:
         moment = moment.replace(tzinfo=UTC)
 
     chart_info = {
-        "moment": moment.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "moment": moment.astimezone(UTC).isoformat().replace("+00:00", "Z"),
         "location": {
             "latitude": float(chart.location.latitude),
             "longitude": float(chart.location.longitude),

@@ -7,8 +7,8 @@ from collections.abc import Sequence
 
 from astroengine.ephemeris.swe import has_swe, swe
 
-from ..events import EclipseEvent
 from ..ephemeris.cache import calc_ut_cached
+from ..events import EclipseEvent
 from .common import jd_to_iso, moon_lon, sun_lon
 
 __all__ = ["find_eclipses"]

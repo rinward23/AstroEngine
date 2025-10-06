@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Iterable, Literal, Sequence
+from typing import Literal
 
 from ...core.angles import normalize_degrees
 from ...ephemeris.adapter import EphemerisAdapter

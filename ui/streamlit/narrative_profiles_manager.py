@@ -11,7 +11,6 @@ from astroengine.config import (
     load_settings,
 )
 
-
 st.set_page_config(page_title="AstroEngine — Narrative Profiles", layout="wide")
 st.title("🗂️ Narrative Profiles")
 

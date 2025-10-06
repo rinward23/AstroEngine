@@ -5,8 +5,8 @@ from __future__ import annotations
 import datetime as dt
 import math
 import os
-from dataclasses import dataclass, field
-from typing import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -264,7 +264,7 @@ class _TimelineEngine:
 
             longitudes = self._batched_longitudes(name, code, moments)
             entries = [
-                (moment, float(lon)) for moment, lon in zip(moments, longitudes)
+                (moment, float(lon)) for moment, lon in zip(moments, longitudes, strict=False)
             ]
             samples[name] = entries
         return samples
@@ -704,8 +704,8 @@ class _TimelineEngine:
 
 def _ensure_utc(moment: dt.datetime) -> dt.datetime:
     if moment.tzinfo is None:
-        return moment.replace(tzinfo=dt.timezone.utc)
-    return moment.astimezone(dt.timezone.utc)
+        return moment.replace(tzinfo=dt.UTC)
+    return moment.astimezone(dt.UTC)
 
 
 def _is_bracket(a: float, b: float) -> bool:
@@ -754,7 +754,7 @@ def _update_calendar(storage: dict[str, float], event: Event) -> None:
         next_day = dt.datetime.combine(
             (cursor + dt.timedelta(days=1)).date(),
             dt.time.min,
-            tzinfo=dt.timezone.utc,
+            tzinfo=dt.UTC,
         )
         segment_end = min(next_day, end)
         hours = (segment_end - cursor).total_seconds() / 3600.0

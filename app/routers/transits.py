@@ -1,8 +1,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
@@ -18,24 +18,25 @@ from astroengine.core.scan_plus.ranking import (
     EventPoint,
     daily_composite,
     monthly_composite,
+)
+from astroengine.core.scan_plus.ranking import (
     severity as compute_severity,
 )
 
 try:  # Optional: DB repo for orb policy id
-    from app.repo.orb_policies import OrbPolicyRepo  # type: ignore
     from app.db.session import session_scope  # type: ignore
+    from app.repo.orb_policies import OrbPolicyRepo  # type: ignore
 except Exception:  # pragma: no cover
     OrbPolicyRepo = None  # type: ignore
     session_scope = None  # type: ignore
 
-from app.schemas.aspects import OrbPolicyInline
-
 # Reuse provider injection from aspects router
 from app.routers import aspects as aspects_module
+from app.schemas.aspects import OrbPolicyInline
 
 router = APIRouter(prefix="", tags=["Plus"])
 
-DEFAULT_POLICY: Dict[str, Any] = {
+DEFAULT_POLICY: dict[str, Any] = {
     "per_object": {},
     "per_aspect": {
         "conjunction": 8.0,
@@ -60,7 +61,7 @@ DEFAULT_POLICY: Dict[str, Any] = {
 def _resolve_orb_policy_inline_or_id(
     orb_policy_inline: OrbPolicyInline | None,
     orb_policy_id: int | None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if orb_policy_inline is not None:
         return orb_policy_inline.model_dump()
     if orb_policy_id is not None:
@@ -89,10 +90,10 @@ def _resolve_orb_policy_inline_or_id(
 )
 def score_series(req: ScoreSeriesRequest):
     if req.hits:
-        events: List[EventPoint] = []
-        utc_times: List[datetime] = []
+        events: list[EventPoint] = []
+        utc_times: list[datetime] = []
         for h in req.hits:
-            ts = h.exact_time.astimezone(timezone.utc)
+            ts = h.exact_time.astimezone(UTC)
             utc_times.append(ts)
             severity = (
                 float(h.severity)
@@ -118,8 +119,8 @@ def score_series(req: ScoreSeriesRequest):
     provider = aspects_module._get_provider()
     policy = _resolve_orb_policy_inline_or_id(scan.orb_policy_inline, scan.orb_policy_id)
 
-    start = scan.window.start.astimezone(timezone.utc)
-    end = scan.window.end.astimezone(timezone.utc)
+    start = scan.window.start.astimezone(UTC)
+    end = scan.window.end.astimezone(UTC)
     window = TimeWindow(start=start, end=end)
 
     hits = scan_time_range(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Dict, List, Mapping
+from collections.abc import Mapping
 
 import streamlit as st
 
@@ -20,7 +20,7 @@ st.title("Multi-wheel Synastry 🪐")
 # ---------------------------------------------------------------------------
 # Defaults
 
-SAMPLE_DATA: Mapping[str, Dict[str, object]] = {
+SAMPLE_DATA: Mapping[str, dict[str, object]] = {
     "natal": {
         "label": "Natal",
         "positions": {
@@ -92,7 +92,7 @@ SAMPLE_DATA: Mapping[str, Dict[str, object]] = {
 DEFAULT_ASPECTS = ["conjunction", "opposition", "trine", "square", "sextile"]
 
 settings: Settings = load_settings()
-profile_names: List[str] = list(settings.synastry.wheel_profiles)
+profile_names: list[str] = list(settings.synastry.wheel_profiles)
 
 if not settings.multiwheel.enabled:
     st.warning("Multi-wheel rendering is disabled in settings. Enable it in the settings panel to activate this tool.")
@@ -109,7 +109,7 @@ with sidebar:
         value=default_wheels,
         help="Number of concentric wheels to render",
     )
-    chart_order: List[str] = []
+    chart_order: list[str] = []
     available_profiles = profile_names or ["natal", "secondary_progressions", "transits"]
     for idx in range(wheel_count):
         key = f"wheel_profile_{idx}"
@@ -143,7 +143,7 @@ with sidebar:
     st.divider()
     st.header("Layers JSON")
 
-layer_inputs: List[dict] = []
+layer_inputs: list[dict] = []
 for idx, chart in enumerate(chart_order):
     defaults = SAMPLE_DATA.get(chart, {})
     st.subheader(f"{defaults.get('label', chart.title())} positions")
@@ -187,8 +187,8 @@ with col_left:
 render_button = st.button("Render multi-wheel", type="primary")
 
 if render_button:
-    layers: List[MultiWheelLayer] = []
-    errors: List[str] = []
+    layers: list[MultiWheelLayer] = []
+    errors: list[str] = []
     for idx, payload in enumerate(layer_inputs):
         try:
             pos_data = json.loads(payload["positions"]) if payload["positions"].strip() else {}
@@ -196,7 +196,7 @@ if render_button:
         except Exception as exc:
             errors.append(f"Wheel {idx + 1} positions error: {exc}")
             positions = {}
-        houses: List[float] | None = None
+        houses: list[float] | None = None
         houses_txt = payload["houses"].strip()
         if houses_txt:
             try:
@@ -204,7 +204,7 @@ if render_button:
                 houses = [float(value) for value in house_values]
             except Exception as exc:
                 errors.append(f"Wheel {idx + 1} houses error: {exc}")
-        declinations: Dict[str, float] | None = None
+        declinations: dict[str, float] | None = None
         decl_txt = payload["declinations"].strip()
         if decl_txt:
             try:

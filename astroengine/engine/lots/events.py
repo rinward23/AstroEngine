@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import datetime as _dt
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Iterable, Mapping
 
 from ...scoring.policy import OrbPolicy
 from .aspects import _angles_from_harmonics, _resolve_orb, _severity
@@ -27,11 +27,11 @@ class LotEvent:
 
 def _get_longitude(ephem: object, body: str, moment: _dt.datetime) -> tuple[float, float | None]:
     if hasattr(ephem, "longitude"):
-        lon = getattr(ephem, "longitude")(body, moment)
+        lon = ephem.longitude(body, moment)
         return float(lon) % 360.0, None
     if hasattr(ephem, "sample"):
-        sample = getattr(ephem, "sample")(body, moment)
-        longitude = getattr(sample, "longitude")
+        sample = ephem.sample(body, moment)
+        longitude = sample.longitude
         speed = getattr(sample, "speed_longitude", None)
         return float(longitude) % 360.0, float(speed) if speed is not None else None
     raise TypeError("Ephemeris adapter must expose 'longitude' or 'sample'")

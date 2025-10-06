@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Tuple
 
 from astroengine.config import load_settings
 from astroengine.visual import (
@@ -87,7 +87,7 @@ def add_subparser(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> N
     parser.set_defaults(func=run)
 
 
-def _parse_multiwheel_spec(path: str) -> Tuple[MultiWheelComposition, MultiWheelOptions]:
+def _parse_multiwheel_spec(path: str) -> tuple[MultiWheelComposition, MultiWheelOptions]:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if "layers" not in data or not isinstance(data["layers"], list):
         raise ValueError("multi-wheel spec must include a 'layers' list")

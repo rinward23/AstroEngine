@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 import uvicorn
 
 
-def _env_positive_int(name: str) -> Optional[int]:
+def _env_positive_int(name: str) -> int | None:
     """Return a positive integer from ``name`` if it is well-formed."""
 
     raw = os.getenv(name)

@@ -1,24 +1,22 @@
 from __future__ import annotations
 
-
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.schemas.aspects import AspectName, TimeWindow, OrbPolicyInline
+from app.schemas.aspects import AspectName, OrbPolicyInline, TimeWindow
 
 
 class ScanInput(BaseModel):
-    objects: List[str]
-    aspects: List[AspectName]
-    harmonics: List[int] = Field(default_factory=list)
+    objects: list[str]
+    aspects: list[AspectName]
+    harmonics: list[int] = Field(default_factory=list)
     window: TimeWindow
     step_minutes: int = Field(60, ge=1, le=720)
 
-    orb_policy_id: Optional[int] = None
-    orb_policy_inline: Optional[OrbPolicyInline] = None
+    orb_policy_id: int | None = None
+    orb_policy_inline: OrbPolicyInline | None = None
 
 
 class HitIn(BaseModel):
@@ -28,12 +26,12 @@ class HitIn(BaseModel):
     exact_time: datetime
     orb: float
     orb_limit: float
-    severity: Optional[float] = None
+    severity: float | None = None
 
 
 class ScoreSeriesRequest(BaseModel):
-    scan: Optional[ScanInput] = None
-    hits: Optional[List[HitIn]] = None
+    scan: ScanInput | None = None
+    hits: list[HitIn] | None = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -79,7 +77,7 @@ class ScoreSeriesRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _one_of_scan_or_hits(self) -> "ScoreSeriesRequest":
+    def _one_of_scan_or_hits(self) -> ScoreSeriesRequest:
         if (self.scan is None and not self.hits) or (self.scan is not None and self.hits):
             raise ValueError("Provide exactly one of 'scan' or 'hits'")
         return self
@@ -136,9 +134,9 @@ class MonthlyPoint(BaseModel):
 
 
 class ScoreSeriesResponse(BaseModel):
-    daily: List[DailyPoint]
-    monthly: List[MonthlyPoint]
-    meta: Dict[str, Any]
+    daily: list[DailyPoint]
+    monthly: list[MonthlyPoint]
+    meta: dict[str, Any]
 
     model_config = ConfigDict(
         json_schema_extra={

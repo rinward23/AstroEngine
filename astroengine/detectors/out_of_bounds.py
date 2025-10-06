@@ -6,8 +6,8 @@ from collections.abc import Sequence
 
 from astroengine.ephemeris.swe import has_swe, swe
 
-from ..events import OutOfBoundsEvent
 from ..ephemeris.cache import calc_ut_cached
+from ..events import OutOfBoundsEvent
 from .common import jd_to_iso, solve_zero_crossing
 
 __all__ = ["find_out_of_bounds"]

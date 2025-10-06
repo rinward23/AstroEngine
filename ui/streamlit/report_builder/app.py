@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Mapping
+from collections.abc import Iterable, Mapping
+from datetime import UTC, datetime
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -37,7 +38,7 @@ def _read_sample(path: str) -> str:
     )
 
 
-def _collect_tags(payload: Mapping[str, Any] | None) -> List[str]:
+def _collect_tags(payload: Mapping[str, Any] | None) -> list[str]:
     tags: set[str] = set()
     if isinstance(payload, Mapping):
         findings = payload.get("findings")
@@ -62,7 +63,7 @@ def _finding_snippet(item: Mapping[str, Any]) -> str:
 
 
 def _inputs_summary(hits: Iterable[Mapping[str, Any]] | None) -> pd.DataFrame:
-    records: List[Dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
     if hits:
         for hit in hits:
             if not isinstance(hit, Mapping):
@@ -136,7 +137,7 @@ def _project_download(state: ReportState) -> tuple[str, str] | None:
     if not state.findings:
         return None
     payload = state.model_dump()
-    payload["generated_at"] = datetime.now(timezone.utc).isoformat()
+    payload["generated_at"] = datetime.now(UTC).isoformat()
     return "report_project.json", json.dumps(payload, indent=2, ensure_ascii=False)
 
 
@@ -144,7 +145,7 @@ def _build_filters(state: ReportState) -> ReportFilters:
     return ReportFilters.model_validate(state.filters.model_dump())
 
 
-def _ensure_rulepack_selection(state: ReportState, rulepacks: List[Mapping[str, Any]]) -> str:
+def _ensure_rulepack_selection(state: ReportState, rulepacks: list[Mapping[str, Any]]) -> str:
     current = state.rulepack_id or (rulepacks[0]["id"] if rulepacks else "")
     return current
 
@@ -324,7 +325,7 @@ def main() -> None:  # pragma: no cover - Streamlit entrypoint
     filters_dict["include_tags"] = include_selection
     filters_dict["exclude_tags"] = exclude_selection
 
-    pending_updates: Dict[str, Any] = {}
+    pending_updates: dict[str, Any] = {}
     if name_a != state.pair.nameA or name_b != state.pair.nameB:
         pending_updates["pair"] = {"nameA": name_a, "nameB": name_b}
     if selected_rulepack != state.rulepack_id:
@@ -369,7 +370,7 @@ def main() -> None:  # pragma: no cover - Streamlit entrypoint
             except APIError as exc:
                 st.error(str(exc))
             else:
-                generated_at = datetime.now(timezone.utc)
+                generated_at = datetime.now(UTC)
                 state = update_state(st.session_state, findings=result, markdown=None)
                 markdown = _render_markdown(state, generated_at)
                 state = update_state(st.session_state, markdown=markdown)
@@ -379,7 +380,7 @@ def main() -> None:  # pragma: no cover - Streamlit entrypoint
 
     if state.findings:
         st.subheader("Report preview")
-        markdown_value = state.markdown or _render_markdown(state, datetime.now(timezone.utc))
+        markdown_value = state.markdown or _render_markdown(state, datetime.now(UTC))
         edited_markdown = st.text_area(
             "Markdown", value=markdown_value, height=400, key="markdown_preview"
         )

@@ -10,8 +10,8 @@ from sqlalchemy import text
 
 from app.db.session import session_scope
 from astroengine.cache import positions_cache
-from astroengine.infrastructure.storage.sqlite import apply_default_pragmas
 from astroengine.ephemeris.utils import get_se_ephe_path
+from astroengine.infrastructure.storage.sqlite import apply_default_pragmas
 
 router = APIRouter(tags=["observability"])
 

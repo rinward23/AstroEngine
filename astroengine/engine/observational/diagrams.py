@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
+import math
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from io import BytesIO
-import math
-from typing import Iterable, Sequence, TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any
 
-from ...ephemeris.adapter import EphemerisAdapter, ObserverLocation
+from astroengine.ephemeris.swe import has_swe, swe
+
 from ...core.dependencies import require_dependency
+from ...ephemeris.adapter import EphemerisAdapter, ObserverLocation
 from .events import rise_set_times, transit_time
 from .topocentric import MetConditions, horizontal_from_equatorial, topocentric_equatorial
-from astroengine.ephemeris.swe import has_swe, swe
 
 if TYPE_CHECKING:  # pragma: no cover - imported for static typing only
     from PIL import ImageDraw as PILImageDraw

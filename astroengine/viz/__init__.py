@@ -13,10 +13,10 @@ represent that data faithfully; they never fabricate celestial
 positions or magnitudes.
 """
 
-from .core.svg import SvgDocument, SvgElement
-from .core.theme import VizTheme, ThemeManager
 from .core.glyphs import Glyph, GlyphCatalog
-from .core.labeler import LabelRequest, LabelPlacement, Labeler
+from .core.labeler import Labeler, LabelPlacement, LabelRequest
+from .core.svg import SvgDocument, SvgElement
+from .core.theme import ThemeManager, VizTheme
 
 __all__ = [
     "SvgDocument",

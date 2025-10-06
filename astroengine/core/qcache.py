@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import os
 from collections import OrderedDict
+from collections.abc import Hashable
 from dataclasses import dataclass
 from math import floor
-from typing import Any, Hashable, Optional, Tuple
+from typing import Any
 
 # Quantization size in seconds (default 1s). Tune via env if needed.
 DEFAULT_QSEC = float(os.getenv("AE_QCACHE_SEC", "1.0"))
@@ -19,7 +20,7 @@ def qbin(jd_tt: float, qsec: float = DEFAULT_QSEC) -> int:
 
 @dataclass(slots=True)
 class _Entry:
-    key: Tuple[Hashable, ...]
+    key: tuple[Hashable, ...]
     value: Any
 
 
@@ -30,9 +31,9 @@ class QCache:
 
     def __init__(self, maxsize: int = 16384) -> None:
         self.maxsize = maxsize
-        self._data: "OrderedDict[Tuple[Hashable, ...], _Entry]" = OrderedDict()
+        self._data: OrderedDict[tuple[Hashable, ...], _Entry] = OrderedDict()
 
-    def get(self, key: Tuple[Hashable, ...]) -> Optional[Any]:
+    def get(self, key: tuple[Hashable, ...]) -> Any | None:
         val = self._data.get(key)
         if val is None:
             return None
@@ -40,7 +41,7 @@ class QCache:
         self._data.move_to_end(key)
         return val.value
 
-    def put(self, key: Tuple[Hashable, ...], value: Any) -> None:
+    def put(self, key: tuple[Hashable, ...], value: Any) -> None:
         if key in self._data:
             self._data.move_to_end(key)
             self._data[key].value = value

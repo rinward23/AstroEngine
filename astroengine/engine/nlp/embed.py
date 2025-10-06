@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, List
 
 
 @dataclass
 class EmbeddingResult:
     text: str
-    vector: List[float]
+    vector: list[float]
 
 
 class HashingSentenceEmbedder:
@@ -23,12 +23,12 @@ class HashingSentenceEmbedder:
         vector = self._expand_digest(digest, self.dimension)
         return EmbeddingResult(text=text, vector=vector)
 
-    def embed_many(self, texts: Iterable[str]) -> List[EmbeddingResult]:
+    def embed_many(self, texts: Iterable[str]) -> list[EmbeddingResult]:
         return [self.embed(text) for text in texts]
 
     @staticmethod
-    def _expand_digest(digest: bytes, dimension: int) -> List[float]:
-        values: List[float] = []
+    def _expand_digest(digest: bytes, dimension: int) -> list[float]:
+        values: list[float] = []
         counter = 0
         while len(values) < dimension:
             chunk = hashlib.sha256(digest + counter.to_bytes(4, "little")).digest()

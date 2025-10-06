@@ -11,7 +11,6 @@ from astroengine.engine.vedic import (
 from astroengine.engine.vedic.dasha_vimshottari import ORDER, TOTAL_YEARS
 from astroengine.engine.vedic.dasha_yogini import TOTAL_YEARS as YOGINI_TOTAL
 
-
 NATAL_MOMENT = datetime(1984, 10, 17, 4, 30, tzinfo=UTC)
 LAT = 40.7128
 LON = -74.0060

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
-from typing import Sequence
 
 from ..cache.positions_cache import warm_daily
 from ..detectors.common import enable_cache, iso_to_jd

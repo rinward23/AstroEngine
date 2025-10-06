@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -9,7 +9,7 @@ class LotDefIn(BaseModel):
     name: str
     day: str
     night: str
-    description: Optional[str] = ""
+    description: str | None = ""
     register_flag: bool = Field(default=False, alias="register")
     model_config = ConfigDict(populate_by_name=True)
 
@@ -19,12 +19,12 @@ class LotDefIn(BaseModel):
 
 
 class LotsComputeRequest(BaseModel):
-    positions: Dict[str, float] = Field(
+    positions: dict[str, float] = Field(
         ..., description="Symbol → longitude deg; include Asc, Sun, Moon as needed"
     )
-    lots: List[str] = Field(default_factory=lambda: ["Fortune", "Spirit"])
+    lots: list[str] = Field(default_factory=lambda: ["Fortune", "Spirit"])
     sect: Literal["day", "night"]
-    custom_lots: Optional[List[LotDefIn]] = None
+    custom_lots: list[LotDefIn] | None = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -52,8 +52,8 @@ class LotsComputeRequest(BaseModel):
 
 
 class LotsComputeResponse(BaseModel):
-    positions: Dict[str, float]
-    meta: Dict[str, Any] = Field(default_factory=dict)
+    positions: dict[str, float]
+    meta: dict[str, Any] = Field(default_factory=dict)
 
 
 class LotDefOut(BaseModel):
@@ -64,6 +64,6 @@ class LotDefOut(BaseModel):
 
 
 class LotsCatalogResponse(BaseModel):
-    lots: List[LotDefOut]
-    meta: Dict[str, Any] = Field(default_factory=dict)
+    lots: list[LotDefOut]
+    meta: dict[str, Any] = Field(default_factory=dict)
 

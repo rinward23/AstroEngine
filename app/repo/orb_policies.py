@@ -1,5 +1,5 @@
-from app.repo.base import BaseRepo
 from app.db.models import OrbPolicy
+from app.repo.base import BaseRepo
 
 
 class OrbPolicyRepo(BaseRepo[OrbPolicy]):

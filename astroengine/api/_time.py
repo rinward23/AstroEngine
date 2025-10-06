@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, Annotated
+from typing import Annotated, Any
 
 from pydantic import PlainValidator, TypeAdapter, ValidationError
-
 
 _DATETIME_ADAPTER = TypeAdapter(datetime)
 

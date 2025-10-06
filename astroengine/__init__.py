@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 try:
     from importlib.metadata import PackageNotFoundError, version as _get_version
@@ -464,10 +464,10 @@ try:  # pragma: no cover - optional dependency in some environments
         tz = None
         if min_value.tzinfo is not None:
             tz = min_value.tzinfo
-            min_value = min_value.astimezone(timezone.utc).replace(tzinfo=None)
+            min_value = min_value.astimezone(UTC).replace(tzinfo=None)
         if max_value.tzinfo is not None:
             tz = max_value.tzinfo
-            max_value = max_value.astimezone(timezone.utc).replace(tzinfo=None)
+            max_value = max_value.astimezone(UTC).replace(tzinfo=None)
         if tz is not None and timezones is _hyp_strategies.none():
             timezones = _hyp_strategies.just(tz)
         return _original_datetimes(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,7 +24,7 @@ class DeclinationPosition(BaseModel):
 class DeclinationRequest(BaseModel):
     """Request payload for declination aspect detection."""
 
-    positions: Dict[str, DeclinationPosition] = Field(
+    positions: dict[str, DeclinationPosition] = Field(
         ..., description="Body positions keyed by display name."
     )
     julian_day: float | None = Field(
@@ -34,7 +34,7 @@ class DeclinationRequest(BaseModel):
     zodiac: Literal["tropical", "sidereal"] | None = Field(
         default=None, description="Override zodiac mode (defaults to settings)."
     )
-    ayanamsa: Optional[str] = Field(
+    ayanamsa: str | None = Field(
         default=None,
         description="Sidereal ayanamsa identifier when zodiac='sidereal'.",
     )
@@ -67,7 +67,7 @@ class DeclinationAspectHit(BaseModel):
 class DeclinationResponse(BaseModel):
     """Response payload containing declination metadata and aspect hits."""
 
-    declinations: Dict[str, float]
+    declinations: dict[str, float]
     aspects: list[DeclinationAspectHit]
     orb_deg: float
     enabled: bool

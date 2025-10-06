@@ -1,13 +1,11 @@
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 from core.relationship_plus.composite import (
     Geo,
     composite_positions,
     davison_midpoints,
     davison_positions,
-    delta_short,
     midpoint_angle,
-    norm360,
 )
 
 
@@ -45,7 +43,7 @@ def test_composite_positions_common_bodies():
 
 
 def test_davison_midpoints_and_positions():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     a_time = t0
     b_time = t0 + timedelta(days=10)
     a_loc = Geo(10.0, 20.0)

@@ -2,20 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from itertools import combinations
 from typing import (
     Any,
-    Callable,
-    Iterable,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
 )
 
 from astroengine.analysis.antiscia import (
@@ -59,7 +51,7 @@ class AspectSpec:
 
     name: str
     angle: float
-    harmonic: Optional[int] = None
+    harmonic: int | None = None
 
 
 
@@ -73,7 +65,7 @@ class Hit:
     exact_time: datetime
     orb: float
     orb_limit: float
-    meta: Optional[MutableMapping[str, Any]] = None
+    meta: MutableMapping[str, Any] | None = None
 
     def as_mapping(self) -> Mapping[str, Any]:
         base = {
@@ -89,7 +81,7 @@ class Hit:
         return base
 
 
-def _separation(provider: PositionProvider, ts: datetime, a: str, b: str) -> Optional[float]:
+def _separation(provider: PositionProvider, ts: datetime, a: str, b: str) -> float | None:
     try:
         positions = provider(ts)
         lon_a = float(positions[a])
@@ -106,7 +98,7 @@ def _angle_delta(
     a: str,
     b: str,
     target_angle: float,
-) -> Optional[float]:
+) -> float | None:
     sep = _separation(provider, ts, a, b)
     if sep is None:
         return None
@@ -119,7 +111,7 @@ def _sum_delta(
     a: str,
     b: str,
     target_angle: float,
-) -> Optional[float]:
+) -> float | None:
     """Return signed difference between (lon_a + lon_b) and ``target_angle``."""
 
     try:
@@ -228,7 +220,7 @@ def _bisect_refine(
     left_delta: float,
     right_time: datetime,
     right_delta: float,
-) -> Optional[Tuple[datetime, float]]:
+) -> tuple[datetime, float] | None:
     best_time = left_time if abs(left_delta) <= abs(right_delta) else right_time
     best_delta = left_delta if abs(left_delta) <= abs(right_delta) else right_delta
     for _ in range(40):
@@ -259,7 +251,7 @@ def _bisect_mirror(
     left_delta: float,
     right_time: datetime,
     right_delta: float,
-) -> Optional[Tuple[datetime, float]]:
+) -> tuple[datetime, float] | None:
     """Refine antiscia/contra-antiscia roots via bisection."""
 
     best_time = left_time if abs(left_delta) <= abs(right_delta) else right_time
@@ -291,15 +283,15 @@ def _scan_single_spec(
     spec: AspectSpec,
     limit: float,
     step_minutes: int,
-) -> List[Hit]:
+) -> list[Hit]:
     step = timedelta(minutes=max(1, int(step_minutes)))
-    hits: List[Hit] = []
+    hits: list[Hit] = []
 
     prev_time = window.start
     prev_delta_opt = _angle_delta(provider, prev_time, body_a, body_b, spec.angle)
     if prev_delta_opt is None:
         return hits
-    last_recorded: Optional[datetime] = None
+    last_recorded: datetime | None = None
 
     while prev_time < window.end:
         next_time = prev_time + step
@@ -311,7 +303,7 @@ def _scan_single_spec(
             prev_delta_opt = None
             continue
 
-        candidate: Optional[Tuple[datetime, float]] = None
+        candidate: tuple[datetime, float] | None = None
 
         if prev_delta_opt == 0.0:
             candidate = (prev_time, 0.0)
@@ -365,16 +357,16 @@ def _scan_mirror_target(
     step_minutes: int,
     *,
     expected_label: str,
-) -> List[Hit]:
+) -> list[Hit]:
     step = timedelta(minutes=max(1, int(step_minutes)))
-    hits: List[Hit] = []
+    hits: list[Hit] = []
 
     prev_time = window.start
     prev_delta_opt = _sum_delta(provider, prev_time, body_a, body_b, target_angle)
     if prev_delta_opt is None:
         return hits
     prev_delta = prev_delta_opt
-    last_recorded: Optional[datetime] = None
+    last_recorded: datetime | None = None
 
     while prev_time < window.end:
         next_time = prev_time + step
@@ -390,7 +382,7 @@ def _scan_mirror_target(
             continue
 
         next_delta = next_delta_opt
-        candidate: Optional[Tuple[datetime, float]] = None
+        candidate: tuple[datetime, float] | None = None
 
         if prev_delta == 0.0:
             candidate = (prev_time, 0.0)
@@ -470,7 +462,7 @@ def _scan_pair_mirrors(
     provider: PositionProvider,
     orb_deg: float | None,
     step_minutes: int,
-) -> List[Hit]:
+) -> list[Hit]:
     if orb_deg is None:
         return []
     try:
@@ -480,7 +472,7 @@ def _scan_pair_mirrors(
     if limit <= 0.0:
         return []
 
-    hits: List[Hit] = []
+    hits: list[Hit] = []
     hits.extend(
         _scan_mirror_target(
             body_a,
@@ -520,12 +512,12 @@ def scan_pair_time_range(
     orb_policy: Mapping[str, Any] | None,
     *,
     step_minutes: int = 60,
-) -> List[Hit]:
+) -> list[Hit]:
     """Scan a pair of bodies for the provided aspects."""
 
 
     specs = [_coerce_spec(spec) for spec in aspect_specs if spec is not None]
-    hits: List[Hit] = []
+    hits: list[Hit] = []
     for spec in specs:
 
         limit = _resolve_orb_limit(orb_policy, spec, body_a, body_b)
@@ -536,7 +528,7 @@ def scan_pair_time_range(
     return hits
 
 
-def _pair_iter(objects: Sequence[str], pairs: Optional[Iterable[Tuple[str, str]]]) -> Iterable[Tuple[str, str]]:
+def _pair_iter(objects: Sequence[str], pairs: Iterable[tuple[str, str]] | None) -> Iterable[tuple[str, str]]:
     if pairs:
         for p in pairs:
             if not p or len(p) < 2:
@@ -546,9 +538,9 @@ def _pair_iter(objects: Sequence[str], pairs: Optional[Iterable[Tuple[str, str]]
         yield from combinations(objects, 2)
 
 
-def _build_specs(aspects: Sequence[str], harmonics: Sequence[int]) -> List[AspectSpec]:
-    specs: List[AspectSpec] = []
-    seen: set[Tuple[str, float, Optional[int]]] = set()
+def _build_specs(aspects: Sequence[str], harmonics: Sequence[int]) -> list[AspectSpec]:
+    specs: list[AspectSpec] = []
+    seen: set[tuple[str, float, int | None]] = set()
 
     for name in aspects:
         key = (name or "").strip().lower()
@@ -586,18 +578,18 @@ def scan_time_range(
     aspects: Sequence[str],
     harmonics: Sequence[int],
     orb_policy: Mapping[str, Any] | None,
-    pairs: Optional[Iterable[Tuple[str, str]]] = None,
+    pairs: Iterable[tuple[str, str]] | None = None,
     step_minutes: int = 60,
     include_antiscia: bool = False,
     antiscia_orb: float | None = None,
-) -> List[Hit]:
+) -> list[Hit]:
     """Scan a set of objects for matching aspect hits."""
 
     specs = _build_specs(aspects, harmonics)
     if not specs:
         return []
 
-    hits: List[Hit] = []
+    hits: list[Hit] = []
     for a, b in _pair_iter(objects, pairs):
         hits.extend(
             scan_pair_time_range(

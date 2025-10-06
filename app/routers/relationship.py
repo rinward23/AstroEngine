@@ -1,31 +1,19 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.routers import aspects as aspects_module
+from app.schemas.aspects import OrbPolicyInline
 from app.schemas.relationship import (
-    SynastryRequest,
-    SynastryResponse,
-    SynastryHitOut,
     CompositeRequest,
     CompositeResponse,
     DavisonRequest,
     DavisonResponse,
-)
-from app.schemas.aspects import OrbPolicyInline
-
-from core.relationship_plus.synastry import (
-    synastry_hits,
-    synastry_grid,
-    overlay_positions,
-    synastry_score,
-)
-from core.relationship_plus.composite import (
-    composite_positions,
-    davison_positions,
-    davison_midpoints,
-    Geo,
+    SynastryHitOut,
+    SynastryRequest,
+    SynastryResponse,
 )
 from core.rel_plus import (
     BirthEvent,
@@ -33,12 +21,22 @@ from core.rel_plus import (
     composite_houses,
     davison_houses,
 )
-
-from app.routers import aspects as aspects_module
+from core.relationship_plus.composite import (
+    Geo,
+    composite_positions,
+    davison_midpoints,
+    davison_positions,
+)
+from core.relationship_plus.synastry import (
+    overlay_positions,
+    synastry_grid,
+    synastry_hits,
+    synastry_score,
+)
 
 router = APIRouter(prefix="/relationship", tags=["Relationship"])
 
-DEFAULT_POLICY: Dict[str, Any] = {
+DEFAULT_POLICY: dict[str, Any] = {
     "per_object": {},
     "per_aspect": {
         "conjunction": 8.0,
@@ -51,7 +49,7 @@ DEFAULT_POLICY: Dict[str, Any] = {
 }
 
 
-def _resolve_policy(inline: OrbPolicyInline | None) -> Dict[str, Any]:
+def _resolve_policy(inline: OrbPolicyInline | None) -> dict[str, Any]:
     return inline.model_dump() if inline is not None else DEFAULT_POLICY
 
 

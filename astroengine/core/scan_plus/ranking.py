@@ -1,11 +1,12 @@
 from __future__ import annotations
+
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from math import cos, pi
-from typing import Dict, Iterable, List, Mapping, Optional
 
 # Default aspect weights; can be overridden by SeverityProfile.weights
-DEFAULT_WEIGHTS: Dict[str, float] = {
+DEFAULT_WEIGHTS: dict[str, float] = {
     "conjunction": 1.00,
     "opposition": 0.95,
     "square": 0.90,
@@ -39,7 +40,7 @@ def taper_by_orb(orb_deg: float, orb_limit_deg: float) -> float:
     return 0.5 * (1.0 + cos(pi * x)) if x < 1.0 else 0.0
 
 
-def apply_modifiers(base: float, modifiers: Optional[Mapping[str, float]]) -> float:
+def apply_modifiers(base: float, modifiers: Mapping[str, float] | None) -> float:
     """Multiply base by each modifier (e.g., dignity, house strength). None → 1.0.
     Values should be >=0; clip at 0.
     """
@@ -60,7 +61,7 @@ def severity(
     orb_deg: float,
     orb_limit_deg: float,
     profile: Mapping[str, object] | None = None,
-    modifiers: Optional[Mapping[str, float]] = None,
+    modifiers: Mapping[str, float] | None = None,
 ) -> float:
     """Compute a severity score.
 
@@ -96,28 +97,28 @@ class EventPoint:
 def _date_key_utc(dt: datetime) -> str:
     # Normalize to UTC date key YYYY-MM-DD
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     else:
-        dt = dt.astimezone(timezone.utc)
+        dt = dt.astimezone(UTC)
     return dt.strftime("%Y-%m-%d")
 
 
-def daily_composite(events: Iterable[EventPoint]) -> Dict[str, float]:
+def daily_composite(events: Iterable[EventPoint]) -> dict[str, float]:
     """Average event scores per UTC day.
     Returns mapping YYYY-MM-DD → average score.
     """
-    buckets: Dict[str, List[float]] = {}
+    buckets: dict[str, list[float]] = {}
     for ev in events:
         k = _date_key_utc(ev.ts)
         buckets.setdefault(k, []).append(float(ev.score))
     return {k: (sum(v) / len(v)) if v else 0.0 for k, v in sorted(buckets.items())}
 
 
-def monthly_composite(daily_series: Mapping[str, float]) -> Dict[str, float]:
+def monthly_composite(daily_series: Mapping[str, float]) -> dict[str, float]:
     """Average of daily values per month.
     Input keys: YYYY-MM-DD → value. Output keys: YYYY-MM → average.
     """
-    months: Dict[str, List[float]] = {}
+    months: dict[str, list[float]] = {}
     for day_key, val in daily_series.items():
         month = day_key[:7]
         months.setdefault(month, []).append(float(val))

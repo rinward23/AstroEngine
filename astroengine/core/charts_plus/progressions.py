@@ -9,11 +9,11 @@ Ephemeris, Skyfield) or tests to substitute synthetic data sources.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Callable, Dict, Iterable, Tuple
+from collections.abc import Callable, Iterable
+from datetime import UTC, datetime, timedelta
 
 # Provider signature: provider(ts) -> {name: ecliptic_longitude_deg [0..360)}
-PositionProvider = Callable[[datetime], Dict[str, float]]
+PositionProvider = Callable[[datetime], dict[str, float]]
 
 
 def _norm360(x: float) -> float:
@@ -35,8 +35,8 @@ def secondary_progressed_datetime(
     ``target_dt - natal_dt`` scaled by ``1 / year_days``.
     """
 
-    n = natal_dt.astimezone(timezone.utc)
-    t = target_dt.astimezone(timezone.utc)
+    n = natal_dt.astimezone(UTC)
+    t = target_dt.astimezone(UTC)
     elapsed_days = (t - n).total_seconds() / 86400.0
     elapsed_years = elapsed_days / float(year_days)
     return n + timedelta(days=elapsed_years)
@@ -48,7 +48,7 @@ def secondary_progressed_positions(
     target_dt: datetime,
     provider: PositionProvider,
     year_days: float = 365.2422,
-) -> Tuple[datetime, Dict[str, float]]:
+) -> tuple[datetime, dict[str, float]]:
     """Return secondary progressed positions for the requested objects."""
 
     prog_dt = secondary_progressed_datetime(natal_dt, target_dt, year_days=year_days)
@@ -63,7 +63,7 @@ def solar_arc_positions(
     provider: PositionProvider,
     year_days: float = 365.2422,
     sun_name: str = "Sun",
-) -> Tuple[float, Dict[str, float]]:
+) -> tuple[float, dict[str, float]]:
     """Compute Solar Arc positions via the Sun's secondary arc.
 
     Steps:
@@ -78,7 +78,7 @@ def solar_arc_positions(
     object names to their Solar Arc progressed longitudes.
     """
 
-    n_dt = natal_dt.astimezone(timezone.utc)
+    n_dt = natal_dt.astimezone(UTC)
     natal_pos = provider(n_dt)
 
     prog_dt = secondary_progressed_datetime(natal_dt, target_dt, year_days=year_days)
@@ -89,7 +89,7 @@ def solar_arc_positions(
 
     arc = _norm360(float(prog_pos[sun_name]) - float(natal_pos[sun_name]))
 
-    out: Dict[str, float] = {}
+    out: dict[str, float] = {}
     for name in objects:
         if name in natal_pos:
             out[name] = _norm360(float(natal_pos[name]) + arc)

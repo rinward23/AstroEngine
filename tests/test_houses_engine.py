@@ -1,4 +1,4 @@
-from core.houses_plus.engine import compute_houses, list_house_systems, HousePolicy
+from core.houses_plus.engine import HousePolicy, compute_houses, list_house_systems
 
 ASC = 100.0
 MC = 10.0
@@ -42,7 +42,7 @@ def test_porphyry_quadrant_divisions():
         40.0,
         70.0,
     ]
-    for got, exp in zip(cusps, expected):
+    for got, exp in zip(cusps, expected, strict=False):
         assert abs(got - exp) < 1e-9
 
 

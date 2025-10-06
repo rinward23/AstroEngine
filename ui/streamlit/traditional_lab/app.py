@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import io
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 import altair as alt
 import pandas as pd
 import streamlit as st
 
-from ...chart.natal import ChartLocation, compute_natal_chart
 from core.lots_plus.catalog import Sect as LotSect
 from core.lots_plus.catalog import compute_lots
+
+from ...chart.natal import ChartLocation, compute_natal_chart
 from ...engine.traditional import (
     Interval,
     apply_loosing_of_bond,
@@ -28,7 +29,6 @@ from ...engine.traditional import (
 )
 from ...engine.traditional.models import ChartCtx, LifeProfile
 from ...engine.traditional.zr import SIGN_ORDER
-
 from ..components import location_picker
 
 

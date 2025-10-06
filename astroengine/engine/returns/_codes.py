@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import lru_cache
-
-from ...core.bodies import canonical_name
+from functools import cache
 
 from astroengine.ephemeris.swe import has_swe, swe
+
+from ...core.bodies import canonical_name
 
 
 @dataclass(frozen=True)
@@ -56,7 +56,7 @@ if _SWE_MODULE is not None:  # pragma: no cover - depends on pyswisseph build
             _BASE_CODES[name] = BodyCode(int(code))
 
 
-@lru_cache(maxsize=None)
+@cache
 def resolve_body_code(name: str) -> BodyCode:
     """Return the Swiss body code for ``name`` suitable for :class:`EphemerisAdapter`.
 

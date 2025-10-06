@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
 
 from fastapi import APIRouter, Request
 
-from astroengine.analysis import declination_aspects, get_declinations
-from astroengine.config import default_settings
 from app.schemas.declinations import (
     DeclinationAspectHit,
     DeclinationRequest,
     DeclinationResponse,
 )
+from astroengine.analysis import declination_aspects, get_declinations
+from astroengine.config import default_settings
 
 router = APIRouter(prefix="/declinations", tags=["Declinations"])
 
@@ -22,11 +21,11 @@ router = APIRouter(prefix="/declinations", tags=["Declinations"])
 class _InlineChart:
     """Lightweight container mirroring chart attributes required for declinations."""
 
-    positions: Dict[str, Dict[str, float]]
+    positions: dict[str, dict[str, float]]
     julian_day: float | None
     zodiac: str | None
     ayanamsa: str | None
-    metadata: Dict[str, object]
+    metadata: dict[str, object]
 
     def __post_init__(self) -> None:
         # Provide both ayanamsa spellings expected by downstream helpers.
@@ -53,7 +52,7 @@ async def declination_aspects_endpoint(
     )
     enabled = bool(getattr(decl_settings, "enabled", True))
 
-    metadata: Dict[str, object] = {}
+    metadata: dict[str, object] = {}
     if payload.nodes_variant is not None:
         metadata["nodes_variant"] = payload.nodes_variant
     if payload.lilith_variant is not None:
@@ -61,9 +60,9 @@ async def declination_aspects_endpoint(
     if payload.zodiac is not None:
         metadata["zodiac"] = payload.zodiac
 
-    positions: Dict[str, Dict[str, float]] = {}
+    positions: dict[str, dict[str, float]] = {}
     for name, pos in payload.positions.items():
-        entry: Dict[str, float] = {}
+        entry: dict[str, float] = {}
         if pos.lon is not None:
             entry["longitude"] = float(pos.lon)
             entry["lon"] = float(pos.lon)

@@ -5,9 +5,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timezone
-
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
+from collections.abc import Iterable, Mapping, Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 from astroengine.core.scan_plus.ranking import severity as compute_severity
 
@@ -30,9 +30,9 @@ def _aspect_name_from_angle(angle: float) -> str | None:
 
 def _utc_date(ts: datetime) -> DateKey:
     if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=timezone.utc)
+        ts = ts.replace(tzinfo=UTC)
     else:
-        ts = ts.astimezone(timezone.utc)
+        ts = ts.astimezone(UTC)
     return ts.strftime("%Y-%m-%d")
 
 
@@ -42,21 +42,21 @@ def rank_hits(
 
     profile: Mapping[str, Any] | None = None,
     order_by: str = "time",
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Convert raw scan hits into ranked dictionaries ready for serialization."""
 
-    ranked: List[Dict[str, Any]] = []
+    ranked: list[dict[str, Any]] = []
     for hit in hits:
         hit_meta = getattr(hit, "meta", {}) or {}
         if isinstance(hit_meta, Mapping):
-            meta: Dict[str, Any] = dict(hit_meta)
+            meta: dict[str, Any] = dict(hit_meta)
         else:
             meta = {}
 
         aspect_name = meta.get("aspect")
-        inferred = _aspect_name_from_angle(getattr(hit, "aspect_angle"))
+        inferred = _aspect_name_from_angle(hit.aspect_angle)
         if not aspect_name:
-            aspect_name = inferred or f"angle_{float(getattr(hit, 'aspect_angle')):.3f}"
+            aspect_name = inferred or f"angle_{float(hit.aspect_angle):.3f}"
         harmonic = meta.get("harmonic")
 
         if inferred:
@@ -64,7 +64,7 @@ def rank_hits(
         else:
             sev = None
 
-        meta_out: Dict[str, Any] = {"angle": float(getattr(hit, "aspect_angle", 0.0))}
+        meta_out: dict[str, Any] = {"angle": float(getattr(hit, "aspect_angle", 0.0))}
         for k, v in meta.items():
             if k in {"aspect", "harmonic"}:
                 continue
@@ -92,11 +92,11 @@ def rank_hits(
     return ranked
 
 
-def day_bins(hits: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+def day_bins(hits: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     """Aggregate ranked hits into UTC day buckets."""
 
-    counts: Dict[DateKey, int] = defaultdict(int)
-    scores: Dict[DateKey, List[float]] = defaultdict(list)
+    counts: dict[DateKey, int] = defaultdict(int)
+    scores: dict[DateKey, list[float]] = defaultdict(list)
 
     for hit in hits:
         ts = hit.get("exact_time")
@@ -108,7 +108,7 @@ def day_bins(hits: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
         if sev is not None:
             scores[key].append(float(sev))
 
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for key in sorted(counts):
         daily_scores = scores.get(key, [])
         avg = sum(daily_scores) / len(daily_scores) if daily_scores else None
@@ -120,7 +120,7 @@ def paginate(
     hits: Sequence[Mapping[str, Any]],
     limit: int,
     offset: int,
-) -> Tuple[List[Mapping[str, Any]], int]:
+) -> tuple[list[Mapping[str, Any]], int]:
     """Return a window slice with total count for pagination."""
 
 

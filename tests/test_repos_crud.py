@@ -1,20 +1,20 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
 from app.db.models import (
-    AsteroidMeta,
-    Chart,
-    Event,
-    ExportJob,
-    OrbPolicy,
     RuleSetVersion,
-    SeverityProfile,
 )
 from app.repo import (
-    OrbPolicyRepo, SeverityProfileRepo, ChartRepo, EventRepo,
-    RuleSetRepo, AsteroidRepo, ExportJobRepo
+    AsteroidRepo,
+    ChartRepo,
+    EventRepo,
+    ExportJobRepo,
+    OrbPolicyRepo,
+    RuleSetRepo,
+    SeverityProfileRepo,
 )
 
 # In-memory DB for tests
@@ -69,7 +69,7 @@ def test_crud_cycle():
             event_key="event-1",
             chart_id=ch.id,
             ruleset_version_id=rs.id,
-            event_time=datetime.now(timezone.utc),
+            event_time=datetime.now(UTC),
             event_type="custom",
             payload={"objects": {"A": "Mars", "B": "Venus"}},
         )

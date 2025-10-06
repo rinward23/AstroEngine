@@ -1,13 +1,13 @@
 """Ruleset DSL parsing utilities and data structures."""
 
 from .dsl import (
-    DSLParseError,
-    BooleanBinaryOp,
-    BooleanNot,
-    BooleanNode,
     BinaryOp,
+    BooleanBinaryOp,
+    BooleanNode,
+    BooleanNot,
     CallExpr,
     Comparison,
+    DSLParseError,
     Expr,
     Identifier,
     Number,

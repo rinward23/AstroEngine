@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -11,7 +11,6 @@ from astroengine.analysis.fixed_stars import (
     star_hits,
     star_parans,
 )
-
 
 EXPECTED_STARS = {
     "Regulus",
@@ -71,7 +70,7 @@ def test_star_parans_returns_events_when_ra_matches() -> None:
         assert body == "Sun"
         return sirius.ra_deg, sirius.dec_deg
 
-    start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    start = datetime(2024, 1, 1, tzinfo=UTC)
     events = star_parans(
         start,
         start + timedelta(days=1),

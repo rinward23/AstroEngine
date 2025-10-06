@@ -25,9 +25,10 @@ import pathlib
 import platform
 import shutil
 import sys
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import UTC
-from typing import Any, Iterable
+from typing import Any
 
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext

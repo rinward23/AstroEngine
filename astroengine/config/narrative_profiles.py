@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, Mapping, MutableMapping
+from typing import Any
 
 import yaml
 
@@ -23,7 +24,7 @@ __all__ = [
 NARRATIVE_PROFILES_DIRNAME = "narrative_profiles"
 
 
-def _default_esoteric() -> Dict[str, Any]:
+def _default_esoteric() -> dict[str, Any]:
     return {
         "tarot_enabled": False,
         "tarot_deck": "rws",
@@ -32,7 +33,7 @@ def _default_esoteric() -> Dict[str, Any]:
     }
 
 
-_BUILT_IN_NARRATIVE_PROFILES: Dict[str, Dict[str, Any]] = {
+_BUILT_IN_NARRATIVE_PROFILES: dict[str, dict[str, Any]] = {
     "modern_psychological": {
         "narrative": {
             "mode": "modern_psychological",
@@ -128,7 +129,7 @@ _BUILT_IN_NARRATIVE_PROFILES: Dict[str, Dict[str, Any]] = {
 }
 
 
-def built_in_narrative_profiles() -> Dict[str, Dict[str, Any]]:
+def built_in_narrative_profiles() -> dict[str, dict[str, Any]]:
     """Return a deep copy of built-in narrative overlays."""
 
     return deepcopy(_BUILT_IN_NARRATIVE_PROFILES)
@@ -140,7 +141,7 @@ def narrative_profiles_home() -> Path:
     return get_config_home() / NARRATIVE_PROFILES_DIRNAME
 
 
-def list_narrative_profiles() -> Dict[str, list[str]]:
+def list_narrative_profiles() -> dict[str, list[str]]:
     """Return available built-in and user narrative profile identifiers."""
 
     built_in = sorted(built_in_narrative_profiles().keys())
@@ -152,7 +153,7 @@ def list_narrative_profiles() -> Dict[str, list[str]]:
     return {"built_in": built_in, "user": sorted(user_profiles)}
 
 
-def load_narrative_profile_overlay(name: str) -> Dict[str, Any]:
+def load_narrative_profile_overlay(name: str) -> dict[str, Any]:
     """Load a narrative overlay from built-ins or disk."""
 
     built_ins = built_in_narrative_profiles()
@@ -175,7 +176,7 @@ def save_user_narrative_profile(
     path = directory / f"{name}.yaml"
 
     if isinstance(narrative, NarrativeCfg):
-        payload: Dict[str, Any] = narrative.model_dump()
+        payload: dict[str, Any] = narrative.model_dump()
     else:
         payload = dict(narrative)
 

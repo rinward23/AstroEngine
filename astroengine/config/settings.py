@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, List, Literal, Mapping, Optional, Sequence, Tuple
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from astroengine.plugins.registry import apply_plugin_settings
-
 
 CURRENT_SETTINGS_SCHEMA_VERSION = 2
 
@@ -59,7 +59,7 @@ class HousesCfg(BaseModel):
 class BodiesCfg(BaseModel):
     """Configuration for body groups and custom asteroid selections."""
 
-    groups: Dict[str, bool] = Field(
+    groups: dict[str, bool] = Field(
         default_factory=lambda: {
             "luminaries": True,
             "classical": True,
@@ -77,13 +77,13 @@ class BodiesCfg(BaseModel):
             "vertex": False,
         }
     )
-    custom_asteroids: List[int] = Field(default_factory=list)
+    custom_asteroids: list[int] = Field(default_factory=list)
 
 
 class AspectsCfg(BaseModel):
     """Aspect detection and orb configuration."""
 
-    sets: Dict[str, bool] = Field(
+    sets: dict[str, bool] = Field(
         default_factory=lambda: {
             "ptolemaic": True,
             "minor": True,
@@ -92,7 +92,7 @@ class AspectsCfg(BaseModel):
     )
     detect_patterns: bool = True
     orbs_global: float = 6.0
-    orbs_by_aspect: Dict[str, float] = Field(
+    orbs_by_aspect: dict[str, float] = Field(
         default_factory=lambda: {
             "conjunction": 8.0,
             "opposition": 8.0,
@@ -101,13 +101,13 @@ class AspectsCfg(BaseModel):
             "sextile": 4.0,
         }
     )
-    orbs_by_body: Dict[str, float] = Field(
+    orbs_by_body: dict[str, float] = Field(
         default_factory=lambda: {
             "sun": 10.0,
             "moon": 8.0,
         }
     )
-    weights_by_aspect: Dict[str, int] = Field(
+    weights_by_aspect: dict[str, int] = Field(
         default_factory=lambda: {
             "conjunction": 5,
             "opposition": 4,
@@ -138,8 +138,8 @@ class AspectsCfg(BaseModel):
     @field_validator("orbs_by_aspect", mode="before")
     @classmethod
     def _cap_orbs_by_aspect(
-        cls, data: Dict[str, float] | object
-    ) -> Dict[str, float] | object:
+        cls, data: dict[str, float] | object
+    ) -> dict[str, float] | object:
         if not isinstance(data, dict):
             return data
         return {
@@ -149,7 +149,7 @@ class AspectsCfg(BaseModel):
 
     @field_validator("orbs_by_body", mode="before")
     @classmethod
-    def _cap_orbs_by_body(cls, data: Dict[str, float] | object) -> Dict[str, float] | object:
+    def _cap_orbs_by_body(cls, data: dict[str, float] | object) -> dict[str, float] | object:
         if not isinstance(data, dict):
             return data
         return {
@@ -160,8 +160,8 @@ class AspectsCfg(BaseModel):
     @field_validator("weights_by_aspect", mode="before")
     @classmethod
     def _cap_aspect_weights(
-        cls, data: Dict[str, int] | object
-    ) -> Dict[str, int] | object:
+        cls, data: dict[str, int] | object
+    ) -> dict[str, int] | object:
         if not isinstance(data, dict):
             return data
 
@@ -199,7 +199,7 @@ class AntisciaCfg(BaseModel):
 class ChartsCfg(BaseModel):
     """Toggle availability of chart techniques exposed by the engine."""
 
-    enabled: Dict[str, bool] = Field(
+    enabled: dict[str, bool] = Field(
         default_factory=lambda: {
             "natal": True,
             "transit_moment": True,
@@ -243,8 +243,8 @@ class NarrativeCfg(BaseModel):
     language: str = "en"
     disclaimers: bool = True
     verbosity: float = 0.5
-    sources: Dict[str, bool] = Field(default_factory=dict)
-    frameworks: Dict[str, bool] = Field(default_factory=dict)
+    sources: dict[str, bool] = Field(default_factory=dict)
+    frameworks: dict[str, bool] = Field(default_factory=dict)
     esoteric: NarrativeEsotericCfg = Field(default_factory=NarrativeEsotericCfg)
 
     @field_validator("verbosity", mode="before")
@@ -258,12 +258,12 @@ class NarrativeMixCfg(BaseModel):
     """Weighted blend of narrative profiles."""
 
     enabled: bool = False
-    profiles: Dict[str, float] = Field(default_factory=dict)
+    profiles: dict[str, float] = Field(default_factory=dict)
     normalize: bool = True
 
     @field_validator("profiles", mode="before")
     @classmethod
-    def _coerce_weights(cls, value: object) -> Dict[str, float]:
+    def _coerce_weights(cls, value: object) -> dict[str, float]:
         if isinstance(value, dict):
             items = value.items()
         else:
@@ -272,7 +272,7 @@ class NarrativeMixCfg(BaseModel):
             except Exception:
                 return {}
             items = mapping.items()
-        capped: Dict[str, float] = {}
+        capped: dict[str, float] = {}
         for key, weight in items:
             try:
                 numeric = float(weight)
@@ -286,7 +286,7 @@ class NarrativeMixCfg(BaseModel):
 class RenderingCfg(BaseModel):
     """Chart rendering options."""
 
-    layers: Dict[str, bool] = Field(
+    layers: dict[str, bool] = Field(
         default_factory=lambda: {
             "wheel": True,
             "aspect_lines": True,
@@ -332,7 +332,7 @@ class EphemerisCfg(BaseModel):
     """Ephemeris source configuration."""
 
     source: Literal["swiss", "approx"] = "swiss"
-    path: Optional[str] = None
+    path: str | None = None
     precision: Literal["normal", "high"] = "normal"
 
 
@@ -350,7 +350,7 @@ class ReturnsIngressCfg(BaseModel):
     lunar_return: bool = True
     aries_ingress: bool = True
     lunar_count: int = Field(12, ge=1, le=36)
-    timezone: Optional[str] = None
+    timezone: str | None = None
 
 
 class PerfCfg(BaseModel):
@@ -461,7 +461,7 @@ class ArabicPartCustomCfg(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _alias_legacy_fields(cls, values: Dict[str, object]):
+    def _alias_legacy_fields(cls, values: dict[str, object]):
         """Accept legacy ``day``/``night`` keys alongside the new field names."""
 
         if isinstance(values, dict):
@@ -493,10 +493,10 @@ class ArabicPartsCfg(BaseModel):
     """Arabic parts presets and custom definitions."""
 
     enabled: bool = True
-    presets: Dict[str, bool] = Field(
+    presets: dict[str, bool] = Field(
         default_factory=lambda: {"Fortune": True, "Spirit": True}
     )
-    custom: List[ArabicPartCustomCfg] = Field(default_factory=list)
+    custom: list[ArabicPartCustomCfg] = Field(default_factory=list)
 
 
 class DeclinationAspectsCfg(BaseModel):
@@ -559,7 +559,7 @@ class ForecastStackCfg(BaseModel):
     """Forecast stack component toggles."""
 
     enabled: bool = True
-    components: Dict[str, bool] = Field(
+    components: dict[str, bool] = Field(
         default_factory=lambda: {
             "transits": True,
             "progressions": True,
@@ -603,7 +603,7 @@ class ElectionalCfg(BaseModel):
     """Electional search constraints."""
 
     enabled: bool = False
-    constraints: List[Dict[str, object]] = Field(default_factory=list)
+    constraints: list[dict[str, object]] = Field(default_factory=list)
     step_minutes: int = 5
 
     class Weights(BaseModel):
@@ -631,8 +631,8 @@ class ElectionalCfg(BaseModel):
 class PluginCfg(BaseModel):
     """Plugin enablement state segregated by capability."""
 
-    aspects: Optional[Dict[str, bool]] = None
-    lots: Optional[Dict[str, bool]] = None
+    aspects: dict[str, bool] | None = None
+    lots: dict[str, bool] | None = None
 
 
 class ReturnsIngressCfg(BaseModel):
@@ -661,7 +661,7 @@ class AtlasCfg(BaseModel):
     """Atlas availability configuration."""
 
     offline_enabled: bool = False
-    data_path: Optional[str] = None
+    data_path: str | None = None
     online_fallback_enabled: bool = False
 
 
@@ -670,7 +670,7 @@ class ObservabilityCfg(BaseModel):
 
     otel_enabled: bool = False
     sampling_ratio: float = 0.1
-    metrics_histogram_buckets: List[float] = Field(
+    metrics_histogram_buckets: list[float] = Field(
         default_factory=lambda: [0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
     )
 
@@ -758,40 +758,40 @@ class Settings(BaseModel):
 # -------------------- Narrative Mixing Helpers --------------------
 
 
-def _normalize_weights(weights: Dict[str, float]) -> Dict[str, float]:
+def _normalize_weights(weights: dict[str, float]) -> dict[str, float]:
     total = sum(weights.values())
     if total <= 0:
         return {name: 0.0 for name in weights}
     return {name: (value / total) for name, value in weights.items()}
 
 
-_TONE_ORDER: Tuple[str, ...] = ("brief", "neutral", "teaching")
-_LENGTH_ORDER: Tuple[str, ...] = ("short", "medium", "long")
+_TONE_ORDER: tuple[str, ...] = ("brief", "neutral", "teaching")
+_LENGTH_ORDER: tuple[str, ...] = ("short", "medium", "long")
 
 
-def _vote_enum(values: List[str], weights: List[float], order: Tuple[str, ...]) -> str:
+def _vote_enum(values: list[str], weights: list[float], order: tuple[str, ...]) -> str:
     if not order:
         return ""
     scores = {choice: 0.0 for choice in order}
-    for value, weight in zip(values, weights):
+    for value, weight in zip(values, weights, strict=False):
         if value in scores:
             scores[value] += weight
     return max(scores.items(), key=lambda item: item[1])[0]
 
 
 def _merge_bool_maps(
-    maps: List[Dict[str, bool]],
-    weights: List[float],
+    maps: list[dict[str, bool]],
+    weights: list[float],
     *,
     threshold: float = 0.5,
-) -> Dict[str, bool]:
+) -> dict[str, bool]:
     keys = set()
     for mapping in maps:
         keys.update(mapping.keys())
-    result: Dict[str, bool] = {}
+    result: dict[str, bool] = {}
     for key in sorted(keys):
         score = 0.0
-        for mapping, weight in zip(maps, weights):
+        for mapping, weight in zip(maps, weights, strict=False):
             if mapping.get(key, False):
                 score += weight
         result[key] = score >= threshold
@@ -810,7 +810,7 @@ def compose_narrative_from_mix(base: Settings, mix: NarrativeMixCfg) -> Narrativ
 
     from .narrative_profiles import load_narrative_profile_overlay
 
-    entries: List[Tuple[str, float, NarrativeCfg]] = []
+    entries: list[tuple[str, float, NarrativeCfg]] = []
     for name, weight in positive.items():
         try:
             overlay = load_narrative_profile_overlay(name)
@@ -830,7 +830,7 @@ def compose_narrative_from_mix(base: Settings, mix: NarrativeMixCfg) -> Narrativ
     names = [name for name, _, _ in entries]
     weights = [weight for _, weight, _ in entries]
     if mix.normalize:
-        normalized = _normalize_weights(dict(zip(names, weights)))
+        normalized = _normalize_weights(dict(zip(names, weights, strict=False)))
         weights = [normalized[name] for name in names]
 
     narratives = [cfg for _, _, cfg in entries]
@@ -839,22 +839,22 @@ def compose_narrative_from_mix(base: Settings, mix: NarrativeMixCfg) -> Narrativ
 
     tones = [cfg.tone for cfg in narratives]
     lengths = [cfg.length for cfg in narratives]
-    verb = sum((cfg.verbosity or 0.0) * weight for cfg, weight in zip(narratives, weights))
+    verb = sum((cfg.verbosity or 0.0) * weight for cfg, weight in zip(narratives, weights, strict=False))
 
     sources = _merge_bool_maps([cfg.sources for cfg in narratives], weights)
     frameworks = _merge_bool_maps([cfg.frameworks for cfg in narratives], weights)
 
     tarot_enabled_score = sum(
         (1.0 if cfg.esoteric.tarot_enabled else 0.0) * weight
-        for cfg, weight in zip(narratives, weights)
+        for cfg, weight in zip(narratives, weights, strict=False)
     )
     numerology_enabled_score = sum(
         (1.0 if cfg.esoteric.numerology_enabled else 0.0) * weight
-        for cfg, weight in zip(narratives, weights)
+        for cfg, weight in zip(narratives, weights, strict=False)
     )
 
     sorted_entries = sorted(
-        zip(narratives, weights), key=lambda item: item[1], reverse=True
+        zip(narratives, weights, strict=False), key=lambda item: item[1], reverse=True
     )
     tarot_deck = base.narrative.esoteric.tarot_deck
     numerology_system = base.narrative.esoteric.numerology_system
@@ -934,7 +934,7 @@ def default_settings() -> Settings:
     return Settings()
 
 
-def save_settings(settings: Settings, path: Optional[Path] = None) -> Path:
+def save_settings(settings: Settings, path: Path | None = None) -> Path:
     """Persist the given settings to disk as YAML."""
 
     target_path = Path(path) if path else config_path()
@@ -982,7 +982,7 @@ def _upgrade_settings_payload(
     return upgraded, changed
 
 
-def load_settings(path: Optional[Path] = None) -> Settings:
+def load_settings(path: Path | None = None) -> Settings:
     """Load settings from disk, creating defaults if missing."""
 
     source_path = Path(path) if path else config_path()

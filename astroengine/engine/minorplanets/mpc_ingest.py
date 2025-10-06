@@ -7,18 +7,18 @@ import gzip
 import hashlib
 import math
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Sequence
 
 import numpy as np
 import requests
 from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, func, select
 from sqlalchemy.orm import DeclarativeBase, Session
 
-from astroengine.core.time import julian_day
 from astroengine.core.dependencies import require_dependency
+from astroengine.core.time import julian_day
 
 __all__ = [
     "Counts",
@@ -96,7 +96,7 @@ class MinorPlanet(MinorPlanetBase):
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
-    def update_from_row(self, row: "MpcRow") -> None:
+    def update_from_row(self, row: MpcRow) -> None:
         """Update the ORM instance with the latest parsed values."""
 
         self.mpc_number = row.mpc_number
@@ -119,7 +119,7 @@ class MinorPlanet(MinorPlanetBase):
         self.data_source = row.source
 
     @classmethod
-    def from_row(cls, row: "MpcRow") -> "MinorPlanet":
+    def from_row(cls, row: MpcRow) -> MinorPlanet:
         instance = cls()
         instance.update_from_row(row)
         return instance

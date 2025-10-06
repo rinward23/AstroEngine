@@ -1,9 +1,9 @@
 """Embedded SVG glyphs used across visualisation modules."""
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Dict, Iterable, Mapping, MutableMapping, Optional, Sequence
 
 
 @dataclass(frozen=True)
@@ -28,7 +28,7 @@ class GlyphCatalog:
     assets.
     """
 
-    def __init__(self, glyphs: Optional[Iterable[Glyph]] = None) -> None:
+    def __init__(self, glyphs: Iterable[Glyph] | None = None) -> None:
         self._glyphs: MutableMapping[str, Glyph] = {}
         if glyphs:
             for glyph in glyphs:
@@ -57,7 +57,7 @@ class GlyphCatalog:
             glyph = Glyph(name=name, path=path, viewbox=viewbox, advance=advance)
             self.replace(glyph)
 
-    def as_payload(self) -> Dict[str, Dict[str, object]]:
+    def as_payload(self) -> dict[str, dict[str, object]]:
         return {
             glyph.name: {
                 "path": glyph.path,

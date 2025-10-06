@@ -8,8 +8,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.db.base import Base
 from app.db import models  # noqa: F401 - ensure models are registered with the metadata
+from app.db.base import Base
 
 DEFAULT_DB_URL = "sqlite:///./dev.db"
 

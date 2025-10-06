@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Iterable, Iterator, Tuple
+from collections.abc import Iterable, Iterator
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -54,7 +54,7 @@ class ServiceSettings(BaseModel):
     @classmethod
     def _parse_methods(
         cls, value: str | Iterable[str] | None
-    ) -> Tuple[str, ...]:
+    ) -> tuple[str, ...]:
         if value is None:
             return ("GET", "POST", "OPTIONS")
         return tuple(item.upper() for item in _iter_items(value) if item)
@@ -63,7 +63,7 @@ class ServiceSettings(BaseModel):
     @classmethod
     def _parse_headers(
         cls, value: str | Iterable[str] | None
-    ) -> Tuple[str, ...]:
+    ) -> tuple[str, ...]:
         if value is None:
             return ("Authorization", "Content-Type", "If-None-Match", "X-Requested-With")
         seen: set[str] = set()
@@ -82,7 +82,7 @@ class ServiceSettings(BaseModel):
         return value.lower() in {"1", "true", "yes", "on"}
 
     @classmethod
-    def from_env(cls) -> "ServiceSettings":
+    def from_env(cls) -> ServiceSettings:
         """Construct settings using the process environment."""
 
         redis_url = os.getenv("RELATIONSHIP_REDIS_URL") or os.getenv("REDIS_URL")

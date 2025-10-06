@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict
 
 from .settings import Settings, get_config_home
 
@@ -17,7 +16,7 @@ USE_CASE_PRESETS: tuple[str, ...] = (
     "minimalist",
 )
 
-PROFILE_LABELS: Dict[str, str] = {
+PROFILE_LABELS: dict[str, str] = {
     "modern_western": "Modern Western (default)",
     "traditional_western": "Traditional Western",
     "hellenistic": "Hellenistic",
@@ -30,7 +29,7 @@ PROFILE_LABELS: Dict[str, str] = {
     "minimalist": "Minimalist essentials",
 }
 
-PROFILE_DESCRIPTIONS: Dict[str, str] = {
+PROFILE_DESCRIPTIONS: dict[str, str] = {
     "horary_strict": (
         "Regiomontanus houses, classical planets only, and moiety-based orbs "
         "for traditional horary judgement."
@@ -62,7 +61,7 @@ def profile_description(name: str) -> str | None:
     return PROFILE_DESCRIPTIONS.get(name)
 
 
-def built_in_profiles() -> Dict[str, dict]:
+def built_in_profiles() -> dict[str, dict]:
     """Return overlays describing the built-in settings profiles."""
 
     return {
@@ -361,7 +360,7 @@ def profiles_home() -> Path:
     return get_config_home() / PROFILES_DIRNAME
 
 
-def list_profiles() -> Dict[str, list[str]]:
+def list_profiles() -> dict[str, list[str]]:
     """Return a mapping of built-in and user profile names."""
 
     built_in = sorted(built_in_profiles().keys())

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional, Tuple
+from typing import Literal
 
 __all__ = ["antiscia", "contra_antiscia", "aspect_to_antiscia"]
 
@@ -38,7 +38,7 @@ def aspect_to_antiscia(
     body_lon: float,
     other_lon: float,
     orb: float | None,
-) -> Optional[Tuple[MirrorKind, float]]:
+) -> tuple[MirrorKind, float] | None:
     """Classify the relationship between two longitudes and the solstitial mirrors.
 
     Parameters

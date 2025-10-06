@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -14,7 +14,7 @@ from astroengine.engine.nlp.correlate import EventSample, NoteSample
 
 
 def build_samples():
-    base = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    base = datetime(2024, 1, 1, tzinfo=UTC)
     notes = [
         NoteSample(note_id="n1", timestamp=base, sentiment=1.0, topic="growth"),
         NoteSample(note_id="n2", timestamp=base + timedelta(hours=12), sentiment=0.0, topic="growth"),

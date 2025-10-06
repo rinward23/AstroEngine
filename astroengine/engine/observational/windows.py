@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import math
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-import math
-from typing import Callable, Iterable, Sequence
+
+from astroengine.ephemeris.swe import has_swe, swe
 
 from ...ephemeris.adapter import EphemerisAdapter, ObserverLocation
 from .events import rise_set_times
@@ -14,8 +16,6 @@ from .topocentric import (
     horizontal_from_equatorial,
     topocentric_equatorial,
 )
-from astroengine.ephemeris.swe import has_swe, swe
-
 
 _HAS_SWE = has_swe()
 _SUN_ID = int(getattr(swe(), "SUN", 0)) if _HAS_SWE else 0

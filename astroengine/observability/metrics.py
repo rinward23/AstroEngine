@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
-from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, REGISTRY
+from prometheus_client import REGISTRY, CollectorRegistry, Counter, Gauge, Histogram
 
 __all__ = [
     "ASPECT_COMPUTE_DURATION",

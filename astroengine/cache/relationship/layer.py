@@ -5,8 +5,9 @@ import logging
 import os
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 from cachetools import TTLCache
 from prometheus_client import Counter
@@ -35,13 +36,13 @@ _CACHE_MISSES = Counter("cache_misses_total", "Cache miss counts", ["namespace"]
 class CacheEntry:
     body: Any
     status_code: int
-    headers: Dict[str, str]
+    headers: dict[str, str]
     created_at: float
 
 
 @dataclass
 class CacheOutcome:
-    entry: Optional[CacheEntry]
+    entry: CacheEntry | None
     key: str
     etag: str
     source: str
@@ -57,7 +58,7 @@ class RelationshipResponseCache:
         ttl_seconds: int,
         *,
         lru_maxsize: int = 512,
-        redis_client: Optional[Redis] = None,
+        redis_client: Redis | None = None,
         compression: bool | None = None,
     ) -> None:
         self.namespace = namespace
@@ -154,7 +155,7 @@ class RelationshipResponseCache:
                 except RedisError:  # pragma: no cover - cleanup best effort
                     _LOGGER.debug("Failed releasing redis lock", exc_info=True)
 
-    def _get_from_redis(self, key: str) -> Optional[CacheEntry]:
+    def _get_from_redis(self, key: str) -> CacheEntry | None:
         if not self._redis:
             return None
         try:
@@ -180,7 +181,7 @@ class RelationshipResponseCache:
         )
 
 
-def _redis_from_env() -> Optional[Redis]:
+def _redis_from_env() -> Redis | None:
     url = os.getenv("REDIS_URL")
     if not url or Redis is None:
         return None

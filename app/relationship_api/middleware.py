@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from logging import LoggerAdapter
 from time import perf_counter
-from typing import Callable
 from uuid import uuid4
 
 from fastapi import FastAPI, Request, Response
@@ -14,7 +14,6 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import ClientDisconnect
-from starlette.types import ASGIApp
 
 from .config import ServiceSettings
 from .models import ApiError

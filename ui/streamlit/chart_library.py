@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfoNotFoundError
 
 import requests
 import streamlit as st
 
 from astroengine.atlas.tz import LocalTimeResolution, to_utc_with_timezone
-
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
@@ -210,7 +209,7 @@ with col_detail:
                     ["transit", "progressed", "solar_return", "lunar_return", "custom"],
                 )
                 derive_dt = st.datetime_input(
-                    "Target datetime (UTC)", value=datetime.now(timezone.utc)
+                    "Target datetime (UTC)", value=datetime.now(UTC)
                 )
                 derive_profile = st.text_input(
                     "Profile override (optional)", key=f"derive-profile-{selected_id}"
@@ -219,7 +218,7 @@ with col_detail:
             if submitted_derive:
                 payload = {
                     "kind": derive_kind,
-                    "dt_utc": derive_dt.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "dt_utc": derive_dt.replace(tzinfo=UTC).isoformat().replace("+00:00", "Z"),
                     "profile": derive_profile or None,
                 }
                 try:

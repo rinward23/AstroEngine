@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ...chart import ChartLocation
 from ...chart.natal import DEFAULT_BODIES
-from ...detectors.ingresses import sign_index, ZODIAC_SIGNS
+from ...detectors.ingresses import ZODIAC_SIGNS, sign_index
 from ...engine.vedic import (
     VimshottariOptions,
     build_context,

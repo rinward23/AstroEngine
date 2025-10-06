@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
 
 from ..infrastructure.paths import get_paths
 from ..modules import DEFAULT_REGISTRY, AstroRegistry, bootstrap_default_registry

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import asyncio
 import math
 import time
-from typing import Dict, Optional, TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from .telemetry import get_logger
 
@@ -14,7 +14,11 @@ try:  # pragma: no cover - optional dependency
     from redis.asyncio import Redis
     from redis.exceptions import (
         ConnectionError as RedisConnectionError,
+    )
+    from redis.exceptions import (
         RedisError,
+    )
+    from redis.exceptions import (
         TimeoutError as RedisTimeoutError,
     )
 except ImportError:  # pragma: no cover - redis optional
@@ -88,8 +92,8 @@ class RateLimiter:
         self.limit = max(1, int(limit_per_minute))
         self._redis_url = redis_url
         self._redis: Redis | None = None
-        self._redis_script: Optional["Script"] = None
-        self._memory: Dict[str, tuple[float, float]] = {}
+        self._redis_script: Script | None = None
+        self._memory: dict[str, tuple[float, float]] = {}
         self._refill_per_second = self.limit / 60.0
         self._redis_ttl_ms = 120_000
         if redis_url and Redis is not None:
@@ -136,7 +140,7 @@ class RateLimiter:
                         float(now),
                         int(self._redis_ttl_ms),
                     )
-            except (RedisTimeoutError, asyncio.TimeoutError) as exc:  # pragma: no cover - redis runtime failure
+            except (TimeoutError, RedisTimeoutError) as exc:  # pragma: no cover - redis runtime failure
                 get_logger().warning(
                     "rate limiter redis timeout",
                     extra={

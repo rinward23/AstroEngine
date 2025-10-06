@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from astroengine.chart.natal import ChartLocation, NatalChart
 from astroengine.chart.config import ChartConfig
+from astroengine.chart.natal import ChartLocation, NatalChart
 from astroengine.engine.vedic import VedicChartContext, analyze_yogas
-from astroengine.ephemeris.swisseph_adapter import BodyPosition, HousePositions, SwissEphemerisAdapter
+from astroengine.ephemeris.swisseph_adapter import (
+    BodyPosition,
+    HousePositions,
+    SwissEphemerisAdapter,
+)
 
 
 def _body_position(name: str, longitude: float, *, retrograde: bool = False) -> BodyPosition:
@@ -37,7 +41,7 @@ def _context(asc_sign_index: int, placements: dict[str, float]) -> VedicChartCon
     )
     positions = {name: _body_position(name, longitude) for name, longitude in placements.items()}
     chart = NatalChart(
-        moment=datetime(2023, 1, 1, tzinfo=timezone.utc),
+        moment=datetime(2023, 1, 1, tzinfo=UTC),
         location=ChartLocation(latitude=0.0, longitude=0.0),
         julian_day=0.0,
         positions=positions,

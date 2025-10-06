@@ -1,22 +1,22 @@
 """Synastry and composite helpers for the lightweight Plus API layer."""
 
 from .composite import (  # noqa: F401
-    Body,
     BirthEvent,
+    Body,
     ChartPositions,
     DavisonResult,
+    EclipticPos,
     Ephemeris,
     EphemerisError,
-    EclipticPos,
     NodePolicy,
-    Positions,
     PositionProvider,
+    Positions,
     SkyfieldAdapter,
     SwissEphemerisAdapter,
     angular_difference,
     circular_midpoint,
-    composite_midpoints,
     composite_midpoint_positions,
+    composite_midpoints,
     davison_chart,
     davison_positions,
     geodesic_midpoint,
@@ -30,7 +30,7 @@ from .houses import (  # noqa: F401
     composite_houses,
     davison_houses,
 )
-from .synastry import synastry_interaspects, synastry_grid
+from .synastry import synastry_grid, synastry_interaspects
 
 __all__ = [
     "Body",

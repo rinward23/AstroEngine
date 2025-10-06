@@ -32,8 +32,9 @@ def test_fast_scan_runs_under_budget():
 @pytest.mark.skipif(not _have_swiss(), reason="Swiss unavailable")
 def test_fast_scan_year_budget_guard() -> None:
     from time import perf_counter
-    from astroengine.ephemeris.swe import swe
+
     from astroengine.engine import ScanConfig, fast_scan
+    from astroengine.ephemeris.swe import swe
 
     start = dt.datetime(2020, 1, 1, 0, 0)
     end = dt.datetime(2021, 1, 1, 0, 0)

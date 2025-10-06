@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import importlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,8 +13,8 @@ pytest.importorskip(
 
 
 def _iso(dt: datetime) -> str:
-    aware = dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
-    return aware.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    aware = dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+    return aware.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def test_returns_endpoint_emits_requested_types(monkeypatch, tmp_path) -> None:
@@ -28,7 +28,7 @@ def test_returns_endpoint_emits_requested_types(monkeypatch, tmp_path) -> None:
     natal = vault_module.Natal(
         natal_id="test-natal",
         name="Test",
-        utc=_iso(datetime(2000, 1, 1, tzinfo=timezone.utc)),
+        utc=_iso(datetime(2000, 1, 1, tzinfo=UTC)),
         lat=0.0,
         lon=0.0,
         tz="UTC",

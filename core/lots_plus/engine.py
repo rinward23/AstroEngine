@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Dict
 
 from core.lots_plus.parser import Number, Term, parse_formula
 
@@ -18,7 +17,7 @@ def deg_sub(a: float, b: float) -> float:
     return norm360(float(a) - float(b))
 
 
-def eval_formula(expr: str, pos: Dict[str, float]) -> float:
+def eval_formula(expr: str, pos: dict[str, float]) -> float:
     """Evaluate an expression at positions `pos`.
     Unknown symbols raise KeyError.
     """

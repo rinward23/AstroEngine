@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -13,7 +13,7 @@ from astroengine.engine.minorplanets import builtins
 
 
 def test_lilith_variants_diverge() -> None:
-    moment = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    moment = datetime(2024, 1, 1, tzinfo=UTC)
     mean = builtins.lilith_mean(moment)
     true = builtins.lilith_true(moment)
     assert 0.0 <= mean < 360.0
@@ -22,7 +22,7 @@ def test_lilith_variants_diverge() -> None:
 
 
 def test_lilith_progression_monotonic() -> None:
-    base = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    base = datetime(2024, 1, 1, tzinfo=UTC)
     first = builtins.lilith_mean(base)
     second = builtins.lilith_mean(base.replace(day=2))
     assert first != second

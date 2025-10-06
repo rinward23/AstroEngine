@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping
 
-from ..ephemeris import BodyPosition, HousePositions
 from ..detectors.ingresses import sign_index, sign_name
+from ..ephemeris import BodyPosition, HousePositions
 
 __all__ = [
     "norm360",

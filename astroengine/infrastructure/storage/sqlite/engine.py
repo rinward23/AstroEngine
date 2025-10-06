@@ -16,7 +16,7 @@ def _absolute_sqlite_url(db_path: str | Path) -> str:
     return f"sqlite:///{path}"
 
 
-def get_sqlite_config(db_path: str | Path) -> "Config":
+def get_sqlite_config(db_path: str | Path) -> Config:
     """Build an in-memory Alembic config targeting ``db_path``."""
 
     from alembic.config import Config
@@ -36,7 +36,7 @@ class SQLiteMigrator:
 
     db_path: str | Path
 
-    def _config(self) -> "Config":
+    def _config(self) -> Config:
         return get_sqlite_config(self.db_path)
 
     def upgrade(self, revision: str = "head") -> None:
@@ -56,9 +56,9 @@ class SQLiteMigrator:
     def current(self) -> str | None:
         """Return the current Alembic revision recorded in the SQLite database."""
 
+        from alembic.runtime.migration import MigrationContext
         from sqlalchemy import create_engine
         from sqlalchemy.pool import NullPool
-        from alembic.runtime.migration import MigrationContext
 
         engine = create_engine(
             _absolute_sqlite_url(self.db_path), future=True, poolclass=NullPool

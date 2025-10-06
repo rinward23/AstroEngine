@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 DEFAULT_APP_PATH = (
     Path(__file__).resolve().parents[3]

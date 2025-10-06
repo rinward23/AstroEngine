@@ -1,11 +1,11 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
-from app.routers.electional import router as electional_router
 from app.routers import aspects as aspects_module
+from app.routers.electional import router as electional_router
 
 
 # Synthetic ephemeris: linear motion
@@ -29,7 +29,7 @@ def build_app(provider=None):
 
 
 def test_electional_search_basic():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Mars": 10.0, "Venus": 70.0, "Moon": 0.0, "Sun": 0.0},
@@ -61,7 +61,7 @@ def test_electional_search_basic():
 
 
 def test_electional_search_forbidden_penalty_and_voc_toggle():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Sun": 0.0, "Saturn": 180.0, "Moon": 0.0, "Mars": 10.0, "Venus": 70.0},
@@ -90,7 +90,7 @@ def test_electional_search_forbidden_penalty_and_voc_toggle():
 
 
 def test_electional_search_rate_limit(monkeypatch):
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Sun": 0.0, "Moon": 0.0},

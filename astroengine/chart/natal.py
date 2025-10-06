@@ -6,8 +6,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-import math
-
 from ..ephemeris import BodyPosition, HousePositions, SwissEphemerisAdapter
 from ..scoring import DEFAULT_ASPECTS, OrbCalculator
 from .config import ChartConfig
@@ -208,7 +206,7 @@ def compute_natal_chart(
     if expansions.get("vertex"):
         labels = _POINT_EXPANSIONS.get("vertex", ())
         longitudes = (houses.vertex, houses.antivertex)
-        for label, longitude in zip(labels, longitudes):
+        for label, longitude in zip(labels, longitudes, strict=False):
             if longitude is None:
                 continue
             positions[label] = _point_body_position(label, longitude, jd_ut)

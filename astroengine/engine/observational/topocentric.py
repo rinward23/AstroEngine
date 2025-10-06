@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
-import math
 
-from ...core.time import julian_day
 from ...core.stars_plus.geometry import mean_obliquity_deg
+from ...core.time import julian_day
 from ...ephemeris.adapter import EphemerisAdapter, EphemerisSample, ObserverLocation
 from .earth import Vec3, ecef_from_geodetic, gcrs_from_ecef
 

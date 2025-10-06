@@ -9,12 +9,14 @@ without inventing synthetic data.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from importlib import import_module, metadata
 from importlib.metadata import PackageNotFoundError
+from typing import Literal
+
 from packaging.requirements import Requirement
 from packaging.version import InvalidVersion, Version
-from typing import Iterable, Literal, Sequence
 
 __all__ = [
     "DependencySpec",

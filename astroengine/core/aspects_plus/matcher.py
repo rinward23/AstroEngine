@@ -1,8 +1,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from itertools import combinations
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any
 
 from .harmonics import BASE_ASPECTS
 from .orb_policy import PreparedOrbPolicy, orb_limit, orb_limit_prepared
@@ -63,7 +64,7 @@ def match_pair(
     lon_a: float,
     lon_b: float,
     aspects: Iterable[str],
-    policy: Dict,
+    policy: dict,
 ):
     """Match a single pair. Returns best match dict or None."""
     delta = angular_sep_deg(float(lon_a), float(lon_b))
@@ -92,11 +93,11 @@ def match_pair_prepared(
 
 
 def match_all(
-    positions: Dict[str, float],
+    positions: dict[str, float],
     aspects: Iterable[str],
-    policy: Dict,
-    pairs: Optional[Iterable[tuple[str, str]]] = None,
-) -> List[Dict]:
+    policy: dict,
+    pairs: Iterable[tuple[str, str]] | None = None,
+) -> list[dict]:
     """Match across all pairs in positions or a restricted `pairs` list.
 
     Args:
@@ -111,7 +112,7 @@ def match_all(
     else:
         pairs_iter = pairs
 
-    out: List[Dict] = []
+    out: list[dict] = []
     for a_name, b_name in pairs_iter:
         if a_name not in positions or b_name not in positions:
             continue

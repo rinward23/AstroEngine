@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import json as _json
+from typing import Any
 
 try:  # pragma: no cover - depends on optional dependency
     import orjson as _orjson  # type: ignore

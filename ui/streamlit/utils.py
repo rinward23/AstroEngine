@@ -1,10 +1,12 @@
 from __future__ import annotations
+
+from typing import Any
+
 import pandas as pd
-from typing import List, Dict, Any
 
 PAIR_SEP = "–"
 
-def hits_to_dataframe(hits: List[Dict[str, Any]]) -> pd.DataFrame:
+def hits_to_dataframe(hits: list[dict[str, Any]]) -> pd.DataFrame:
     """Normalize /aspects/search hits to a DataFrame.
     Expected keys: a,b,aspect,exact_time,orb,orb_limit,severity
     """

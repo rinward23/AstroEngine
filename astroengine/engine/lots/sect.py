@@ -21,7 +21,7 @@ class GeoLocation:
 def _to_utc(moment: _dt.datetime) -> _dt.datetime:
     if moment.tzinfo is None:
         raise ValueError("datetime must be timezone-aware for sect determination")
-    return moment.astimezone(_dt.timezone.utc)
+    return moment.astimezone(_dt.UTC)
 
 
 def _julian_day(moment: _dt.datetime) -> float:

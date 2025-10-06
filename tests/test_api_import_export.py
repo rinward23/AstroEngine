@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import json
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -41,7 +41,7 @@ def _seed_chart(chart_key: str = "chart-export") -> int:
             db,
             chart_key=chart_key,
             profile_key="exporter",
-            dt_utc=datetime(2021, 3, 21, 12, 0, tzinfo=timezone.utc),
+            dt_utc=datetime(2021, 3, 21, 12, 0, tzinfo=UTC),
             lat=51.5074,
             lon=-0.1278,
             location_name="London",

@@ -30,7 +30,7 @@ def _require_adapter() -> SwissEphemerisAdapter:
         raise RuntimeError(
             "pyswisseph not available; install astroengine[ephem]"
         ) from exc
-    except RuntimeError as exc:  # pragma: no cover - guarded in calling code
+    except RuntimeError:  # pragma: no cover - guarded in calling code
         LOG.error(
             "failed to initialize swiss ephemeris adapter",
             extra={"err_code": "SWISS_EPHEMERIS_ERROR"},

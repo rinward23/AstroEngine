@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Tuple
+from datetime import UTC, datetime, timedelta
+from typing import Any
+from zoneinfo import ZoneInfo
 
 import streamlit as st
-from zoneinfo import ZoneInfo
 
 from astroengine.geo import geocode
 
 
-def _offset_signature(zone: ZoneInfo, moment: datetime) -> Tuple[timedelta, timedelta]:
+def _offset_signature(zone: ZoneInfo, moment: datetime) -> tuple[timedelta, timedelta]:
     local = moment.astimezone(zone)
     offset = local.utcoffset() or timedelta(0)
     dst = local.dst() or timedelta(0)
@@ -22,7 +22,7 @@ def _refine_transition(
     zone: ZoneInfo,
     start: datetime,
     end: datetime,
-    start_signature: Tuple[timedelta, timedelta],
+    start_signature: tuple[timedelta, timedelta],
 ) -> datetime:
     current_start = start
     current_signature = start_signature
@@ -37,11 +37,11 @@ def _refine_transition(
     return end
 
 
-def _collect_dst_transitions(zone: ZoneInfo, reference: datetime) -> List[Dict[str, Any]]:
+def _collect_dst_transitions(zone: ZoneInfo, reference: datetime) -> list[dict[str, Any]]:
     window_start = reference - timedelta(days=730)
     window_end = reference + timedelta(days=365)
     step = timedelta(days=30)
-    transitions: List[Dict[str, Any]] = []
+    transitions: list[dict[str, Any]] = []
 
     current = window_start
     previous_signature = _offset_signature(zone, current)
@@ -63,7 +63,7 @@ def _collect_dst_transitions(zone: ZoneInfo, reference: datetime) -> List[Dict[s
     return transitions
 
 
-def _format_transition(zone: ZoneInfo, entry: Dict[str, Any]) -> str:
+def _format_transition(zone: ZoneInfo, entry: dict[str, Any]) -> str:
     local_instant = entry["instant"].astimezone(zone)
     offset_hours = entry["offset"].total_seconds() / 3600.0
     status = "DST active" if entry["is_dst"] else "Standard time"
@@ -76,7 +76,7 @@ def location_picker(
     default_query: str,
     state_prefix: str,
     help: str | None = None,
-) -> Dict[str, Any] | None:
+) -> dict[str, Any] | None:
     """Render a lookup widget returning a cached location selection.
 
     Parameters
@@ -138,7 +138,7 @@ def location_picker(
         except Exception:  # pragma: no cover - invalid tz data
             zone = None
         if zone is not None:
-            now_utc = datetime.now(timezone.utc)
+            now_utc = datetime.now(UTC)
             local = now_utc.astimezone(zone)
             offset = local.utcoffset() or timedelta(0)
             offset_hours = offset.total_seconds() / 3600.0
@@ -148,7 +148,7 @@ def location_picker(
             )
             transitions = _collect_dst_transitions(zone, now_utc)
             if transitions:
-                history_lines: List[str] = []
+                history_lines: list[str] = []
                 past_lines = [
                     _format_transition(zone, entry)
                     for entry in transitions

@@ -42,7 +42,7 @@ def _extract_longitude(value: Any) -> float:
     if isinstance(value, EclipticPosition):
         return float(value.longitude)
     if hasattr(value, "longitude"):
-        return float(getattr(value, "longitude"))
+        return float(value.longitude)
     if isinstance(value, Mapping):
         if "longitude" in value:
             return float(value["longitude"])

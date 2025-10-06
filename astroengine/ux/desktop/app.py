@@ -52,8 +52,8 @@ class APIServerController:
     def stop(self) -> None:
         with self._lock:
             if self._server is not None:
-                setattr(self._server, "should_exit", True)
-                setattr(self._server, "force_exit", True)
+                self._server.should_exit = True
+                self._server.force_exit = True
             thread = self._thread
         if thread:
             thread.join(timeout=5)
@@ -69,6 +69,7 @@ class APIServerController:
     def _run_server(self) -> None:
         try:
             import uvicorn
+
             from app.main import app as fastapi_app
         except Exception as exc:  # pragma: no cover - runtime import errors
             LOG.exception("Unable to launch API server: %s", exc)
@@ -193,7 +194,7 @@ class StreamlitController:
 class DesktopBridge:
     """Expose desktop automation to pywebview JavaScript bindings."""
 
-    def __init__(self, app: "AstroEngineDesktopApp") -> None:
+    def __init__(self, app: AstroEngineDesktopApp) -> None:
         self.app = app
 
     # Settings ---------------------------------------------------------

@@ -38,7 +38,6 @@ from .chart.config import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     HOUSE_SYSTEM_CHOICES,
     SUPPORTED_AYANAMSHAS,
-    VALID_HOUSE_SYSTEMS,
     VALID_LILITH_VARIANTS,
     VALID_NODE_VARIANTS,
     VALID_ZODIAC_SYSTEMS,
@@ -100,11 +99,8 @@ from .userdata.vault import (
 )
 from .utils import (
     DEFAULT_TARGET_FRAMES,
-    DEFAULT_TARGET_SELECTION,
     DETECTOR_NAMES,
-    ENGINE_FLAG_MAP,
     available_frames,
-    expand_targets,
 )
 from .ux.maps import astrocartography_lines, local_space_vectors
 from .ux.plugins import setup_cli as setup_plugins
@@ -974,7 +970,7 @@ def _hits_to_canonical_events(
     events: list[dict[str, Any]] = []
     natal_copy = dict(natal_meta) if natal_meta else None
     for hit in hits:
-        aspect_name = _canonical_aspect_name(float(getattr(hit, "angle_deg")))
+        aspect_name = _canonical_aspect_name(float(hit.angle_deg))
         state = getattr(hit, "applying_or_separating", "")
         applying = state == "applying"
         meta: dict[str, Any] = {
@@ -999,9 +995,9 @@ def _hits_to_canonical_events(
             meta["natal"] = natal_copy
         events.append(
             {
-                "ts": getattr(hit, "when_iso"),
-                "moving": f"{prefix}_{getattr(hit, 'moving')}",
-                "target": f"natal_{getattr(hit, 'target')}",
+                "ts": hit.when_iso,
+                "moving": f"{prefix}_{hit.moving}",
+                "target": f"natal_{hit.target}",
                 "aspect": aspect_name,
                 "orb": float(getattr(hit, "offset_deg", 0.0)),
                 "applying": applying,
