@@ -10,6 +10,8 @@ pip install -r requirements-optional.txt
 # Swiss Ephemeris data (Ubuntu/Debian):
 sudo apt-get update && sudo apt-get install -y swe-data
 export SE_EPHE_PATH=/usr/share/sweph
+# Windows (PowerShell): $env:SE_EPHE_PATH="C:/AstroEngine/ephe"
+# Windows (Command Prompt, persistent): setx SE_EPHE_PATH "C:\AstroEngine\ephe"
 
 Dev Hygiene
 

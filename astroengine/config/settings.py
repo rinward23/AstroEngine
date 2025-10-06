@@ -129,13 +129,31 @@ class AspectsCfg(BaseModel):
     use_moiety: bool = True
     show_applying: bool = True
 
+    @field_validator("orbs_global", mode="before")
+    @classmethod
+    def _cap_orbs_global(cls, value: float) -> float:
+        numeric = float(value)
+        return max(0.0, min(12.0, numeric))
+
+    @field_validator("orbs_by_aspect", mode="before")
+    @classmethod
+    def _cap_orbs_by_aspect(
+        cls, data: Dict[str, float] | object
+    ) -> Dict[str, float] | object:
+        if not isinstance(data, dict):
+            return data
+        return {
+            key: max(0.0, min(12.0, float(value)))
+            for key, value in data.items()
+        }
+
     @field_validator("orbs_by_body", mode="before")
     @classmethod
     def _cap_orbs_by_body(cls, data: Dict[str, float] | object) -> Dict[str, float] | object:
         if not isinstance(data, dict):
             return data
         return {
-            key: max(0.0, min(15.0, float(value)))
+            key: max(0.0, min(12.0, float(value)))
             for key, value in data.items()
         }
 
@@ -387,6 +405,12 @@ class FixedStarsCfg(BaseModel):
     catalog: Literal["robson", "brady"] = "robson"
     orb_deg: float = 1.0
 
+    @field_validator("orb_deg", mode="before")
+    @classmethod
+    def _cap_fixed_star_orb(cls, value: float) -> float:
+        numeric = float(value)
+        return max(0.0, min(12.0, numeric))
+
 
 class AntisciaCfg(BaseModel):
     """Antiscia and contra-antiscia toggles."""
@@ -488,6 +512,12 @@ class DeclinationsCfg(BaseModel):
     enabled: bool = False
     aspects: DeclinationAspectsCfg = Field(default_factory=DeclinationAspectsCfg)
     orb_deg: float = 0.5
+
+    @field_validator("orb_deg", mode="before")
+    @classmethod
+    def _cap_declination_orb(cls, value: float) -> float:
+        numeric = float(value)
+        return max(0.0, min(2.0, numeric))
 
 
 class EclipseFinderCfg(BaseModel):
