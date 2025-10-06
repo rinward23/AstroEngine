@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Dict, Iterable, Mapping, MutableMapping, Optional, Protocol
 
-from astroengine.ephemeris.swisseph_adapter import swe_calc
+from astroengine.ephemeris.cache import calc_ut_cached
 
 
 TAU = 360.0
@@ -381,17 +381,17 @@ class SwissEphemerisAdapter:
         for body in bodies:
             code = self._resolve_body(body, node_policy)
             try:
-                xx, _, serr = swe_calc(
-                    jd_ut=jd, planet_index=code, flag=self._flags
-                )
-            except RuntimeError as exc:
+                values, ret_flag = calc_ut_cached(jd, code, self._flags)
+            except Exception as exc:
                 raise EphemerisError(str(exc)) from exc
-            if serr:
-                raise EphemerisError(serr)
-            lon_deg = wrap_degrees(xx[0])
-            lat_deg = xx[1]
-            dist = xx[2]
-            speed_lon = xx[3] if len(xx) > 3 else None
+            if ret_flag < 0:
+                raise EphemerisError(
+                    f"Swiss ephemeris returned error code {ret_flag}"
+                )
+            lon_deg = wrap_degrees(values[0])
+            lat_deg = values[1]
+            dist = values[2]
+            speed_lon = values[3] if len(values) > 3 else None
             retrograde = speed_lon is not None and speed_lon < 0
             result[Body(body)] = EclipticPos(
                 lon=lon_deg,

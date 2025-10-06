@@ -7,7 +7,8 @@ from datetime import datetime
 from typing import Final
 
 from astroengine.core.time import ensure_utc, julian_day
-from astroengine.ephemeris.swisseph_adapter import get_swisseph, swe_calc
+from astroengine.ephemeris.cache import calc_ut_cached
+from astroengine.ephemeris.swisseph_adapter import get_swisseph
 
 __all__ = [
     "CuratedMinorPlanet",
@@ -42,9 +43,9 @@ def _calc_apogee_longitude(moment: datetime, body: int) -> float:
     _ensure_swisseph_path()
     utc_moment = ensure_utc(moment)
     jd_ut = julian_day(utc_moment)
-    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=body, flag=0)
-    if serr:
-        raise RuntimeError(serr)
+    xx, ret_flag = calc_ut_cached(jd_ut, int(body), 0)
+    if ret_flag < 0:
+        raise RuntimeError(f"Swiss ephemeris returned error code {ret_flag}")
     longitude = xx[0] % 360.0
     if longitude < 0.0:
         longitude += 360.0

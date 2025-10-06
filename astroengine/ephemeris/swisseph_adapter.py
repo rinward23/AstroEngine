@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-import importlib
-import importlib.util
 from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -17,17 +15,8 @@ from types import ModuleType
 
 logger = logging.getLogger(__name__)
 
-
-@lru_cache(maxsize=1)
-def _swe() -> ModuleType:
-    """Return the swisseph module, raising a helpful error if unavailable."""
-
-    if importlib.util.find_spec("swisseph") is None:
-        raise ModuleNotFoundError(
-            "swisseph is required for Swiss Ephemeris calculations. Install the "
-            "'pyswisseph' extra to enable astroengine.ephemeris features."
-        )
-    return importlib.import_module("swisseph")
+from .cache import calc_ut_cached
+from .swe import swe as _swe
 
 
 def get_swisseph() -> ModuleType:
@@ -794,36 +783,28 @@ class SwissEphemerisAdapter:
             body_specs.append((name, effective, derived))
             unique_codes.add(effective)
 
+        def _compute_vector(code: int, primary: int, fallback: int) -> tuple[float, ...]:
+            try:
+                values, ret_flag = calc_ut_cached(jd_ut, code, primary)
+            except Exception:
+                values, ret_flag = calc_ut_cached(jd_ut, code, fallback)
+            else:
+                if ret_flag < 0 and fallback != primary:
+                    values, ret_flag = calc_ut_cached(jd_ut, code, fallback)
+
+            if ret_flag < 0:
+                raise RuntimeError(f"Swiss ephemeris returned error code {ret_flag}")
+            return tuple(values)
+
         ecliptic_data: dict[int, tuple[float, ...]] = {}
         equatorial_data: dict[int, tuple[float, ...]] = {}
         for code in unique_codes:
-            try:
-                xx, _, serr = swe_calc(
-                    jd_ut=jd_ut, planet_index=code, flag=calc_flags
-                )
-            except RuntimeError:
-                xx, _, serr = swe_calc(
-                    jd_ut=jd_ut, planet_index=code, flag=fallback_flags
-                )
-            if serr:
-                raise RuntimeError(serr)
-            ecliptic_data[code] = xx
-
-            try:
-                eq_xx, _, serr_eq = swe_calc(
-                    jd_ut=jd_ut,
-                    planet_index=code,
-                    flag=calc_flags | equatorial_flag,
-                )
-            except RuntimeError:
-                eq_xx, _, serr_eq = swe_calc(
-                    jd_ut=jd_ut,
-                    planet_index=code,
-                    flag=fallback_flags | equatorial_flag,
-                )
-            if serr_eq:
-                raise RuntimeError(serr_eq)
-            equatorial_data[code] = eq_xx
+            ecliptic_data[code] = _compute_vector(code, calc_flags, fallback_flags)
+            equatorial_data[code] = _compute_vector(
+                code,
+                calc_flags | equatorial_flag,
+                fallback_flags | equatorial_flag,
+            )
 
         positions: dict[str, BodyPosition] = {}
         for name, effective_code, derived in body_specs:
