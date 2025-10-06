@@ -10,7 +10,7 @@ description = "AstroEngine — modular transit engine and astrology toolkit"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "AstroEngine Maintainers" }]
-license = { text = "Proprietary" }
+license = "LicenseRef-Proprietary"
 keywords = ["astrology", "ephemeris", "transits", "astronomy"]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -229,6 +229,7 @@ fallback_version = "0.0.0"
 # Install the real package directory (not the generated skeleton only)
 packages = { find = { where = ["."], include = ["astroengine*"] } }
 include-package-data = true
+license-files = ["LICENSE", "NOTICE*", "COPYING*"]
 # >>> AUTO-GEN END: packaging-and-extras v1.0
 
 # >>> AUTO-GEN BEGIN: ruff target py311 v1.1
