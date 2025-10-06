@@ -20,6 +20,24 @@ from .copilot import DesktopCopilot
 LOG = logging.getLogger(__name__)
 
 
+def _load_embedded_asset(path: Path, fallback: str) -> str:
+    """Return the contents of ``path`` if available, else ``fallback``.
+
+    The Windows desktop bundle ships the HTML assets alongside this module.
+    When running in editable mode or if packaging omits the files, we fall back
+    to the inlined defaults to ensure the UI keeps working instead of
+    crashing. Any failure to read the file is logged for diagnostics but does
+    not bubble up to the UI layer.
+    """
+
+    try:
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+    except Exception:  # pragma: no cover - defensive guard
+        LOG.warning("Failed to load desktop asset from %s", path, exc_info=True)
+    return fallback
+
+
 class APIServerController:
     """Manage the bundled uvicorn server lifecycle."""
 
@@ -181,9 +199,12 @@ class StreamlitController:
 
     def _resolve_entry(self) -> Path:
         bundle_base = Path(getattr(sys, "_MEIPASS", Path.cwd()))
+        bundle_root = Path(__file__).resolve().parents[3]
         candidates = [
+            bundle_base / "ui" / "streamlit" / "main_portal.py",
             bundle_base / "ui" / "streamlit" / "vedic_app.py",
-            Path(__file__).resolve().parents[3] / "ui" / "streamlit" / "vedic_app.py",
+            bundle_root / "ui" / "streamlit" / "main_portal.py",
+            bundle_root / "ui" / "streamlit" / "vedic_app.py",
         ]
         for candidate in candidates:
             if candidate.exists():
@@ -256,8 +277,8 @@ class DesktopBridge:
 class AstroEngineDesktopApp:
     """Top-level orchestrator for the Windows desktop experience."""
 
-    SETTINGS_HTML = (Path(__file__).with_name("settings.html"))
-    CHAT_HTML = (Path(__file__).with_name("chat.html"))
+    SETTINGS_HTML_PATH = Path(__file__).with_name("settings.html")
+    CHAT_HTML_PATH = Path(__file__).with_name("chat.html")
 
     def __init__(self, *, config_manager: DesktopConfigManager | None = None) -> None:
         self.config_manager = config_manager or DesktopConfigManager()
@@ -381,18 +402,20 @@ class AstroEngineDesktopApp:
             js_api=bridge,
             menu=menu,
         )
+        settings_html = _load_embedded_asset(self.SETTINGS_HTML_PATH, DEFAULT_SETTINGS_HTML)
         self._settings_window = webview.create_window(
             "Settings",
-            html=DEFAULT_SETTINGS_HTML,
+            html=settings_html,
             width=720,
             height=780,
             js_api=bridge,
             hidden=True,
             resizable=True,
         )
+        chat_html = _load_embedded_asset(self.CHAT_HTML_PATH, DEFAULT_CHAT_HTML)
         self._chat_window = webview.create_window(
             "AstroEngine Copilot",
-            html=DEFAULT_CHAT_HTML,
+            html=chat_html,
             width=520,
             height=720,
             js_api=bridge,

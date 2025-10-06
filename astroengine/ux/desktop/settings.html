@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AstroEngine Settings</title>
+<style>
+body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 1.5rem; background: #0f1224; color: #f5f6fa; }
+form { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.field { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.75rem; border-radius: 8px; background: #181c36; border: 1px solid #24294b; }
+label { font-weight: 600; }
+input, select { padding: 0.6rem; border-radius: 6px; border: 1px solid #31375c; background: #1c2142; color: #f5f6fa; }
+.actions { grid-column: 1 / -1; display: flex; gap: 0.75rem; margin-top: 1rem; }
+button { padding: 0.7rem 1.2rem; border: none; border-radius: 6px; background: #c9973b; color: #101321; font-weight: 600; cursor: pointer; }
+button.secondary { background: #1e2344; color: #f5f6fa; border: 1px solid #31375c; }
+#status { margin-top: 1rem; font-size: 0.85rem; color: #9aa5ff; grid-column: 1 / -1; }
+small { color: #9aa5ff; }
+</style>
+</head>
+<body>
+<h1>AstroEngine Desktop Settings</h1>
+<form id="settings">
+  <div class="field">
+    <label for="database_url">Database URL</label>
+    <input id="database_url" name="database_url" placeholder="sqlite:///astroengine-desktop.db" />
+    <small>Must be reachable. The Verify button runs a live connection check.</small>
+  </div>
+  <div class="field">
+    <label for="se_ephe_path">Swiss Ephemeris Path</label>
+    <input id="se_ephe_path" name="se_ephe_path" placeholder="C:\\AstroEngine\\ephe" />
+    <small>Optional: leave blank to use bundled fallback.</small>
+  </div>
+  <div class="field">
+    <label for="api_host">API Host</label>
+    <input id="api_host" name="api_host" />
+  </div>
+  <div class="field">
+    <label for="api_port">API Port</label>
+    <input id="api_port" name="api_port" type="number" min="1" max="65535" />
+  </div>
+  <div class="field">
+    <label for="streamlit_port">Streamlit Port</label>
+    <input id="streamlit_port" name="streamlit_port" type="number" min="1" max="65535" />
+  </div>
+  <div class="field">
+    <label for="logging_level">Logging Level</label>
+    <select id="logging_level" name="logging_level">
+      <option value="CRITICAL">CRITICAL</option>
+      <option value="ERROR">ERROR</option>
+      <option value="WARNING">WARNING</option>
+      <option value="INFO">INFO</option>
+      <option value="DEBUG">DEBUG</option>
+      <option value="NOTSET">NOTSET</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="theme">Theme</label>
+    <select id="theme" name="theme">
+      <option value="system">System</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+      <option value="high_contrast">High Contrast</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="qcache_sec">Query Cache Window (seconds)</label>
+    <input id="qcache_sec" name="qcache_sec" type="number" min="0.1" step="0.1" />
+  </div>
+  <div class="field">
+    <label for="qcache_size">Query Cache Size</label>
+    <input id="qcache_size" name="qcache_size" type="number" min="128" step="128" />
+  </div>
+  <div class="field">
+    <label for="openai_api_key">OpenAI API Key</label>
+    <input id="openai_api_key" name="openai_api_key" type="password" />
+    <small>Stored locally. Leave blank to disable GPT integrations.</small>
+  </div>
+  <div class="field">
+    <label for="openai_model">OpenAI Model</label>
+    <input id="openai_model" name="openai_model" placeholder="gpt-4o-mini" />
+  </div>
+  <div class="field">
+    <label for="openai_base_url">OpenAI Base URL</label>
+    <input id="openai_base_url" name="openai_base_url" placeholder="https://api.openai.com/v1" />
+  </div>
+  <div class="field">
+    <label for="copilot_daily_limit">Copilot Daily Token Limit</label>
+    <input id="copilot_daily_limit" name="copilot_daily_limit" type="number" min="0" />
+  </div>
+  <div class="field">
+    <label for="copilot_session_limit">Copilot Session Token Limit</label>
+    <input id="copilot_session_limit" name="copilot_session_limit" type="number" min="0" />
+  </div>
+  <div class="field">
+    <label for="autostart">Autostart</label>
+    <select id="autostart" name="autostart">
+      <option value="false">Disabled</option>
+      <option value="true">Launch at login</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="issue_report_dir">Issue Bundle Directory</label>
+    <input id="issue_report_dir" name="issue_report_dir" />
+    <small>Change where diagnostics bundles are stored.</small>
+  </div>
+  <div class="actions">
+    <button type="submit">Save</button>
+    <button type="button" id="verify_db" class="secondary">Verify Database</button>
+    <button type="button" id="verify_ephe" class="secondary">Verify Ephemeris Path</button>
+    <button type="button" id="issue_bundle" class="secondary">Create Issue Bundle</button>
+  </div>
+  <div id="status"></div>
+</form>
+<script>
+const form = document.getElementById('settings');
+const statusEl = document.getElementById('status');
+const dbBtn = document.getElementById('verify_db');
+const epheBtn = document.getElementById('verify_ephe');
+const bundleBtn = document.getElementById('issue_bundle');
+
+function setValue(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.tagName === 'SELECT') {
+    el.value = String(value ?? '').toLowerCase();
+  } else {
+    el.value = value ?? '';
+  }
+}
+
+function formData() {
+  const data = new FormData(form);
+  const payload = Object.fromEntries(data.entries());
+  payload.autostart = payload.autostart === 'true';
+  return payload;
+}
+
+function showStatus(message, ok = true) {
+  statusEl.textContent = message;
+  statusEl.style.color = ok ? '#9aa5ff' : '#ff9aa2';
+}
+
+async function load() {
+  const result = await window.pywebview.api.get_config();
+  const config = result;
+  for (const [key, value] of Object.entries(config)) {
+    setValue(key, value);
+  }
+  showStatus('Loaded configuration.');
+}
+
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const payload = formData();
+  const result = await window.pywebview.api.save_config(payload);
+  if (result.ok) {
+    showStatus('Saved. Services restarting with new configuration.');
+  } else {
+    showStatus(result.error, false);
+  }
+});
+
+dbBtn.addEventListener('click', async () => {
+  const payload = formData();
+  const result = await window.pywebview.api.validate_database(payload.database_url);
+  if (result.ok) {
+    showStatus('Database connection succeeded.');
+  } else {
+    showStatus(result.error, false);
+  }
+});
+
+epheBtn.addEventListener('click', async () => {
+  const payload = formData();
+  const result = await window.pywebview.api.check_ephemeris(payload.se_ephe_path);
+  if (result.ok) {
+    showStatus('Swiss Ephemeris path verified.');
+  } else {
+    showStatus('Swiss Ephemeris path not found.', false);
+  }
+});
+
+bundleBtn.addEventListener('click', async () => {
+  const result = await window.pywebview.api.issue_bundle();
+  if (result.ok) {
+    showStatus('Issue bundle created at ' + result.path);
+  } else {
+    showStatus(result.error, false);
+  }
+});
+
+window.AstroEngine = window.AstroEngine || {};
+window.AstroEngine.setApiStatus = function(online) {
+  document.body.style.borderTop = online ? '4px solid #0f9960' : '4px solid #ff6b6b';
+};
+
+load();
+</script>
+</body>
+</html>

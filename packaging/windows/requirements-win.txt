@@ -2,3 +2,6 @@
 -r requirements.txt
 timezonefinder==6.2.*
 pyinstaller==6.10.*
+pywebview>=4.4
+pystray>=0.19
+Pillow>=10.0
