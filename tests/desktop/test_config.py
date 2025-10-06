@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -103,7 +105,9 @@ def test_run_first_run_wizard_creates_settings(tmp_path: Path) -> None:
     ephe_dir = tmp_path / "ephe"
     ephe_dir.mkdir()
     atlas_path = tmp_path / "atlas.sqlite"
-    atlas_path.write_text("", encoding="utf-8")
+    (ephe_dir / "sepl_18.se1").write_text("", encoding="utf-8")
+    with sqlite3.connect(atlas_path) as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS cities(id INTEGER PRIMARY KEY)")
 
     responses = iter([
         str(ephe_dir),
@@ -135,6 +139,48 @@ def test_run_first_run_wizard_creates_settings(tmp_path: Path) -> None:
     assert persisted.preset == "vedic"
     assert persisted.atlas.offline_enabled is True
     assert persisted.atlas.data_path == str(atlas_path)
+
+    summary_lines = "\n".join(output)
+    assert "Swiss Ephemeris" in summary_lines
+    assert "Offline Atlas" in summary_lines
+    meta_path = settings_path.with_suffix(".first_run.json")
+    payload = json.loads(meta_path.read_text(encoding="utf-8"))
+    assert payload["ephemeris"]["files"] == 1
+    assert payload["atlas"]["tables"] >= 1
+
+
+def test_run_first_run_wizard_reprompts_until_valid_paths(tmp_path: Path) -> None:
+    ephe_dir = tmp_path / "ephe"
+    ephe_dir.mkdir()
+    valid_ephe = ephe_dir / "semo_20.se1"
+    atlas_path = tmp_path / "atlas.sqlite"
+    with sqlite3.connect(atlas_path) as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS meta(id INTEGER PRIMARY KEY)")
+
+    responses = iter([
+        str(ephe_dir),  # missing data triggers retry
+        str(ephe_dir),
+        "n",
+        "modern_western",
+    ])
+    output: list[str] = []
+
+    def fake_input(prompt: str) -> str:
+        value = next(responses)
+        if "ephe" in value and not any(ephe_dir.glob("*.se*")):
+            # populate after the first failure
+            valid_ephe.write_text("", encoding="utf-8")
+        return value
+
+    settings_path = tmp_path / "settings.yaml"
+    run_first_run_wizard(
+        settings_path=settings_path,
+        input_func=fake_input,
+        print_func=output.append,
+    )
+
+    assert any("Swiss ephemeris directory must include" in line for line in output)
+    assert settings_path.exists()
 
 
 def test_should_run_wizard_flags(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
