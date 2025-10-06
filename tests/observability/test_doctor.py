@@ -45,6 +45,8 @@ def test_run_system_doctor_happy_path(monkeypatch: pytest.MonkeyPatch, tmp_path:
     monkeypatch.setattr(doctor, "_check_database", lambda: _fake_check("database"))
     monkeypatch.setattr(doctor, "_check_migrations", lambda: _fake_check("migrations"))
     monkeypatch.setattr(doctor, "_check_cache", lambda: _fake_check("cache"))
+    monkeypatch.setattr(doctor, "_check_settings", lambda _settings: _fake_check("settings"))
+    monkeypatch.setattr(doctor, "_check_disk_free", lambda _settings: _fake_check("disk"))
 
     settings = types.SimpleNamespace(
         swiss_caps=types.SimpleNamespace(min_year=1900, max_year=1901)
@@ -67,6 +69,8 @@ def test_run_system_doctor_missing_swisseph(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(doctor, "_check_database", lambda: _fake_check("database"))
     monkeypatch.setattr(doctor, "_check_migrations", lambda: _fake_check("migrations"))
     monkeypatch.setattr(doctor, "_check_cache", lambda: _fake_check("cache"))
+    monkeypatch.setattr(doctor, "_check_settings", lambda _settings: _fake_check("settings"))
+    monkeypatch.setattr(doctor, "_check_disk_free", lambda _settings: _fake_check("disk"))
 
     settings = types.SimpleNamespace(
         swiss_caps=types.SimpleNamespace(min_year=1900, max_year=1901)
@@ -75,3 +79,33 @@ def test_run_system_doctor_missing_swisseph(monkeypatch: pytest.MonkeyPatch) -> 
     report = doctor.run_system_doctor(settings=settings)
     assert report["status"] == "error"
     assert report["checks"]["swiss_ephemeris"]["status"] == "error"
+
+
+def test_check_settings_validates_ranges() -> None:
+    settings = types.SimpleNamespace(
+        swiss_caps=types.SimpleNamespace(min_year=2050, max_year=2000),
+        perf=types.SimpleNamespace(qcache_size=0, qcache_sec=-1.0, max_scan_days=-5),
+        observability=types.SimpleNamespace(
+            otel_enabled=False,
+            sampling_ratio=1.5,
+            metrics_histogram_buckets=[0.1, 0.5],
+        ),
+    )
+
+    check = doctor._check_settings(settings)
+    assert check.status == "error"
+    assert "swiss" in check.detail.lower()
+    assert check.data["swiss_caps"]["min_year"] == 2050
+
+
+def test_check_disk_free_thresholds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(doctor, "get_config_home", lambda: tmp_path)
+    monkeypatch.setattr(
+        doctor,
+        "disk_usage",
+        lambda _path: types.SimpleNamespace(total=100, used=95, free=5),
+    )
+
+    check = doctor._check_disk_free(types.SimpleNamespace())
+    assert check.status == "error"
+    assert "5.0%" in check.detail

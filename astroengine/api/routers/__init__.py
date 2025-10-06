@@ -5,6 +5,7 @@ from __future__ import annotations
 
 __all__ = [
     "analysis",
+    "doctor",
     "plus",
     "electional",
     "scan",

@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Literal, Mapping
 
 import sqlite3
-from astroengine.config import Settings, load_settings
+from shutil import disk_usage
+
+from astroengine.config import Settings, get_config_home, load_settings
 from astroengine.ephemeris.utils import get_se_ephe_path
 
 if TYPE_CHECKING:  # pragma: no cover - imported for typing only
@@ -244,7 +246,28 @@ def _check_cache() -> DoctorCheck:
     info: dict[str, Any] = {
         "path": str(cache_db),
         "exists": cache_db.exists(),
+        "directory": str(cache_dir),
     }
+
+    if info["exists"]:
+        try:
+            info["size_bytes"] = cache_db.stat().st_size
+        except FileNotFoundError:
+            info["size_bytes"] = None
+    else:
+        info["size_bytes"] = None
+
+    try:
+        total_size = 0
+        for child in cache_dir.glob("**/*"):
+            if child.is_file():
+                try:
+                    total_size += child.stat().st_size
+                except OSError:
+                    continue
+        info["directory_size_bytes"] = total_size
+    except OSError:
+        info["directory_size_bytes"] = None
 
     try:
         connection = sqlite3.connect(str(cache_db))
@@ -270,6 +293,132 @@ def _check_cache() -> DoctorCheck:
     )
 
 
+def _check_settings(settings: Settings) -> DoctorCheck:
+    """Expose key runtime settings and validate their ranges."""
+
+    swiss_caps = getattr(settings, "swiss_caps", None)
+    perf = getattr(settings, "perf", None)
+    observability_cfg = getattr(settings, "observability", None)
+
+    status: Status = "ok"
+    notes: list[str] = []
+    data: dict[str, Any] = {}
+
+    if swiss_caps is None:
+        status = "warn"
+        notes.append("Swiss ephemeris caps are not configured")
+    else:
+        min_year = int(getattr(swiss_caps, "min_year", 0))
+        max_year = int(getattr(swiss_caps, "max_year", 0))
+        data["swiss_caps"] = {"min_year": min_year, "max_year": max_year}
+        if min_year >= max_year:
+            status = "error"
+            notes.append("Swiss caps min_year must be lower than max_year")
+
+    if perf is None:
+        notes.append("Performance tuning section unavailable; defaults assumed")
+        status = "warn" if status == "ok" else status
+    else:
+        qcache_size = int(getattr(perf, "qcache_size", 0))
+        qcache_sec = float(getattr(perf, "qcache_sec", 0.0))
+        max_scan_days = int(getattr(perf, "max_scan_days", 0))
+        data["performance"] = {
+            "qcache_size": qcache_size,
+            "qcache_sec": qcache_sec,
+            "max_scan_days": max_scan_days,
+        }
+        if qcache_size <= 0:
+            status = "error"
+            notes.append("qcache_size must be a positive integer")
+        if qcache_sec <= 0:
+            status = "warn" if status == "ok" else status
+            notes.append("qcache_sec is non-positive; cache expiration disabled")
+        if max_scan_days <= 0:
+            status = "warn" if status == "ok" else status
+            notes.append("max_scan_days should be positive for transit scans")
+
+    if observability_cfg is None:
+        notes.append("Observability configuration missing; sampling defaults used")
+        status = "warn" if status == "ok" else status
+    else:
+        sampling_ratio = float(getattr(observability_cfg, "sampling_ratio", 0.0))
+        buckets = list(getattr(observability_cfg, "metrics_histogram_buckets", []))
+        data["observability"] = {
+            "otel_enabled": bool(getattr(observability_cfg, "otel_enabled", False)),
+            "sampling_ratio": sampling_ratio,
+            "metrics_histogram_buckets": buckets,
+        }
+        if not 0.0 <= sampling_ratio <= 1.0:
+            status = "warn" if status != "error" else status
+            notes.append("sampling_ratio should be within 0–1")
+
+    detail = (
+        "; ".join(notes)
+        if notes
+        else "settings ranges fall within expected bounds"
+    )
+
+    return DoctorCheck(
+        name="settings",
+        status=status,
+        detail=detail,
+        data=data,
+    )
+
+
+def _check_disk_free(settings: Settings) -> DoctorCheck:
+    """Report disk capacity near the AstroEngine configuration home."""
+
+    try:
+        base_path = get_config_home()
+    except Exception as exc:  # pragma: no cover - defensive
+        return DoctorCheck(
+            name="disk",
+            status="warn",
+            detail="unable to resolve AstroEngine home directory",
+            data={"error": f"{type(exc).__name__}: {exc}"},
+        )
+
+    target = base_path if base_path.exists() else base_path.parent
+    payload: dict[str, Any] = {"path": str(target), "resolved_home": str(base_path)}
+
+    try:
+        usage = disk_usage(str(target))
+    except FileNotFoundError:
+        return DoctorCheck(
+            name="disk",
+            status="warn",
+            detail="configuration directory missing; cannot determine disk usage",
+            data=payload,
+        )
+
+    total = int(usage.total)
+    free = int(usage.free)
+    used = total - free
+    percent_free = (free / total * 100.0) if total else 0.0
+
+    payload.update(
+        {
+            "total_bytes": total,
+            "used_bytes": used,
+            "free_bytes": free,
+            "percent_free": round(percent_free, 2),
+        }
+    )
+
+    if percent_free <= 5.0:
+        status: Status = "error"
+        detail = f"only {percent_free:.1f}% free; disk critically low"
+    elif percent_free < 15.0:
+        status = "warn"
+        detail = f"{percent_free:.1f}% free; consider pruning caches"
+    else:
+        status = "ok"
+        detail = f"{percent_free:.1f}% free"
+
+    return DoctorCheck(name="disk", status=status, detail=detail, data=payload)
+
+
 def run_system_doctor(settings: Settings | None = None) -> dict[str, Any]:
     """Execute all doctor checks and return a serialisable payload."""
 
@@ -279,6 +428,8 @@ def run_system_doctor(settings: Settings | None = None) -> dict[str, Any]:
         _check_database(),
         _check_migrations(),
         _check_cache(),
+        _check_settings(effective_settings),
+        _check_disk_free(effective_settings),
     ]
     overall = _merge_status(check.status for check in checks)
     return {
