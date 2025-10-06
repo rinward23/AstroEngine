@@ -11,7 +11,7 @@ except Exception:  # pragma: no cover
     swe = None  # type: ignore
 
 from ..events import ShadowPeriod, StationEvent
-from ..ephemeris.swisseph_adapter import swe_calc
+from ..ephemeris.cache import calc_ut_cached
 from .common import delta_deg, jd_to_iso, solve_zero_crossing
 
 __all__ = ["find_stations", "find_shadow_periods"]
@@ -28,19 +28,22 @@ _BODY_CODES = {
 }
 
 
+def _vector(jd_ut: float, code: int, flag: int) -> tuple[float, ...]:
+    values, ret_flag = calc_ut_cached(jd_ut, code, flag)
+    if ret_flag < 0:
+        raise RuntimeError(f"Swiss ephemeris returned error code {ret_flag}")
+    return tuple(values)
+
+
 def _speed(jd_ut: float, code: int) -> float:
     flag = swe.FLG_SWIEPH | swe.FLG_SPEED
-    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=code, flag=flag)
-    if serr:
-        raise RuntimeError(serr)
+    xx = _vector(jd_ut, code, flag)
     return float(xx[3])
 
 
 def _longitude(jd_ut: float, code: int) -> float:
     flag = swe.FLG_SWIEPH | swe.FLG_SPEED
-    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=code, flag=flag)
-    if serr:
-        raise RuntimeError(serr)
+    xx = _vector(jd_ut, code, flag)
     return float(xx[0]) % 360.0
 
 
