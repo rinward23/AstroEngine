@@ -92,6 +92,25 @@ class LocalTimeResolution:
 
         return self.utc
 
+    def to_metadata(self) -> dict[str, object]:
+        """Serialise the resolution into a metadata dictionary."""
+
+        payload: dict[str, object] = {
+            "input_local": self.input.isoformat(),
+            "tzid": self.tzid,
+            "resolved_local": self.local.isoformat(),
+            "utc": self.utc.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "fold": int(self.fold),
+            "ambiguous": self.ambiguous,
+            "ambiguous_policy": self.ambiguous_policy,
+            "ambiguous_flagged": self.ambiguous_flagged,
+            "nonexistent": self.nonexistent,
+            "nonexistent_policy": self.nonexistent_policy,
+        }
+        if self.gap is not None:
+            payload["gap_seconds"] = self.gap.total_seconds()
+        return payload
+
 __all__ = [
     "GapPolicy",
     "FoldPolicy",
@@ -102,6 +121,7 @@ __all__ = [
     "is_ambiguous",
     "is_nonexistent",
     "to_utc",
+    "to_utc_with_timezone",
     "tzid_for",
 
 ]
@@ -158,34 +178,52 @@ def _dst_gap(local_naive: datetime, zone: ZoneInfo) -> timedelta:
 
 
 
-def to_utc(
-    local_naive: datetime,
-    lat: float,
-    lon: float,
-    *,
-    ambiguous: FoldPolicy = "earliest",
-    nonexistent: GapPolicy = "post",
-) -> LocalTimeResolution:
-
-    """Resolve a naive local timestamp into UTC with explicit DST policies."""
-
+def _resolve_policies(ambiguous: FoldPolicy, nonexistent: GapPolicy) -> None:
     if ambiguous not in {"earliest", "latest", "raise", "flag"}:
         raise ValueError(f"Unsupported ambiguous policy: {ambiguous}")
     if nonexistent not in {"post", "pre", "raise"}:
         raise ValueError(f"Unsupported nonexistent policy: {nonexistent}")
+
+
+def _apply_legacy_policy(
+    policy: Policy | None,
+    ambiguous: FoldPolicy,
+    nonexistent: GapPolicy,
+) -> tuple[FoldPolicy, GapPolicy]:
+    if policy is None:
+        return ambiguous, nonexistent
+    if policy == "shift_forward":
+        nonexistent = "post"
+    elif policy in {"earliest", "latest", "raise"}:
+        ambiguous = policy  # type: ignore[assignment]
+    else:
+        raise ValueError(f"Unsupported legacy policy: {policy}")
+    return ambiguous, nonexistent
+
+
+def _resolve_local_time(
+    local_naive: datetime,
+    tzid: str,
+    zone: ZoneInfo,
+    *,
+    ambiguous: FoldPolicy,
+    nonexistent: GapPolicy,
+) -> LocalTimeResolution:
     if local_naive.tzinfo is not None:
         raise ValueError("local_naive must be timezone-naive")
 
-    tzid = tzid_for(lat, lon)
-    zone = ZoneInfo(tzid)
-
-    ambiguous_state = is_ambiguous(local_naive, tzid)
-    nonexistent_state = is_nonexistent(local_naive, tzid)
-
     fold = 0
     flagged = False
-    effective_naive = local_naive
     gap: timedelta | None = None
+    effective_naive = local_naive
+
+    aware_fold0 = local_naive.replace(tzinfo=zone, fold=0)
+    aware_fold1 = local_naive.replace(tzinfo=zone, fold=1)
+    utc_fold0 = aware_fold0.astimezone(timezone.utc)
+    utc_fold1 = aware_fold1.astimezone(timezone.utc)
+
+    ambiguous_state = utc_fold0 != utc_fold1 and utc_fold0 < utc_fold1
+    nonexistent_state = utc_fold0 != utc_fold1 and utc_fold0 > utc_fold1
 
     if ambiguous_state:
         if ambiguous == "raise":
@@ -193,8 +231,8 @@ def to_utc(
         if ambiguous == "latest":
             fold = 1
         elif ambiguous == "flag":
-            fold = 0
             flagged = True
+            fold = 0
         else:  # earliest
             fold = 0
 
@@ -222,6 +260,53 @@ def to_utc(
         nonexistent=nonexistent_state,
         nonexistent_policy=nonexistent,
         gap=gap,
+    )
+
+
+def to_utc(
+    local_naive: datetime,
+    lat: float,
+    lon: float,
+    *,
+    ambiguous: FoldPolicy = "earliest",
+    nonexistent: GapPolicy = "post",
+    policy: Policy | None = None,
+) -> LocalTimeResolution:
+
+    """Resolve a naive local timestamp into UTC with explicit DST policies."""
+
+    ambiguous, nonexistent = _apply_legacy_policy(policy, ambiguous, nonexistent)
+    _resolve_policies(ambiguous, nonexistent)
+    tzid = tzid_for(lat, lon)
+    zone = ZoneInfo(tzid)
+    return _resolve_local_time(
+        local_naive,
+        tzid,
+        zone,
+        ambiguous=ambiguous,
+        nonexistent=nonexistent,
+    )
+
+
+def to_utc_with_timezone(
+    local_naive: datetime,
+    tzid: str,
+    *,
+    ambiguous: FoldPolicy = "earliest",
+    nonexistent: GapPolicy = "post",
+    policy: Policy | None = None,
+) -> LocalTimeResolution:
+    """Resolve a naive local timestamp using an explicit timezone identifier."""
+
+    ambiguous, nonexistent = _apply_legacy_policy(policy, ambiguous, nonexistent)
+    _resolve_policies(ambiguous, nonexistent)
+    zone = ZoneInfo(tzid)
+    return _resolve_local_time(
+        local_naive,
+        tzid,
+        zone,
+        ambiguous=ambiguous,
+        nonexistent=nonexistent,
     )
 
 

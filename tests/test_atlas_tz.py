@@ -9,6 +9,7 @@ from astroengine.atlas.tz import (
     is_ambiguous,
     is_nonexistent,
     to_utc,
+    to_utc_with_timezone,
     tzid_for,
 )
 
@@ -70,6 +71,28 @@ def test_policy_raise_for_ambiguous():
         to_utc(dt, *NYC, ambiguous="raise")
 
 
+def test_to_utc_with_timezone_records_fold() -> None:
+    local = datetime(2025, 11, 2, 1, 30)
+    result = to_utc_with_timezone(local, "America/New_York", ambiguous="latest")
+    assert result.fold == 1
+    metadata = result.to_metadata()
+    assert metadata["tzid"] in {"America/New_York", "US/Eastern"}
+    assert metadata["ambiguous"] is True
+    assert metadata["fold"] == 1
+    assert metadata["utc"] == "2025-11-02T06:30:00Z"
+
+
+def test_to_utc_with_timezone_nonexistent_gap() -> None:
+    local = datetime(2025, 3, 9, 2, 30)
+    result = to_utc_with_timezone(local, "America/New_York", nonexistent="post")
+    assert result.nonexistent is True
+    assert result.gap is not None and result.gap.total_seconds() == 3600
+    metadata = result.to_metadata()
+    assert metadata["tzid"] in {"America/New_York", "US/Eastern"}
+    assert metadata["gap_seconds"] == 3600
+    assert metadata["utc"] == "2025-03-09T07:30:00Z"
+
+
 def test_to_utc_ambiguous_golden_values():
     dt = datetime(2025, 11, 2, 1, 30)
     earliest = to_utc(dt, *NYC, ambiguous="earliest")
@@ -123,7 +146,7 @@ def test_dst_birth_nonexistent_windows(coords, local_expected, utc_expected):
     tzid = tzid_for(*coords)
     assert is_nonexistent(local_expected, tzid)
     shifted = to_utc(local_expected, *coords, policy="shift_forward")
-    assert shifted == utc_expected
+    assert shifted.utc == utc_expected
 
 
 @pytest.mark.parametrize(
@@ -154,8 +177,8 @@ def test_dst_birth_ambiguous_windows(coords, local_time, earliest_expected, late
     assert is_ambiguous(local_time, tzid)
     earliest = to_utc(local_time, *coords, policy="earliest")
     latest = to_utc(local_time, *coords, policy="latest")
-    assert earliest == earliest_expected
-    assert latest == latest_expected
-    assert (latest - earliest).total_seconds() == 3600
+    assert earliest.utc == earliest_expected
+    assert latest.utc == latest_expected
+    assert (latest.utc - earliest.utc).total_seconds() == 3600
 
 

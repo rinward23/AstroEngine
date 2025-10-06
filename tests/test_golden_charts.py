@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from astroengine.chart.natal import DEFAULT_BODIES
+from astroengine.chart.natal import DEFAULT_BODIES, build_body_map
 from astroengine.core.angles import signed_delta
 from astroengine.core.time import ensure_utc
 from astroengine.ephemeris import EphemerisAdapter
@@ -17,6 +17,17 @@ pytest.importorskip(
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "golden_charts"
 TOLERANCE_DEG = 1e-3
+
+_BODY_MAP = build_body_map({"true_node": True})
+_BODY_ALIASES = {name.casefold(): name for name in _BODY_MAP}
+_BODY_ALIASES.update(
+    {
+        "true_node": "True Node",
+        "mean_node": "Mean Node",
+        "north node": "True Node",
+        "south node": "True South Node",
+    }
+)
 
 
 def _load_fixture(path: Path) -> dict:
@@ -45,8 +56,15 @@ def test_golden_chart_longitudes_within_millidegree(fixture: Path) -> None:
 
 
 def _body_code(name: str) -> int:
-    canonical = name.capitalize()
-    try:
+    key = name.casefold()
+    canonical = _BODY_ALIASES.get(key)
+    if canonical is None and key in DEFAULT_BODIES:
+        canonical = key.capitalize()
+    if canonical is None:
+        raise KeyError(f"Unsupported body in golden chart: {name}")
+    if canonical in DEFAULT_BODIES:
         return DEFAULT_BODIES[canonical]
+    try:
+        return _BODY_MAP[canonical]
     except KeyError as exc:  # pragma: no cover - defensive for fixture drift
         raise KeyError(f"Unsupported body in golden chart: {name}") from exc

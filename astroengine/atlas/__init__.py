@@ -10,6 +10,7 @@ from .tz import (
     is_ambiguous,
     is_nonexistent,
     to_utc,
+    to_utc_with_timezone,
     tzid_for,
 )
 
@@ -22,6 +23,7 @@ __all__ = [
     "is_ambiguous",
     "is_nonexistent",
     "to_utc",
+    "to_utc_with_timezone",
     "tzid_for",
 ]
 

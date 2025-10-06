@@ -38,6 +38,7 @@ from .atlas.tz import (  # noqa: F401
     is_ambiguous,
     is_nonexistent,
     to_utc,
+    to_utc_with_timezone,
     tzid_for,
 )
 
@@ -263,6 +264,7 @@ __all__ = [
     "Policy",
     "tzid_for",
     "to_utc",
+    "to_utc_with_timezone",
     "from_utc",
     "is_ambiguous",
     "is_nonexistent",
