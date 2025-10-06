@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 from uuid import uuid4
 
 
@@ -59,11 +59,19 @@ def _ensure_utc(dt: datetime | None) -> datetime | None:
     return dt
 
 
-def _normalize_tags(tags: Iterable[str] | None) -> list[str]:
+def _iter_tags(tags: Iterable[str] | str | None) -> Iterable[str]:
+    if tags is None:
+        return []
+    if isinstance(tags, str):
+        return (part for part in tags.split(",") if part)
+    return tags
+
+
+def _normalize_tags(tags: Iterable[str] | str | None) -> list[str]:
     normalized: list[str] = []
     if not tags:
         return normalized
-    for tag in tags:
+    for tag in _iter_tags(tags):
         value = str(tag).strip().lower()
         if value and value not in normalized:
             normalized.append(value)
@@ -335,7 +343,7 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
 
     )
     name: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    tags: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     memo: Mapped[str | None] = mapped_column(Text, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(32), nullable=True)
     _dt_utc: Mapped[datetime | None] = mapped_column(
@@ -355,6 +363,7 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     houses: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     aspects: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
     patterns: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     events: Mapped[list["Event"]] = relationship(
         back_populates="chart", cascade="all, delete-orphan"
@@ -387,7 +396,8 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
         tags = kwargs.pop("tags", None)
         deleted_at = kwargs.pop("deleted_at", None)
         kwargs.setdefault("data", data or {})
-        kwargs.setdefault("tags", _normalize_tags(tags))
+        normalized_tags = _normalize_tags(tags)
+        kwargs.setdefault("tags", normalized_tags)
         if deleted_at is not None:
             kwargs.setdefault("deleted_at", _ensure_utc(deleted_at))
 

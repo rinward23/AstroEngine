@@ -3,23 +3,23 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfoNotFoundError
 
 import requests
 import streamlit as st
+
+from astroengine.atlas.tz import LocalTimeResolution, to_utc_with_timezone
 
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
 
-def _to_utc_iso(moment: datetime, tz_name: str) -> str:
+def _resolve_timezone(moment: datetime, tz_name: str) -> LocalTimeResolution:
+    naive = moment.replace(tzinfo=None)
     try:
-        tzinfo = ZoneInfo(tz_name)
+        return to_utc_with_timezone(naive, tz_name)
     except ZoneInfoNotFoundError as exc:
         raise ValueError(f"Unknown timezone '{tz_name}'") from exc
-    localized = moment.replace(tzinfo=tzinfo)
-    utc_value = localized.astimezone(timezone.utc)
-    return utc_value.isoformat().replace("+00:00", "Z")
 
 
 def _api_get(path: str, *, params: dict | None = None, timeout: int = 20) -> dict | list:
@@ -77,12 +77,15 @@ with st.expander("Create new chart", expanded=True):
         submitted = st.form_submit_button("Save & compute natal", type="primary", disabled=not name)
     if submitted:
         try:
-            dt_iso = _to_utc_iso(dt_value, tz_name)
+            resolution = _resolve_timezone(dt_value, tz_name)
+            dt_iso = resolution.utc.isoformat().replace("+00:00", "Z")
             payload = {
                 "name": name,
                 "kind": "natal",
                 "dt_utc": dt_iso,
+                "dt_local": resolution.input.isoformat(),
                 "tz": tz_name,
+                "tz_fold": resolution.fold,
                 "lat": float(lat),
                 "lon": float(lon),
                 "location": location or None,
@@ -167,8 +170,15 @@ with col_detail:
 
             with st.form(f"update-chart-{selected_id}"):
                 st.write("Update metadata")
+                tags_raw = detail.get("tags") or []
+                if isinstance(tags_raw, list):
+                    tags_value = ", ".join(tags_raw)
+                elif tags_raw:
+                    tags_value = str(tags_raw)
+                else:
+                    tags_value = ""
                 name_edit = st.text_input("Name", value=detail.get("name") or "")
-                tags_edit = st.text_input("Tags", value=detail.get("tags") or "")
+                tags_edit = st.text_input("Tags", value=tags_value)
                 notes_edit = st.text_area("Notes", value=detail.get("notes") or "")
                 gender_edit = st.text_input("Gender", value=detail.get("gender") or "")
                 location_edit = st.text_input("Location", value=detail.get("location") or "")

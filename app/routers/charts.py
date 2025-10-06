@@ -7,8 +7,10 @@ from typing import Any, Mapping
 
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
-from sqlalchemy import select
+from sqlalchemy import or_, select
+from zoneinfo import ZoneInfoNotFoundError
 
+from astroengine.atlas.tz import LocalTimeResolution, to_utc_with_timezone
 from astroengine.chart.natal import ChartLocation, compute_natal_chart
 from astroengine.compute import build_payload
 from astroengine.config import (
@@ -19,6 +21,7 @@ from astroengine.config import (
 )
 from astroengine.report import render_chart_pdf
 from astroengine.report.builders import build_chart_report_context
+from app.db.models import Chart, _normalize_tags
 from app.db.session import session_scope
 from app.repo.charts import ChartRepo
 from app.schemas.charts import ChartSummary, ChartTagsUpdate
@@ -64,12 +67,25 @@ class ChartCreate(BaseModel):
     name: str = Field(..., description="Display name for the chart subject.")
     kind: str = Field(default="natal", description="Chart classification, e.g. natal or transit.")
     dt_utc: datetime = Field(..., description="Reference datetime in UTC.")
+    dt_local: datetime | None = Field(
+        default=None,
+        description="Original local datetime before timezone normalisation.",
+    )
     tz: str = Field(..., description="Original timezone identifier (IANA).")
+    tz_fold: int | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="PEP 495 fold flag for ambiguous local instants.",
+    )
     lat: float = Field(..., description="Latitude in decimal degrees.")
     lon: float = Field(..., description="Longitude in decimal degrees.")
     location: str | None = Field(default=None, description="Human-readable location label.")
     gender: str | None = Field(default=None, description="Optional gender marker.")
-    tags: str | None = Field(default=None, description="Comma-separated tag list.")
+    tags: list[str] | str | None = Field(
+        default=None,
+        description="Tags applied to the chart (string or list).",
+    )
     notes: str | None = Field(default=None, description="Free-form notes stored with the chart.")
     profile: str | None = Field(default=None, description="Profile overlay to apply before computation.")
     narrative_profile: str | None = Field(default=None, description="Narrative profile or mix name.")
@@ -81,7 +97,7 @@ class ChartUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(default=None)
-    tags: str | None = Field(default=None)
+    tags: list[str] | str | None = Field(default=None)
     notes: str | None = Field(default=None)
     gender: str | None = Field(default=None)
     location: str | None = Field(default=None)
@@ -122,7 +138,7 @@ class ChartResponse(BaseModel):
     lon: float | None
     location: str | None
     gender: str | None
-    tags: str | None
+    tags: list[str] = Field(default_factory=list)
     notes: str | None
     profile_applied: str | None
     narrative_profile: str | None
@@ -134,6 +150,7 @@ class ChartResponse(BaseModel):
     settings_snapshot: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
+    deleted_at: datetime | None = None
 
 
 def _chart_to_response(chart: Chart) -> ChartResponse:
@@ -149,7 +166,7 @@ def _chart_to_response(chart: Chart) -> ChartResponse:
         lon=float(chart.lon) if chart.lon is not None else None,
         location=chart.location_name,
         gender=chart.gender,
-        tags=chart.tags,
+        tags=list(chart.tags or []),
         notes=chart.memo,
         profile_applied=chart.profile_key,
         narrative_profile=chart.narrative_profile,
@@ -161,6 +178,7 @@ def _chart_to_response(chart: Chart) -> ChartResponse:
         settings_snapshot=dict(chart.settings_snapshot or {}),
         created_at=_ensure_utc(chart.created_at),
         updated_at=_ensure_utc(chart.updated_at),
+        deleted_at=_ensure_utc(getattr(chart, "deleted_at", None)),
     )
 
 
@@ -205,11 +223,50 @@ def _ensure_list(value: Any) -> list[Any]:
 def create_chart(payload: ChartCreate) -> ChartResponse:
     base_settings = load_settings()
     settings, profile_key = _apply_profile(base_settings, payload.profile)
-    moment = _ensure_utc(payload.dt_utc)
+    resolution: LocalTimeResolution | None = None
+    if payload.dt_local is not None:
+        local_value = payload.dt_local
+        if local_value.tzinfo is not None and local_value.tzinfo.utcoffset(local_value) is not None:
+            raise HTTPException(status_code=400, detail="dt_local must be timezone-naive")
+        local_naive = local_value.replace(tzinfo=None)
+        policy = "latest" if payload.tz_fold == 1 else "earliest"
+        try:
+            resolution = to_utc_with_timezone(local_naive, payload.tz, ambiguous=policy)
+        except ZoneInfoNotFoundError as exc:
+            raise HTTPException(status_code=400, detail=f"Unrecognised timezone '{payload.tz}'") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        moment = resolution.utc
+        expected = _ensure_utc(payload.dt_utc)
+        if expected is not None and abs((expected - moment).total_seconds()) > 1e-6:
+            raise HTTPException(status_code=400, detail="dt_utc does not match resolved timezone conversion")
+    else:
+        moment = _ensure_utc(payload.dt_utc)
     if moment is None:
         raise HTTPException(status_code=400, detail="dt_utc is required")
     result = build_payload(moment, float(payload.lat), float(payload.lon), settings)
     metadata = dict(result.get("metadata") or {})
+    normalized_tags = _normalize_tags(payload.tags)
+    if resolution is not None:
+        timezone_meta = resolution.to_metadata()
+        timezone_meta["source"] = "local"
+    else:
+        timezone_meta = {
+            "input_local": payload.dt_local.isoformat() if payload.dt_local else None,
+            "tzid": payload.tz,
+            "resolved_local": None,
+            "utc": moment.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+            "fold": int(payload.tz_fold or 0),
+            "ambiguous": None,
+            "ambiguous_policy": None,
+            "ambiguous_flagged": False,
+            "nonexistent": None,
+            "nonexistent_policy": None,
+            "gap_seconds": None,
+            "source": "utc",
+        }
+    timezone_meta.setdefault("gap_seconds", None)
+    metadata["timezone_resolution"] = timezone_meta
     with session_scope() as db:
         chart = Chart(
             name=payload.name,
@@ -220,7 +277,7 @@ def create_chart(payload: ChartCreate) -> ChartResponse:
             timezone=payload.tz,
             location_name=payload.location,
             gender=payload.gender,
-            tags=payload.tags,
+            tags=normalized_tags,
             memo=payload.notes,
             profile_key=profile_key,
             narrative_profile=payload.narrative_profile,
@@ -242,17 +299,42 @@ def create_chart(payload: ChartCreate) -> ChartResponse:
 def list_charts(
     kind: str | None = Query(default=None, description="Filter by chart kind."),
     q: str | None = Query(default=None, description="Case-insensitive name search."),
+    tags: list[str] | None = Query(
+        default=None,
+        alias="tag",
+        description="Repeatable tag filter (case-insensitive).",
+    ),
     limit: int = Query(default=200, ge=1, le=500),
 ) -> list[ChartResponse]:
     stmt = select(Chart)
     if kind:
         stmt = stmt.where(Chart.kind == kind)
     if q:
-        stmt = stmt.where(Chart.name.ilike(f"%{q}%"))
+        pattern = f"%{q}%"
+        stmt = stmt.where(or_(Chart.name.ilike(pattern), Chart.chart_key.ilike(pattern)))
     stmt = stmt.order_by(Chart.created_at.desc()).limit(limit)
     with session_scope() as db:
         records = db.execute(stmt).scalars().all()
+    if tags:
+        normalized = _normalize_tags(tags)
+        if normalized:
+            records = [
+                chart
+                for chart in records
+                if all(tag in (chart.tags or []) for tag in normalized)
+            ]
     return [_chart_to_response(chart) for chart in records]
+
+
+@router.get("/deleted", response_model=list[ChartSummary])
+def list_deleted_charts(
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> list[ChartSummary]:
+    repo = ChartRepo()
+    with session_scope() as db:
+        records = repo.list_deleted(db, limit=limit, offset=offset)
+    return [ChartSummary.model_validate(record) for record in records]
 
 
 @router.get("/{chart_id}", response_model=ChartResponse)
@@ -279,6 +361,8 @@ def update_chart(chart_id: int, payload: ChartUpdate) -> ChartResponse:
             chart.timezone = updates.pop("tz")
         if "narrative_profile" in updates:
             chart.narrative_profile = updates.pop("narrative_profile")
+        if "tags" in updates:
+            updates["tags"] = _normalize_tags(updates.pop("tags"))
         for field, value in updates.items():
             setattr(chart, field, value)
         db.flush()
@@ -288,11 +372,11 @@ def update_chart(chart_id: int, payload: ChartUpdate) -> ChartResponse:
 
 @router.delete("/{chart_id}", status_code=204)
 def delete_chart(chart_id: int) -> None:
+    repo = ChartRepo()
     with session_scope() as db:
-        chart = db.get(Chart, chart_id)
+        chart = repo.soft_delete(db, chart_id)
         if chart is None:
             raise HTTPException(status_code=404, detail="Chart not found")
-        db.delete(chart)
 
 
 @router.post("/{chart_id}/derive", response_model=ChartResponse)
@@ -317,6 +401,10 @@ def derive_chart(chart_id: int, payload: ChartDerive) -> ChartResponse:
             raise HTTPException(status_code=400, detail="Base chart is missing coordinates")
         result = build_payload(dt_utc, float(base_chart.lat), float(base_chart.lon), settings)
         metadata = dict(result.get("metadata") or {})
+        base_metadata = _chart_metadata(base_chart)
+        timezone_meta = base_metadata.get("timezone_resolution")
+        if timezone_meta and "timezone_resolution" not in metadata:
+            metadata["timezone_resolution"] = timezone_meta
         name_prefix = base_chart.name or base_chart.chart_key
         derived_name = f"{name_prefix} — {payload.kind}"
         derived = Chart(
@@ -345,12 +433,36 @@ def derive_chart(chart_id: int, payload: ChartDerive) -> ChartResponse:
         return _chart_to_response(derived)
 
 
+@router.post("/{chart_id}/restore", response_model=ChartResponse)
+def restore_chart(chart_id: int) -> ChartResponse:
+    repo = ChartRepo()
+    with session_scope() as db:
+        chart = repo.restore(db, chart_id)
+        if chart is None:
+            raise HTTPException(status_code=404, detail="Chart not found")
+        db.refresh(chart)
+        return _chart_to_response(chart)
+
+
 @router.get("/{chart_id}/export", response_model=ChartResponse)
 def export_chart(chart_id: int) -> ChartResponse:
     with session_scope() as db:
         chart = db.get(Chart, chart_id)
         if chart is None:
             raise HTTPException(status_code=404, detail="Chart not found")
+    return _chart_to_response(chart)
+
+
+@router.patch("/{chart_id}/tags", response_model=ChartResponse)
+def update_chart_tags(chart_id: int, payload: ChartTagsUpdate) -> ChartResponse:
+    normalized = _normalize_tags(payload.tags)
+    with session_scope() as db:
+        chart = db.get(Chart, chart_id)
+        if chart is None:
+            raise HTTPException(status_code=404, detail="Chart not found")
+        chart.tags = normalized
+        db.flush()
+        db.refresh(chart)
         return _chart_to_response(chart)
 
 
@@ -368,6 +480,7 @@ def import_chart(payload: ChartImport) -> ChartResponse:
     patterns = _ensure_list(data.get("patterns"))
     settings_snapshot = _ensure_mapping(data.get("settings_snapshot"))
     metadata = _ensure_mapping(data.get("metadata"))
+    tags_data = _normalize_tags(data.get("tags"))
     with session_scope() as db:
         existing = None
         if chart_key:
@@ -383,7 +496,7 @@ def import_chart(payload: ChartImport) -> ChartResponse:
                 timezone=data.get("tz") or data.get("timezone"),
                 location_name=data.get("location"),
                 gender=data.get("gender"),
-                tags=data.get("tags"),
+                tags=tags_data,
                 memo=data.get("notes"),
                 profile_key=profile_key,
                 narrative_profile=data.get("narrative_profile"),
@@ -406,7 +519,7 @@ def import_chart(payload: ChartImport) -> ChartResponse:
             existing.timezone = data.get("tz") or data.get("timezone")
             existing.location_name = data.get("location")
             existing.gender = data.get("gender")
-            existing.tags = data.get("tags")
+            existing.tags = tags_data
             existing.memo = data.get("notes")
             existing.profile_key = profile_key
             existing.narrative_profile = data.get("narrative_profile")
