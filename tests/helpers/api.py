@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Iterator, Mapping
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRouter
 
-from app.routers import clear_position_provider, configure_position_provider
 from app.routers import aspects as aspects_module
+from app.routers import clear_position_provider, configure_position_provider
 from app.routers.aspects import PositionProvider
 
 
@@ -22,7 +22,7 @@ class LinearEphemeris:
     base: Mapping[str, float]
     rates: Mapping[str, float]
 
-    def __call__(self, ts: datetime) -> Dict[str, float]:
+    def __call__(self, ts: datetime) -> dict[str, float]:
         dt_days = (ts - self.t0).total_seconds() / 86400.0
         return {
             key: (self.base.get(key, 0.0) + self.rates.get(key, 0.0) * dt_days) % 360.0

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -53,9 +53,9 @@ def test_compute_transit_aspects_detection() -> None:
 def test_compute_overlay_frames_smoke() -> None:
     pytest.importorskip("swisseph")
     request = OverlayRequest(
-        birth_dt=datetime(1990, 1, 1, 12, tzinfo=timezone.utc),
+        birth_dt=datetime(1990, 1, 1, 12, tzinfo=UTC),
         birth_location=ChartLocation(latitude=40.7128, longitude=-74.0060),
-        transit_dt=datetime(2024, 3, 20, 12, tzinfo=timezone.utc),
+        transit_dt=datetime(2024, 3, 20, 12, tzinfo=UTC),
         bodies=[
             "sun",
             "moon",

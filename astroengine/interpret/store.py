@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import json
 import os
-import json
 import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 
@@ -103,12 +102,12 @@ def _iso_now() -> datetime:
     return datetime.now(tz=UTC)
 
 
-def _compute_etag(content: Dict[str, Any]) -> str:
+def _compute_etag(content: dict[str, Any]) -> str:
     encoded = json.dumps(content, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return sha256(encoded).hexdigest()
 
 
-def _dump_rulepack(content: Dict[str, Any]) -> str:
+def _dump_rulepack(content: dict[str, Any]) -> str:
     return yaml.safe_dump(content, sort_keys=False, allow_unicode=True)
 
 

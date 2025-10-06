@@ -7,9 +7,9 @@ from tests.helpers import build_app
 def test_policy_crud_cycle(tmp_path):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    from app.db.base import Base
-    from app.db import models  # ensure models imported
+
     from app.db import session as dbsession
+    from app.db.base import Base
 
     test_db = f"sqlite:///{tmp_path}/test.db"
     engine = create_engine(test_db, future=True)

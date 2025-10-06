@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
-from typing import Collection, List, Sequence, Tuple, Union
+from typing import Union
 
 Number = Union[int, float]
 
@@ -17,10 +18,10 @@ class Term:
     """Single term in a Lots expression."""
 
     kind: str  # ``"num"`` or ``"sym"``
-    value: Union[str, float]
+    value: str | float
 
 
-def _tokenize(expr: str) -> List[str]:
+def _tokenize(expr: str) -> list[str]:
     tokens = expr.replace("\t", " ").split()
     if not tokens:
         raise FormulaSyntaxError("Formula must not be empty")
@@ -31,7 +32,7 @@ def _is_symbol(token: str) -> bool:
     return token.replace("_", "").isalnum()
 
 
-def parse_formula(expr: str) -> List[Tuple[str, Term]]:
+def parse_formula(expr: str) -> list[tuple[str, Term]]:
     """Parse ``expr`` into a sequence of ``(op, Term)`` pairs.
 
     The parser only understands ``+`` and ``-`` operators and treats every
@@ -40,7 +41,7 @@ def parse_formula(expr: str) -> List[Tuple[str, Term]]:
     """
 
     tokens = _tokenize(expr)
-    result: List[Tuple[str, Term]] = []
+    result: list[tuple[str, Term]] = []
     op = "+"
     expect_term = True
 
@@ -70,17 +71,17 @@ def parse_formula(expr: str) -> List[Tuple[str, Term]]:
     return result
 
 
-def extract_symbols(expr: str) -> List[str]:
+def extract_symbols(expr: str) -> list[str]:
     """Return symbol names referenced in ``expr`` preserving order."""
 
-    symbols: List[str] = []
+    symbols: list[str] = []
     for _, term in parse_formula(expr):
         if term.kind == "sym":
             symbols.append(str(term.value))
     return symbols
 
 
-def validate_formula(expr: str, allowed_symbols: Collection[str] | None = None) -> Sequence[Tuple[str, Term]]:
+def validate_formula(expr: str, allowed_symbols: Collection[str] | None = None) -> Sequence[tuple[str, Term]]:
     """Parse ``expr`` and optionally ensure identifiers belong to ``allowed_symbols``.
 
     ``allowed_symbols`` comparison is case-insensitive.

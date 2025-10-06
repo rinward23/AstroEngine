@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Iterable, Mapping, MutableMapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Callable, Dict, Iterable, Mapping, MutableMapping, Optional, Protocol
+from datetime import UTC, datetime
+from typing import Protocol
 
 from astroengine.ephemeris.cache import calc_ut_cached
-
 
 TAU = 360.0
 
@@ -34,12 +34,12 @@ class EclipticPos:
 
     lon: float
     lat: float
-    dist: Optional[float] = None
-    speed_lon: Optional[float] = None
-    retrograde: Optional[bool] = None
+    dist: float | None = None
+    speed_lon: float | None = None
+    retrograde: bool | None = None
 
 
-ChartPositions = Dict[Body, EclipticPos]
+ChartPositions = dict[Body, EclipticPos]
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,11 +118,11 @@ def midpoint_time(a: datetime, b: datetime) -> datetime:
 
     _validate_datetime(a)
     _validate_datetime(b)
-    a_utc = a.astimezone(timezone.utc)
-    b_utc = b.astimezone(timezone.utc)
+    a_utc = a.astimezone(UTC)
+    b_utc = b.astimezone(UTC)
     # operate on POSIX timestamps to avoid DST ambiguities
     mid_ts = (a_utc.timestamp() + b_utc.timestamp()) / 2.0
-    return datetime.fromtimestamp(mid_ts, tz=timezone.utc)
+    return datetime.fromtimestamp(mid_ts, tz=UTC)
 
 
 def _sph_to_cart(lat_rad: float, lon_rad: float) -> tuple[float, float, float]:
@@ -257,7 +257,7 @@ def davison_chart(
 # Compatibility helpers retained for legacy callers expecting bare longitudes
 # ---------------------------------------------------------------------------
 
-Positions = Dict[str, float]
+Positions = dict[str, float]
 PositionProvider = Callable[[datetime], Mapping[str, float]]
 
 
@@ -265,7 +265,7 @@ def composite_midpoint_positions(
     pos_a: Mapping[str, float],
     pos_b: Mapping[str, float],
     objects: Iterable[str],
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Compatibility wrapper returning midpoint longitudes only."""
 
     chart_a: MutableMapping[Body, EclipticPos] = {}
@@ -288,7 +288,7 @@ def davison_positions(
     lon_a: float = 0.0,
     lat_b: float = 0.0,
     lon_b: float = 0.0,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Return Davison longitudes using a callable position ``provider``."""
 
     event_a = BirthEvent(when=dt_a, lat=lat_a, lon=lon_a)
@@ -320,7 +320,7 @@ def davison_positions(
 class SwissEphemerisAdapter:
     """Ephemeris backed by :mod:`pyswisseph` (Swiss Ephemeris)."""
 
-    def __init__(self, ephemeris_path: Optional[str] = None) -> None:
+    def __init__(self, ephemeris_path: str | None = None) -> None:
         from astroengine.ephemeris.swe import has_swe, swe
 
         if not has_swe():  # pragma: no cover - optional dependency
@@ -346,7 +346,7 @@ class SwissEphemerisAdapter:
         }
 
     def _julian_day(self, when: datetime) -> float:
-        ts = when.astimezone(timezone.utc)
+        ts = when.astimezone(UTC)
         frac = (
             ts.hour
             + ts.minute / 60.0
@@ -409,9 +409,9 @@ class SkyfieldAdapter:
 
     def __init__(
         self,
-        kernel: Optional[object] = None,
+        kernel: object | None = None,
         *,
-        loader_path: Optional[str] = None,
+        loader_path: str | None = None,
         kernel_name: str = "de421.bsp",
     ) -> None:
         try:  # pragma: no cover - optional dependency import guard
@@ -454,7 +454,7 @@ class SkyfieldAdapter:
         }
 
     def _time(self, when: datetime):
-        return self._timescale.from_datetime(when.astimezone(timezone.utc))
+        return self._timescale.from_datetime(when.astimezone(UTC))
 
     def _resolve_body(self, body: Body) -> str:
         key = str(body).lower()

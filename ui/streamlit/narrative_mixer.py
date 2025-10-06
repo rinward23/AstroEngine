@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Dict
 
 import requests
 import streamlit as st
@@ -37,7 +36,7 @@ with control_col:
         help="Pick one or more narrative profiles to blend.",
     )
 
-    weights: Dict[str, float] = {}
+    weights: dict[str, float] = {}
     for name in picked:
         key = f"mix_weight_{name}"
         current = st.session_state.get(key, 0.5)

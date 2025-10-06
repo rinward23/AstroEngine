@@ -13,12 +13,10 @@ source sign that counting began from) is made available via
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from math import floor
-
-from typing import Callable, Literal
+from typing import Literal
 
 from ...detectors.ingresses import ZODIAC_SIGNS, sign_index
 

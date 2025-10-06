@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Iterable, Protocol, Sequence
+from collections.abc import Iterable, Sequence
+from datetime import UTC, datetime
+from typing import Protocol
 
 from ..canonical import canonical_round, normalize_longitude
 from .pdf import AspectEntry, ChartReportContext, WheelEntry
@@ -166,7 +167,7 @@ def build_chart_report_context(
 ) -> ChartReportContext:
     """Assemble a :class:`ChartReportContext` from natal data."""
 
-    generated = generated_at or datetime.now(timezone.utc)
+    generated = generated_at or datetime.now(UTC)
     wheel_entries = build_wheel_entries(natal)
     aspect_entries = build_aspect_entries(natal)
     if aspect_limit is not None:

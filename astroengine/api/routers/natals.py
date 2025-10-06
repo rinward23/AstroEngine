@@ -4,17 +4,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ...chart.config import ChartConfig
 from ...userdata.vault import BASE as NATAL_BASE
 from ...userdata.vault import Natal, list_natals, load_natal, save_natal
 from ..errors import ErrorEnvelope
 from ..pagination import Pagination, get_pagination
-
 
 router = APIRouter(prefix="/v1/natals", tags=["natals"])
 
@@ -109,11 +108,11 @@ class NatalPayload(BaseModel):
     )
     tz: str | None = Field(default=None, description="Original timezone identifier, if known.")
     place: str | None = Field(default=None, description="Birth location description.")
-    houses: "HouseSettings" = Field(
+    houses: HouseSettings = Field(
         default_factory=HouseSettings,
         description="House system preferences for derived charts.",
     )
-    zodiac: "ZodiacSettings" = Field(
+    zodiac: ZodiacSettings = Field(
         default_factory=ZodiacSettings,
         description="Zodiac framework applied to derived charts.",
     )
@@ -164,7 +163,7 @@ class NatalRecord(NatalPayload):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    def from_dataclass(cls, natal_id: str, record: Natal) -> "NatalRecord":
+    def from_dataclass(cls, natal_id: str, record: Natal) -> NatalRecord:
         config = record.chart_config()
         return cls(
             natal_id=natal_id,

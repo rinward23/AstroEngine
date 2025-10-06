@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import time
 import zipfile
 from pathlib import Path
 
-import importlib
 import pytest
 
 

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Mapping, MutableMapping
 
 from ...chart.natal import ChartLocation
 from .dsl import (
@@ -21,7 +21,8 @@ from .dsl import (
     compile_program,
     parse_lot_defs,
 )
-from .sect import GeoLocation, is_day as _is_day
+from .sect import GeoLocation
+from .sect import is_day as _is_day
 
 __all__ = [
     "ChartContext",

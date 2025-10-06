@@ -1,6 +1,7 @@
 from __future__ import annotations
-from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional
+
+from collections.abc import Iterable
+from datetime import UTC, datetime
 
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS
 from astroengine.core.aspects_plus.matcher import angular_sep_deg
@@ -10,9 +11,9 @@ from .catalog import Star
 from .geometry import mean_obliquity_deg, radec_to_ecliptic_lon_deg
 
 
-def star_longitudes(ts: datetime, stars: Dict[str, Star]) -> Dict[str, float]:
-    eps = mean_obliquity_deg(ts.astimezone(timezone.utc))
-    out: Dict[str, float] = {}
+def star_longitudes(ts: datetime, stars: dict[str, Star]) -> dict[str, float]:
+    eps = mean_obliquity_deg(ts.astimezone(UTC))
+    out: dict[str, float] = {}
     for name, s in stars.items():
         out[name] = radec_to_ecliptic_lon_deg(s.ra_deg, s.dec_deg, eps)
     return out
@@ -20,19 +21,19 @@ def star_longitudes(ts: datetime, stars: Dict[str, Star]) -> Dict[str, float]:
 
 def find_star_aspects(
     ts: datetime,
-    planet_lons: Dict[str, float],
-    stars: Dict[str, Star],
+    planet_lons: dict[str, float],
+    stars: dict[str, Star],
     aspects: Iterable[str],
-    policy: Dict,
+    policy: dict,
     mag_max: float = 2.5,
-    orb_per_star: Optional[Dict[str, float]] = None,
-) -> List[Dict]:
+    orb_per_star: dict[str, float] | None = None,
+) -> list[dict]:
     """Return star–planet hits at time ts.
 
     `orb_per_star` overrides the policy orb limit per star (conjunction family, etc.).
     """
     star_lons = star_longitudes(ts, stars)
-    hits: List[Dict] = []
+    hits: list[dict] = []
     for sname, slon in star_lons.items():
         s = stars[sname]
         if s.vmag > mag_max:

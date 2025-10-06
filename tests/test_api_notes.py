@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
@@ -26,9 +26,9 @@ def _seed_chart() -> int:
     with session_scope() as db:
         chart = ChartRepo().create(
             db,
-            chart_key=f"chart-{datetime.now(timezone.utc).timestamp()}",
+            chart_key=f"chart-{datetime.now(UTC).timestamp()}",
             profile_key="default",
-            dt_utc=datetime(2020, 1, 1, tzinfo=timezone.utc),
+            dt_utc=datetime(2020, 1, 1, tzinfo=UTC),
             lat=0.0,
             lon=0.0,
             data={"kind": "natal"},

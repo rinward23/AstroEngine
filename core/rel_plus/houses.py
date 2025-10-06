@@ -17,10 +17,10 @@ values) to aid parity checks and diagnose edge cases.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 import math
-from typing import Dict, Iterable, Mapping, MutableMapping, Optional, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from astroengine.ephemeris.swe import has_swe, swe
 
@@ -86,7 +86,7 @@ def _fallback_sequence(requested: str) -> Sequence[str]:
 
 def _julian_day(dt: datetime) -> float:
     _require_swe()
-    ts = dt.astimezone(timezone.utc)
+    ts = dt.astimezone(UTC)
     frac = (
         ts.hour
         + ts.minute / 60.0
@@ -133,7 +133,7 @@ def _solved_houses_armc(
     eps: float,
     system: str,
     *,
-    target_mc: Optional[float] = None,
+    target_mc: float | None = None,
     tol: float = 1e-6,
     max_iter: int = 12,
 ) -> tuple[tuple[float, ...], tuple[float, ...], float]:
@@ -154,7 +154,7 @@ def _solved_houses_armc(
     return cusps, ascmc, armc_deg
 
 
-def _midpoint_armc(a: BirthEvent, b: BirthEvent) -> tuple[float, float, float, Dict[str, float]]:
+def _midpoint_armc(a: BirthEvent, b: BirthEvent) -> tuple[float, float, float, dict[str, float]]:
     jd_a = _julian_day(a.when)
     jd_b = _julian_day(b.when)
     lst_a = _wrap360(_sidereal_time_deg(jd_a) + a.lon)
@@ -180,10 +180,10 @@ def _obliquity_deg(jd_ut: float) -> float:
 
 
 def _midpoint_datetime(a: datetime, b: datetime) -> datetime:
-    a_utc = a.astimezone(timezone.utc)
-    b_utc = b.astimezone(timezone.utc)
+    a_utc = a.astimezone(UTC)
+    b_utc = b.astimezone(UTC)
     mid_ts = (a_utc.timestamp() + b_utc.timestamp()) / 2.0
-    return datetime.fromtimestamp(mid_ts, tz=timezone.utc)
+    return datetime.fromtimestamp(mid_ts, tz=UTC)
 
 
 @dataclass(frozen=True)
@@ -193,11 +193,11 @@ class HouseResult:
     cusps: tuple[float, ...]
     system_requested: str
     system_used: str
-    fallback_reason: Optional[str] = None
+    fallback_reason: str | None = None
     metadata: Mapping[str, object] = field(default_factory=dict)
 
-    def to_payload(self) -> Dict[str, object]:
-        payload: Dict[str, object] = {
+    def to_payload(self) -> dict[str, object]:
+        payload: dict[str, object] = {
             "ascendant": self.ascendant,
             "midheaven": self.midheaven,
             "cusps": list(self.cusps),
@@ -223,7 +223,7 @@ def davison_houses(
     jd_ut = _julian_day(davison.mid_when)
     latitude = davison.mid_lat
     longitude = davison.mid_lon
-    last_error: Optional[Exception] = None
+    last_error: Exception | None = None
 
     lst = _wrap360(_sidereal_time_deg(jd_ut) + longitude)
     for sys in _fallback_sequence(requested):
@@ -305,9 +305,9 @@ def composite_houses(
         }
     )
 
-    last_error: Optional[Exception] = None
-    chosen_system: Optional[str] = None
-    chosen_data: Optional[tuple[tuple[float, ...], tuple[float, ...], float]] = None
+    last_error: Exception | None = None
+    chosen_system: str | None = None
+    chosen_data: tuple[tuple[float, ...], tuple[float, ...], float] | None = None
     for sys in _fallback_sequence(requested):
         try:
             chosen_data = _solved_houses_armc(armc_mid, latitude_mid, eps, sys)
@@ -319,7 +319,7 @@ def composite_houses(
 
     if chosen_data is None or chosen_system is None:
         # Attempt angle-midpoint fallback
-        angles_meta: Dict[str, float] = {}
+        angles_meta: dict[str, float] = {}
         asc_targets: list[float] = []
         mc_targets: list[float] = []
         for label, event in (("a", event_a), ("b", event_b)):

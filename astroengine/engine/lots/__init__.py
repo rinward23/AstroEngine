@@ -1,5 +1,6 @@
 """Arabic Lots engine with DSL compilation, evaluation, and event scanning."""
 
+from .aspects import AspectHit, aspects_to_lots
 from .builtins import (
     LotsProfile,
     builtin_profile,
@@ -23,7 +24,6 @@ from .dsl import (
     parse_lot_defs,
 )
 from .eval import ChartContext, ChartLocation, evaluate
-from .aspects import AspectHit, aspects_to_lots
 from .events import LotEvent, scan_lot_events
 from .sect import is_day
 

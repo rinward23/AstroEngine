@@ -8,10 +8,10 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from functools import lru_cache
-from typing import TYPE_CHECKING, ClassVar, Final, Optional
+from pathlib import Path
 from types import ModuleType
+from typing import TYPE_CHECKING, ClassVar, Final
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +24,14 @@ def get_swisseph() -> ModuleType:
 
     return _swe()
 
+from ..core.bodies import canonical_name
+from ..observability import EPHEMERIS_SWE_CACHE_HIT_RATIO
 from .sidereal import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,
     normalize_ayanamsha_name,
 )
 from .utils import get_se_ephe_path
-from ..core.bodies import canonical_name
-from ..observability import EPHEMERIS_SWE_CACHE_HIT_RATIO
 
 if TYPE_CHECKING:  # pragma: no cover - runtime import avoided for typing only
 
@@ -433,7 +433,7 @@ class SwissEphemerisAdapter:
             nodes_variant=chart_config.nodes_variant,
             lilith_variant=chart_config.lilith_variant,
         )
-        self._last_house_metadata: Optional[dict[str, object]] = None
+        self._last_house_metadata: dict[str, object] | None = None
 
         swe = _swe()
         self._calc_flags = swe().FLG_SWIEPH | swe().FLG_SPEED
@@ -981,7 +981,7 @@ class SwissEphemerisAdapter:
 
         )
 
-    def _variant_override(self, body_name: str | None) -> tuple[Optional[int], bool]:
+    def _variant_override(self, body_name: str | None) -> tuple[int | None, bool]:
         if not body_name:
             return None, False
         original = (body_name or "").strip()

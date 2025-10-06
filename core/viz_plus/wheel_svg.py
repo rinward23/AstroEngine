@@ -1,7 +1,8 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Tuple
+
 import math
+from collections.abc import Iterable
+from dataclasses import dataclass
 
 from core.aspects_plus.harmonics import BASE_ASPECTS
 from core.aspects_plus.matcher import angular_sep_deg
@@ -14,7 +15,7 @@ def _norm360(x: float) -> float:
     return v + 360.0 if v < 0 else v
 
 
-def _pol2cart(angle_deg: float, r: float, cx: float, cy: float) -> Tuple[float, float]:
+def _pol2cart(angle_deg: float, r: float, cx: float, cy: float) -> tuple[float, float]:
     # SVG 0° points to the right (x+), positive angles go **counterclockwise**
     a = math.radians(angle_deg)
     return cx + r * math.cos(a), cy - r * math.sin(a)
@@ -35,14 +36,14 @@ class WheelOptions:
     show_house_lines: bool = True
     show_aspects: bool = True
     aspects: Iterable[str] = ("conjunction", "opposition", "square", "trine", "sextile")
-    policy: Optional[Dict] = None
+    policy: dict | None = None
 
 
 # --------------------------- Aspects (public helper) -----------------------
 
-def build_aspect_hits(positions: Dict[str, float], aspects: Iterable[str], policy: Dict) -> List[Dict]:
+def build_aspect_hits(positions: dict[str, float], aspects: Iterable[str], policy: dict) -> list[dict]:
     names = list(positions.keys())
-    hits: List[Dict] = []
+    hits: list[dict] = []
     for i, a in enumerate(names):
         for j in range(i + 1, len(names)):
             b = names[j]
@@ -96,11 +97,11 @@ def _midpoint_angle(a: float, b: float) -> float:
 
 
 def render_chart_wheel(
-    positions: Dict[str, float],
-    houses: Optional[List[float]] = None,
-    angles: Optional[Dict[str, float]] = None,
-    options: Optional[WheelOptions] = None,
-    aspects_hits: Optional[List[Dict]] = None,
+    positions: dict[str, float],
+    houses: list[float] | None = None,
+    angles: dict[str, float] | None = None,
+    options: WheelOptions | None = None,
+    aspects_hits: list[dict] | None = None,
 ) -> str:
     """Return an SVG string for a basic chart wheel.
 
@@ -115,7 +116,7 @@ def render_chart_wheel(
     outer_r = opt.ring_outer * size
     inner_r = opt.ring_inner * size
 
-    svg: List[str] = []
+    svg: list[str] = []
     def add(el: str):
         svg.append(el)
 

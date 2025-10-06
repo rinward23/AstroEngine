@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
 
 import requests
 import streamlit as st
@@ -42,7 +42,7 @@ def _api_base() -> str:
     return os.environ.get("ASTROENGINE_API", "http://127.0.0.1:8000").rstrip("/")
 
 
-def _render_chart(target: Optional[DeltaGenerator] = None) -> None:
+def _render_chart(target: DeltaGenerator | None = None) -> None:
     target = target or st
     target.markdown("**Chart Wheel**")
     url = f"{_api_base()}/v1/plots/wheel"
@@ -56,7 +56,7 @@ def _render_chart(target: Optional[DeltaGenerator] = None) -> None:
         target.info("Chart endpoint unreachable.")
 
 
-def _render_aspects(target: Optional[DeltaGenerator] = None) -> None:
+def _render_aspects(target: DeltaGenerator | None = None) -> None:
     target = target or st
     target.markdown("**Aspect Grid**")
     url = f"{_api_base()}/v1/plots/aspects"
@@ -70,7 +70,7 @@ def _render_aspects(target: Optional[DeltaGenerator] = None) -> None:
         target.info("Aspect endpoint unreachable.")
 
 
-def _render_timeline(target: Optional[DeltaGenerator] = None) -> None:
+def _render_timeline(target: DeltaGenerator | None = None) -> None:
     target = target or st
     target.markdown("**Timeline**")
     url = f"{_api_base()}/v1/timeline?from=now-30d&to=now+30d"
@@ -85,7 +85,7 @@ def _render_timeline(target: Optional[DeltaGenerator] = None) -> None:
         target.info("Timeline endpoint unreachable.")
 
 
-def _render_map(target: Optional[DeltaGenerator] = None) -> None:
+def _render_map(target: DeltaGenerator | None = None) -> None:
     target = target or st
     target.markdown("**Astrocartography Map**")
     try:
@@ -104,14 +104,14 @@ def _render_map(target: Optional[DeltaGenerator] = None) -> None:
         target.info("pydeck not installed or map endpoint unreachable.")
 
 
-def _render_custom(target: Optional[DeltaGenerator] = None) -> None:
+def _render_custom(target: DeltaGenerator | None = None) -> None:
     target = target or st
     target.markdown("**Custom Panel**")
     target.caption("Bring your own graphic here — embed images, tables, or KPIs.")
     target.write("")
 
 
-def _render_health(target: Optional[DeltaGenerator] = None) -> None:
+def _render_health(target: DeltaGenerator | None = None) -> None:
     target = target or st
     target.markdown("**Service Health**")
     url = f"{_api_base()}/healthz"
@@ -127,7 +127,7 @@ def _render_health(target: Optional[DeltaGenerator] = None) -> None:
         target.warning(f"Health endpoint unreachable: {exc}")
 
 
-def _render_settings_snapshot(target: Optional[DeltaGenerator] = None) -> None:
+def _render_settings_snapshot(target: DeltaGenerator | None = None) -> None:
     target = target or st
     target.markdown("**Configuration Snapshot**")
     url = f"{_api_base()}/v1/settings"
@@ -141,7 +141,7 @@ def _render_settings_snapshot(target: Optional[DeltaGenerator] = None) -> None:
         target.warning(f"Settings endpoint unreachable: {exc}")
 
 
-def _render_metrics(target: Optional[DeltaGenerator] = None) -> None:
+def _render_metrics(target: DeltaGenerator | None = None) -> None:
     target = target or st
     target.markdown("**Prometheus Metrics**")
     url = f"{_api_base()}/metrics"
@@ -162,7 +162,7 @@ class PaneDefinition:
     renderer: Callable[[DeltaGenerator], None]
 
 
-PANE_LIBRARY: Dict[str, PaneDefinition] = {
+PANE_LIBRARY: dict[str, PaneDefinition] = {
     "chart_wheel": PaneDefinition("Chart Wheel", "Charts", _render_chart),
     "aspect_grid": PaneDefinition("Aspect Grid", "Charts", _render_aspects),
     "timeline": PaneDefinition("Event Timeline", "Temporal", _render_timeline),
@@ -191,7 +191,7 @@ def _init_dashboard_state() -> None:
     st.session_state.setdefault("dashboard_slot_height", 420)
 
 
-def _slot_selector(slot: str, categories: List[str]) -> None:
+def _slot_selector(slot: str, categories: list[str]) -> None:
     current = st.session_state.dashboard_slots.get(slot, "Empty")
     slot_key = slot.replace(" ", "_").lower()
 
@@ -243,7 +243,7 @@ def _slot_selector(slot: str, categories: List[str]) -> None:
 
 
 def _layout_toolbar() -> None:
-    categories: List[str] = sorted({pane.category for pane in PANE_LIBRARY.values()})
+    categories: list[str] = sorted({pane.category for pane in PANE_LIBRARY.values()})
     st.markdown("#### Dashboard Menu")
     with st.container():
         toolbar = st.container()
@@ -296,7 +296,7 @@ def _layout_toolbar() -> None:
             st.markdown("<hr style='margin: 0.8rem 0 1rem 0; border-color: rgba(255,255,255,0.08);'>", unsafe_allow_html=True)
 
             selector_cols = st.columns(4)
-            for slot, column in zip(DEFAULT_LAYOUT.keys(), selector_cols):
+            for slot, column in zip(DEFAULT_LAYOUT.keys(), selector_cols, strict=False):
                 with column:
                     _slot_selector(slot, categories)
 

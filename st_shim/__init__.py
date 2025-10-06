@@ -573,7 +573,7 @@ class _Spinner:
     def __init__(self, text: str | None = None) -> None:
         self.text = text or ""
 
-    def __enter__(self) -> "_Spinner":
+    def __enter__(self) -> _Spinner:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:

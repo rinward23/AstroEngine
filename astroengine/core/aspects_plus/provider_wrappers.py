@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Callable, Dict
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 from astroengine.core.common.cache import TTLCache
 
-PositionProvider = Callable[[datetime], Dict[str, float]]
+PositionProvider = Callable[[datetime], dict[str, float]]
 
 
 def _bucket_ts(ts: datetime, resolution_minutes: int) -> datetime:
-    ts = ts.astimezone(timezone.utc)
+    ts = ts.astimezone(UTC)
     minutes = (ts.minute // resolution_minutes) * resolution_minutes
     return ts.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=minutes)
 
@@ -25,9 +25,9 @@ def cached_position_provider(
     - Buckets timestamps to `resolution_minutes` to increase hit rate.
     - Caches the full positions mapping for that bucket.
     """
-    cache: TTLCache[tuple, Dict[str, float]] = TTLCache(maxsize=maxsize)
+    cache: TTLCache[tuple, dict[str, float]] = TTLCache(maxsize=maxsize)
 
-    def inner(ts: datetime) -> Dict[str, float]:
+    def inner(ts: datetime) -> dict[str, float]:
         bucket = _bucket_ts(ts, resolution_minutes)
         key = (bucket.year, bucket.month, bucket.day, bucket.hour, bucket.minute)
         val = cache.get(key)

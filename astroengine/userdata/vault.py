@@ -5,8 +5,8 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from ..infrastructure.home import ae_home
 from ..chart.config import ChartConfig
+from ..infrastructure.home import ae_home
 
 BASE = ae_home() / "natals"
 BASE.mkdir(parents=True, exist_ok=True)

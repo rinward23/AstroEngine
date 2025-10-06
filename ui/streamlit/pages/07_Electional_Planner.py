@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -55,10 +55,10 @@ def _init_state() -> None:
 
 
 def _datetime_input(label: str, value: datetime, key: str) -> datetime:
-    base = value.astimezone(timezone.utc)
+    base = value.astimezone(UTC)
     date_val = st.date_input(f"{label} date", base.date(), key=f"{key}_date")
     time_val = st.time_input(f"{label} time", base.time(), key=f"{key}_time")
-    return datetime.combine(date_val, time_val, tzinfo=timezone.utc)
+    return datetime.combine(date_val, time_val, tzinfo=UTC)
 
 
 def _add_aspect_constraint() -> None:
@@ -121,8 +121,8 @@ def _add_declination_constraint() -> None:
     st.session_state.declination_constraints.append(entry)
 
 
-def _constraints_payload(avoid_voc: bool, voc_orb: float, avoid_malefic: bool, malefic_orb: float) -> List[Dict[str, Any]]:
-    payload: List[Dict[str, Any]] = []
+def _constraints_payload(avoid_voc: bool, voc_orb: float, avoid_malefic: bool, malefic_orb: float) -> list[dict[str, Any]]:
+    payload: list[dict[str, Any]] = []
     payload.extend(st.session_state.aspect_constraints)
     payload.extend(st.session_state.antiscia_constraints)
     payload.extend(st.session_state.declination_constraints)
@@ -137,7 +137,7 @@ _init_state()
 
 with st.sidebar:
     st.header("Scan Window")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start = _datetime_input("Start (UTC)", value=now, key="start")
     end = _datetime_input("End (UTC)", value=now + timedelta(days=7), key="end")
     step_minutes = st.number_input("Step minutes", min_value=1, max_value=720, value=30, step=5)
@@ -228,8 +228,8 @@ if st.button("🔎 Run search", type="primary"):
         st.stop()
 
     payload = {
-        "start": start.astimezone(timezone.utc).isoformat(),
-        "end": end.astimezone(timezone.utc).isoformat(),
+        "start": start.astimezone(UTC).isoformat(),
+        "end": end.astimezone(UTC).isoformat(),
         "step_minutes": int(step_minutes),
         "location": {"lat": float(lat), "lon": float(lon)},
         "constraints": constraints_payload,

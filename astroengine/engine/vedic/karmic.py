@@ -15,8 +15,8 @@ only use values provided by the configured Swiss ephemeris adapter.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Sequence
 
 from ...chart import NatalChart
 from ...detectors.ingresses import ZODIAC_SIGNS, sign_index
@@ -259,7 +259,7 @@ def compute_chara_karakas(chart: NatalChart) -> tuple[CharaKaraka, ...]:
     )
 
     karakas: list[CharaKaraka] = []
-    for role, payload in zip(_CHARA_KARAKA_ROLES, ranked):
+    for role, payload in zip(_CHARA_KARAKA_ROLES, ranked, strict=False):
         name, position, deg_in_sign, sign_idx = payload
         karakas.append(
             CharaKaraka(

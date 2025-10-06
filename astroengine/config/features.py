@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import FrozenSet, Tuple
 
 # Canonical modality names that are fully implemented and safe to expose by default.
-IMPLEMENTED_MODALITIES: FrozenSet[str] = frozenset(
+IMPLEMENTED_MODALITIES: frozenset[str] = frozenset(
     {
         "lunations",
         "eclipses",
@@ -21,7 +20,7 @@ IMPLEMENTED_MODALITIES: FrozenSet[str] = frozenset(
 )
 
 # Experimental or unfinished modalities. They require an explicit opt-in.
-EXPERIMENTAL_MODALITIES: FrozenSet[str] = frozenset(
+EXPERIMENTAL_MODALITIES: frozenset[str] = frozenset(
     {
         "prog-aspects",
         "dir-aspects",
@@ -36,7 +35,7 @@ def _normalize(name: str) -> str:
 
 
 @lru_cache(maxsize=1)
-def experimental_modalities_from_env() -> FrozenSet[str]:
+def experimental_modalities_from_env() -> frozenset[str]:
     """Return experimental modalities enabled via environment variable."""
 
     raw = os.getenv(_ENVIRONMENT_FLAG, "")
@@ -74,7 +73,7 @@ def is_enabled(name: str, *, experimental: bool = False) -> bool:
     return False
 
 
-def available_modalities(*, include_experimental: bool = False) -> Tuple[str, ...]:
+def available_modalities(*, include_experimental: bool = False) -> tuple[str, ...]:
     """Return a sorted tuple of modality names.
 
     Parameters

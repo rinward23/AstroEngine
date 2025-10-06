@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Iterable, Mapping, Protocol, Sequence
+from typing import Protocol
 
 from ..chart import NatalChart, TransitScanner
 from ..chart.natal import DEFAULT_BODIES

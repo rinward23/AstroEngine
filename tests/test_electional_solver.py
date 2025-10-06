@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -34,7 +34,7 @@ def _body(name: str, lon: float) -> BodyPosition:
 
 
 def test_search_constraints_basic_match():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     t1 = t0 + timedelta(hours=1)
 
     context_ok = SampleContext(
@@ -87,7 +87,7 @@ def test_search_constraints_basic_match():
 
 
 def test_search_constraints_finds_weighted_solutions_with_tolerance():
-    t0 = datetime(2026, 3, 20, tzinfo=timezone.utc)
+    t0 = datetime(2026, 3, 20, tzinfo=UTC)
     t1 = t0 + timedelta(minutes=30)
     t2 = t1 + timedelta(minutes=30)
 

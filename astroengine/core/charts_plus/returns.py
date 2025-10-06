@@ -1,11 +1,12 @@
 from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from math import sin, radians
-from typing import Callable, Dict, Optional, List
+from datetime import UTC, datetime, timedelta
+from math import radians, sin
 
 # Provider signature: provider(ts) -> {name: ecliptic_longitude_deg [0..360)}
-PositionProvider = Callable[[datetime], Dict[str, float]]
+PositionProvider = Callable[[datetime], dict[str, float]]
 
 
 # ----------------------------- Angle helpers -------------------------------
@@ -78,14 +79,14 @@ def find_next_return(
     provider: PositionProvider,
     step_minutes: int = 1440,  # 1 day
     tol_seconds: float = 1.0,
-) -> Optional[ReturnResult]:
+) -> ReturnResult | None:
     """Find the next time within `window` when body returns to `target_lon_deg`.
 
     Strategy: sample f(t)=sin((Δ)/2) on a coarse grid to locate a **sign change**
     around the root, then refine with bisection. Uses UTC internally.
     """
-    start = window.start.astimezone(timezone.utc)
-    end = window.end.astimezone(timezone.utc)
+    start = window.start.astimezone(UTC)
+    end = window.end.astimezone(UTC)
     step = timedelta(minutes=int(step_minutes))
 
     # Ensure start < end
@@ -95,8 +96,8 @@ def find_next_return(
     f = lambda ts: _f_halfangle(body, target_lon_deg, provider, ts)
 
     # Iterate across window looking for sign changes
-    prev_t: Optional[datetime] = None
-    prev_f: Optional[float] = None
+    prev_t: datetime | None = None
+    prev_f: float | None = None
 
     t = start
     while t <= end:
@@ -130,11 +131,11 @@ def find_returns_in_window(
     provider: PositionProvider,
     step_minutes: int = 1440,
     tol_seconds: float = 1.0,
-) -> List[ReturnResult]:
+) -> list[ReturnResult]:
     """Return **all** returns in window by rolling the search forward.
     Useful for long windows or fast bodies (e.g., Moon).
     """
-    results: List[ReturnResult] = []
+    results: list[ReturnResult] = []
     cursor = window.start
     while True:
         res = find_next_return(body, target_lon_deg, ReturnWindow(start=cursor, end=window.end), provider, step_minutes, tol_seconds)

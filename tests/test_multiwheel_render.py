@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from astroengine.cli.export import _parse_multiwheel_spec
 from astroengine.config.settings import MultiWheelCfg, Settings, SynastryCfg
 from astroengine.visual import (
     MultiWheelComposition,
@@ -13,7 +14,6 @@ from astroengine.visual import (
     render_multiwheel_png,
     render_multiwheel_svg,
 )
-from astroengine.cli.export import _parse_multiwheel_spec
 
 
 def _demo_settings() -> Settings:

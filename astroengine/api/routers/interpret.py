@@ -4,19 +4,24 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Type
+from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, UploadFile
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ValidationError
 
-from ..errors import ErrorEnvelope
 from ...interpret.loader import RulepackValidationError, lint_rulepack
-from ...interpret.models import InterpretRequest, InterpretResponse, RulepackLintResult, RulepackMeta, RulepackVersionPayload
+from ...interpret.models import (
+    InterpretRequest,
+    InterpretResponse,
+    RulepackLintResult,
+    RulepackMeta,
+    RulepackVersionPayload,
+)
 from ...interpret.service import InterpretationError, evaluate_relationship
 from ...interpret.store import RulepackStore, get_rulepack_store
 from ...utils.i18n import translate
 from ...web.responses import conditional_json_response, etag_matches
-
+from ..errors import ErrorEnvelope
 
 _API_KEY = os.getenv("AE_API_KEY")
 
@@ -98,7 +103,7 @@ def get_rulepack(
 
 async def _read_rulepack_payload(
     request: Request,
-    model: Type[RulepackUploadPayload] | Type[RulepackLintPayload],
+    model: type[RulepackUploadPayload] | type[RulepackLintPayload],
 ) -> tuple[bytes, str]:
     content_type = request.headers.get("content-type", "")
     if content_type.startswith("multipart/"):

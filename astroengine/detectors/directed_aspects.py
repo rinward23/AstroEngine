@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
-from typing import Optional
 
 from ..chart.config import ChartConfig
 from ..chart.natal import DEFAULT_BODIES, ChartLocation, compute_natal_chart
@@ -33,7 +32,7 @@ def _isoformat(moment: datetime) -> str:
     return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
-def _resolve_body_names(selection: Optional[Sequence[str]]) -> list[str]:
+def _resolve_body_names(selection: Sequence[str] | None) -> list[str]:
     if selection is None:
         return list(DEFAULT_BODIES.keys())
 
@@ -117,7 +116,7 @@ def solar_arc_natal_aspects(
     *,
     aspects: Sequence[int],
     orb_deg: float,
-    bodies: Optional[Sequence[str]] = None,
+    bodies: Sequence[str] | None = None,
     step_days: float = 1.0,
 ) -> list[AspectHit]:
     """Return solar‑arc→natal aspect hits within ``[start_ts, end_ts]``."""

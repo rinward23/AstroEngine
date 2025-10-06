@@ -1,8 +1,9 @@
 """Utilities for organising interpretation findings into report sections."""
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Sequence
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper only
     from jinja2 import Environment as JinjaEnvironment
@@ -15,10 +16,10 @@ DEFAULT_GROUP = "uncategorized"
 @dataclass(slots=True)
 class FindingGroup:
     tag: str
-    items: List[Dict[str, Any]]
+    items: list[dict[str, Any]]
 
 
-def _primary_tag(finding: Dict[str, Any]) -> str:
+def _primary_tag(finding: dict[str, Any]) -> str:
     tags = finding.get("tags")
     if isinstance(tags, Sequence) and tags:
         first = tags[0]
@@ -27,7 +28,7 @@ def _primary_tag(finding: Dict[str, Any]) -> str:
     return DEFAULT_GROUP
 
 
-def _score(finding: Dict[str, Any]) -> float:
+def _score(finding: dict[str, Any]) -> float:
     value = finding.get("score")
     try:
         return float(value)
@@ -35,22 +36,22 @@ def _score(finding: Dict[str, Any]) -> float:
         return 0.0
 
 
-def group_by_primary_tag(findings: Iterable[Dict[str, Any]]) -> List[FindingGroup]:
+def group_by_primary_tag(findings: Iterable[dict[str, Any]]) -> list[FindingGroup]:
     """Group findings by their primary tag with deterministic ordering."""
 
-    buckets: Dict[str, List[Dict[str, Any]]] = {}
+    buckets: dict[str, list[dict[str, Any]]] = {}
     for finding in findings:
         tag = _primary_tag(finding)
         buckets.setdefault(tag, []).append(finding)
 
-    groups: List[FindingGroup] = []
+    groups: list[FindingGroup] = []
     for tag in sorted(buckets.keys(), key=lambda item: item.lower()):
         items = sorted(buckets[tag], key=_score, reverse=True)
         groups.append(FindingGroup(tag=tag, items=items))
     return groups
 
 
-def render_snippet(finding: Dict[str, Any], env: JinjaEnvironment) -> str | None:
+def render_snippet(finding: dict[str, Any], env: JinjaEnvironment) -> str | None:
     """Derive a concise snippet for a finding if possible."""
 
     snippet = finding.get("snippet")
@@ -77,11 +78,11 @@ def render_snippet(finding: Dict[str, Any], env: JinjaEnvironment) -> str | None
     return first_line or rendered.strip() or None
 
 
-def summarise_scores(totals: Dict[str, Any]) -> Dict[str, float]:
+def summarise_scores(totals: dict[str, Any]) -> dict[str, float]:
     """Return a flattened mapping of tag → score for table rendering."""
 
     by_tag = totals.get("by_tag") if isinstance(totals, dict) else None
-    result: Dict[str, float] = {}
+    result: dict[str, float] = {}
     if isinstance(by_tag, dict):
         for key, value in by_tag.items():
             try:

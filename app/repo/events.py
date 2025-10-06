@@ -1,5 +1,5 @@
-from app.repo.base import BaseRepo
 from app.db.models import Event
+from app.repo.base import BaseRepo
 
 
 class EventRepo(BaseRepo[Event]):

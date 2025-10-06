@@ -2,25 +2,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
-from astroengine.engine.ingest.voice import VoiceIntent, VoiceIntentParser
 from astroengine.engine.ingest.vision import ChartVisionParser, VisionParseResult
+from astroengine.engine.ingest.voice import VoiceIntent, VoiceIntentParser
 
 
 @dataclass
 class VoiceIngestResponse:
     transcript: str
-    intent: Optional[VoiceIntent]
+    intent: VoiceIntent | None
 
 
 @dataclass
 class VisionIngestResponse:
-    result: Optional[VisionParseResult]
+    result: VisionParseResult | None
 
 
 class IngestAPI:
-    def __init__(self, voice_parser: Optional[VoiceIntentParser] = None, vision_parser: Optional[ChartVisionParser] = None) -> None:
+    def __init__(self, voice_parser: VoiceIntentParser | None = None, vision_parser: ChartVisionParser | None = None) -> None:
         self.voice_parser = voice_parser or VoiceIntentParser()
         self.vision_parser = vision_parser or ChartVisionParser()
 

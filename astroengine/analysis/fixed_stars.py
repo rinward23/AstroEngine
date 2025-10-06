@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import csv
 import math
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from functools import lru_cache
+from functools import cache
 from importlib import resources
-from typing import Callable, Iterable, Mapping, Sequence
 
 from ..astro.declination import OBLIQUITY_DEG
 from ..core.stars_plus import Location, ParanPair, detect_parans
@@ -67,7 +67,7 @@ def _ecliptic_to_equatorial(lon_deg: float, lat_deg: float) -> tuple[float, floa
     return math.degrees(ra), math.degrees(dec)
 
 
-@lru_cache(maxsize=None)
+@cache
 def _catalog_rows(catalog: str) -> tuple[Star, ...]:
     """Load and cache the fixed-star catalog defined by ``catalog``."""
 

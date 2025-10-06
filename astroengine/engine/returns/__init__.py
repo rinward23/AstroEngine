@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .attach import attach_aspects_to_natal, attach_transiting_aspects
 from .finder import (
     ReturnInstant,
     ReturnNotFoundError,
@@ -17,7 +18,6 @@ from .scan import (
     ScanOptions,
     scan_returns,
 )
-from .attach import attach_aspects_to_natal, attach_transiting_aspects
 
 __all__ = [
     "AttachOptions",

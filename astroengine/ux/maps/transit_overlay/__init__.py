@@ -1,7 +1,7 @@
 """Transit ↔ natal heliocentric overlay utilities."""
 from __future__ import annotations
 
-from .aspects import AspectHit, TRANSIT_ORB_LIMITS, compute_transit_aspects
+from .aspects import TRANSIT_ORB_LIMITS, AspectHit, compute_transit_aspects
 from .engine import (
     OverlayBodyState,
     OverlayFrame,

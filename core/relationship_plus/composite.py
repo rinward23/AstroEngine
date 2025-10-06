@@ -7,12 +7,12 @@ UTC-aware datetimes when timestamps are provided.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Callable, Dict, Iterable, Tuple
 import math
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
-PositionProvider = Callable[[datetime], Dict[str, float]]
+PositionProvider = Callable[[datetime], dict[str, float]]
 
 
 # --------------------------- Angle utils -----------------------------------
@@ -47,10 +47,10 @@ def midpoint_angle(a: float, b: float) -> float:
 # --------------------------- Composite positions ---------------------------
 
 def composite_positions(
-    pos_a: Dict[str, float],
-    pos_b: Dict[str, float],
+    pos_a: dict[str, float],
+    pos_b: dict[str, float],
     bodies: Iterable[str] | None = None,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Return midpoint longitudes for bodies shared between ``pos_a`` and ``pos_b``.
 
     Parameters
@@ -67,7 +67,7 @@ def composite_positions(
     else:
         common = {key for key in bodies if key in pos_a and key in pos_b}
 
-    out: Dict[str, float] = {}
+    out: dict[str, float] = {}
     for key in sorted(common):
         out[key] = midpoint_angle(pos_a[key], pos_b[key])
     return out
@@ -84,7 +84,7 @@ class Geo:
     lon_deg_east: float
 
 
-def _to_vec(lat_deg: float, lon_deg_east: float) -> Tuple[float, float, float]:
+def _to_vec(lat_deg: float, lon_deg_east: float) -> tuple[float, float, float]:
     lat = math.radians(lat_deg)
     lon = math.radians(lon_deg_east)
     x = math.cos(lat) * math.cos(lon)
@@ -93,14 +93,14 @@ def _to_vec(lat_deg: float, lon_deg_east: float) -> Tuple[float, float, float]:
     return x, y, z
 
 
-def _from_vec(x: float, y: float, z: float) -> Tuple[float, float]:
+def _from_vec(x: float, y: float, z: float) -> tuple[float, float]:
     hyp = math.hypot(x, y)
     lat = math.degrees(math.atan2(z, hyp))
     lon = math.degrees(math.atan2(y, x))
     return lat, lon
 
 
-def spherical_midpoint(lat1: float, lon1: float, lat2: float, lon2: float) -> Tuple[float, float]:
+def spherical_midpoint(lat1: float, lon1: float, lat2: float, lon2: float) -> tuple[float, float]:
     """Return the great-circle midpoint on the unit sphere."""
 
     x1, y1, z1 = _to_vec(lat1, lon1)
@@ -117,10 +117,10 @@ def spherical_midpoint(lat1: float, lon1: float, lat2: float, lon2: float) -> Tu
 def time_midpoint_utc(dt_a: datetime, dt_b: datetime) -> datetime:
     """Return the midpoint between ``dt_a`` and ``dt_b`` expressed in UTC."""
 
-    a = dt_a.astimezone(timezone.utc) if dt_a.tzinfo else dt_a.replace(tzinfo=timezone.utc)
-    b = dt_b.astimezone(timezone.utc) if dt_b.tzinfo else dt_b.replace(tzinfo=timezone.utc)
+    a = dt_a.astimezone(UTC) if dt_a.tzinfo else dt_a.replace(tzinfo=UTC)
+    b = dt_b.astimezone(UTC) if dt_b.tzinfo else dt_b.replace(tzinfo=UTC)
     t = (a.timestamp() + b.timestamp()) / 2.0
-    return datetime.fromtimestamp(t, tz=timezone.utc)
+    return datetime.fromtimestamp(t, tz=UTC)
 
 
 def davison_midpoints(
@@ -128,7 +128,7 @@ def davison_midpoints(
     loc_a: Geo,
     dt_b: datetime,
     loc_b: Geo,
-) -> Tuple[datetime, float, float]:
+) -> tuple[datetime, float, float]:
     """Return the Davison midpoint timestamp, latitude, and longitude."""
 
     mid_dt = time_midpoint_utc(dt_a, dt_b)
@@ -148,7 +148,7 @@ def davison_positions(
     dt_b: datetime,
     loc_b: Geo,
     bodies: Iterable[str] | None = None,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Return body longitudes for the Davison chart at the time midpoint."""
 
     mid_dt, _, _ = davison_midpoints(dt_a, loc_a, dt_b, loc_b)

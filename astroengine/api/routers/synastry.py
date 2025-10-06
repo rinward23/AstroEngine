@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -14,7 +13,6 @@ from ...chart.natal import DEFAULT_BODIES
 from ...core.aspects_plus.harmonics import BASE_ASPECTS
 from ...synastry.orchestrator import SynHit, compute_synastry
 from .._time import UtcDateTime, ensure_utc_datetime
-
 
 router = APIRouter()
 

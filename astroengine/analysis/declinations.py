@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from math import isfinite
-from typing import Mapping, MutableMapping, Sequence
+
+from astroengine.ephemeris.swe import has_swe
 
 from ..astro.declination import ecl_to_dec, is_contraparallel, is_parallel
 from ..chart.config import ChartConfig
 from ..ephemeris.swisseph_adapter import SwissEphemerisAdapter, get_swisseph
-
-from astroengine.ephemeris.swe import has_swe, swe
 
 __all__ = ["DeclinationAspect", "declination_aspects", "get_declinations"]
 
@@ -132,7 +132,7 @@ def _adapter_for_chart(
 def _extract_declination(value) -> float | None:
     if hasattr(value, "declination"):
         try:
-            val = float(getattr(value, "declination"))
+            val = float(value.declination)
         except (TypeError, ValueError):
             val = None
         if val is not None and isfinite(val):
@@ -152,7 +152,7 @@ def _extract_declination(value) -> float | None:
 def _extract_longitude(value) -> float | None:
     if hasattr(value, "longitude"):
         try:
-            val = float(getattr(value, "longitude"))
+            val = float(value.longitude)
         except (TypeError, ValueError):
             val = None
         if val is not None and isfinite(val):

@@ -3,8 +3,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from astroengine.chart.natal import ChartLocation, compute_natal_chart
-from core.lots_plus.catalog import Sect as LotSect
-from core.lots_plus.catalog import compute_lots
 from astroengine.engine.traditional import (
     Interval,
     build_chart_context,
@@ -13,6 +11,8 @@ from astroengine.engine.traditional import (
 )
 from astroengine.engine.traditional.profections import SIGN_SEQUENCE
 from astroengine.engine.traditional.sect import sect_info
+from core.lots_plus.catalog import Sect as LotSect
+from core.lots_plus.catalog import compute_lots
 
 
 def _context() -> tuple:

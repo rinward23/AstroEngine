@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -18,7 +18,7 @@ from astroengine.engine.vedic.panchang import (
 
 @pytest.mark.swiss
 def test_panchang_snapshot_components() -> None:
-    moment = datetime(2023, 10, 24, 18, 0, tzinfo=timezone.utc)
+    moment = datetime(2023, 10, 24, 18, 0, tzinfo=UTC)
     context = build_context(moment, latitude=28.6139, longitude=77.2090)
 
     snapshot = panchang_from_chart(context)
@@ -82,13 +82,13 @@ def test_nakshatra_progress() -> None:
 
 def test_vaar_name_alignment() -> None:
     # Monday (weekday=0)
-    monday = vaar_from_datetime(datetime(2024, 1, 1, tzinfo=timezone.utc))
+    monday = vaar_from_datetime(datetime(2024, 1, 1, tzinfo=UTC))
     assert monday.weekday == 0
     assert monday.name == "Somavara"
     assert monday.english == "Monday"
 
     # Sunday (weekday=6)
-    sunday = vaar_from_datetime(datetime(2023, 12, 31, tzinfo=timezone.utc))
+    sunday = vaar_from_datetime(datetime(2023, 12, 31, tzinfo=UTC))
     assert sunday.weekday == 6
     assert sunday.name == "Ravivara"
     assert sunday.english == "Sunday"

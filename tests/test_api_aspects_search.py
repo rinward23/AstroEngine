@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -7,7 +7,7 @@ from tests.helpers import LinearEphemeris, build_app, patch_aspects_provider
 
 
 def test_post_aspects_search_minimal():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Mars": 10.0, "Venus": 0.0},

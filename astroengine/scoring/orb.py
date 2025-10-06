@@ -5,13 +5,12 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources as importlib_resources
 from math import isclose
-
 from pathlib import Path
-from typing import Mapping, Sequence
 
 # Optional: integrate with project body classification if available
 try:  # pragma: no cover - fallback for minimal installs

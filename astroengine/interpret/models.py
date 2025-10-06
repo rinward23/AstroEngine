@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Iterable, Literal, Mapping, Sequence
+from typing import Any, Literal
 
 from pydantic import (
     AliasChoices,
@@ -17,8 +18,6 @@ from pydantic import (
 )
 
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS
-
-
 
 Body = Literal[
     "Sun",
@@ -413,7 +412,7 @@ class RuleDefinition(BaseModel):
 
     @model_validator(mode="after")
 
-    def _sync_then(self) -> "RuleDefinition":
+    def _sync_then(self) -> RuleDefinition:
         object.__setattr__(self, "tags", tuple(self.then.tags))
         object.__setattr__(self, "score", float(self.then.base_score))
         if not self.text:

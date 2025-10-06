@@ -5,17 +5,17 @@ from __future__ import annotations
 import io
 import json
 import zipfile
+from collections.abc import Iterable, Mapping
 from datetime import datetime
-from typing import Iterable, Mapping
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
-from astroengine.config import Settings, load_settings, save_settings
 from app.db.models import Chart
 from app.db.session import session_scope
 from app.repo.charts import ChartRepo
+from astroengine.config import Settings, load_settings, save_settings
 
 router = APIRouter(prefix="/v1", tags=["data"])
 

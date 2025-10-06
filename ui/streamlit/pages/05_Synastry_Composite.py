@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Dict
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -17,7 +16,7 @@ st.title("Synastry & Composites 💞")
 api = APIClient()
 
 DEFAULT_ASPECTS = ["conjunction", "opposition", "square", "trine", "sextile", "quincunx"]
-SAMPLE_POSITIONS: Dict[str, Dict[str, float]] = {
+SAMPLE_POSITIONS: dict[str, dict[str, float]] = {
     "NYC 1990-02-16 (regression)": {
         "Sun": 327.824967,
         "Moon": 226.812266,
@@ -62,7 +61,7 @@ TAB1, TAB2 = st.tabs(["Synastry", "Composites"])
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _load_json_textarea(label: str, *, default_obj: Dict[str, float], key: str) -> Dict[str, float]:
+def _load_json_textarea(label: str, *, default_obj: dict[str, float], key: str) -> dict[str, float]:
     """Render a textarea with preset/import helpers and return parsed JSON."""
 
     text_key = f"{key}_text"
@@ -104,7 +103,7 @@ def _load_json_textarea(label: str, *, default_obj: Dict[str, float], key: str) 
         st.error(f"Invalid JSON for {label}: {exc}")
         return {}
 
-    cleaned: Dict[str, float] = {}
+    cleaned: dict[str, float] = {}
     for name, value in data.items():
         try:
             cleaned[str(name)] = float(value)
@@ -116,8 +115,8 @@ def _load_json_textarea(label: str, *, default_obj: Dict[str, float], key: str) 
 
 def _maybe_convert_to_utc(dt_value: datetime) -> datetime:
     if dt_value.tzinfo is None:
-        return dt_value.replace(tzinfo=timezone.utc)
-    return dt_value.astimezone(timezone.utc)
+        return dt_value.replace(tzinfo=UTC)
+    return dt_value.astimezone(UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -349,7 +348,7 @@ with TAB2:
         )
         objects = [item.strip() for item in obj_text.split(",") if item.strip()]
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         col_a, col_b = st.columns(2)
         dt_a_input = col_a.datetime_input(
             "Chart A datetime (UTC)",

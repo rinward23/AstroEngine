@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .constants import EXTENDED_ASPECTS
 
@@ -20,9 +20,9 @@ class RelationshipState:
     weights_profile: str = "default"
     positions_a_text: str = ""
     positions_b_text: str = ""
-    last_synastry: Optional[Dict[str, Any]] = None
-    last_composite: Optional[Dict[str, Any]] = None
-    last_davison: Optional[Dict[str, Any]] = None
+    last_synastry: dict[str, Any] | None = None
+    last_composite: dict[str, Any] | None = None
+    last_davison: dict[str, Any] | None = None
 
 
 def _coerce_state(value: Any) -> RelationshipState:
@@ -50,7 +50,7 @@ def update_state(st, **changes: Any) -> None:
     st.session_state[SESSION_KEY] = state
 
 
-def export_state_payload(state: RelationshipState) -> Dict[str, Any]:
+def export_state_payload(state: RelationshipState) -> dict[str, Any]:
     payload = asdict(state)
     # Remove bulky entries not needed for export/import toggles.
     payload.pop("last_synastry", None)

@@ -6,12 +6,13 @@ import io
 import json
 import tarfile
 import tempfile
+from collections.abc import Sequence
 from contextlib import ExitStack
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path, PurePosixPath
-from typing import IO, Sequence
+from typing import IO
 
 __all__ = [
     "DEFAULT_EXCLUDES",

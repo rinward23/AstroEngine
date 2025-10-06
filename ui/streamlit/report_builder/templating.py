@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
 from importlib import resources
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
@@ -32,15 +33,15 @@ def _jinja_primitives():
         extras=("narrative", "reports", "streamlit", "ui", "all"),
         purpose="render Streamlit report templates",
     )
-    environment = getattr(module, "Environment")
-    strict_undefined = getattr(module, "StrictUndefined")
-    select_autoescape = getattr(module, "select_autoescape")
+    environment = module.Environment
+    strict_undefined = module.StrictUndefined
+    select_autoescape = module.select_autoescape
     return environment, strict_undefined, select_autoescape
 
 
 @dataclass(slots=True)
 class ReportContext:
-    findings: List[Dict[str, Any]]
+    findings: list[dict[str, Any]]
     rulepack: Mapping[str, Any]
     filters: Mapping[str, Any]
     pair: Mapping[str, Any]
@@ -66,8 +67,8 @@ def _build_environment() -> JinjaEnvironment:
     return env
 
 
-def _prepare_findings(ctx: ReportContext, env: JinjaEnvironment) -> List[Dict[str, Any]]:
-    prepared: List[Dict[str, Any]] = []
+def _prepare_findings(ctx: ReportContext, env: JinjaEnvironment) -> list[dict[str, Any]]:
+    prepared: list[dict[str, Any]] = []
     for finding in ctx.findings:
         snippet = sections.render_snippet(finding, env)
         enriched = dict(finding)

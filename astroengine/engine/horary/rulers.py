@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from functools import lru_cache
-from typing import Iterable
 
-from ...scoring_legacy.dignity import DignityRecord, load_dignities
+from ...scoring_legacy.dignity import load_dignities
 from .models import DignityStatus
 from .profiles import HoraryProfile
 

@@ -3,9 +3,7 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
-
-from typing import Dict, Set
+from functools import cache
 
 __all__ = [
     "ALL_SUPPORTED_BODIES",
@@ -18,7 +16,7 @@ __all__ = [
 
 
 # Canonical body classification including nodes, points, asteroids, and TNOs.
-_BODY_CLASS: Dict[str, str] = {
+_BODY_CLASS: dict[str, str] = {
     # Luminaries / classical planets
 
     "sun": "luminary",
@@ -74,7 +72,7 @@ _BODY_CLASS: Dict[str, str] = {
 
 
 
-_BODY_ALIASES: Dict[str, str] = {
+_BODY_ALIASES: dict[str, str] = {
 
     "north_node": "mean_node",
     "node": "mean_node",
@@ -113,7 +111,7 @@ def canonical_name(name: str) -> str:
     return _BODY_ALIASES.get(lowered, lowered)
 
 
-@lru_cache(maxsize=None)
+@cache
 def body_class(name: str) -> str:
     """Return the scoring/gating class for the supplied body name."""
 
@@ -125,11 +123,11 @@ def body_class(name: str) -> str:
     return _BODY_CLASS.get(canonical, "outer")
 
 
-_ALL_CANONICAL: Set[str] = set(_BODY_CLASS)
-ALL_SUPPORTED_BODIES: Set[str] = set(sorted(_ALL_CANONICAL))
+_ALL_CANONICAL: set[str] = set(_BODY_CLASS)
+ALL_SUPPORTED_BODIES: set[str] = set(sorted(_ALL_CANONICAL))
 
 
-_BODY_TIER: Dict[str, int] = {}
+_BODY_TIER: dict[str, int] = {}
 for _name in ALL_SUPPORTED_BODIES:
     _cls = _BODY_CLASS.get(_name, "outer")
     _BODY_TIER[_name] = {

@@ -1,6 +1,8 @@
-from datetime import datetime, timedelta, timezone
-from core.events_plus.detectors import next_sign_ingress, detect_voc_moon, detect_combust_cazimi
+from datetime import UTC, datetime, timedelta
+
 from core.aspects_plus.scan import TimeWindow
+from core.events_plus.detectors import detect_combust_cazimi, detect_voc_moon, next_sign_ingress
+
 
 # Synthetic linear ephemeris
 class LinearEphemeris:
@@ -12,7 +14,7 @@ class LinearEphemeris:
 
 
 def test_next_sign_ingress_moon():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(t0, base={"Moon": 2.0}, rates={"Moon": 13.0})
     ingress = next_sign_ingress("Moon", t0, eph, step_minutes=60)  # Aries → Taurus crossing near 30°
     assert ingress is not None
@@ -23,7 +25,7 @@ def test_next_sign_ingress_moon():
 
 def test_voc_moon_conjunction_only_segment_full_voc():
     # Moon moves through Aries; other bodies far → no conjunction before ingress
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(t0, base={"Moon": 2.0, "Sun": 180.0, "Venus": 200.0}, rates={"Moon": 13.0})
     win = TimeWindow(start=t0, end=t0 + timedelta(days=3))
 
@@ -46,7 +48,7 @@ def test_voc_moon_conjunction_only_segment_full_voc():
 
 def test_combust_cazimi_detection():
     # Mercury approaches the Sun and passes exact conjunction
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(t0, base={"Sun": 0.0, "Mercury": 0.5}, rates={"Sun": 0.0, "Mercury": -0.1})
     win = TimeWindow(start=t0, end=t0 + timedelta(days=20))
 

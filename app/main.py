@@ -5,45 +5,42 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
-from astroengine.cache.positions_cache import warm_startup_grid
-from astroengine.config import load_settings
-from astroengine.ephemeris.adapter import EphemerisAdapter, EphemerisConfig
-
 from app.db.session import engine
 from app.observability import configure_observability
 from app.telemetry import resolve_observability_config, setup_tracing
+from astroengine.cache.positions_cache import warm_startup_grid
+from astroengine.config import load_settings
 from astroengine.web.middleware import configure_compression
 
 LOGGER = logging.getLogger(__name__)
 
 from app.routers import (
     aspects_router,
+    charts_router,
+    data_router,
     declinations_router,
+    doctor_router,
     electional_router,
     events_router,
-    doctor_router,
     health_router,
     interpret_router,
     lots_router,
     narrative_profiles_router,
+    notes_router,
     policies_router,
     profiles_router,
-    narrative_mix_router,
-    settings_router,
-    reports_router,
     relationship_router,
+    reports_router,
+    settings_router,
     transits_router,
-    notes_router,
-    data_router,
-    charts_router,
 )
 from app.routers.aspects import (  # re-exported for convenience
     clear_position_provider,

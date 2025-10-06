@@ -1,16 +1,16 @@
 """Arabic Lots engine and catalog utilities."""
 
-from .engine import eval_formula, norm360, deg_add, deg_sub
 from .catalog import (
-    LotDef,
-    Sect,
     BUILTIN,
     REGISTRY,
+    LotDef,
+    Sect,
     compute_lot,
     compute_lots,
     register_lot,
     unregister_lot,
 )
+from .engine import deg_add, deg_sub, eval_formula, norm360
 from .parser import (
     FormulaSyntaxError,
     extract_symbols,

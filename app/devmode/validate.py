@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 import shlex
 import subprocess
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 DEFAULT_STEPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("pytest", ("pytest", "-q")),

@@ -8,11 +8,11 @@ import logging
 import os
 import sys
 import sysconfig
+from collections.abc import Callable, Mapping, MutableMapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable, Iterable, Mapping, MutableMapping
-
+from typing import Any
 
 LOGGER = logging.getLogger(__name__)
 

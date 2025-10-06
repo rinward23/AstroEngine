@@ -4,11 +4,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-
 import importlib
 import importlib.util
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Literal, NoReturn
 from zoneinfo import ZoneInfo
 
@@ -99,7 +98,7 @@ class LocalTimeResolution:
             "input_local": self.input.isoformat(),
             "tzid": self.tzid,
             "resolved_local": self.local.isoformat(),
-            "utc": self.utc.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "utc": self.utc.astimezone(UTC).isoformat().replace("+00:00", "Z"),
             "fold": int(self.fold),
             "ambiguous": self.ambiguous,
             "ambiguous_policy": self.ambiguous_policy,
@@ -152,8 +151,8 @@ def is_ambiguous(local_naive: datetime, tzid: str) -> bool:
     """Return ``True`` when the local time is ambiguous (DST fall-back)."""
 
     zone = ZoneInfo(tzid)
-    utc0 = _attach(local_naive, zone, 0).astimezone(timezone.utc)
-    utc1 = _attach(local_naive, zone, 1).astimezone(timezone.utc)
+    utc0 = _attach(local_naive, zone, 0).astimezone(UTC)
+    utc1 = _attach(local_naive, zone, 1).astimezone(UTC)
     return utc0 != utc1 and utc0 < utc1
 
 
@@ -161,8 +160,8 @@ def is_nonexistent(local_naive: datetime, tzid: str) -> bool:
     """Return ``True`` when the local time is skipped (DST spring-forward)."""
 
     zone = ZoneInfo(tzid)
-    utc0 = _attach(local_naive, zone, 0).astimezone(timezone.utc)
-    utc1 = _attach(local_naive, zone, 1).astimezone(timezone.utc)
+    utc0 = _attach(local_naive, zone, 0).astimezone(UTC)
+    utc1 = _attach(local_naive, zone, 1).astimezone(UTC)
     return utc0 != utc1 and utc0 > utc1
 
 
@@ -219,8 +218,8 @@ def _resolve_local_time(
 
     aware_fold0 = local_naive.replace(tzinfo=zone, fold=0)
     aware_fold1 = local_naive.replace(tzinfo=zone, fold=1)
-    utc_fold0 = aware_fold0.astimezone(timezone.utc)
-    utc_fold1 = aware_fold1.astimezone(timezone.utc)
+    utc_fold0 = aware_fold0.astimezone(UTC)
+    utc_fold1 = aware_fold1.astimezone(UTC)
 
     ambiguous_state = utc_fold0 != utc_fold1 and utc_fold0 < utc_fold1
     nonexistent_state = utc_fold0 != utc_fold1 and utc_fold0 > utc_fold1
@@ -246,7 +245,7 @@ def _resolve_local_time(
             effective_naive = local_naive - gap
 
     local_aware = effective_naive.replace(tzinfo=zone, fold=fold)
-    utc_dt = local_aware.astimezone(timezone.utc)
+    utc_dt = local_aware.astimezone(UTC)
 
     return LocalTimeResolution(
         input=local_naive,
@@ -316,8 +315,8 @@ def from_utc(utc_dt: datetime, lat: float, lon: float) -> datetime:
 
     tzid = tzid_for(lat, lon)
     if utc_dt.tzinfo is None:
-        aware = utc_dt.replace(tzinfo=timezone.utc)
+        aware = utc_dt.replace(tzinfo=UTC)
     else:
-        aware = utc_dt.astimezone(timezone.utc)
+        aware = utc_dt.astimezone(UTC)
     return aware.astimezone(ZoneInfo(tzid))
 

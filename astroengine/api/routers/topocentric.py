@@ -7,7 +7,8 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter
 
-from ...ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
+from astroengine.ephemeris.swe import has_swe, swe
+
 from ...engine.observational import (
     EventOptions,
     HeliacalProfile,
@@ -23,7 +24,7 @@ from ...engine.observational import (
     transit_time,
     visibility_windows,
 )
-from astroengine.ephemeris.swe import has_swe, swe
+from ...ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
 from ..schemas_observational import (
     DiagramRequest,
     DiagramResponse,

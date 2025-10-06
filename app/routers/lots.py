@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List
-
 from fastapi import APIRouter, Header, HTTPException, Response
-
-from astroengine.web.responses import conditional_json_response
 
 from app.schemas.lots import (
     LotDefIn,
@@ -13,6 +9,7 @@ from app.schemas.lots import (
     LotsComputeRequest,
     LotsComputeResponse,
 )
+from astroengine.web.responses import conditional_json_response
 from core.lots_plus.catalog import (
     REGISTRY,
     LotDef,
@@ -29,7 +26,7 @@ router = APIRouter(prefix="", tags=["Plus"])
 def lots_catalog(
     if_none_match: str | None = Header(default=None, alias="If-None-Match")
 ) -> Response:
-    items: List[LotDefOut] = []
+    items: list[LotDefOut] = []
     for name, lot in REGISTRY.items():
         items.append(
             LotDefOut(
@@ -48,10 +45,10 @@ def lots_catalog(
     )
 
 
-def _persist_custom_lots(custom_lots: List[LotDefIn]) -> Dict[str, LotDef]:
+def _persist_custom_lots(custom_lots: list[LotDefIn]) -> dict[str, LotDef]:
     """Register inline lots without committing them to the runtime registry."""
 
-    temp_registry: Dict[str, LotDef] = {}
+    temp_registry: dict[str, LotDef] = {}
     for c in custom_lots:
         if not c.name or not c.day or not c.night:
             raise HTTPException(
@@ -90,8 +87,8 @@ def _persist_custom_lots(custom_lots: List[LotDefIn]) -> Dict[str, LotDef]:
     ),
 )
 def lots_compute(req: LotsComputeRequest):
-    temp_defs: Dict[str, LotDef] = {}
-    custom_names: List[str] = []
+    temp_defs: dict[str, LotDef] = {}
+    custom_names: list[str] = []
 
     if req.custom_lots:
         temp_defs = _persist_custom_lots(req.custom_lots)
@@ -101,7 +98,7 @@ def lots_compute(req: LotsComputeRequest):
     if not names:
         raise HTTPException(status_code=400, detail="No lots requested")
 
-    to_cleanup: List[str] = []
+    to_cleanup: list[str] = []
     for name, definition in temp_defs.items():
         if name in REGISTRY:
             raise HTTPException(status_code=400, detail=f"Lot already exists: {name}")

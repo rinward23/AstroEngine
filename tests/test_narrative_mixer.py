@@ -3,12 +3,12 @@ from __future__ import annotations
 import pytest
 
 from astroengine.config.settings import (
+    _LENGTH_ORDER,
+    _TONE_ORDER,
     NarrativeCfg,
     NarrativeEsotericCfg,
     NarrativeMixCfg,
     Settings,
-    _LENGTH_ORDER,
-    _TONE_ORDER,
     _vote_enum,
     compose_narrative_from_mix,
 )

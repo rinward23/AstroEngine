@@ -5,7 +5,6 @@ from __future__ import annotations
 from fastapi import Query
 from pydantic import BaseModel, Field
 
-
 MAX_PAGE_SIZE = 100
 
 

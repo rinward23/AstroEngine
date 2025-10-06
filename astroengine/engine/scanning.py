@@ -158,7 +158,7 @@ class _TickCachingProvider:
 
         return {
             name: normalized[name_lower]
-            for name, name_lower in zip(bodies_tuple, lowered)
+            for name, name_lower in zip(bodies_tuple, lowered, strict=False)
             if name_lower in normalized
         }
 
@@ -539,7 +539,7 @@ def _aspect_events(
     policy_path: str | None,
     toggles: ScanFeatureToggles,
     scoring: _ScoringContext,
-    natal_chart: "NatalChart" | None = None,
+    natal_chart: NatalChart | None = None,
     house_system: str | None = None,
 ) -> Iterable[LegacyTransitEvent]:
     if not toggles.do_aspects:

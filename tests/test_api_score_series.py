@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -8,8 +8,8 @@ from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
-from app.routers.transits import router as transits_router
 from app.routers import aspects as aspects_module
+from app.routers.transits import router as transits_router
 
 
 class LinearEphemeris:
@@ -32,7 +32,7 @@ def build_app(provider):
 
 
 def test_score_series_from_scan():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Mars": 10.0, "Venus": 0.0},

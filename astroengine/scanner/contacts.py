@@ -6,7 +6,11 @@ from collections.abc import Iterable
 
 from ..detectors import (
     CoarseHit,
+)
+from ..detectors import (
     detect_antiscia_contacts as _detect_antiscia_contacts,
+)
+from ..detectors import (
     detect_decl_contacts as _detect_decl_contacts,
 )
 

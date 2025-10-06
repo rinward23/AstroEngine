@@ -6,8 +6,8 @@ import asyncio
 import math
 import time
 from collections import deque
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable, Deque, Dict
 
 from fastapi import HTTPException, Request, Response, status
 
@@ -27,7 +27,7 @@ class SimpleRateLimiter:
     def __init__(self, limit: int, window_seconds: float) -> None:
         self.limit = int(limit)
         self.window = float(window_seconds)
-        self._hits: Dict[str, Deque[float]] = {}
+        self._hits: dict[str, deque[float]] = {}
         self._lock = asyncio.Lock()
 
     async def check(self, identity: str) -> RateLimitStatus:
@@ -85,11 +85,11 @@ def _resolve_identity(request: Request) -> str:
     return "anonymous"
 
 
-def _limiter_registry(request: Request) -> Dict[str, SimpleRateLimiter]:
+def _limiter_registry(request: Request) -> dict[str, SimpleRateLimiter]:
     registry = getattr(request.app.state, "_simple_rate_limiters", None)
     if registry is None:
         registry = {}
-        setattr(request.app.state, "_simple_rate_limiters", registry)
+        request.app.state._simple_rate_limiters = registry
     return registry
 
 

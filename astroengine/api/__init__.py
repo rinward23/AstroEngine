@@ -21,10 +21,10 @@ def create_app() -> FastAPI:
     from .routers import returns as returns_router
     from .routers import scan as scan_router
     from .routers import synastry as synastry_router
+    from .routers import timeline as timeline_router
     from .routers import topocentric as topocentric_router
     from .routers import transit_overlay as transit_overlay_router
     from .routers import vedic as vedic_router
-    from .routers import timeline as timeline_router
 
     app = FastAPI(
         title="AstroEngine API",

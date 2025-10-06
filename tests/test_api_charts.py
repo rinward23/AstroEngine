@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
 
-from astroengine.atlas.tz import to_utc_with_timezone
 from app.db.base import Base
 from app.db.session import engine, session_scope
 from app.main import app
 from app.repo.charts import ChartRepo
+from astroengine.atlas.tz import to_utc_with_timezone
 
 client = TestClient(app)
 
@@ -43,7 +41,7 @@ def _seed_charts() -> tuple[int, int]:
             db,
             chart_key="alpha",
             profile_key="default",
-            dt_utc=datetime(2021, 1, 1, 12, 0, tzinfo=timezone.utc),
+            dt_utc=datetime(2021, 1, 1, 12, 0, tzinfo=UTC),
             lat=0.0,
             lon=0.0,
             data={"kind": "natal"},
@@ -52,13 +50,13 @@ def _seed_charts() -> tuple[int, int]:
             db,
             chart_key="beta",
             profile_key="default",
-            dt_utc=datetime(2022, 6, 1, 15, 30, tzinfo=timezone.utc),
+            dt_utc=datetime(2022, 6, 1, 15, 30, tzinfo=UTC),
             lat=10.0,
             lon=10.0,
             data={"kind": "natal"},
         )
-        chart_a.created_at = datetime(2021, 1, 1, tzinfo=timezone.utc)
-        chart_b.created_at = datetime(2022, 6, 1, tzinfo=timezone.utc)
+        chart_a.created_at = datetime(2021, 1, 1, tzinfo=UTC)
+        chart_b.created_at = datetime(2022, 6, 1, tzinfo=UTC)
         repo.update_tags(db, chart_a.id, ["natal", "client"])
         repo.update_tags(db, chart_b.id, ["progress"])
         db.flush()

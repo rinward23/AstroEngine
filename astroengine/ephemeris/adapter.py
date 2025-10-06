@@ -12,6 +12,8 @@ from pathlib import Path
 from time import perf_counter
 from typing import Final, cast
 
+from astroengine.ephemeris.swe import has_swe, swe
+
 from ..core.angles import AspectMotion, DeltaLambdaTracker, classify_relative_motion
 from ..core.time import TimeConversion, to_tt
 from ..observability import (
@@ -20,14 +22,12 @@ from ..observability import (
     EPHEMERIS_CACHE_HITS,
     EPHEMERIS_CACHE_MISSES,
 )
-from .swisseph_adapter import swe_calc
 from .sidereal import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,
     normalize_ayanamsha_name,
 )
-
-from astroengine.ephemeris.swe import has_swe, swe
+from .swisseph_adapter import swe_calc
 
 _HAS_SWE: Final[bool] = has_swe()
 

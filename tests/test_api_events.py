@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
@@ -34,7 +34,7 @@ def build_app(provider):
 
 
 def test_combust_cazimi_api():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Sun": 0.0, "Mercury": 0.5},
@@ -64,7 +64,7 @@ def test_combust_cazimi_api():
 
 
 def test_voc_moon_api():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Moon": 2.0, "Sun": 180.0},
@@ -91,7 +91,7 @@ def test_voc_moon_api():
 
 
 def test_returns_api():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(t0, base={"Sun": 10.0}, rates={"Sun": 1.0})
     app = build_app(eph)
     client = TestClient(app)
@@ -112,7 +112,7 @@ def test_returns_api():
     assert any(
         abs(
             (
-                datetime.fromisoformat(iv["start"]).replace(tzinfo=timezone.utc)
+                datetime.fromisoformat(iv["start"]).replace(tzinfo=UTC)
                 - expected
             ).total_seconds()
         )

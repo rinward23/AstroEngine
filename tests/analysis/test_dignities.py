@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -68,7 +68,7 @@ def test_condition_report_returns_component_breakdown(monkeypatch: pytest.Monkey
         ),
     }
     chart = NatalChart(
-        moment=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+        moment=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
         location=ChartLocation(latitude=40.0, longitude=-74.0),
         julian_day=0.0,
         positions=positions,

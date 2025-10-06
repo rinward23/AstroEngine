@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from itertools import combinations
-from typing import Iterable, Mapping, Sequence
 
 from ...core.angles import signed_delta
 from ...core.bodies import body_class, canonical_name

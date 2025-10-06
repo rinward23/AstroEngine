@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from typing import Any, Mapping
+from collections.abc import Mapping
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from ...analysis.midpoints import compute_midpoints, get_midpoint_settings
 from ...chart.config import ChartConfig
-from ...chart.natal import ChartLocation, DEFAULT_BODIES, compute_natal_chart
+from ...chart.natal import DEFAULT_BODIES, ChartLocation, compute_natal_chart
 from ...providers.swisseph_adapter import SE_MEAN_NODE, SE_TRUE_NODE
 from ...userdata.vault import load_natal
 
@@ -119,9 +120,9 @@ def _load_natal_longitudes(natal_id: str, include_nodes: bool) -> dict[str, floa
             },
         ) from exc
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
+        moment = moment.replace(tzinfo=UTC)
     else:
-        moment = moment.astimezone(timezone.utc)
+        moment = moment.astimezone(UTC)
 
     config, body_map = _chart_config_from_settings(include_nodes, record.chart_config())
     chart = compute_natal_chart(

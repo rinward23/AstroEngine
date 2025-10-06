@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, datetime, timedelta
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import streamlit as st
 
-from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
-from astroengine.ephemeris.swe import has_swe, swe
 from astroengine.engine.observational import (
     EventOptions,
     HeliacalProfile,
@@ -21,6 +19,8 @@ from astroengine.engine.observational import (
     transit_time,
     visibility_windows,
 )
+from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
+from astroengine.ephemeris.swe import has_swe, swe
 
 from .components import location_picker
 
@@ -54,14 +54,14 @@ def _compute_topocentric_payload(
     start_iso: str,
     end_iso: str,
     tz_label: str,
-    observer_tuple: Tuple[float, float, float],
-    met_tuple: Tuple[float, float],
+    observer_tuple: tuple[float, float, float],
+    met_tuple: tuple[float, float],
     refraction: bool,
     min_alt: float,
     sun_alt_max: float,
     sun_sep: float,
     moon_alt_max: float,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compute topocentric data for ``body`` between ``start`` and ``end``.
 
     Results are cached per ``(body, start/end, tz_label)`` key to keep expensive
@@ -115,7 +115,7 @@ def _compute_topocentric_payload(
         met=met,
     )
 
-    window_rows: List[Dict[str, Any]] = [
+    window_rows: list[dict[str, Any]] = [
         {
             "start": w.start.isoformat(),
             "end": w.end.isoformat(),
@@ -145,9 +145,9 @@ def _compute_topocentric_payload(
 
 def _stream_partial_windows(
     *,
-    rows: List[Dict[str, Any]],
-    placeholder: "st.delta_generator.DeltaGenerator",
-    progress_placeholder: "st.delta_generator.DeltaGenerator",
+    rows: list[dict[str, Any]],
+    placeholder: st.delta_generator.DeltaGenerator,
+    progress_placeholder: st.delta_generator.DeltaGenerator,
 ) -> None:
     """Incrementally render visibility window rows to the UI."""
 
@@ -155,7 +155,7 @@ def _stream_partial_windows(
         progress_placeholder.info("No visibility windows matched the given constraints.")
         return
 
-    buffered: List[Dict[str, Any]] = []
+    buffered: list[dict[str, Any]] = []
     total = len(rows)
     for idx, row in enumerate(rows, start=1):
         buffered.append(row)
@@ -209,7 +209,7 @@ def _throttled_button(label: str, *, key: str, cooldown: float = 0.5, **kwargs: 
     return True
 
 
-def _render_results(payload: Dict[str, Any]) -> None:
+def _render_results(payload: dict[str, Any]) -> None:
     st.subheader("Rise / Set / Transit")
     metrics = st.columns(3)
     metrics[0].metric("Rise", payload.get("rise", "—") or "—")
@@ -267,7 +267,7 @@ def main() -> None:
     st.title("Topocentric Altitude & Visibility Explorer")
     _init_session_state()
 
-    params: Dict[str, Any] = dict(st.session_state.altaz_params)
+    params: dict[str, Any] = dict(st.session_state.altaz_params)
 
     with st.sidebar:
         location_picker(

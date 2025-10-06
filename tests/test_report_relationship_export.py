@@ -4,10 +4,10 @@ import io
 import zipfile
 
 import pytest
-
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
+
 pytest.importorskip(
     "pypdf",
     reason="pypdf not installed; install extras with `pip install -e .[reports]`.",

@@ -275,6 +275,6 @@ from .lunations import find_lunations  # noqa: E402
 from .out_of_bounds import find_out_of_bounds  # noqa: E402
 from .progressions import secondary_progressions  # noqa: E402
 from .returns import solar_lunar_returns  # noqa: E402
-from .stations import find_stations, find_shadow_periods  # noqa: E402
+from .stations import find_shadow_periods, find_stations  # noqa: E402
 
 __all__ = sorted(set(__all__))

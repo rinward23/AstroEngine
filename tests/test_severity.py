@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 from astroengine.core.scan_plus.ranking import (
     EventPoint,
@@ -31,7 +31,7 @@ def test_severity_tapers_with_orb():
 
 
 def test_daily_and_monthly_composites():
-    base = datetime(2024, 1, 30, 12, 0, tzinfo=timezone.utc)
+    base = datetime(2024, 1, 30, 12, 0, tzinfo=UTC)
     events = [
         EventPoint(base + timedelta(hours=1), 1.0),
         EventPoint(base + timedelta(hours=5), 0.5),

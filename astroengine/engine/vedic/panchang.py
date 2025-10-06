@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Mapping, Sequence
 
-from ...core.angles import normalize_degrees
 from ...chart.natal import NatalChart
+from ...core.angles import normalize_degrees
 from .chart import VedicChartContext
 from .nakshatra import (
     NAKSHATRA_ARC_DEGREES,
     NakshatraPosition,
+)
+from .nakshatra import (
     position_for as nakshatra_position_for,
 )
 

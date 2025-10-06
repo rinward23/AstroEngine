@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 from core.viz_plus.wheel_svg import WheelOptions, render_chart_wheel
-
 
 HOUSE_SYSTEMS = {
     "Placidus": "P",
@@ -279,7 +278,7 @@ with TAB_COMP:
 
     c1, c2 = st.columns(2)
     with c1:
-        eventA_dt = st.datetime_input("A — Date/Time (UTC)", value=datetime(1990, 1, 1, 12, tzinfo=timezone.utc))
+        eventA_dt = st.datetime_input("A — Date/Time (UTC)", value=datetime(1990, 1, 1, 12, tzinfo=UTC))
         location_picker(
             "Composite A location",
             default_query="New York, United States",
@@ -303,7 +302,7 @@ with TAB_COMP:
         st.session_state["relationship_comp_a_location_lat"] = float(eventA_lat)
         st.session_state["relationship_comp_a_location_lon"] = float(eventA_lon)
     with c2:
-        eventB_dt = st.datetime_input("B — Date/Time (UTC)", value=datetime(1992, 6, 10, 6, tzinfo=timezone.utc))
+        eventB_dt = st.datetime_input("B — Date/Time (UTC)", value=datetime(1992, 6, 10, 6, tzinfo=UTC))
         location_picker(
             "Composite B location",
             default_query="Los Angeles, United States",
@@ -381,7 +380,7 @@ with TAB_DAV:
     st.subheader("Davison — positions at time midpoint (MVP)")
     davison_house_label = st.selectbox("Davison house system", list(HOUSE_SYSTEMS.keys()), index=0, key="dav_hsys")
     davison_hsys = HOUSE_SYSTEMS[davison_house_label]
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     dtA = st.datetime_input("A — Date/Time (UTC)", value=now - timedelta(days=5))
     dtB = st.datetime_input("B — Date/Time (UTC)", value=now + timedelta(days=5))
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, Iterable
 
 from ....app_api import canonicalize_events, run_scan_or_raise
 from ....detectors.common import enable_cache
@@ -29,7 +29,7 @@ from ..transit.exports import (
     write_sqlite_canonical,
 )
 
-_ACCURACY_TO_STEP: Dict[str, int] = {"fast": 120, "default": 60, "high": 15}
+_ACCURACY_TO_STEP: dict[str, int] = {"fast": 120, "default": 60, "high": 15}
 
 
 def _add_base_arguments(

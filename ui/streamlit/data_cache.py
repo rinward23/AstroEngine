@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
-from typing import Any, Dict, List
+from typing import Any
 
 import streamlit as st
 
 
-def _to_dict(entry: Any) -> Dict[str, Any]:
+def _to_dict(entry: Any) -> dict[str, Any]:
     """Return a dictionary representation for dataclass-like ``entry``."""
 
     if is_dataclass(entry):
@@ -23,7 +23,7 @@ def _to_dict(entry: Any) -> Dict[str, Any]:
 
 
 @st.cache_data(show_spinner=False)
-def load_fixed_star_catalog(catalog: str = "robson") -> List[Dict[str, Any]]:
+def load_fixed_star_catalog(catalog: str = "robson") -> list[dict[str, Any]]:
     """Load the fixed-star catalog identified by ``catalog`` with caching."""
 
     from astroengine.analysis.fixed_stars import load_catalog
@@ -33,7 +33,7 @@ def load_fixed_star_catalog(catalog: str = "robson") -> List[Dict[str, Any]]:
 
 
 @st.cache_data(show_spinner=False)
-def load_dignities_table() -> List[Dict[str, Any]]:
+def load_dignities_table() -> list[dict[str, Any]]:
     """Load the essential dignities table with caching for Streamlit apps."""
 
     from astroengine.scoring import load_dignities

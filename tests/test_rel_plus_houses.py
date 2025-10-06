@@ -1,24 +1,24 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 from core.rel_plus import (
     BirthEvent,
     DavisonResult,
+    circular_midpoint,
     composite_houses,
     davison_houses,
     geodesic_midpoint,
     midpoint_time,
-    circular_midpoint,
 )
 
 swe = pytest.importorskip("swisseph")
 
 
 def _julian_day(dt: datetime) -> float:
-    ts = dt.astimezone(timezone.utc)
+    ts = dt.astimezone(UTC)
     frac = (
         ts.hour
         + ts.minute / 60.0
@@ -36,7 +36,7 @@ def _obliquity(jd_ut: float) -> float:
 
 
 def test_davison_houses_matches_swe():
-    dt = datetime(2024, 3, 21, 12, 30, tzinfo=timezone.utc)
+    dt = datetime(2024, 3, 21, 12, 30, tzinfo=UTC)
     result = DavisonResult(mid_when=dt, mid_lat=10.0, mid_lon=20.0, positions={})
     houses = davison_houses(result, "O")
 
@@ -50,8 +50,8 @@ def test_davison_houses_matches_swe():
 
 
 def test_composite_houses_armc_midpoint_matches_reference():
-    event_a = BirthEvent(when=datetime(1990, 1, 1, 5, 15, tzinfo=timezone.utc), lat=40.0, lon=-73.0)
-    event_b = BirthEvent(when=datetime(1992, 6, 10, 18, 45, tzinfo=timezone.utc), lat=34.0, lon=-118.0)
+    event_a = BirthEvent(when=datetime(1990, 1, 1, 5, 15, tzinfo=UTC), lat=40.0, lon=-73.0)
+    event_b = BirthEvent(when=datetime(1992, 6, 10, 18, 45, tzinfo=UTC), lat=34.0, lon=-118.0)
     houses = composite_houses(event_a, event_b, "O")
 
     jd_a = _julian_day(event_a.when)
@@ -71,8 +71,8 @@ def test_composite_houses_armc_midpoint_matches_reference():
 
 
 def test_composite_houses_polar_fallback():
-    event_a = BirthEvent(when=datetime(2000, 1, 1, 0, 0, tzinfo=timezone.utc), lat=68.0, lon=0.0)
-    event_b = BirthEvent(when=datetime(2000, 7, 1, 0, 0, tzinfo=timezone.utc), lat=69.0, lon=30.0)
+    event_a = BirthEvent(when=datetime(2000, 1, 1, 0, 0, tzinfo=UTC), lat=68.0, lon=0.0)
+    event_b = BirthEvent(when=datetime(2000, 7, 1, 0, 0, tzinfo=UTC), lat=69.0, lon=30.0)
     houses = composite_houses(event_a, event_b, "P")
     assert houses.system_requested == "P"
     assert houses.system_used in {"K", "O", "R", "W"}

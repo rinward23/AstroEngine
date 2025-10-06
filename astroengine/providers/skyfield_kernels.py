@@ -1,8 +1,8 @@
 # >>> AUTO-GEN BEGIN: skyfield-kernel-utils v1.0
 from __future__ import annotations
 
-from collections.abc import Iterable
 import logging
+from collections.abc import Iterable
 from pathlib import Path
 
 _DEFAULT_NAMES = ("de440s.bsp", "de421.bsp")

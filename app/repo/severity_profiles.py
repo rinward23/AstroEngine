@@ -1,5 +1,5 @@
-from app.repo.base import BaseRepo
 from app.db.models import SeverityProfile
+from app.repo.base import BaseRepo
 
 
 class SeverityProfileRepo(BaseRepo[SeverityProfile]):

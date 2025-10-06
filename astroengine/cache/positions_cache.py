@@ -4,15 +4,16 @@ from __future__ import annotations
 import logging
 import sqlite3
 from collections.abc import Iterable, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from time import perf_counter
+
 import numpy as np
 
 from ..canonical import canonical_round, normalize_longitude, normalize_speed_per_day
+from ..core.time import julian_day
 from ..ephemeris import SwissEphemerisAdapter
 from ..ephemeris.swe import swe
 from ..infrastructure.home import ae_home
-from ..core.time import julian_day
 
 CACHE_DIR = ae_home() / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -187,7 +188,7 @@ def warm_startup_grid(
     start = perf_counter()
     warmed = 0
 
-    base_day = int(julian_day(datetime.now(tz=timezone.utc)))
+    base_day = int(julian_day(datetime.now(tz=UTC)))
 
     for offset in offsets:
         for body in selected_bodies:

@@ -6,10 +6,10 @@ import pytest
 
 from astroengine.chart import ChartLocation
 from astroengine.chart.natal import NatalChart
-from astroengine.ephemeris.swisseph_adapter import HousePositions
 from astroengine.chart.transits import TransitContact
 from astroengine.config.settings import Settings
 from astroengine.detectors_aspects import AspectHit
+from astroengine.ephemeris.swisseph_adapter import HousePositions
 from astroengine.forecast.stack import ForecastChart, ForecastWindow, build_forecast_stack
 
 

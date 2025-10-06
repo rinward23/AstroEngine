@@ -1,18 +1,11 @@
-from datetime import datetime, timedelta, timezone
-
-import pytest
+from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from fastapi.testclient import TestClient
 
-from datetime import datetime, timedelta, timezone
-
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
-from app.routers.rel import router as rel_router
 from app.routers import aspects as aspects_module
+from app.routers.rel import router as rel_router
 
 
 class LinearEphemeris:
@@ -68,7 +61,7 @@ def test_synastry_compute_basic():
 
 
 def test_composites_midpoint_and_davison():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(t0, base={"Sun": 0.0, "Venus": 20.0}, rates={"Sun": 1.0, "Venus": 1.2})
     app = build_app(eph)
     client = TestClient(app)

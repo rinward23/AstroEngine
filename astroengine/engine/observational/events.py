@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import math
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-import math
-from typing import Callable, Iterable
 
 from ...ephemeris.adapter import EphemerisAdapter, ObserverLocation
 from .topocentric import MetConditions, horizontal_from_equatorial, topocentric_equatorial

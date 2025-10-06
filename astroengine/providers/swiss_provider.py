@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from dataclasses import replace
 from datetime import UTC, datetime
-import logging
-from typing import Dict, List
 
 LOG = logging.getLogger(__name__)
 
 from astroengine.canonical import BodyPosition
+from astroengine.core.bodies import canonical_name
 from astroengine.core.time import TimeConversion, to_tt
 from astroengine.ephemeris import (
     EphemerisAdapter,
@@ -16,12 +16,11 @@ from astroengine.ephemeris import (
     ObserverLocation,
     TimeScaleContext,
 )
-from astroengine.ephemeris.utils import get_se_ephe_path
 from astroengine.ephemeris.support import SupportIssue
-from astroengine.core.bodies import canonical_name
-from .swisseph_adapter import VariantConfig, se_body_id_for
-
 from astroengine.ephemeris.swe import has_swe, swe
+from astroengine.ephemeris.utils import get_se_ephe_path
+
+from .swisseph_adapter import VariantConfig, se_body_id_for
 
 _HAS_SWE = has_swe()
 
@@ -71,8 +70,7 @@ except ImportError:
 
 from . import register_provider
 
-
-_BODY_IDS: Dict[str, int] = {
+_BODY_IDS: dict[str, int] = {
     "sun": 0,
     "moon": 1,
     "mercury": 2,
@@ -119,7 +117,7 @@ class SwissProvider:
         self._adapter = EphemerisAdapter(self._config)
         self._body_ids = dict(_BODY_IDS)
         self._variant_config = VariantConfig()
-        self._last_support_issues: List[SupportIssue] = []
+        self._last_support_issues: list[SupportIssue] = []
 
     def configure(
         self,
@@ -217,7 +215,7 @@ class SwissProvider:
 
         conversion = self._time_conversion(iso_utc)
         out: dict[str, dict[str, float]] = {}
-        issues: List[SupportIssue] = []
+        issues: list[SupportIssue] = []
         for name in bodies:
             try:
                 pos = self._resolve_position(name, conversion)

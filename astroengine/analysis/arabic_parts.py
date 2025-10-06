@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from functools import lru_cache
 import math
 import re
-from typing import Iterable, Iterator, Mapping, MutableMapping
+from collections.abc import Iterable, Iterator, Mapping, MutableMapping
+from dataclasses import dataclass
+from functools import lru_cache
 
 from astroengine.chart.natal import NatalChart
-from astroengine.engine.lots.sect import GeoLocation, is_day as chart_is_day
+from astroengine.engine.lots.sect import GeoLocation
+from astroengine.engine.lots.sect import is_day as chart_is_day
 from astroengine.jyotish.utils import house_index_for
 
 __all__ = [

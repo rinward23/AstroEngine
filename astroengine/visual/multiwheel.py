@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import math
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, replace
 from io import BytesIO
-import math
-from typing import Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -13,7 +13,6 @@ from astroengine.config.settings import MultiWheelCfg, Settings, SynastryCfg
 from core.aspects_plus.harmonics import BASE_ASPECTS
 from core.aspects_plus.matcher import angular_sep_deg
 from core.aspects_plus.orb_policy import orb_limit
-
 
 # ---------------------------------------------------------------------------
 # Dataclasses describing composition inputs and computed geometry
@@ -81,7 +80,7 @@ class HouseMarker:
     inner_radius: float
     outer_radius: float
     label: str
-    label_pos: Tuple[float, float]
+    label_pos: tuple[float, float]
 
 
 @dataclass(slots=True)
@@ -94,7 +93,7 @@ class LayerGeometry:
     radius_outer: float
     body_points: Sequence[BodyPoint]
     house_markers: Sequence[HouseMarker]
-    label_pos: Tuple[float, float]
+    label_pos: tuple[float, float]
 
 
 @dataclass(slots=True)
@@ -107,8 +106,8 @@ class AspectLink:
     layer_b: int
     aspect: str
     orb: float
-    point_a: Tuple[float, float]
-    point_b: Tuple[float, float]
+    point_a: tuple[float, float]
+    point_b: tuple[float, float]
 
 
 @dataclass(slots=True)
@@ -129,7 +128,7 @@ class MultiWheelRenderResult:
     layout: Sequence[LayerGeometry]
     aspects: Sequence[AspectLink]
     declination_pairs: Sequence[DeclinationPair]
-    canvas_size: Tuple[int, int]
+    canvas_size: tuple[int, int]
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +190,7 @@ def _lon_to_angle_svg(lon: float) -> float:
     return _norm360(0.0 - lon)
 
 
-def _pol2cart(angle_deg: float, r: float, cx: float, cy: float) -> Tuple[float, float]:
+def _pol2cart(angle_deg: float, r: float, cx: float, cy: float) -> tuple[float, float]:
     a = math.radians(angle_deg)
     return cx + r * math.cos(a), cy - r * math.sin(a)
 
@@ -260,14 +259,14 @@ def _resolve_options(
     return resolved
 
 
-def _build_ring_radii(options: MultiWheelOptions) -> List[Tuple[float, float]]:
+def _build_ring_radii(options: MultiWheelOptions) -> list[tuple[float, float]]:
     count = max(1, options.wheel_count)
     outer = (options.size / 2) - options.margin
     core = max(options.size * 0.12, 40.0)
     usable = max(outer - core, 40.0)
     width = usable / count
     gap = width * 0.22
-    radii: List[Tuple[float, float]] = []
+    radii: list[tuple[float, float]] = []
     for idx in range(count):
         r_outer = outer - idx * width
         r_inner = max(core, r_outer - (width - gap))
@@ -281,8 +280,8 @@ def _build_body_points(
     radius_outer: float,
     cx: float,
     cy: float,
-) -> List[BodyPoint]:
-    points: List[BodyPoint] = []
+) -> list[BodyPoint]:
+    points: list[BodyPoint] = []
     mid_r = (radius_inner + radius_outer) / 2
     for name, lon in layer.bodies.items():
         angle = _lon_to_angle_svg(float(lon))
@@ -297,8 +296,8 @@ def _build_house_markers(
     radius_outer: float,
     cx: float,
     cy: float,
-) -> List[HouseMarker]:
-    markers: List[HouseMarker] = []
+) -> list[HouseMarker]:
+    markers: list[HouseMarker] = []
     if not houses or len(houses) < 12:
         return markers
     for idx, lon in enumerate(houses[:12]):
@@ -321,8 +320,8 @@ def _build_house_markers(
 def _build_declination_pairs(
     layers: Sequence[LayerGeometry],
     options: MultiWheelOptions,
-) -> List[DeclinationPair]:
-    pairs: List[DeclinationPair] = []
+) -> list[DeclinationPair]:
+    pairs: list[DeclinationPair] = []
     if not options.show_declination_synastry:
         return pairs
     orb = float(options.declination_orb)
@@ -374,8 +373,8 @@ def _build_aspect_links(
     options: MultiWheelOptions,
     cx: float,
     cy: float,
-) -> List[AspectLink]:
-    links: List[AspectLink] = []
+) -> list[AspectLink]:
+    links: list[AspectLink] = []
     if not options.show_aspects or len(geometries) < 2:
         return links
     policy = _aspect_policy(options.orb_policy)
@@ -439,7 +438,7 @@ def build_multiwheel_layout(
     resolved = _resolve_options(options, settings, len(composition.layers))
     cx = cy = resolved.size / 2
     radii = _build_ring_radii(resolved)
-    geometries: List[LayerGeometry] = []
+    geometries: list[LayerGeometry] = []
     palette_cycle = list(resolved.palette) or ["#ffffff"]
     for idx in range(min(len(radii), len(composition.layers))):
         layer = composition.layers[idx]
@@ -489,12 +488,12 @@ def render_multiwheel_svg(
     result = build_multiwheel_layout(composition, options, settings)
     resolved = _resolve_options(options, settings, len(composition.layers))
     width, height = result.canvas_size
-    svg: List[str] = []
+    svg: list[str] = []
     svg.append(
-        (
+        
             "<svg xmlns='http://www.w3.org/2000/svg' "
             f"width='{width}' height='{height}' viewBox='0 0 {width} {height}'>"
-        )
+        
     )
     svg.append(
         "<defs>\n<style><![CDATA[text{font-family:Inter,Arial,sans-serif;}]]>"
@@ -566,15 +565,10 @@ def render_multiwheel_svg(
             f"<g transform='translate({resolved.margin},{block_y})'>"
         )
         svg.append(
-            "<rect x='0' y='0' width='{width}' height='90' fill='rgba(38,50,56,0.65)' rx='8'/>".format(
-                width=resolved.size
-            )
+            f"<rect x='0' y='0' width='{resolved.size}' height='90' fill='rgba(38,50,56,0.65)' rx='8'/>"
         )
         svg.append(
-            "<text x='{x}' y='26' fill='#eceff1' font-size='14' font-weight='600'>Declination matches (≤ {orb:.1f}°)</text>".format(
-                x=resolved.size / 2,
-                orb=resolved.declination_orb,
-            )
+            f"<text x='{resolved.size / 2}' y='26' fill='#eceff1' font-size='14' font-weight='600'>Declination matches (≤ {resolved.declination_orb:.1f}°)</text>"
         )
         line_y = 46
         for pair in result.declination_pairs:
@@ -602,7 +596,7 @@ def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
         return ImageFont.load_default()
 
 
-def _measure(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> Tuple[float, float]:
+def _measure(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> tuple[float, float]:
     if not text:
         return 0.0, 0.0
     bbox = draw.textbbox((0, 0), text, font=font)

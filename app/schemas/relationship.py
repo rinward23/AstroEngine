@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -10,9 +10,9 @@ from app.schemas.aspects import OrbPolicyInline
 
 # --------------------------- Synastry --------------------------------------
 class SynastryRequest(BaseModel):
-    posA: Dict[str, float] = Field(..., description="Chart A: body → longitude (deg)")
-    posB: Dict[str, float] = Field(..., description="Chart B: body → longitude (deg)")
-    aspects: List[str] = Field(
+    posA: dict[str, float] = Field(..., description="Chart A: body → longitude (deg)")
+    posB: dict[str, float] = Field(..., description="Chart B: body → longitude (deg)")
+    aspects: list[str] = Field(
         default_factory=lambda: [
             "conjunction",
             "opposition",
@@ -21,9 +21,9 @@ class SynastryRequest(BaseModel):
             "sextile",
         ]
     )
-    orb_policy_inline: Optional[OrbPolicyInline] = None
-    per_aspect_weight: Optional[Dict[str, float]] = None
-    per_pair_weight: Optional[Dict[Tuple[str, str], float]] = None
+    orb_policy_inline: OrbPolicyInline | None = None
+    per_aspect_weight: dict[str, float] | None = None
+    per_pair_weight: dict[tuple[str, str], float] | None = None
 
 
 class SynastryHitOut(BaseModel):
@@ -38,11 +38,11 @@ class SynastryHitOut(BaseModel):
 
 
 class SynastryResponse(BaseModel):
-    hits: List[SynastryHitOut]
-    grid: Dict[str, Dict[str, str]]
-    overlay: Dict[str, Dict[str, Any]]
-    scores: Dict[str, Any]
-    meta: Dict[str, Any] = Field(default_factory=dict)
+    hits: list[SynastryHitOut]
+    grid: dict[str, dict[str, str]]
+    overlay: dict[str, dict[str, Any]]
+    scores: dict[str, Any]
+    meta: dict[str, Any] = Field(default_factory=dict)
 
 
 # --------------------------- Composite -------------------------------------
@@ -53,27 +53,27 @@ class CompositeEventIn(BaseModel):
 
 
 class CompositeRequest(BaseModel):
-    posA: Dict[str, float]
-    posB: Dict[str, float]
-    bodies: Optional[List[str]] = None
-    eventA: Optional[CompositeEventIn] = None
-    eventB: Optional[CompositeEventIn] = None
+    posA: dict[str, float]
+    posB: dict[str, float]
+    bodies: list[str] | None = None
+    eventA: CompositeEventIn | None = None
+    eventB: CompositeEventIn | None = None
 
 
 class HouseOut(BaseModel):
     ascendant: float
     midheaven: float
-    cusps: List[float]
+    cusps: list[float]
     house_system_requested: str
     house_system_used: str
-    fallback_reason: Optional[str] = None
-    metadata: Dict[str, Any] | None = None
+    fallback_reason: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class CompositeResponse(BaseModel):
-    positions: Dict[str, float]
-    meta: Dict[str, Any] = Field(default_factory=dict)
-    houses: Optional[HouseOut] = None
+    positions: dict[str, float]
+    meta: dict[str, Any] = Field(default_factory=dict)
+    houses: HouseOut | None = None
 
 
 # --------------------------- Davison ---------------------------------------
@@ -87,12 +87,12 @@ class DavisonRequest(BaseModel):
     dtB: datetime
     locA: GeoIn
     locB: GeoIn
-    bodies: Optional[List[str]] = None
+    bodies: list[str] | None = None
 
 
 class DavisonResponse(BaseModel):
-    positions: Dict[str, float]
+    positions: dict[str, float]
     midpoint_time_utc: datetime
     midpoint_geo: GeoIn
-    meta: Dict[str, Any] = Field(default_factory=dict)
-    houses: Optional[HouseOut] = None
+    meta: dict[str, Any] = Field(default_factory=dict)
+    houses: HouseOut | None = None

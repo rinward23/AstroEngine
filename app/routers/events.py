@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import timezone
-from typing import Any, Dict, List
+from datetime import UTC
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
@@ -29,7 +29,7 @@ except Exception:  # pragma: no cover
 
 router = APIRouter(prefix="", tags=["Plus"])
 
-DEFAULT_POLICY: Dict[str, Any] = {
+DEFAULT_POLICY: dict[str, Any] = {
     "per_object": {},
     "per_aspect": {
         "conjunction": 8.0,
@@ -43,7 +43,7 @@ DEFAULT_POLICY: Dict[str, Any] = {
 }
 
 
-def _resolve_policy_inline_or_id(inline, pid) -> Dict[str, Any]:
+def _resolve_policy_inline_or_id(inline, pid) -> dict[str, Any]:
     if inline is not None:
         return inline.model_dump()
     if pid is not None:
@@ -66,7 +66,7 @@ def _resolve_policy_inline_or_id(inline, pid) -> Dict[str, Any]:
 
 @router.post(
     "/events/voc-moon",
-    response_model=List[EventIntervalOut],
+    response_model=list[EventIntervalOut],
     summary="Void-of-Course Moon intervals",
     description=(
         "Returns intervals where the Moon makes no selected aspects to chosen bodies before sign ingress."
@@ -76,8 +76,8 @@ def voc_moon(req: VoCMoonRequest):
     provider = aspects_module._get_provider()
     policy = _resolve_policy_inline_or_id(req.orb_policy_inline, req.orb_policy_id)
     win = TimeWindow(
-        start=req.window.start.astimezone(timezone.utc),
-        end=req.window.end.astimezone(timezone.utc),
+        start=req.window.start.astimezone(UTC),
+        end=req.window.end.astimezone(UTC),
     )
     intervals = detect_voc_moon(
         win,
@@ -94,7 +94,7 @@ def voc_moon(req: VoCMoonRequest):
 
 @router.post(
     "/events/combust-cazimi",
-    response_model=List[EventIntervalOut],
+    response_model=list[EventIntervalOut],
     summary="Combust / Cazimi / Under-beams intervals",
     description=(
         "Returns disjoint intervals for cazimi (⊂ combust) and under-beams based on Sun–planet separation thresholds."
@@ -108,8 +108,8 @@ def combust_cazimi(req: CombustCazimiRequest):
         under_beams_deg=req.cfg.under_beams_deg,
     )
     win = TimeWindow(
-        start=req.window.start.astimezone(timezone.utc),
-        end=req.window.end.astimezone(timezone.utc),
+        start=req.window.start.astimezone(UTC),
+        end=req.window.end.astimezone(UTC),
     )
     intervals = detect_combust_cazimi(
         win,
@@ -125,15 +125,15 @@ def combust_cazimi(req: CombustCazimiRequest):
 
 @router.post(
     "/events/returns",
-    response_model=List[EventIntervalOut],
+    response_model=list[EventIntervalOut],
     summary="Return events (points)",
     description="Emits point events when a body returns to its natal longitude within the given window.",
 )
 def returns(req: ReturnsRequest):
     provider = aspects_module._get_provider()
     win = TimeWindow(
-        start=req.window.start.astimezone(timezone.utc),
-        end=req.window.end.astimezone(timezone.utc),
+        start=req.window.start.astimezone(UTC),
+        end=req.window.end.astimezone(UTC),
     )
     intervals = detect_returns(
         win,

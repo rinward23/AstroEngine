@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -31,7 +31,7 @@ def _seed_chart(chart_key: str = "chart-pdf") -> int:
             db,
             chart_key=chart_key,
             profile_key="pdf",
-            dt_utc=datetime(1987, 6, 15, 6, 30, tzinfo=timezone.utc),
+            dt_utc=datetime(1987, 6, 15, 6, 30, tzinfo=UTC),
             lat=37.7749,
             lon=-122.4194,
             location_name="San Francisco",

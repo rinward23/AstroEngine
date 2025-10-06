@@ -17,7 +17,6 @@ from astroengine.config import (
     save_user_narrative_profile,
 )
 
-
 router = APIRouter(prefix="/v1/narrative-profiles", tags=["narrative-profiles"])
 
 

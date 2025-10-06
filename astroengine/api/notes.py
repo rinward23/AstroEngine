@@ -1,8 +1,8 @@
 """API surface for diary notes."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, List, Optional
 
 from astroengine.engine.notes.crdt import CRDTDocument
 from astroengine.engine.notes.store import NotesStore
@@ -19,7 +19,7 @@ class NoteRequest:
 class NoteResponse:
     note_id: str
     title: str
-    tags: List[str]
+    tags: list[str]
     body: str
 
 
@@ -38,8 +38,8 @@ class NotesAPI:
             body=record.decrypted_body(self.store.cipher),
         )
 
-    def get_notes(self, owner_id: str, query: str = "", tags: Optional[Iterable[str]] = None) -> List[NoteResponse]:
-        responses: List[NoteResponse] = []
+    def get_notes(self, owner_id: str, query: str = "", tags: Iterable[str] | None = None) -> list[NoteResponse]:
+        responses: list[NoteResponse] = []
         for record in self.store.search(owner_id=owner_id, query=query, tags=tags):
             responses.append(
                 NoteResponse(

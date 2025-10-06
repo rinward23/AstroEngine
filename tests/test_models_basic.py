@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.db.models import (
     AsteroidMeta,
@@ -28,7 +28,7 @@ def test_model_instantiation():
         event_key="event-1",
         chart=ch,
         ruleset_version=rs,
-        event_time=datetime.now(timezone.utc),
+        event_time=datetime.now(UTC),
         event_type="custom",
         payload={"objects": {"A": "Mars", "B": "Venus"}},
     )

@@ -1,7 +1,7 @@
 from __future__ import annotations
+
 import math
-from datetime import datetime, timedelta, timezone
-from typing import Dict
+from datetime import UTC, datetime, timedelta
 
 # --------------------------- Angles & time ---------------------------------
 
@@ -14,7 +14,7 @@ def mean_obliquity_deg(ts: datetime) -> float:
     # IAU 2006 approximation; good to <0.01° over modern times
     # Source numeric: ε = 23°26′21.448″ − 46.8150″T − 0.00059″T^2 + 0.001813″T^3, T centuries from J2000
     # We implement in degrees.
-    J2000 = datetime(2000, 1, 1, 12, tzinfo=timezone.utc)
+    J2000 = datetime(2000, 1, 1, 12, tzinfo=UTC)
     T = (ts - J2000).total_seconds() / (36525.0 * 86400.0)
     arcsec = 21.448 - 46.8150*T - 0.00059*(T**2) + 0.001813*(T**3)
     deg = 23 + 26/60 + arcsec/3600.0
@@ -88,11 +88,11 @@ def refine_event_time(ts_guess: datetime, lon_east: float, target_lst_deg: float
     return ts
 
 
-def approximate_transit_times(date_utc: datetime, lon_east: float, ra_deg: float, dec_deg: float, phi_deg: float) -> Dict[str, datetime | None]:
+def approximate_transit_times(date_utc: datetime, lon_east: float, ra_deg: float, dec_deg: float, phi_deg: float) -> dict[str, datetime | None]:
     # date_utc at 0h is reference. Compute LST0, then get LST targets for rise/set (if possible) and transit.
-    base = date_utc.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+    base = date_utc.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC)
     H0 = rise_set_hour_angle_deg(phi_deg, dec_deg)
-    out: Dict[str, datetime | None] = {"rise": None, "set": None, "culminate": None}
+    out: dict[str, datetime | None] = {"rise": None, "set": None, "culminate": None}
     # Culmination (upper transit): H=0 → LST=α
     L_culm = event_lst_deg(ra_deg, 0.0)
     guess = base + timedelta(hours=12)  # rough

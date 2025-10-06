@@ -1,7 +1,7 @@
 from __future__ import annotations
+
 import json
-from datetime import datetime, timedelta, timezone
-from typing import List
+from datetime import UTC, datetime, timedelta
 
 import pandas as pd
 import plotly.express as px
@@ -20,13 +20,13 @@ st.sidebar.header("Query")
 DEFAULT_OBJECTS = ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn","Uranus","Neptune","Pluto"]
 DEFAULT_ASPECTS = ["conjunction","opposition","square","trine","sextile","quincunx"]
 
-objects: List[str] = st.sidebar.multiselect("Objects", DEFAULT_OBJECTS, default=["Sun","Moon","Mars","Venus"])
-aspects: List[str] = st.sidebar.multiselect("Aspects", DEFAULT_ASPECTS, default=["sextile","trine","square"])
+objects: list[str] = st.sidebar.multiselect("Objects", DEFAULT_OBJECTS, default=["Sun","Moon","Mars","Venus"])
+aspects: list[str] = st.sidebar.multiselect("Aspects", DEFAULT_ASPECTS, default=["sextile","trine","square"])
 harmonics_str = st.sidebar.text_input("Harmonics (comma-sep)", value="5,7,13")
 
 col1, col2 = st.sidebar.columns(2)
-start_date = col1.date_input("Start (UTC)", value=datetime.now(timezone.utc).date())
-end_date = col2.date_input("End (UTC)", value=(datetime.now(timezone.utc) + timedelta(days=180)).date())
+start_date = col1.date_input("Start (UTC)", value=datetime.now(UTC).date())
+end_date = col2.date_input("End (UTC)", value=(datetime.now(UTC) + timedelta(days=180)).date())
 
 step_minutes = st.sidebar.slider("Step (minutes)", min_value=5, max_value=240, value=60, step=5)
 limit = st.sidebar.slider("Limit", min_value=100, max_value=5000, value=2000, step=100)
@@ -39,15 +39,15 @@ with st.sidebar.expander("Orb Policy (inline)", expanded=False):
     conj = st.number_input("conjunction orb", min_value=0.1, max_value=10.0, value=8.0, step=0.1)
     quincunx = st.number_input("quincunx orb", min_value=0.1, max_value=10.0, value=3.0, step=0.1)
 
-harmonics: List[int] = []
+harmonics: list[int] = []
 if harmonics_str.strip():
     try:
         harmonics = [int(x.strip()) for x in harmonics_str.split(',') if x.strip()]
     except Exception:
         st.sidebar.error("Invalid harmonics list; use comma-separated integers.")
 
-start_dt = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
-end_dt = datetime(end_date.year, end_date.month, end_date.day, tzinfo=timezone.utc)
+start_dt = datetime(start_date.year, start_date.month, start_date.day, tzinfo=UTC)
+end_dt = datetime(end_date.year, end_date.month, end_date.day, tzinfo=UTC)
 
 payload = {
     "objects": objects,

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 from astroengine.config import (
     Settings,
@@ -84,7 +84,7 @@ def run_first_run_wizard(
     save_settings(base_settings, settings_path)
     _stamp_metadata(settings_path)
     print_func(
-        "✅ Configuration saved to {path}".format(path=settings_path)
+        f"✅ Configuration saved to {settings_path}"
     )
     return load_settings(settings_path)
 
@@ -140,9 +140,7 @@ def _prompt_profile(
     available = list(built_in_profiles().keys())
     default = "modern_western" if "modern_western" in available else available[0]
     print_func(
-        "Select a default profile (press Enter for {default}).".format(
-            default=default
-        )
+        f"Select a default profile (press Enter for {default})."
     )
     for name in available:
         print_func(f" • {name}")
@@ -158,7 +156,7 @@ def _stamp_metadata(settings_path: Path) -> None:
 
     meta_path = settings_path.with_suffix(".first_run.json")
     payload = {
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "settings_path": str(settings_path),
     }
     try:

@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from dataclasses import dataclass
-from typing import Iterable, Sequence
-
 import math
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 
 # External mapping reused for aspect degree resolution
 from core.aspects_plus.harmonics import BASE_ASPECTS

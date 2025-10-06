@@ -7,8 +7,8 @@ from collections.abc import Sequence
 
 from astroengine.ephemeris.swe import has_swe, swe
 
-from ..events import ShadowPeriod, StationEvent
 from ..ephemeris.cache import calc_ut_cached
+from ..events import ShadowPeriod, StationEvent
 from .common import delta_deg, jd_to_iso, solve_zero_crossing
 
 __all__ = ["find_stations", "find_shadow_periods"]

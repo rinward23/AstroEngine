@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import Any, Dict, List
+from datetime import UTC
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -29,14 +29,14 @@ class LocationModel(BaseModel):
 class ConstraintEvaluationModel(BaseModel):
     constraint: str
     passed: bool
-    detail: Dict[str, Any] = Field(default_factory=dict)
+    detail: dict[str, Any] = Field(default_factory=dict)
     reason: str | None = None
 
 
 class CandidateModel(BaseModel):
     ts: UtcDateTime
     score: float
-    evaluations: List[ConstraintEvaluationModel]
+    evaluations: list[ConstraintEvaluationModel]
 
 
 class ElectionalSearchRequest(BaseModel):
@@ -44,12 +44,12 @@ class ElectionalSearchRequest(BaseModel):
     end: UtcDateTime
     step_minutes: int = Field(5, ge=1, le=720)
     location: LocationModel
-    constraints: List[Dict[str, Any]]
+    constraints: list[dict[str, Any]]
     limit: int | None = Field(default=50, ge=1, le=500)
 
     @field_validator("constraints")
     @classmethod
-    def _validate_constraints(cls, value: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _validate_constraints(cls, value: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not value:
             raise ValueError("at least one constraint is required")
         return value
@@ -57,8 +57,8 @@ class ElectionalSearchRequest(BaseModel):
 
 class ElectionalSearchResponse(BaseModel):
     count: int
-    window: Dict[str, Any]
-    candidates: List[CandidateModel]
+    window: dict[str, Any]
+    candidates: list[CandidateModel]
 
 
 def _chart_config_from_settings(settings) -> ChartConfig:

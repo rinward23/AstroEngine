@@ -149,7 +149,7 @@ def main() -> None:
             "Quesited": result["significators"]["quesited"],
             "Moon": result["significators"]["moon"],
         }
-        for (label, data), col in zip(sig_map.items(), sig_cols):
+        for (label, data), col in zip(sig_map.items(), sig_cols, strict=False):
             with col:
                 st.markdown(f"### {label}")
                 st.write(

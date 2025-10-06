@@ -1,20 +1,20 @@
 """Tests for composite, Davison, and synastry helpers."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Iterable
-
 import math
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from astroengine.core.rel_plus.composite import (
-    Body,
     BirthEvent,
+    Body,
     ChartPositions,
     DavisonResult,
     EclipticPos,
     circular_midpoint,
-    composite_midpoints,
     composite_midpoint_positions,
+    composite_midpoints,
     davison_chart,
     davison_positions,
     geodesic_midpoint,
@@ -88,7 +88,7 @@ def test_composite_midpoints_handles_wrap_and_latitude():
 
 
 def test_davison_positions_time_midpoint():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     t1 = t0 + timedelta(days=10)
     eph = LinearEphemeris(
         t0,
@@ -110,10 +110,10 @@ def test_davison_positions_time_midpoint():
 
 
 def test_midpoint_time_and_geodesic_midpoint():
-    dt_a = datetime(2024, 6, 1, 12, tzinfo=timezone.utc)
-    dt_b = datetime(2024, 6, 3, 12, tzinfo=timezone.utc)
+    dt_a = datetime(2024, 6, 1, 12, tzinfo=UTC)
+    dt_b = datetime(2024, 6, 3, 12, tzinfo=UTC)
     mid = midpoint_time(dt_a, dt_b)
-    assert mid == datetime(2024, 6, 2, 12, tzinfo=timezone.utc)
+    assert mid == datetime(2024, 6, 2, 12, tzinfo=UTC)
 
     lat, lon = geodesic_midpoint(0.0, 0.0, 0.0, 180.0)
     assert math.isclose(lat, 0.0, abs_tol=1e-9)
@@ -140,8 +140,8 @@ class StubEphemeris:
 
 
 def test_davison_chart_records_midpoint_location():
-    event_a = BirthEvent(datetime(2024, 1, 1, tzinfo=timezone.utc), lat=40.0, lon=-75.0)
-    event_b = BirthEvent(datetime(2024, 1, 11, tzinfo=timezone.utc), lat=-35.0, lon=150.0)
+    event_a = BirthEvent(datetime(2024, 1, 1, tzinfo=UTC), lat=40.0, lon=-75.0)
+    event_b = BirthEvent(datetime(2024, 1, 11, tzinfo=UTC), lat=-35.0, lon=150.0)
     eph = StubEphemeris()
     result: DavisonResult = davison_chart(event_a, event_b, [Body("Sun"), Body("Venus")], eph)
 

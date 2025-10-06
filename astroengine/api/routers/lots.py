@@ -238,7 +238,6 @@ def scan_aspects(request: AspectScanRequest) -> AspectScanResponse:
 
 from astroengine.ephemeris.swe import has_swe, swe
 
-
 if has_swe():
     swe_module = swe()
 else:

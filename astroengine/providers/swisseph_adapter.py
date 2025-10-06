@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class VariantConfig:
     lilith_variant: str = "mean"
 
 
-def se_body_id_for(name: str, vc: VariantConfig) -> Tuple[int, bool]:
+def se_body_id_for(name: str, vc: VariantConfig) -> tuple[int, bool]:
     """Return ``(id, derived)`` for ``name`` respecting variant config."""
 
     canonical = canonical_name(name)

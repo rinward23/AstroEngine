@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -28,7 +28,7 @@ SIGNS = [
 ]
 
 
-def _load_natals() -> List[Dict[str, Any]]:
+def _load_natals() -> list[dict[str, Any]]:
     try:
         data = api.list_natals(page_size=100)
     except Exception as exc:  # pragma: no cover - UI feedback only
@@ -40,7 +40,7 @@ def _load_natals() -> List[Dict[str, Any]]:
     return []
 
 
-def _format_longitude(value: float) -> Tuple[float, str]:
+def _format_longitude(value: float) -> tuple[float, str]:
     lon = float(value) % 360.0
     sign_index = int(lon // 30.0)
     sign_name = SIGNS[sign_index]
@@ -63,9 +63,9 @@ def _format_longitude(value: float) -> Tuple[float, str]:
     return lon, sign_str
 
 
-def _build_dataframe(results: Dict[str, Any]) -> pd.DataFrame:
+def _build_dataframe(results: dict[str, Any]) -> pd.DataFrame:
     lots = results.get("lots", []) if isinstance(results, dict) else []
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     for entry in lots:
         if not isinstance(entry, dict):
             continue

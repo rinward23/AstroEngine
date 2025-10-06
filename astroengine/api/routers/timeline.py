@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import asdict
-from functools import lru_cache
-from typing import Any, Iterable, Literal
-
 from datetime import UTC, datetime
+from functools import lru_cache
+from typing import Any, Literal
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 

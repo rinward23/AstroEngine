@@ -4,9 +4,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import timedelta
-from typing import Iterable, List
-
 
 from ..core.bodies import body_priority, canonical_name, step_multiplier
 
@@ -38,7 +37,7 @@ def choose_step(resolution: str, body: str) -> timedelta:
     return timedelta(seconds=step.total_seconds() * multiplier)
 
 
-def sort_bodies_for_scan(bodies: Iterable[str]) -> List[str]:
+def sort_bodies_for_scan(bodies: Iterable[str]) -> list[str]:
     """Return bodies ordered by scanning priority (fast movers first).
 
 

@@ -1,7 +1,7 @@
 """Voice and vision ingestion helpers."""
 
-from .voice import VoiceIntent, VoiceIntentParser
 from .vision import ChartVisionParser, VisionParseResult
+from .voice import VoiceIntent, VoiceIntentParser
 
 __all__ = [
     "VoiceIntent",

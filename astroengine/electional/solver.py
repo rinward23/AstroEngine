@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any, Dict, Iterable, Mapping, MutableMapping, Protocol, Sequence
+from typing import Any, Protocol
 
 from ..astro.declination import DEFAULT_ANTISCIA_AXIS
 from ..chart.config import ChartConfig
@@ -13,7 +14,7 @@ from ..core.bodies import canonical_name
 from ..detectors import CoarseHit, detect_antiscia_contacts, detect_decl_contacts
 from ..detectors_aspects import AspectHit, detect_aspects
 from ..ephemeris import BodyPosition, SwissEphemerisAdapter
-from ..utils.angles import delta_angle, is_within_orb, norm360
+from ..utils.angles import delta_angle, norm360
 
 
 @dataclass(slots=True)
@@ -22,7 +23,7 @@ class ElectionalConstraintEvaluation:
 
     constraint: str
     passed: bool
-    detail: Dict[str, Any] = field(default_factory=dict)
+    detail: dict[str, Any] = field(default_factory=dict)
     reason: str | None = None
 
 
@@ -34,7 +35,7 @@ class ElectionalCandidate:
     score: float
     evaluations: Sequence[ElectionalConstraintEvaluation]
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "ts": self.ts.astimezone(UTC).isoformat().replace("+00:00", "Z"),
             "score": self.score,
@@ -71,10 +72,10 @@ class SampleContext:
     iso: str
     positions: Mapping[str, BodyPosition]
     axes: Mapping[str, float]
-    _provider: "SingleSampleProvider" | None = None
+    _provider: SingleSampleProvider | None = None
 
     @property
-    def provider(self) -> "SingleSampleProvider":
+    def provider(self) -> SingleSampleProvider:
         if self._provider is None:
             self._provider = SingleSampleProvider(self)
         return self._provider
@@ -93,10 +94,10 @@ class SingleSampleProvider:
     def __init__(self, ctx: SampleContext) -> None:
         self._ctx = ctx
 
-    def positions_ecliptic(self, iso_utc: str, bodies: Iterable[str]) -> Dict[str, Dict[str, float]]:
+    def positions_ecliptic(self, iso_utc: str, bodies: Iterable[str]) -> dict[str, dict[str, float]]:
         if iso_utc != self._ctx.iso:
             raise ValueError("Sample provider only supports the bound timestamp")
-        out: Dict[str, Dict[str, float]] = {}
+        out: dict[str, dict[str, float]] = {}
         for name in bodies:
             if name in self._ctx.positions:
                 pos = self._ctx.positions[name]
@@ -137,7 +138,7 @@ class SwissElectionalProvider:
         self._lon = float(longitude)
         self._chart = chart_config or ChartConfig()
         self._adapter = SwissEphemerisAdapter.from_chart_config(self._chart)
-        self._body_codes: Dict[str, int] = {}
+        self._body_codes: dict[str, int] = {}
         for name in bodies:
             if name not in DEFAULT_BODIES:
                 raise ValueError(f"Unsupported body for electional search: {name}")
@@ -147,7 +148,7 @@ class SwissElectionalProvider:
         if ts < self._start or ts > self._end:
             raise ValueError("timestamp outside configured scan window")
         jd = self._adapter.julian_day(ts)
-        positions: Dict[str, BodyPosition] = self._adapter.compute_bodies_many(
+        positions: dict[str, BodyPosition] = self._adapter.compute_bodies_many(
             jd, self._body_codes
         )
         houses = self._adapter.houses(jd, self._lat, self._lon, system=self._chart.house_system)
@@ -176,7 +177,7 @@ class Constraint(Protocol):
         ...
 
 
-_ASPECT_ANGLES: Dict[str, float] = {
+_ASPECT_ANGLES: dict[str, float] = {
     "conjunction": 0.0,
     "opposition": 180.0,
     "square": 90.0,
@@ -191,7 +192,7 @@ _ASPECT_ANGLES: Dict[str, float] = {
 
 _MAJOR_ASPECTS = ("conjunction", "sextile", "square", "trine", "opposition")
 
-_AXES_ALIASES: Dict[str, str] = {
+_AXES_ALIASES: dict[str, str] = {
     "ascendant": "asc",
     "asc": "asc",
     "dsc": "desc",
@@ -204,7 +205,7 @@ _AXES_ALIASES: Dict[str, str] = {
     "imumcoeli": "ic",
 }
 
-_CANONICAL_TO_DISPLAY: Dict[str, str] = {
+_CANONICAL_TO_DISPLAY: dict[str, str] = {
     canonical_name(name): name for name in DEFAULT_BODIES
 }
 
@@ -265,7 +266,7 @@ class AspectConstraint:
         return [self.target] if self.target_is_axis else []
 
     def evaluate(self, ctx: SampleContext) -> ElectionalConstraintEvaluation:
-        detail: Dict[str, Any] = {
+        detail: dict[str, Any] = {
             "body": self.body,
             "target": self.target,
             "aspect": self.aspect,
@@ -366,7 +367,7 @@ class MoonVoidConstraint:
         return []
 
     def evaluate(self, ctx: SampleContext) -> ElectionalConstraintEvaluation:
-        detail: Dict[str, Any] = {
+        detail: dict[str, Any] = {
             "require_void": self.require_void,
             "max_orb": self.max_orb,
         }
@@ -423,7 +424,7 @@ class MaleficAnglesConstraint:
         return list(self._angles)
 
     def evaluate(self, ctx: SampleContext) -> ElectionalConstraintEvaluation:
-        detail: Dict[str, Any] = {
+        detail: dict[str, Any] = {
             "allow_contact": self.allow_contact,
             "max_orb": self.max_orb,
         }
@@ -503,7 +504,7 @@ class AntisciaConstraint:
             orb_deg_contra=self.max_orb if self.kind == "contra_antiscia" else 0.0,
             axis=self.axis,
         )
-        detail: Dict[str, Any] = {
+        detail: dict[str, Any] = {
             "body": self.body,
             "target": self.target,
             "kind": self.kind,
@@ -566,7 +567,7 @@ class DeclinationConstraint:
             orb_deg_parallel=self.max_orb if self.kind == "decl_parallel" else 0.0,
             orb_deg_contra=self.max_orb if self.kind == "decl_contra" else 0.0,
         )
-        detail: Dict[str, Any] = {
+        detail: dict[str, Any] = {
             "body": self.body,
             "target": self.target,
             "kind": self.kind,

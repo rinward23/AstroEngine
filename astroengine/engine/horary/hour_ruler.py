@@ -47,8 +47,8 @@ def _normalize_moment(moment: datetime) -> datetime:
 
 
 def _ensure_adapter(
-    adapter: "SwissEphemerisAdapter | None",
-) -> "SwissEphemerisAdapter":
+    adapter: SwissEphemerisAdapter | None,
+) -> SwissEphemerisAdapter:
     if _SwissAdapter is None:
         raise RuntimeError(
             "Swiss Ephemeris support is required for rise/transit calculations"
@@ -58,7 +58,7 @@ def _ensure_adapter(
 
 
 def _next_event(
-    adapter: "SwissEphemerisAdapter",
+    adapter: SwissEphemerisAdapter,
     jd_ut: float,
     event: str,
     location: GeoLocation,
@@ -94,7 +94,7 @@ def sunrise_sunset(
     moment: datetime,
     location: GeoLocation,
     *,
-    adapter: "SwissEphemerisAdapter | None" = None,
+    adapter: SwissEphemerisAdapter | None = None,
 ) -> tuple[datetime, datetime, datetime]:
     """Return sunrise, sunset, and next sunrise surrounding ``moment``."""
 
@@ -131,7 +131,7 @@ def moonrise_moonset(
     moment: datetime,
     location: GeoLocation,
     *,
-    adapter: "SwissEphemerisAdapter | None" = None,
+    adapter: SwissEphemerisAdapter | None = None,
 ) -> tuple[datetime, datetime, datetime]:
     """Return moonrise, moonset, and next moonrise surrounding ``moment``."""
 

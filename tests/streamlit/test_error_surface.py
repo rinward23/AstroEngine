@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 
 import pytest
-
 import streamlit as st
+
 import ui.streamlit  # noqa: F401 - trigger error instrumentation on import
 
 
@@ -42,7 +42,7 @@ def test_streamlit_error_emits_toast_and_logs(monkeypatch, caplog):
 
     record = caplog.records[-1]
     assert hasattr(record, "error_id")
-    error_id = getattr(record, "error_id")
+    error_id = record.error_id
     assert isinstance(error_id, str)
     assert len(error_id) == 12
     assert error_id.isupper()

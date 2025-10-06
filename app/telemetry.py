@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:  # pragma: no cover - for type checking only
     from astroengine.config.settings import ObservabilityCfg
 
 
-def resolve_observability_config(app: FastAPI) -> "ObservabilityCfg | None":
+def resolve_observability_config(app: FastAPI) -> ObservabilityCfg | None:
     """Return the active observability configuration, if available."""
 
     cached = getattr(app.state, "_observability_cfg", None)
@@ -41,10 +41,10 @@ def resolve_observability_config(app: FastAPI) -> "ObservabilityCfg | None":
 
 def setup_tracing(
     app: FastAPI,
-    sqlalchemy_engine: Optional[object] = None,
+    sqlalchemy_engine: object | None = None,
     service_name: str = "astroengine-api",
-    sampling_ratio: Optional[float] = None,
-    enabled: Optional[bool] = None,
+    sampling_ratio: float | None = None,
+    enabled: bool | None = None,
 ) -> None:
     """Configure OpenTelemetry tracing instrumentation if available."""
 

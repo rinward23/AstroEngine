@@ -9,9 +9,9 @@ metadata-rich style used elsewhere in the engine.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Iterable, Mapping
 
 from ...detectors.ingresses import ZODIAC_SIGNS, sign_index
 from ...engine.horary.rulers import house_ruler

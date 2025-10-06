@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Final, Iterable, Iterator, Mapping
+from typing import Final
 
 from ...ephemeris.sidereal import normalize_ayanamsha_name
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter, get_swisseph

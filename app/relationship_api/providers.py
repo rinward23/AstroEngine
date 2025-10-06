@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from collections.abc import Callable, Iterable
+from datetime import UTC, datetime
 from functools import lru_cache
-from typing import Callable, Iterable
 
 from .telemetry import get_logger
 
@@ -48,7 +48,7 @@ def make_position_provider(name: str, node_policy: str, bodies: Iterable[str]) -
     provider = _provider_instance(name, node_policy)
 
     def _inner(ts: datetime) -> dict[str, float]:
-        iso = ts.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        iso = ts.astimezone(UTC).isoformat().replace("+00:00", "Z")
         data = provider.positions_ecliptic(iso, bodies_tuple)
         if not isinstance(data, dict):
             raise TypeError("Ephemeris provider returned unexpected payload")

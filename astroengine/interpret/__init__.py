@@ -12,14 +12,14 @@ from .coverage import (
     sign_block,
 )
 from .models import (
-    Body,
     Aspect,
-    Scope,
-    RulepackMeta,
+    Body,
+    Finding,
     FindingsFilters,
     InterpretRequest,
     InterpretResponse,
-    Finding,
+    RulepackMeta,
+    Scope,
 )
 from .service import evaluate_relationship
 from .store import RulepackStore, get_rulepack_store

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -34,7 +34,7 @@ def _test_chart() -> NatalChart:
         "Venus": _body_position("Venus", 150.0),
     }
     return NatalChart(
-        moment=datetime(2020, 1, 1, 12, tzinfo=timezone.utc),
+        moment=datetime(2020, 1, 1, 12, tzinfo=UTC),
         location=ChartLocation(latitude=0.0, longitude=0.0),
         julian_day=0.0,
         positions=positions,

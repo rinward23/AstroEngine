@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Iterable, Mapping, Sequence
 
 from astroengine.ephemeris import SwissEphemerisAdapter
 from astroengine.ephemeris.swe import has_swe, swe

@@ -1,19 +1,20 @@
 from __future__ import annotations
-from datetime import datetime
-from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.aspects import AspectName, OrbPolicyInline
 
 
 class SynastryRequest(BaseModel):
-    pos_a: Dict[str, float] = Field(..., description="Chart A longitudes (deg)")
-    pos_b: Dict[str, float] = Field(..., description="Chart B longitudes (deg)")
-    aspects: List[AspectName] = Field(..., description="Aspect names to evaluate")
+    pos_a: dict[str, float] = Field(..., description="Chart A longitudes (deg)")
+    pos_b: dict[str, float] = Field(..., description="Chart B longitudes (deg)")
+    aspects: list[AspectName] = Field(..., description="Aspect names to evaluate")
 
-    orb_policy_id: Optional[int] = None
-    orb_policy_inline: Optional[OrbPolicyInline] = None
+    orb_policy_id: int | None = None
+    orb_policy_inline: OrbPolicyInline | None = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -40,11 +41,11 @@ class SynastryHit(BaseModel):
 
 
 class SynastryGrid(BaseModel):
-    counts: Dict[str, Dict[str, int]]
+    counts: dict[str, dict[str, int]]
 
 
 class SynastryResponse(BaseModel):
-    hits: List[SynastryHit]
+    hits: list[SynastryHit]
     grid: SynastryGrid
 
 
@@ -55,11 +56,11 @@ class CompositeEvent(BaseModel):
 
 
 class CompositeMidpointRequest(BaseModel):
-    pos_a: Dict[str, float]
-    pos_b: Dict[str, float]
-    objects: List[str]
-    event_a: Optional[CompositeEvent] = None
-    event_b: Optional[CompositeEvent] = None
+    pos_a: dict[str, float]
+    pos_b: dict[str, float]
+    objects: list[str]
+    event_a: CompositeEvent | None = None
+    event_b: CompositeEvent | None = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -73,7 +74,7 @@ class CompositeMidpointRequest(BaseModel):
 
 
 class CompositeDavisonRequest(BaseModel):
-    objects: List[str]
+    objects: list[str]
     dt_a: datetime
     dt_b: datetime
     lat_a: float = Field(0.0, description="Latitude of event A in degrees")
@@ -99,14 +100,14 @@ class CompositeDavisonRequest(BaseModel):
 class HouseOutput(BaseModel):
     ascendant: float
     midheaven: float
-    cusps: List[float]
+    cusps: list[float]
     house_system_requested: str
     house_system_used: str
-    fallback_reason: Optional[str] = None
-    metadata: Dict[str, Any] | None = None
+    fallback_reason: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class CompositeResponse(BaseModel):
-    positions: Dict[str, float]
-    meta: Dict[str, Any] = Field(default_factory=dict)
-    houses: Optional[HouseOutput] = None
+    positions: dict[str, float]
+    meta: dict[str, Any] = Field(default_factory=dict)
+    houses: HouseOutput | None = None

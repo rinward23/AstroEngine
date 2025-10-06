@@ -6,7 +6,7 @@ import math
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
-from astroengine.ephemeris.swe import has_swe, swe
+from astroengine.ephemeris.swe import has_swe
 
 _HAS_SWE = has_swe()
 

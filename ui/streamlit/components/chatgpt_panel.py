@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 import streamlit as st
 
@@ -57,7 +57,7 @@ def _ensure_state() -> None:
         st.session_state.openai_model = DEFAULT_MODEL
 
 
-def _call_openai(messages: List[Dict[str, Any]], model: str, stream: bool = True):
+def _call_openai(messages: list[dict[str, Any]], model: str, stream: bool = True):
     """Lightweight wrapper that supports both new and legacy openai clients."""
     api_key = os.environ.get("OPENAI_API_KEY") or st.session_state.get("OPENAI_API_KEY")
     if not api_key:

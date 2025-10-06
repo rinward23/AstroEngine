@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from core.rel_plus import synastry as plus_synastry
 from astroengine.core.rel_plus import synastry as core_synastry
+from core.rel_plus import synastry as plus_synastry
 
 
 def test_memoization_prevents_duplicate_work(monkeypatch):

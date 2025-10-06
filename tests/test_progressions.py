@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from astroengine.core.charts_plus.progressions import (
     secondary_progressed_datetime,
@@ -22,7 +22,7 @@ class LinearEphemeris:
 
 
 def test_secondary_progressed_datetime():
-    natal = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    natal = datetime(2025, 1, 1, tzinfo=UTC)
     target = natal + timedelta(days=365 * 30)  # ~30 years elapsed
     progressed = secondary_progressed_datetime(natal, target)
 
@@ -31,7 +31,7 @@ def test_secondary_progressed_datetime():
 
 
 def test_secondary_progressed_positions_linear():
-    natal = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    natal = datetime(2025, 1, 1, tzinfo=UTC)
     target = natal + timedelta(days=365 * 30)
     eph = LinearEphemeris(
         natal,
@@ -43,7 +43,7 @@ def test_secondary_progressed_positions_linear():
         ["Sun", "Venus", "Mars"], natal, target, eph
     )
 
-    assert prog_dt.tzinfo == timezone.utc
+    assert prog_dt.tzinfo == UTC
 
     dt_days = (prog_dt - natal).total_seconds() / 86400.0
     exp_sun = (10.0 + 1.0 * dt_days) % 360.0
@@ -56,7 +56,7 @@ def test_secondary_progressed_positions_linear():
 
 
 def test_solar_arc_positions_linear():
-    natal = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    natal = datetime(2025, 1, 1, tzinfo=UTC)
     target = natal + timedelta(days=365 * 30)
     eph = LinearEphemeris(
         natal,

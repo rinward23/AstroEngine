@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from importlib import import_module, util
 from types import ModuleType
-from typing import Iterable, Sequence
 
 __all__ = ["dependency_available", "require_dependency"]
 

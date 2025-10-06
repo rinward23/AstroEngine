@@ -1,7 +1,7 @@
 """Pydantic models for the transit ↔ natal overlay API."""
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -71,19 +71,19 @@ class TransitOverlayOptionsModel(BaseModel):
     house_system: str | None = None
     nodes_variant: str | None = None
     lilith_variant: str | None = None
-    orbs_deg: Dict[str, float] | None = None
-    orb_overrides: Dict[str, float] | None = None
+    orbs_deg: dict[str, float] | None = None
+    orb_overrides: dict[str, float] | None = None
 
     @field_validator("orbs_deg", "orb_overrides", mode="before")
     @classmethod
     def _normalize_orb_maps(
-        cls, value: Dict[str, Any] | None
-    ) -> Dict[str, float] | None:
+        cls, value: dict[str, Any] | None
+    ) -> dict[str, float] | None:
         if value is None:
             return None
         if not isinstance(value, dict):
             raise TypeError("orb overrides must be provided as a mapping")
-        normalized: Dict[str, float] = {}
+        normalized: dict[str, float] = {}
         for key, raw in value.items():
             numeric = float(raw)
             if not 0.0 <= numeric <= 20.0:
@@ -110,20 +110,20 @@ class OverlayBodyPositionModel(BaseModel):
     speed_radius_au_per_day: float
     retrograde: bool
     frame: str
-    metadata: Dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class OverlayFrameModel(BaseModel):
     timestamp: UtcDateTime
-    heliocentric: Dict[str, OverlayBodyPositionModel]
-    geocentric: Dict[str, OverlayBodyPositionModel]
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    heliocentric: dict[str, OverlayBodyPositionModel]
+    geocentric: dict[str, OverlayBodyPositionModel]
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class TransitOverlayPositionResponse(BaseModel):
     natal: OverlayFrameModel
     transit: OverlayFrameModel
-    options: Dict[str, Any] = Field(default_factory=dict)
+    options: dict[str, Any] = Field(default_factory=dict)
 
 
 class TransitAspectModel(BaseModel):
@@ -138,18 +138,18 @@ class TransitAspectRequest(BaseModel):
     transit: OverlayFrameModel
     conj_override: float | None = Field(default=None, ge=0.0, le=20.0)
     opp_override: float | None = Field(default=None, ge=0.0, le=20.0)
-    orb_overrides: Dict[str, float] | None = None
+    orb_overrides: dict[str, float] | None = None
 
     @field_validator("orb_overrides", mode="before")
     @classmethod
     def _validate_orb_overrides(
-        cls, value: Dict[str, Any] | None
-    ) -> Dict[str, float] | None:
+        cls, value: dict[str, Any] | None
+    ) -> dict[str, float] | None:
         if value is None:
             return None
         if not isinstance(value, dict):
             raise TypeError("orb_overrides must be a mapping of aspect -> degrees")
-        normalized: Dict[str, float] = {}
+        normalized: dict[str, float] = {}
         for key, raw in value.items():
             numeric = float(raw)
             if not 0.0 <= numeric <= 20.0:

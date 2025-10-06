@@ -151,7 +151,7 @@ def _geocode_online(query: str) -> GeocodeResult:
         )
 
     geocoders = importlib.import_module("geopy.geocoders")
-    Nominatim = getattr(geocoders, "Nominatim")
+    Nominatim = geocoders.Nominatim
     geocoder = Nominatim(user_agent="astroengine")
     location = geocoder.geocode(query, exactly_one=True, timeout=10)
     if location is None:

@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from ...chart.natal import ChartLocation, NatalChart, compute_natal_chart
 from core.lots_plus.catalog import Sect as LotSect
 from core.lots_plus.catalog import compute_lots
+
+from ...chart.natal import ChartLocation, NatalChart, compute_natal_chart
 from ...engine.traditional import (
     Interval,
     apply_loosing_of_bond,

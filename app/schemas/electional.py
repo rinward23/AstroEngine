@@ -1,26 +1,27 @@
 from __future__ import annotations
+
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.schemas.aspects import TimeWindow, OrbPolicyInline
+from app.schemas.aspects import OrbPolicyInline, TimeWindow
 
 
 class AspectRuleIn(BaseModel):
     a: str
     b: str
-    aspects: List[str]
+    aspects: list[str]
     weight: float = 1.0
-    orb_override: Optional[float] = None
+    orb_override: float | None = None
 
 
 class ForbiddenRuleIn(BaseModel):
     a: str
     b: str
-    aspects: List[str]
+    aspects: list[str]
     penalty: float = 1.0
-    orb_override: Optional[float] = None
+    orb_override: float | None = None
 
 
 class ElectionalSearchRequest(BaseModel):
@@ -30,14 +31,14 @@ class ElectionalSearchRequest(BaseModel):
     top_k: int = Field(3, ge=1, le=20)
 
     avoid_voc_moon: bool = False
-    allowed_weekdays: Optional[List[int]] = Field(None, description="0=Mon .. 6=Sun")
-    allowed_utc_ranges: Optional[List[Tuple[str, str]]] = Field(None, description='e.g., [["08:00","22:00"]]')
+    allowed_weekdays: list[int] | None = Field(None, description="0=Mon .. 6=Sun")
+    allowed_utc_ranges: list[tuple[str, str]] | None = Field(None, description='e.g., [["08:00","22:00"]]')
 
-    orb_policy_id: Optional[int] = None
-    orb_policy_inline: Optional[OrbPolicyInline] = None
+    orb_policy_id: int | None = None
+    orb_policy_inline: OrbPolicyInline | None = None
 
-    required_aspects: List[AspectRuleIn] = Field(default_factory=list)
-    forbidden_aspects: List[ForbiddenRuleIn] = Field(default_factory=list)
+    required_aspects: list[AspectRuleIn] = Field(default_factory=list)
+    forbidden_aspects: list[ForbiddenRuleIn] = Field(default_factory=list)
 
     class Config:
         schema_extra = {
@@ -65,7 +66,7 @@ class InstantMatch(BaseModel):
     aspect: str
     orb: float
     limit: float
-    score: Optional[float] = None
+    score: float | None = None
 
 
 class InstantViolation(BaseModel):
@@ -73,15 +74,15 @@ class InstantViolation(BaseModel):
     aspect: str
     orb: float
     limit: float
-    penalty: Optional[float] = None
+    penalty: float | None = None
 
 
 class InstantOut(BaseModel):
     ts: datetime
     score: float
-    reason: Optional[str] = None
-    matches: List[InstantMatch] = Field(default_factory=list)
-    violations: List[InstantViolation] = Field(default_factory=list)
+    reason: str | None = None
+    matches: list[InstantMatch] = Field(default_factory=list)
+    violations: list[InstantViolation] = Field(default_factory=list)
 
 
 class WindowOut(BaseModel):
@@ -90,10 +91,10 @@ class WindowOut(BaseModel):
     score: float
     samples: int
     avg_score: float
-    top_instants: List[InstantOut]
-    breakdown: Dict[str, Any]
+    top_instants: list[InstantOut]
+    breakdown: dict[str, Any]
 
 
 class ElectionalSearchResponse(BaseModel):
-    windows: List[WindowOut]
-    meta: Dict[str, Any] = Field(default_factory=dict)
+    windows: list[WindowOut]
+    meta: dict[str, Any] = Field(default_factory=dict)

@@ -15,7 +15,7 @@ def test_ensure_sweph_alias(monkeypatch):
     bridge.ensure_sweph_alias()
 
     assert sys.modules["sweph"] is fake_swisseph
-    assert getattr(sys.modules["sweph"], "FLAG") == 1
+    assert sys.modules["sweph"].FLAG == 1
 
     sys.modules["sweph"].FLAG = 2
     bridge.ensure_sweph_alias()

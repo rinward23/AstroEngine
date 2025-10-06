@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import math
+from datetime import UTC, datetime
 
 import pytest
 
@@ -10,7 +10,13 @@ pytest.importorskip(
     reason="Pillow not installed; install extras with `pip install -e .[ui,reports]`.",
 )
 
-from astroengine.engine.observational import MetConditions, VisibilityConstraints, horizontal_from_equatorial, topocentric_equatorial, visibility_windows
+from astroengine.engine.observational import (
+    MetConditions,
+    VisibilityConstraints,
+    horizontal_from_equatorial,
+    topocentric_equatorial,
+    visibility_windows,
+)
 from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
 
 swe = pytest.importorskip("swisseph")

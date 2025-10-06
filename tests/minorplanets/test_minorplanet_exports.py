@@ -58,8 +58,8 @@ def test_export_parquet_round_trip(tmp_path: Path) -> None:
 def test_export_zarr_angles(tmp_path: Path) -> None:
     zarr = pytest.importorskip("zarr")
     rows = [_row(1), _row(2)]
-    start = dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc)
-    end = dt.datetime(2024, 1, 2, tzinfo=dt.timezone.utc)
+    start = dt.datetime(2024, 1, 1, tzinfo=dt.UTC)
+    end = dt.datetime(2024, 1, 2, tzinfo=dt.UTC)
     step = dt.timedelta(days=1)
     ephem = DummyEphem()
     store_path = mpc_ingest.export_zarr_angles(ephem, rows, start, end, step, tmp_path)

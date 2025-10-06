@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -9,15 +9,15 @@ pytest.importorskip(
     reason="pyswisseph not installed; install extras with `pip install -e .[ephem,providers]`.",
 )
 
+from astroengine.core.time import to_tt
 from astroengine.engine.returns import AttachOptions, GeoLoc, NatalCtx, ScanOptions, scan_returns
 from astroengine.engine.returns._codes import resolve_body_code
 from astroengine.ephemeris import EphemerisAdapter
-from astroengine.core.time import to_tt
 
 
 def test_mars_returns_are_ordered() -> None:
     adapter = EphemerisAdapter()
-    natal_dt = datetime(1988, 7, 12, 5, 0, tzinfo=timezone.utc)
+    natal_dt = datetime(1988, 7, 12, 5, 0, tzinfo=UTC)
     mars_code = resolve_body_code("Mars").code
     natal_conv = to_tt(natal_dt)
     natal_mars = adapter.sample(mars_code, natal_conv).longitude % 360.0
@@ -29,7 +29,7 @@ def test_mars_returns_are_ordered() -> None:
         location=location,
     )
 
-    start = datetime(1995, 1, 1, tzinfo=timezone.utc)
+    start = datetime(1995, 1, 1, tzinfo=UTC)
     end = start + timedelta(days=365 * 9)
 
     options = ScanOptions(location=location, attach=AttachOptions(transiting_aspects=False))
@@ -38,5 +38,5 @@ def test_mars_returns_are_ordered() -> None:
     assert len(hits) >= 3
     times = [hit.instant.exact_time for hit in hits]
     assert times == sorted(times)
-    for prev, current in zip(times, times[1:]):
+    for prev, current in zip(times, times[1:], strict=False):
         assert (current - prev).days > 500

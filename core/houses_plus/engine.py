@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
 
 __all__ = [
     "HousePolicy",
@@ -32,7 +31,7 @@ def _forward_arc(a: float, b: float) -> float:
     return d if d != 0 else 360.0
 
 
-def _forward_points(a: float, b: float, n: int) -> List[float]:
+def _forward_points(a: float, b: float, n: int) -> list[float]:
     """Return the n-1 interior division points from a→b forward (equal spacing)."""
     arc = _forward_arc(a, b)
     step = arc / float(n)
@@ -55,20 +54,20 @@ class HousePolicy:
 class HouseResult:
     """Bundle of cusp longitudes and metadata about the computation."""
 
-    cusps: List[float]  # 12 longitudes, cusp 1..12
-    meta: Dict[str, object]
+    cusps: list[float]  # 12 longitudes, cusp 1..12
+    meta: dict[str, object]
 
 
 # --------------------------- Systems ---------------------------------------
 
 
-def list_house_systems() -> List[str]:
+def list_house_systems() -> list[str]:
     """Return the house system identifiers supported by this engine."""
 
     return ["whole_sign", "equal", "porphyry", "placidus"]
 
 
-def _whole_sign(asc_lon: float) -> List[float]:
+def _whole_sign(asc_lon: float) -> list[float]:
     """Compute whole sign house cusps from the Ascendant longitude."""
 
     # Cusp 1 at 0° of Asc sign; then every 30°
@@ -77,13 +76,13 @@ def _whole_sign(asc_lon: float) -> List[float]:
     return [_norm360(cusp1 + 30.0 * i) for i in range(12)]
 
 
-def _equal(asc_lon: float) -> List[float]:
+def _equal(asc_lon: float) -> list[float]:
     """Compute equal houses by stepping 30° from the Ascendant."""
 
     return [_norm360(asc_lon + 30.0 * i) for i in range(12)]
 
 
-def _porphyry(asc_lon: float, mc_lon: float) -> List[float]:
+def _porphyry(asc_lon: float, mc_lon: float) -> list[float]:
     """Compute Porphyry houses by trisecting the quadrants between angles."""
 
     # Angles
@@ -108,10 +107,10 @@ def _porphyry(asc_lon: float, mc_lon: float) -> List[float]:
 
 def _placidus_with_fallback(
     asc_lon: float, mc_lon: float, lat_deg: float, policy: HousePolicy
-) -> Tuple[List[float], Dict[str, object]]:
+) -> tuple[list[float], dict[str, object]]:
     """Placeholder Placidus implementation honoring fallback policy."""
 
-    meta: Dict[str, object] = {"system": "placidus"}
+    meta: dict[str, object] = {"system": "placidus"}
     # MVP: Always fallback (or if extreme latitude), to avoid invalid cusps in polar regions
     if policy.always_fallback_placidus or abs(lat_deg) >= policy.extreme_lat_deg:
         sys = policy.placidus_fallback
@@ -142,7 +141,7 @@ def compute_houses(
     pol = policy or HousePolicy()
     if system == "whole_sign":
         cusps = _whole_sign(asc_lon)
-        meta: Dict[str, object] = {"system": system}
+        meta: dict[str, object] = {"system": system}
     elif system == "equal":
         cusps = _equal(asc_lon)
         meta = {"system": system}

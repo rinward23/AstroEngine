@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timezone
-from typing import Any, Mapping
+from collections.abc import Mapping
+from datetime import UTC, datetime
+from typing import Any
+from zoneinfo import ZoneInfoNotFoundError
 
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import or_, select
-from zoneinfo import ZoneInfoNotFoundError
 
+from app.db.models import Chart, _normalize_tags
+from app.db.session import session_scope
+from app.repo.charts import ChartRepo
+from app.schemas.charts import ChartSummary, ChartTagsUpdate
 from astroengine.atlas.tz import LocalTimeResolution, to_utc_with_timezone
 from astroengine.chart.natal import ChartLocation, compute_natal_chart
 from astroengine.compute import build_payload
@@ -21,11 +26,6 @@ from astroengine.config import (
 )
 from astroengine.report import render_chart_pdf
 from astroengine.report.builders import build_chart_report_context
-from app.db.models import Chart, _normalize_tags
-from app.db.session import session_scope
-from app.repo.charts import ChartRepo
-from app.schemas.charts import ChartSummary, ChartTagsUpdate
-
 
 router = APIRouter(prefix="/v1/charts", tags=["charts"])
 
@@ -34,8 +34,8 @@ def _ensure_utc(moment: datetime | None) -> datetime | None:
     if moment is None:
         return None
     if moment.tzinfo is None or moment.tzinfo.utcoffset(moment) is None:
-        return moment.replace(tzinfo=timezone.utc)
-    return moment.astimezone(timezone.utc)
+        return moment.replace(tzinfo=UTC)
+    return moment.astimezone(UTC)
 
 
 def _apply_profile(settings: Settings, profile_name: str | None) -> tuple[Settings, str]:
@@ -568,7 +568,7 @@ def chart_pdf(chart_id: int) -> Response:
         chart_timestamp=moment,
         location_name=chart.location_name,
         disclaimers=settings.reports.disclaimers,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
     )
     pdf_bytes = render_chart_pdf(context)
     headers = {"Content-Disposition": f'attachment; filename="chart_{chart_id}.pdf"'}

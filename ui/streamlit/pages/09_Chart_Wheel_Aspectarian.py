@@ -1,6 +1,7 @@
 from __future__ import annotations
+
 import json
-from typing import Dict, List, Sequence
+from collections.abc import Sequence
 
 import pandas as pd
 import streamlit as st
@@ -8,9 +9,9 @@ import streamlit as st
 from astroengine.analysis import DeclinationAspect, declination_aspects, get_declinations
 from astroengine.chart.natal import expansions_from_groups
 from astroengine.config import load_settings
-from core.viz_plus.wheel_svg import WheelOptions, build_aspect_hits, render_chart_wheel
-from core.viz_plus.aspect_grid import aspect_grid_symbols, render_aspect_grid
 from core.aspects_plus.harmonics import BASE_ASPECTS
+from core.viz_plus.aspect_grid import aspect_grid_symbols, render_aspect_grid
+from core.viz_plus.wheel_svg import WheelOptions, build_aspect_hits, render_chart_wheel
 from ui.streamlit.api import APIClient
 from ui.streamlit.data_cache import load_fixed_star_catalog
 
@@ -60,15 +61,15 @@ _OPTIONAL_BODY_MAP: dict[str, tuple[str, ...]] = {
 
 
 def _filter_optional_positions(
-    positions: Dict[str, float], toggles: dict[str, bool]
-) -> Dict[str, float]:
+    positions: dict[str, float], toggles: dict[str, bool]
+) -> dict[str, float]:
     optional_names: set[str] = set()
     allowed: set[str] = set()
     for key, names in _OPTIONAL_BODY_MAP.items():
         optional_names.update(names)
         if toggles.get(key, False):
             allowed.update(names)
-    filtered: Dict[str, float] = {}
+    filtered: dict[str, float] = {}
     for name, value in positions.items():
         if name in optional_names and name not in allowed:
             continue
@@ -77,11 +78,11 @@ def _filter_optional_positions(
 
 
 def _overlay_declination_markers(
-    grid: Dict[str, Dict[str, str]], hits: Sequence[DeclinationAspect]
-) -> Dict[str, Dict[str, str]]:
+    grid: dict[str, dict[str, str]], hits: Sequence[DeclinationAspect]
+) -> dict[str, dict[str, str]]:
     """Return a copy of ``grid`` with declination symbols appended per hit."""
 
-    updated: Dict[str, Dict[str, str]] = {a: dict(row) for a, row in grid.items()}
+    updated: dict[str, dict[str, str]] = {a: dict(row) for a, row in grid.items()}
     for hit in hits:
         marker = "∥" if hit.kind == "parallel" else "⇅"
         for first, second in ((hit.body_a, hit.body_b), (hit.body_b, hit.body_a)):
@@ -101,7 +102,7 @@ with st.sidebar:
         height=220,
     )
     try:
-        positions: Dict[str, float] = {
+        positions: dict[str, float] = {
             str(name): float(lon)
             for name, lon in (json.loads(positions_txt) if positions_txt.strip() else {}).items()
         }
@@ -118,7 +119,7 @@ with st.sidebar:
         height=80,
         help="e.g., [100,130,...] (length 12)",
     )
-    houses: List[float] | None = None
+    houses: list[float] | None = None
     if houses_txt.strip():
         try:
             houses = [float(x) for x in json.loads(houses_txt)]
@@ -278,7 +279,7 @@ with st.sidebar:
 
     selected_aspects = aspects or [a for a in DEFAULT_ASPECTS if a in AVAILABLE_ASPECTS]
 
-    policy_per_aspect: Dict[str, float] = {}
+    policy_per_aspect: dict[str, float] = {}
     if selected_aspects:
         st.caption("Orb overrides (degrees)")
     for asp in selected_aspects:

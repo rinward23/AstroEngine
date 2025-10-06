@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from astroengine.engine.rules import (
+    BinaryOp,
     BooleanBinaryOp,
     BooleanNot,
-    BinaryOp,
     CallExpr,
     DSLParseError,
     Number,

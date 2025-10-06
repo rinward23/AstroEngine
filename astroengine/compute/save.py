@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 from astroengine.chart.config import ChartConfig
 from astroengine.chart.natal import ChartLocation, compute_natal_chart
@@ -64,7 +64,7 @@ def build_payload(
     lat: float,
     lon: float,
     settings: Settings,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return serialisable chart payloads ready for persistence."""
 
     chart_config = _chart_config_from_settings(settings)

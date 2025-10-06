@@ -1,7 +1,8 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Dict, Optional
+
 import csv
+from dataclasses import dataclass
+
 
 @dataclass
 class Star:
@@ -9,10 +10,10 @@ class Star:
     ra_deg: float   # ICRS/J2000 RA in degrees
     dec_deg: float  # ICRS/J2000 Dec in degrees
     vmag: float
-    alias: Optional[str] = None
+    alias: str | None = None
 
 # Minimal built-in catalog (J2000 approx)
-BUILTIN_STARS: Dict[str, Star] = {
+BUILTIN_STARS: dict[str, Star] = {
     "Sirius":   Star("Sirius",   ra_deg=101.2875, dec_deg=-16.7161, vmag=-1.46, alias="Alpha Canis Majoris"),
     "Regulus":  Star("Regulus",  ra_deg=152.0933, dec_deg= 11.9672, vmag=1.35,  alias="Alpha Leonis"),
     "Spica":    Star("Spica",    ra_deg=201.2983, dec_deg=-11.1614, vmag=1.04,  alias="Alpha Virginis"),
@@ -22,11 +23,11 @@ BUILTIN_STARS: Dict[str, Star] = {
 }
 
 
-def load_catalog(csv_path: Optional[str] = None) -> Dict[str, Star]:
+def load_catalog(csv_path: str | None = None) -> dict[str, Star]:
     if not csv_path:
         return dict(BUILTIN_STARS)
-    out: Dict[str, Star] = {}
-    with open(csv_path, "r", newline="", encoding="utf-8") as f:
+    out: dict[str, Star] = {}
+    with open(csv_path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             name = row.get("name") or row.get("Name")
             ra = float(row.get("ra_deg") or row.get("ra"))

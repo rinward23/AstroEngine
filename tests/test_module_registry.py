@@ -1,8 +1,8 @@
 from astroengine import DEFAULT_REGISTRY, serialize_vca_ruleset
 from astroengine.modules.reference.catalog import (
-    GLOSSARY,
     CHART_TYPES,
     FRAMEWORKS,
+    GLOSSARY,
 )
 
 

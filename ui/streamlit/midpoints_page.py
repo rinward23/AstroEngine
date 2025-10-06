@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pandas as pd
@@ -11,7 +11,7 @@ import streamlit as st
 
 from astroengine.analysis.midpoints import compute_midpoints, get_midpoint_settings
 from astroengine.chart.config import ChartConfig
-from astroengine.chart.natal import ChartLocation, DEFAULT_BODIES, compute_natal_chart
+from astroengine.chart.natal import DEFAULT_BODIES, ChartLocation, compute_natal_chart
 from astroengine.providers.swisseph_adapter import SE_MEAN_NODE, SE_TRUE_NODE
 from astroengine.userdata.vault import list_natals, load_natal
 
@@ -66,9 +66,9 @@ def _load_natal_positions(natal_id: str, include_nodes_flag: bool) -> dict[str, 
     record = load_natal(natal_id)
     moment = datetime.fromisoformat(record.utc.replace("Z", "+00:00"))
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
+        moment = moment.replace(tzinfo=UTC)
     else:
-        moment = moment.astimezone(timezone.utc)
+        moment = moment.astimezone(UTC)
     config, bodies = _chart_config(include_nodes_flag)
     chart = compute_natal_chart(
         moment,

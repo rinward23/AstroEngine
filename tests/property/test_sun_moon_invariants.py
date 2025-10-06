@@ -15,7 +15,7 @@ given = hypothesis.given
 settings = hypothesis.settings
 st = hypothesis.strategies
 
-UTC = dt.timezone.utc
+UTC = dt.UTC
 
 MOMENTS = st.datetimes(
     min_value=dt.datetime(1950, 1, 1, tzinfo=UTC),

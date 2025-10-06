@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import asdict
 from datetime import UTC, datetime
-from typing import Any, Mapping
+from typing import Any
 
 from ...chart.config import ChartConfig
-from ...chart.natal import ChartLocation, compute_natal_chart, DEFAULT_BODIES
+from ...chart.natal import DEFAULT_BODIES, ChartLocation, compute_natal_chart
 from ...ephemeris.swisseph_adapter import get_swisseph
 from .aspects_logic import aspect_between, find_collection, find_prohibition, find_translation
 from .hour_ruler import GeoLocation, planetary_hour
@@ -38,8 +39,8 @@ def _horary_bodies() -> Mapping[str, int]:
         raise RuntimeError(
             "Horary profiles require pyswisseph. Install astroengine[ephem] to enable them."
         ) from exc
-    bodies.setdefault("True Node", int(getattr(swe, "TRUE_NODE")))
-    bodies.setdefault("Mean Node", int(getattr(swe, "MEAN_NODE")))
+    bodies.setdefault("True Node", int(swe.TRUE_NODE))
+    bodies.setdefault("Mean Node", int(swe.MEAN_NODE))
     return bodies
 
 

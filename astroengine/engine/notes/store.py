@@ -4,9 +4,9 @@ from __future__ import annotations
 import base64
 import json
 import secrets
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional, Sequence
+from datetime import UTC, datetime
 
 from .crdt import CRDTDocument
 
@@ -14,7 +14,7 @@ from .crdt import CRDTDocument
 def _blake2b_keystream(key: bytes, nonce: bytes, length: int) -> bytes:
     import hashlib
 
-    blocks: List[bytes] = []
+    blocks: list[bytes] = []
     counter = 0
     while len(b"".join(blocks)) < length:
         counter_bytes = counter.to_bytes(8, "big")
@@ -40,9 +40,9 @@ class NotesCipher:
         nonce = secrets.token_bytes(16)
         keystream_len = max(len(plaintext), 32)
         keystream = _blake2b_keystream(self._key, nonce, keystream_len)
-        ciphertext = bytes(p ^ k for p, k in zip(plaintext, keystream))
+        ciphertext = bytes(p ^ k for p, k in zip(plaintext, keystream, strict=False))
         mac = _blake2b_keystream(self._key, nonce, 32)
-        tag = bytes(a ^ b for a, b in zip(mac, keystream[:32]))
+        tag = bytes(a ^ b for a, b in zip(mac, keystream[:32], strict=False))
         payload = base64.b64encode(nonce + tag + ciphertext)
         return payload.decode("ascii")
 
@@ -51,10 +51,10 @@ class NotesCipher:
         nonce, tag, ciphertext = raw[:16], raw[16:48], raw[48:]
         keystream_len = max(len(ciphertext), 32)
         keystream = _blake2b_keystream(self._key, nonce, keystream_len)
-        expected_tag = bytes(a ^ b for a, b in zip(_blake2b_keystream(self._key, nonce, 32), keystream[:32]))
+        expected_tag = bytes(a ^ b for a, b in zip(_blake2b_keystream(self._key, nonce, 32), keystream[:32], strict=False))
         if expected_tag != tag:
             raise ValueError("Ciphertext integrity validation failed")
-        return bytes(c ^ k for c, k in zip(ciphertext, keystream))
+        return bytes(c ^ k for c, k in zip(ciphertext, keystream, strict=False))
 
 
 @dataclass
@@ -67,11 +67,11 @@ class NoteRecord:
     title: str
     body_enc: str
     tags: Sequence[str]
-    tzid: Optional[str] = None
-    location: Optional[str] = None
+    tzid: str | None = None
+    location: str | None = None
     visibility: str = "private"
-    crdt_state: Dict[str, object] = field(default_factory=dict)
-    meta: Dict[str, object] = field(default_factory=dict)
+    crdt_state: dict[str, object] = field(default_factory=dict)
+    meta: dict[str, object] = field(default_factory=dict)
 
     def decrypted_body(self, cipher: NotesCipher) -> str:
         return cipher.decrypt(self.body_enc).decode("utf-8")
@@ -82,7 +82,7 @@ class NotesStore:
 
     def __init__(self, cipher: NotesCipher) -> None:
         self._cipher = cipher
-        self._notes: Dict[str, NoteRecord] = {}
+        self._notes: dict[str, NoteRecord] = {}
 
     @property
     def cipher(self) -> NotesCipher:
@@ -90,7 +90,7 @@ class NotesStore:
 
     def upsert_from_crdt(self, note_id: str, owner_id: str, document: CRDTDocument) -> NoteRecord:
         payload = document.to_note_dict()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         title = payload.get("title", "")
         body = payload.get("body", "")
         tags = tuple(sorted(payload.get("tags", [])))
@@ -120,12 +120,12 @@ class NotesStore:
         self._notes[note_id] = new_record
         return new_record
 
-    def get(self, note_id: str) -> Optional[NoteRecord]:
+    def get(self, note_id: str) -> NoteRecord | None:
         return self._notes.get(note_id)
 
-    def search(self, owner_id: str, query: str = "", tags: Optional[Iterable[str]] = None) -> List[NoteRecord]:
+    def search(self, owner_id: str, query: str = "", tags: Iterable[str] | None = None) -> list[NoteRecord]:
         required_tags = set(tags or [])
-        results: List[NoteRecord] = []
+        results: list[NoteRecord] = []
         for record in self._notes.values():
             if record.owner_id != owner_id:
                 continue

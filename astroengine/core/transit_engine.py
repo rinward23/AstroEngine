@@ -234,7 +234,7 @@ class TransitEngine:
             start_offset,
             end_offset,
         ) in iter_coarse_windows():
-            
+
             bracketed = (
                 start_offset == 0.0
                 or end_offset == 0.0
@@ -371,8 +371,8 @@ _DEFAULT_TRANSIT_ASPECTS: dict[str, tuple[float, str]] = {
 def _parse_iso8601(ts: str) -> _dt.datetime:
     dt = _dt.datetime.fromisoformat(ts.replace("Z", "+00:00"))
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=_dt.timezone.utc)
-    return dt.astimezone(_dt.timezone.utc)
+        return dt.replace(tzinfo=_dt.UTC)
+    return dt.astimezone(_dt.UTC)
 
 
 def _body_name_map(names: Iterable[str] | None) -> dict[str, int]:
@@ -497,7 +497,7 @@ def scan_transits(
                     if event_time is None:
                         continue
 
-                    moment = event_time.astimezone(_dt.timezone.utc)
+                    moment = event_time.astimezone(_dt.UTC)
                     metadata = getattr(event, "metadata", None)
                     sample_meta = (
                         metadata.get("sample")

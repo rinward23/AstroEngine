@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import os
 import threading
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from collections.abc import Iterable
+from typing import Any
 
 from cachetools import TTLCache
 
 from astroengine.cache.relationship import canonicalize_synastry_payload
 from astroengine.core.aspects_plus.matcher import match_pair_prepared
 from astroengine.core.aspects_plus.orb_policy import PreparedOrbPolicy, prepare_policy
-
 
 _MEMO_CACHE = TTLCache(
     maxsize=int(os.getenv("SYN_HITS_MEMO_MAX", "2048")),
@@ -18,8 +18,8 @@ _MEMO_CACHE = TTLCache(
 _MEMO_LOCK = threading.Lock()
 
 
-def _memoize_hits(key: str, hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    encoded: Tuple[Tuple[Tuple[str, Any], ...], ...] = tuple(
+def _memoize_hits(key: str, hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    encoded: tuple[tuple[tuple[str, Any], ...], ...] = tuple(
         tuple(sorted(hit.items())) for hit in hits
     )
     with _MEMO_LOCK:
@@ -27,7 +27,7 @@ def _memoize_hits(key: str, hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [dict(item) for item in encoded]
 
 
-def _get_memoized(key: str) -> Optional[List[Dict[str, Any]]]:
+def _get_memoized(key: str) -> list[dict[str, Any]] | None:
     with _MEMO_LOCK:
         cached = _MEMO_CACHE.get(key)
     if cached is None:
@@ -42,14 +42,14 @@ def clear_synastry_memoization() -> None:
 
 
 def synastry_interaspects(
-    pos_a: Dict[str, float],
-    pos_b: Dict[str, float],
+    pos_a: dict[str, float],
+    pos_b: dict[str, float],
     aspects: Iterable[str],
-    policy: Dict[str, Any],
-    weights: Optional[Dict[str, Any]] = None,
-    gamma: Optional[float] = None,
-    node_policy: Optional[Any] = None,
-) -> List[Dict[str, Any]]:
+    policy: dict[str, Any],
+    weights: dict[str, Any] | None = None,
+    gamma: float | None = None,
+    node_policy: Any | None = None,
+) -> list[dict[str, Any]]:
     """Return best aspect matches for each A↔B pair."""
 
     memo_key = canonicalize_synastry_payload(
@@ -67,7 +67,7 @@ def synastry_interaspects(
 
     prepared_policy: PreparedOrbPolicy = prepare_policy(policy)
     aspects_list = list(aspects)
-    hits: List[Dict[str, Any]] = []
+    hits: list[dict[str, Any]] = []
     append_hit = hits.append
     for a_name, lon_a in pos_a.items():
         if lon_a is None:
@@ -102,10 +102,10 @@ def synastry_interaspects(
     return _memoize_hits(memo_key, hits)
 
 
-def synastry_grid(hits: Iterable[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
+def synastry_grid(hits: Iterable[dict[str, Any]]) -> dict[str, dict[str, int]]:
     """Build a count grid keyed by (A object → B object)."""
 
-    grid: Dict[str, Dict[str, int]] = {}
+    grid: dict[str, dict[str, int]] = {}
     for hit in hits:
         a_name = hit["a_obj"]
         b_name = hit["b_obj"]

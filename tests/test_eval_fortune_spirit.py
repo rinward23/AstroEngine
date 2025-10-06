@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -8,7 +8,7 @@ from astroengine.engine.lots import ChartContext, ChartLocation, builtin_profile
 def _chart_context(positions: dict[str, float], *, is_day: bool) -> ChartContext:
     location = ChartLocation(latitude=0.0, longitude=0.0)
     return ChartContext(
-        moment=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        moment=datetime(2020, 1, 1, tzinfo=UTC),
         location=location,
         positions=positions,
         angles={"ASC": positions["ASC"]},

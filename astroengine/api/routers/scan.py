@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -9,7 +8,6 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Body, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
-
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from ...core.transit_engine import scan_transits
@@ -22,7 +20,6 @@ from ...events import ReturnEvent
 from ...exporters import write_parquet_canonical, write_sqlite_canonical
 from ...exporters_ics import write_ics_canonical
 from ...web.responses import json_response, ndjson_stream
-
 
 DEFAULT_PAGE_LIMIT = 500
 MAX_PAGE_LIMIT = 2000
@@ -433,8 +430,8 @@ def api_scan_progressions(
         ge=1,
         le=MAX_PAGE_LIMIT,
         description=(
-            "Maximum number of hits to return (default {default}, maximum {maximum})."
-            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+            f"Maximum number of hits to return (default {DEFAULT_PAGE_LIMIT}, maximum {MAX_PAGE_LIMIT})."
+            
         ),
     ),
     offset: int = Query(
@@ -488,8 +485,8 @@ def api_scan_directions(
         ge=1,
         le=MAX_PAGE_LIMIT,
         description=(
-            "Maximum number of hits to return (default {default}, maximum {maximum})."
-            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+            f"Maximum number of hits to return (default {DEFAULT_PAGE_LIMIT}, maximum {MAX_PAGE_LIMIT})."
+            
         ),
     ),
     offset: int = Query(
@@ -543,8 +540,8 @@ def api_scan_transits(
         ge=1,
         le=MAX_PAGE_LIMIT,
         description=(
-            "Maximum number of hits to return (default {default}, maximum {maximum})."
-            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+            f"Maximum number of hits to return (default {DEFAULT_PAGE_LIMIT}, maximum {MAX_PAGE_LIMIT})."
+            
         ),
     ),
     offset: int = Query(
@@ -604,8 +601,8 @@ def api_scan_returns(
         ge=1,
         le=MAX_PAGE_LIMIT,
         description=(
-            "Maximum number of hits to return (default {default}, maximum {maximum})."
-            .format(default=DEFAULT_PAGE_LIMIT, maximum=MAX_PAGE_LIMIT)
+            f"Maximum number of hits to return (default {DEFAULT_PAGE_LIMIT}, maximum {MAX_PAGE_LIMIT})."
+            
         ),
     ),
     offset: int = Query(

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
@@ -23,7 +23,7 @@ def _body(name: str, lon: float) -> BodyPosition:
 
 
 def test_electional_search_endpoint(monkeypatch):
-    t0 = datetime(2026, 3, 20, 12, 0, tzinfo=timezone.utc)
+    t0 = datetime(2026, 3, 20, 12, 0, tzinfo=UTC)
     iso = t0.isoformat().replace("+00:00", "Z")
 
     context = SampleContext(
