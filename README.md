@@ -86,6 +86,13 @@ diagnostics inside a WebView2-powered desktop window. Launch it locally with:
 python -m app.desktop.launch_desktop
 ```
 
+The embedded first-run wizard refuses to save configuration unless it detects
+real Swiss Ephemeris data files in the provided directory and, when the offline
+atlas toggle is enabled, verifies the SQLite database can be read without
+mutation. The wizard prints a summary with file and table counts so operators
+can confirm every module remains data-backed before proceeding to production
+checks.
+
 To build the Windows 11 installer, run `packaging\windows\make.bat` from a
 Developer Command Prompt. The script creates `dist\AstroEngine\AstroEngine.exe`
 using PyInstaller (pointing at the native desktop shell) and, if Inno Setup is

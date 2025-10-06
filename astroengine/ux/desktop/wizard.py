@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import os
+import sqlite3
 import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -50,6 +52,7 @@ def run_first_run_wizard(
         require_directory=True,
         input_func=input_func,
         print_func=print_func,
+        validator=_validate_swiss_ephemeris,
     )
 
     enable_offline = _prompt_boolean(
@@ -67,6 +70,7 @@ def run_first_run_wizard(
             require_directory=False,
             input_func=input_func,
             print_func=print_func,
+            validator=_validate_sqlite,
         )
 
     profile_name = _prompt_profile(input_func=input_func, print_func=print_func)
@@ -81,10 +85,34 @@ def run_first_run_wizard(
     base_settings.atlas.data_path = atlas_path
     base_settings.preset = profile_name
 
+    swiss_meta: dict[str, object] | None = None
+    if ephemeris_path:
+        swiss_meta = _summarise_swiss(Path(ephemeris_path))
+
+    atlas_meta: dict[str, object] | None = None
+    if atlas_path:
+        atlas_meta = _summarise_sqlite(Path(atlas_path))
+
     save_settings(base_settings, settings_path)
-    _stamp_metadata(settings_path)
-    print_func(
-        f"✅ Configuration saved to {settings_path}"
+    metadata = _build_metadata(
+        settings_path=settings_path,
+        ephemeris_path=ephemeris_path,
+        swiss_meta=swiss_meta,
+        atlas_enabled=enable_offline,
+        atlas_path=atlas_path,
+        atlas_meta=atlas_meta,
+        profile_name=profile_name,
+    )
+    _stamp_metadata(settings_path, metadata)
+    _print_summary(
+        print_func=print_func,
+        settings_path=settings_path,
+        ephemeris_path=ephemeris_path,
+        swiss_meta=swiss_meta,
+        atlas_enabled=enable_offline,
+        atlas_path=atlas_path,
+        atlas_meta=atlas_meta,
+        profile_name=profile_name,
     )
     return load_settings(settings_path)
 
@@ -96,6 +124,7 @@ def _prompt_path(
     require_directory: bool,
     input_func: PromptFn,
     print_func: PrintFn,
+    validator: Callable[[Path], None] | None = None,
 ) -> str:
     while True:
         response = input_func(f"{prompt}: ").strip()
@@ -112,6 +141,15 @@ def _prompt_path(
         if not exists:
             print_func("Path not found. Please try again.")
             continue
+        if validator:
+            try:
+                validator(candidate)
+            except ValueError as exc:
+                print_func(str(exc))
+                continue
+            except Exception as exc:  # pragma: no cover - defensive guard
+                print_func(f"Validation failed: {exc}")
+                continue
         return str(candidate)
 
 
@@ -151,20 +189,121 @@ def _prompt_profile(
         print_func("Unknown profile. Please choose one from the list above.")
 
 
-def _stamp_metadata(settings_path: Path) -> None:
-    """Record a creation timestamp for transparency."""
+def _validate_swiss_ephemeris(path: Path) -> None:
+    """Ensure ``path`` contains Swiss ephemeris data files."""
 
-    meta_path = settings_path.with_suffix(".first_run.json")
-    payload = {
+    if not any(path.glob("*.se*")):
+        raise ValueError(
+            "Swiss ephemeris directory must include *.se* data files for high-precision runs."
+        )
+
+
+def _validate_sqlite(path: Path) -> None:
+    """Ensure ``path`` refers to a readable SQLite database."""
+
+    uri = f"file:{path.as_posix()}?mode=ro"
+    try:
+        with sqlite3.connect(uri, uri=True) as conn:
+            conn.execute("PRAGMA schema_version;")
+    except sqlite3.DatabaseError as exc:
+        raise ValueError("Offline atlas path must be a readable SQLite database.") from exc
+
+
+def _summarise_swiss(path: Path) -> dict[str, object]:
+    files = [f for f in path.glob("*.se*") if f.is_file()]
+    examples = [f.name for f in files[:5]]
+    return {"count": len(files), "examples": examples}
+
+
+def _summarise_sqlite(path: Path) -> dict[str, object]:
+    uri = f"file:{path.as_posix()}?mode=ro"
+    with sqlite3.connect(uri, uri=True) as conn:
+        rows = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+        ).fetchall()
+    examples = [row[0] for row in rows[:5]]
+    return {"tables": len(rows), "examples": examples}
+
+
+def _build_metadata(
+    *,
+    settings_path: Path,
+    ephemeris_path: str,
+    swiss_meta: dict[str, object] | None,
+    atlas_enabled: bool,
+    atlas_path: str | None,
+    atlas_meta: dict[str, object] | None,
+    profile_name: str,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
         "created_at": datetime.now(UTC).isoformat(),
         "settings_path": str(settings_path),
+        "profile": profile_name,
+        "ephemeris": {
+            "path": ephemeris_path or None,
+            "files": (swiss_meta or {}).get("count", 0),
+            "examples": (swiss_meta or {}).get("examples", []),
+        },
+        "atlas": {
+            "enabled": atlas_enabled,
+            "path": atlas_path,
+            "tables": (atlas_meta or {}).get("tables", 0),
+            "examples": (atlas_meta or {}).get("examples", []),
+        },
+        "post_setup": "python -m astroengine.maint --full --strict",
     }
-    try:
-        import json
+    return payload
 
-        meta_path.write_text(
-            json.dumps(payload, indent=2), encoding="utf-8"
+
+def _print_summary(
+    *,
+    print_func: PrintFn,
+    settings_path: Path,
+    ephemeris_path: str,
+    swiss_meta: dict[str, object] | None,
+    atlas_enabled: bool,
+    atlas_path: str | None,
+    atlas_meta: dict[str, object] | None,
+    profile_name: str,
+) -> None:
+    print_func("")
+    print_func(f"✅ Configuration saved to {settings_path}")
+    print_func("Summary of detected data sources:")
+
+    if ephemeris_path:
+        count = int((swiss_meta or {}).get("count", 0))
+        label = f"{ephemeris_path} ({count} Swiss ephemeris file(s))"
+        print_func(f" • Swiss Ephemeris: {label}")
+        examples = (swiss_meta or {}).get("examples") or []
+        if examples:
+            print_func(f"   sample files: {', '.join(examples)}")
+    else:
+        print_func(
+            " • Swiss Ephemeris: not provided — Swiss-backed precision will remain disabled."
         )
+
+    if atlas_enabled and atlas_path:
+        tables = int((atlas_meta or {}).get("tables", 0))
+        label = f"{atlas_path} ({tables} table(s))"
+        print_func(f" • Offline Atlas: {label}")
+        examples = (atlas_meta or {}).get("examples") or []
+        if examples:
+            print_func(f"   sample tables: {', '.join(examples)}")
+    else:
+        print_func(" • Offline Atlas: disabled — API calls will stream live atlas data.")
+
+    print_func(f" • Profile preset: {profile_name}")
+    print_func(
+        "Next step: run `python -m astroengine.maint --full --strict` to verify the installation."
+    )
+
+
+def _stamp_metadata(settings_path: Path, metadata: dict[str, object]) -> None:
+    """Record metadata describing the first-run configuration."""
+
+    meta_path = settings_path.with_suffix(".first_run.json")
+    try:
+        meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     except Exception:  # pragma: no cover - metadata best effort
         return
 
