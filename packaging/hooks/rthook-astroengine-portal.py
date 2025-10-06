@@ -24,16 +24,19 @@ def _ensure_dir(path: Path) -> Path:
 def _configure_user_space(root: Path) -> None:
     local_appdata = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
     user_root = _ensure_dir(local_appdata / "AstroEngine")
-    os.environ.setdefault("ASTROENGINE_HOME", str(user_root))
-    os.environ.setdefault("ASTROENGINE_DATA_ROOT", str(_ensure_dir(user_root / "data")))
+    if not os.environ.get("ASTROENGINE_HOME"):
+        os.environ["ASTROENGINE_HOME"] = str(user_root)
+    data_root = _ensure_dir(user_root / "data")
+    if not os.environ.get("ASTROENGINE_DATA_ROOT"):
+        os.environ["ASTROENGINE_DATA_ROOT"] = str(data_root)
     _ensure_dir(user_root / "logs")
     os.environ.setdefault("STREAMLIT_BROWSER_GATHER_USAGE_STATS", "0")
 
 
 def _configure_ephemeris(root: Path) -> None:
     candidate = root / "resources" / "ephemeris"
-    if candidate.exists():
-        os.environ.setdefault("SE_EPHE_PATH", str(candidate))
+    if candidate.exists() and not os.environ.get("SE_EPHE_PATH"):
+        os.environ["SE_EPHE_PATH"] = str(candidate)
 
 
 def configure_environment() -> None:
