@@ -55,7 +55,7 @@ Create the following artifacts under `%APPDATA%\Microsoft\Windows\Start Menu\Pro
 | Start UI Only | `env\Scripts\python.exe installer\windows_portal_entry.py --launch ui` | Install root | Blocks until `/health` returns OK before launching UI. |
 | Uninstall AstroEngine | `"%LOCALAPPDATA%\AstroEngine\uninstall.exe"` | n/a | Launches WiX Burn uninstaller with custom data preservation prompt. |
 
-Desktop shortcut for **Start AstroEngine** is offered via checkbox (default on). All shortcuts use icons shipped in `installer/assets/astroengine.ico`.
+Desktop shortcut for **Start AstroEngine** is offered via checkbox (default on). Shortcuts default to the Python launcher icon; a branded icon can be supplied later at packaging time without changing installer logic.
 
 ## 5. Uninstall & Repair
 
@@ -87,7 +87,7 @@ Desktop shortcut for **Start AstroEngine** is offered via checkbox (default on).
 
 1. **Source Preparation**
    - Freeze dependencies via `pip-compile`. Ensure `requirements.lock/py311.txt` exists before packaging.
-   - Pre-stage `installer/windows_portal_entry.py` and icon assets.
+   - Pre-stage `installer/windows_portal_entry.py` and any optional icon assets supplied during packaging.
 2. **WiX Toolset**
    - Use `Heat` to harvest installed tree structure for offline bundle skeleton.
    - Burn bootstrapper chain orchestrates: (a) install VC runtime if needed, (b) copy files, (c) run custom action for Python/venv setup, (d) execute verification.
