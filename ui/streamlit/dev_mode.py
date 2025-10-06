@@ -10,6 +10,23 @@ import streamlit as st
 
 st.set_page_config(page_title="Dev Mode", layout="wide")
 API_ROOT = os.getenv("ASTROENGINE_API", "http://127.0.0.1:8000").rstrip("/")
+DEFAULT_PIN = os.getenv("DEV_PIN", "")
+
+pin_value = st.sidebar.text_input(
+    "Developer PIN",
+    value=DEFAULT_PIN,
+    type="password",
+    help="Required to access protected developer APIs.",
+)
+
+
+def request_with_pin(method: str, url: str, **kwargs):
+    """Issue a request with the PIN header when provided."""
+
+    headers = kwargs.pop("headers", {}) or {}
+    if pin_value:
+        headers = {**headers, "X-Dev-Pin": pin_value}
+    return requests.request(method=method, url=url, headers=headers, **kwargs)
 
 if not os.getenv("DEV_MODE"):
     st.error("Dev mode is disabled. Set DEV_MODE=1 and restart the API server.")
@@ -33,7 +50,9 @@ with validate_tab:
     st.subheader("Run validation pipeline")
     if st.button("Run compile/lint/tests", key="run-validation"):
         try:
-            response = requests.post(f"{API_ROOT}/v1/dev/validate", timeout=180)
+            response = request_with_pin(
+                "post", f"{API_ROOT}/v1/dev/validate", timeout=180
+            )
             response.raise_for_status()
             st.json(response.json())
         except requests.RequestException as exc:
@@ -75,8 +94,8 @@ with apply_tab:
         if allow_core:
             payload["confirm_phrase"] = typed_phrase
         try:
-            response = requests.post(
-                f"{API_ROOT}/v1/dev/apply", json=payload, timeout=180
+            response = request_with_pin(
+                "post", f"{API_ROOT}/v1/dev/apply", json=payload, timeout=180
             )
             st.json(response.json())
         except requests.RequestException as exc:
@@ -86,7 +105,9 @@ with apply_tab:
 with history_tab:
     st.subheader("Version history & restore")
     try:
-        response = requests.get(f"{API_ROOT}/v1/dev/history", timeout=30)
+        response = request_with_pin(
+            "get", f"{API_ROOT}/v1/dev/history", timeout=30
+        )
         response.raise_for_status()
         history_items = response.json()
     except requests.RequestException as exc:
@@ -115,7 +136,8 @@ with history_tab:
                         key=f"restore-{entry.get('commit')}",
                     ):
                         try:
-                            restore_resp = requests.post(
+                            restore_resp = request_with_pin(
+                                "post",
                                 f"{API_ROOT}/v1/dev/restore",
                                 json={"commit": entry.get("commit")},
                                 timeout=60,
@@ -133,7 +155,7 @@ with history_tab:
 with backups_tab:
     st.subheader("Scheduled backups")
     try:
-        data = requests.get(f"{API_ROOT}/v1/dev/backups", timeout=30)
+        data = request_with_pin("get", f"{API_ROOT}/v1/dev/backups", timeout=30)
         data.raise_for_status()
         backup_data = data.json()
     except requests.RequestException as exc:
@@ -159,7 +181,9 @@ with backups_tab:
     with cols[1]:
         if st.button("Create backup now", key="run-backup-now"):
             try:
-                resp = requests.post(f"{API_ROOT}/v1/dev/backups/run", timeout=120)
+                resp = request_with_pin(
+                    "post", f"{API_ROOT}/v1/dev/backups/run", timeout=120
+                )
                 resp.raise_for_status()
                 st.success(resp.json())
             except requests.RequestException as exc:
@@ -186,7 +210,8 @@ with backups_tab:
             if start_in > 0:
                 payload["start_in_hours"] = float(start_in)
             try:
-                resp = requests.post(
+                resp = request_with_pin(
+                    "post",
                     f"{API_ROOT}/v1/dev/backups/schedule",
                     json=payload,
                     timeout=30,
@@ -198,7 +223,9 @@ with backups_tab:
 
     if st.button("Cancel scheduled backups", key="cancel-backup-schedule"):
         try:
-            resp = requests.delete(f"{API_ROOT}/v1/dev/backups/schedule", timeout=30)
+            resp = request_with_pin(
+                "delete", f"{API_ROOT}/v1/dev/backups/schedule", timeout=30
+            )
             resp.raise_for_status()
             st.warning(resp.json())
         except requests.RequestException as exc:
@@ -217,7 +244,8 @@ with backups_tab:
                 if path:
                     if st.button("Restore from this ZIP", key=f"restore-zip-{path}"):
                         try:
-                            resp = requests.post(
+                            resp = request_with_pin(
+                                "post",
                                 f"{API_ROOT}/v1/dev/backups/restore",
                                 json={"archive_path": path},
                                 timeout=120,
@@ -243,8 +271,11 @@ with backups_tab:
         if submitted:
             payload = {"temporary_derivatives_days": int(new_days), "run_purge": run_purge}
             try:
-                resp = requests.post(
-                    f"{API_ROOT}/v1/dev/retention", json=payload, timeout=120
+                resp = request_with_pin(
+                    "post",
+                    f"{API_ROOT}/v1/dev/retention",
+                    json=payload,
+                    timeout=120,
                 )
                 resp.raise_for_status()
                 st.success(resp.json())

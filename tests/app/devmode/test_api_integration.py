@@ -17,6 +17,7 @@ def devmode_app(tmp_path, monkeypatch):
     monkeypatch.setenv("ASTROENGINE_HOME", str(home))
     monkeypatch.setenv("DEV_MODE", "1")
     monkeypatch.setenv("DEV_VALIDATE_COMMANDS", "echo ok")
+    monkeypatch.setenv("DEV_PIN", "1234")
 
     import app.devmode.backups as backups_mod
     import astroengine.infrastructure.retention as retention_mod
@@ -29,6 +30,7 @@ def devmode_app(tmp_path, monkeypatch):
     app = FastAPI()
     app.include_router(api_mod.router)
     client = TestClient(app)
+    client.headers.update({"X-Dev-Pin": "1234"})
     return client, tmp_path
 
 
@@ -104,3 +106,11 @@ def test_backup_endpoints(devmode_app):
     )
     assert retention_resp.status_code == 200
     assert retention_resp.json()["policy"]["temporary_derivatives_days"] == 5
+
+
+def test_dev_endpoints_require_pin(devmode_app):
+    client, _ = devmode_app
+    client.headers.pop("X-Dev-Pin", None)
+
+    response = client.get("/v1/dev/history")
+    assert response.status_code == 403
