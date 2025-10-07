@@ -36,6 +36,7 @@ Name: "{app}\var"; Flags: uninsalwaysuninstall
 Name: "{app}\logs"; Flags: uninsalwaysuninstall
 Name: "{app}\logs\install"; Flags: uninsalwaysuninstall
 Name: "{app}\installer\cache"; Flags: uninsalwaysuninstall
+Name: "{app}\config"; Flags: uninsalwaysuninstall
 
 [Files]
 Source: "..\app\*"; DestDir: "{app}\app"; Flags: ignoreversion recursesubdirs createallsubdirs
