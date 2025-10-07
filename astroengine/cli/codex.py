@@ -9,8 +9,10 @@ from collections.abc import Iterable, Mapping, Sequence
 
 from ..codex import (
     UnknownCodexPath,
+    codex_mcp_server,
     describe_path,
     get_registry,
+    common_mcp_servers,
     registry_snapshot,
     resolved_files,
 )
@@ -101,6 +103,27 @@ def add_subparser(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> N
         help="Rebuild the registry snapshot before resolving the path",
     )
     files_parser.set_defaults(handler=_list_files)
+
+    mcp_parser = codex_sub.add_parser(
+        "mcp",
+        help="Emit Model Context Protocol descriptors for codex integration",
+        description=(
+            "Generate a manifest that allows MCP hosts to invoke the codex registry "
+            "helpers and discover complementary filesystem servers."
+        ),
+    )
+    mcp_parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Rebuild the registry snapshot before generating the manifest",
+    )
+    mcp_parser.add_argument(
+        "--no-common",
+        dest="include_common",
+        action="store_false",
+        help="Omit the curated list of complementary MCP servers from the output",
+    )
+    mcp_parser.set_defaults(handler=_emit_mcp, include_common=True)
 
     parser.set_defaults(func=_dispatch)
 
@@ -204,4 +227,15 @@ def _list_files(args: argparse.Namespace) -> int:
     else:
         for path in paths:
             print(path)
+    return 0
+
+
+def _emit_mcp(args: argparse.Namespace) -> int:
+    manifest = codex_mcp_server(refresh=args.refresh)
+    payload: dict[str, object] = {"server": manifest.as_dict()}
+    if args.include_common:
+        payload["commonServers"] = [
+            server.as_dict() for server in common_mcp_servers()
+        ]
+    print(json.dumps(payload, indent=2, sort_keys=True))
     return 0
