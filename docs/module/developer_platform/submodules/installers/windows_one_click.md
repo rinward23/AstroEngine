@@ -10,6 +10,14 @@
 
 Deliver a telemetry-free, GUI-driven Windows setup experience that allows non-technical stakeholders to install, configure, launch, and remove AstroEngine without manual terminal usage. The installer must respect module integrity (no loss of channels/subchannels), rely exclusively on verified datasets (Solar Fire exports, Swiss Ephemeris where available), and prepare the app so every runtime response is sourced from real data.
 
+### 1.1 MVP Reliability & Operations Enhancements
+
+The MVP scope now locks in the following high-impact upgrades from the reliability and operations backlog:
+
+1. **Self-Service Repair / Re-run Post-Install** – Provide a single entry point (Start Menu shortcut + `PostInstallRepair.ps1`) that recreates the virtual environment, reinstalls hashed dependencies, reapplies Alembic migrations, and reruns health probes. The workflow preserves `var/dev.db`, appends to rotating logs, and surfaces a consolidated success/failure banner.
+2. **Automatic Port Conflict Resolution** – Launch orchestrators must probe 8000 (API) and 8501 (UI), selecting the next free ports in the range 8000-8010 / 8501-8511 when conflicts arise. Resolved port numbers are persisted to `.env`/`config.json`, echoed to the console, and printed in the Start Menu status page so operators know which endpoints to hit.
+3. **Rotating Installer & Runtime Logs** – Ship PowerShell helpers that rotate `%LOCALAPPDATA%\AstroEngine\logs\*.log` daily with a 10 MB cap per file (3 historical archives). Add a Start Menu shortcut labeled **Open Logs Folder** that targets the log directory for quick troubleshooting.
+
 ## 2. Release Targets & Editions
 
 | Edition | Packaging | Internet Requirement | Notes |
@@ -44,26 +52,31 @@ Both editions share the same MSI logic executed through a single scripted wizard
    - Hit `http://127.0.0.1:8000/health`; require HTTP 200 with `{"status":"ok"}`.
    - Stop API process, then mark installation successful in wizard with log summary.
 
+### 3.1 Silent / Unattended Mode
+
+Support `/VERYSILENT /SUPPRESSMSGBOXES` execution with optional `Mode=Online|Offline` and `Scope=PerUser|AllUsers` public properties. Silent runs inherit the same verification pipeline as interactive installs, emit progress to `%LOCALAPPDATA%\AstroEngine\logs\install\silent.log`, and exit with non-zero status when any validation fails. Documentation must include example invocations for enterprise software deployment tools (SCCM, Intune, PDQ).
+
 ## 4. Shortcut & Launcher Design
 
 Create the following artifacts under `%APPDATA%\Microsoft\Windows\Start Menu\Programs\AstroEngine` and optional Desktop:
 
 | Shortcut | Target | Working Dir | Notes |
 | --- | --- | --- | --- |
-| Start AstroEngine | `env\Scripts\python.exe installer\windows_portal_entry.py --launch both` | Install root | Script orchestrates sequential startup: API (port 8000) then UI (port 8501), waits for readiness, opens default browser to Streamlit URL. |
-| Start API Only | `env\Scripts\python.exe installer\windows_portal_entry.py --launch api` | Install root | Creates console window; ensures idempotent start (returns success if already running). |
-| Start UI Only | `env\Scripts\python.exe installer\windows_portal_entry.py --launch ui` | Install root | Blocks until `/health` returns OK before launching UI. |
+| Start AstroEngine | `env\Scripts\python.exe installer\windows_portal_entry.py --launch both` | Install root | Script orchestrates sequential startup: API then UI, auto-selects conflict-free ports, waits for readiness, opens default browser to the resolved Streamlit URL. |
+| Start API Only | `env\Scripts\python.exe installer\windows_portal_entry.py --launch api` | Install root | Creates console window; ensures idempotent start, auto-picks free port when 8000 is busy, and prints resolved port in banner/log. |
+| Start UI Only | `env\Scripts\python.exe installer\windows_portal_entry.py --launch ui` | Install root | Blocks until `/health` returns OK before launching UI and honors auto-selected port from API health metadata. |
 | Uninstall AstroEngine | `"%LOCALAPPDATA%\AstroEngine\uninstall.exe"` | n/a | Launches WiX Burn uninstaller with custom data preservation prompt. |
+| Open Logs Folder | `explorer.exe` | n/a | Opens `%LOCALAPPDATA%\AstroEngine\logs` to expose rotating logs and diagnostic bundles. |
 
 Desktop shortcut for **Start AstroEngine** is offered via checkbox (default on). Shortcuts default to the Python launcher icon; a branded icon can be supplied later at packaging time without changing installer logic.
 
 ## 5. Uninstall & Repair
 
-1. **Repair** option (from Control Panel) reruns dependency verification, reinstalls wheels, and replays Alembic migrations without truncating `dev.db`.
+1. **Repair** option (from Control Panel or the Start Menu **Repair AstroEngine** shortcut) runs the same script pipeline: recreate virtual environment, reinstall hashed wheels, replay Alembic migrations, reprovision `.env`/`config.json` from templates, and re-execute health probes. Failures emit actionable guidance to console and `logs\install\repair-*.log` before returning a non-zero exit code.
 2. **Modify** step allows toggling Desktop shortcut and Swiss Ephemeris path (without re-downloading Python).
 3. **Uninstall** flow:
    - Prompt: remove application files and optional user data (`dev.db`, logs, imported ephemeris). Default preserves data.
-   - Remove `%LOCALAPPDATA%\AstroEngine` runtime, `%APPDATA%\AstroEngine` config, Start Menu/Desktop shortcuts, firewall rules, and the virtual environment.
+- Remove `%LOCALAPPDATA%\AstroEngine` runtime, `%APPDATA%\AstroEngine` config, Start Menu/Desktop shortcuts, firewall rules, and the virtual environment.
    - If user requested data purge, delete `%LOCALAPPDATA%\AstroEngine\var\dev.db` after backup prompt.
 
 ## 6. Firewall & Networking Considerations
@@ -77,6 +90,7 @@ Desktop shortcut for **Start AstroEngine** is offered via checkbox (default on).
 - Support optional code-signing certificate (PFX) provided at build time; `make signing` pipeline injects via WiX `SignTool` custom action.
 - macOS notarization and Linux signing tracked separately (`docs/module/developer_platform/submodules/installers/cross_platform.md` TBD); Windows installer must still operate unsigned but warn about SmartScreen.
 - Store install logs in `%LOCALAPPDATA%\AstroEngine\logs\install` with timestamped files for troubleshooting.
+- Rotate install/runtime logs daily with 10 MB caps (`astroengine_api.log`, `astroengine_ui.log`, `post_install.log`, `repair.log`). Retain three archived copies per log file and prune older entries automatically. Include rotation metadata (timestamp, size, checksum) at the top of each new log file.
 
 ## 8. Upgrade Strategy
 
@@ -99,8 +113,9 @@ Desktop shortcut for **Start AstroEngine** is offered via checkbox (default on).
    scripts\sign_artifact.ps1 dist\Setup.exe -CertPath $env:ASTROENGINE_CERT
    ```
 4. **Artifacts**
-   - Publish `Setup.exe`, `SetupOffline.exe`, and checksum manifest `SHA256SUMS.txt`.
-   - Include `INSTALLER_QUICKSTART.md` with manual install instructions and troubleshooting matrix.
+- Publish `Setup.exe`, `SetupOffline.exe`, and checksum manifest `SHA256SUMS.txt`.
+- Include `INSTALLER_QUICKSTART.md` with manual install instructions and troubleshooting matrix.
+- Publish `logs\diag-YYYYMMDD.zip` bundles on demand via PowerShell helper invoked from the Start Menu (collects rotating logs, health probe output, Python version, installed package hashes).
 
 ## 10. Telemetry & Privacy
 
