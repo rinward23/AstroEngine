@@ -118,6 +118,18 @@ def register_developer_platform_module(registry: AstroRegistry) -> None:
             "documentation": "docs/module/developer_platform/codex.md#python",
         },
     )
+    access.register_subchannel(
+        "mcp",
+        metadata={
+            "description": "Model Context Protocol manifest for codex registry helpers.",
+            "status": "available",
+        },
+        payload={
+            "manifest": "astroengine.codex.codex_mcp_server",
+            "recommendedServers": "astroengine.codex.common_mcp_servers",
+            "documentation": "docs/module/developer_platform/codex.md#mcp",
+        },
+    )
 
     devportal = module.register_submodule(
         "devportal",

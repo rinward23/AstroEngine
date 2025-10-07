@@ -6,6 +6,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .. import __version__ as _PACKAGE_VERSION
 from ..infrastructure.paths import get_paths
 from ..modules import DEFAULT_REGISTRY, AstroRegistry, bootstrap_default_registry
 
@@ -16,6 +17,11 @@ __all__ = [
     "get_registry",
     "registry_snapshot",
     "resolved_files",
+    "MCPManifest",
+    "MCPServerDescriptor",
+    "MCPToolDescriptor",
+    "codex_mcp_server",
+    "common_mcp_servers",
 ]
 
 
@@ -203,3 +209,257 @@ def resolved_files(
             resolved.append(candidate)
             seen.add(candidate)
     return resolved
+
+
+@dataclass(frozen=True)
+class MCPToolDescriptor:
+    """Describe a codex helper exposed via the Model Context Protocol."""
+
+    name: str
+    description: str
+    input_schema: Mapping[str, object]
+    output_schema: Mapping[str, object]
+    metadata: Mapping[str, object] = field(default_factory=dict)
+
+    def as_dict(self) -> dict[str, object]:
+        """Return a JSON-serialisable representation of the tool descriptor."""
+
+        payload: dict[str, object] = {
+            "name": self.name,
+            "description": self.description,
+            "inputSchema": dict(self.input_schema),
+            "outputSchema": dict(self.output_schema),
+        }
+        if self.metadata:
+            payload["metadata"] = dict(self.metadata)
+        return payload
+
+
+@dataclass(frozen=True)
+class MCPManifest:
+    """Manifest describing the codex as an MCP-compatible server."""
+
+    name: str
+    version: str
+    description: str
+    tools: Sequence[MCPToolDescriptor]
+    resources: Mapping[str, object]
+    metadata: Mapping[str, object] = field(default_factory=dict)
+
+    def as_dict(self) -> dict[str, object]:
+        """Return a JSON-serialisable manifest."""
+
+        payload: dict[str, object] = {
+            "name": self.name,
+            "version": self.version,
+            "description": self.description,
+            "tools": [tool.as_dict() for tool in self.tools],
+            "resources": dict(self.resources),
+        }
+        if self.metadata:
+            payload["metadata"] = dict(self.metadata)
+        return payload
+
+
+@dataclass(frozen=True)
+class MCPServerDescriptor:
+    """Describe an external MCP server that complements the codex."""
+
+    name: str
+    description: str
+    transport: str
+    configuration: Mapping[str, object]
+    metadata: Mapping[str, object] = field(default_factory=dict)
+
+    def as_dict(self) -> dict[str, object]:
+        """Return a JSON-serialisable server descriptor."""
+
+        payload: dict[str, object] = {
+            "name": self.name,
+            "description": self.description,
+            "transport": self.transport,
+            "configuration": dict(self.configuration),
+        }
+        if self.metadata:
+            payload["metadata"] = dict(self.metadata)
+        return payload
+
+
+def codex_mcp_server(*, refresh: bool = False) -> MCPManifest:
+    """Return an MCP manifest for exposing the codex registry helpers."""
+
+    registry = get_registry(refresh=refresh)
+    snapshot = registry.as_dict()
+    documentation_paths = [
+        str(path)
+        for path in resolved_files(
+            ["developer_platform", "codex", "access", "python"],
+            registry=registry,
+        )
+    ]
+    documentation_paths.sort()
+
+    tools = (
+        MCPToolDescriptor(
+            name="registry_snapshot",
+            description="Return the module hierarchy snapshot used by the codex.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "refresh": {
+                        "type": "boolean",
+                        "description": "Rebuild the registry from source definitions before returning the snapshot.",
+                        "default": False,
+                    }
+                },
+                "additionalProperties": False,
+            },
+            output_schema={
+                "type": "object",
+                "description": "Mapping of modules, submodules, channels, and subchannels.",
+            },
+            metadata={"python": "astroengine.codex.registry_snapshot"},
+        ),
+        MCPToolDescriptor(
+            name="describe_path",
+            description="Resolve metadata for a specific module/submodule/channel/subchannel path.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Registry path segments expressed as module/submodule/channel/subchannel.",
+                    },
+                    "refresh": {
+                        "type": "boolean",
+                        "description": "Rebuild the registry before resolving the path.",
+                        "default": False,
+                    },
+                },
+                "required": ["path"],
+                "additionalProperties": False,
+            },
+            output_schema={
+                "type": "object",
+                "description": "Metadata and payload describing the requested registry node.",
+            },
+            metadata={"python": "astroengine.codex.describe_path"},
+        ),
+        MCPToolDescriptor(
+            name="resolved_files",
+            description="Resolve filesystem references associated with a registry path.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Registry path segments expressed as module/submodule/channel/subchannel.",
+                    },
+                    "refresh": {
+                        "type": "boolean",
+                        "description": "Rebuild the registry before resolving references.",
+                        "default": False,
+                    },
+                },
+                "required": ["path"],
+                "additionalProperties": False,
+            },
+            output_schema={
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "description": "Absolute filesystem path to a documentation or dataset resource.",
+                },
+            },
+            metadata={"python": "astroengine.codex.resolved_files"},
+        ),
+    )
+
+    resources: dict[str, object] = {
+        "registry": {
+            "kind": "registry",
+            "description": "Authoritative registry snapshot sourced from the AstroEngine repository.",
+            "data": snapshot,
+        }
+    }
+    if documentation_paths:
+        resources["documentation"] = {
+            "kind": "filesystem",
+            "description": "Documentation files referenced by the codex helper payloads.",
+            "paths": documentation_paths,
+        }
+
+    metadata: dict[str, object] = {
+        "documentation": documentation_paths,
+        "module": "developer_platform.codex",
+    }
+
+    return MCPManifest(
+        name="astroengine-codex",
+        version=_PACKAGE_VERSION,
+        description=(
+            "Read-only registry manifest derived from AstroEngine modules, "
+            "suitable for serving via the Model Context Protocol."
+        ),
+        tools=tools,
+        resources=resources,
+        metadata=metadata,
+    )
+
+
+def common_mcp_servers() -> tuple[MCPServerDescriptor, ...]:
+    """Return curated MCP servers that complement the codex manifest."""
+
+    paths = get_paths()
+    project_root = paths.project_root
+
+    datasets_root = project_root / "datasets"
+    solafire_root = datasets_root / "solarfire"
+    swisseph_root = datasets_root / "swisseph_stub"
+    docs_root = project_root / "docs"
+    rulesets_root = project_root / "rulesets"
+
+    servers = [
+        MCPServerDescriptor(
+            name="astroengine-datasets",
+            description=(
+                "Expose the curated astrology datasets (SolarFire exports and Swiss Ephemeris "
+                "stubs) via a filesystem MCP server for data-backed analysis."
+            ),
+            transport="filesystem",
+            configuration={"root": str(datasets_root)},
+            metadata={
+                "datasets": [str(solafire_root), str(swisseph_root)],
+                "documentation": ["datasets/README.md"] if (datasets_root / "README.md").exists() else [],
+            },
+        ),
+        MCPServerDescriptor(
+            name="astroengine-docs",
+            description=(
+                "Serve the AstroEngine documentation tree so MCP clients can cross-reference "
+                "run instructions and module narratives."
+            ),
+            transport="filesystem",
+            configuration={"root": str(docs_root)},
+            metadata={
+                "highlights": [
+                    "docs/module/developer_platform/codex.md",
+                    "docs/module/developer_platform/cli.md",
+                ]
+            },
+        ),
+        MCPServerDescriptor(
+            name="astroengine-rulesets",
+            description=(
+                "Expose rulepack definitions that drive transit and interpretation workflows "
+                "for downstream MCP tools."
+            ),
+            transport="filesystem",
+            configuration={"root": str(rulesets_root)},
+            metadata={"channels": ["rulesets/transit"]},
+        ),
+    ]
+
+    return tuple(servers)

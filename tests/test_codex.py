@@ -26,3 +26,21 @@ def test_resolved_files_for_python_helpers_points_to_docs() -> None:
     assert "codex.md" in filenames
     for path in paths:
         assert Path(path).exists()
+
+
+def test_codex_mcp_manifest_includes_registry_resource() -> None:
+    manifest = codex.codex_mcp_server()
+    payload = manifest.as_dict()
+    assert payload["name"] == "astroengine-codex"
+    assert "registry" in payload["resources"]
+    registry_resource = payload["resources"]["registry"]
+    assert isinstance(registry_resource.get("data"), dict)
+    assert payload["tools"], "Expected codex MCP manifest to expose tools"
+
+
+def test_common_mcp_servers_expose_dataset_root() -> None:
+    servers = codex.common_mcp_servers()
+    dataset_server = next(server for server in servers if server.name == "astroengine-datasets")
+    root_path = Path(dataset_server.configuration["root"])  # type: ignore[index]
+    assert root_path.exists()
+    assert root_path.name == "datasets"
