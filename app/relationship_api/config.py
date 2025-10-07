@@ -81,10 +81,13 @@ class ServiceSettings(BaseModel):
             return default
         return value.lower() in {"1", "true", "yes", "on"}
 
+    @field_validator("cors_allow_origins", mode="before")
     @classmethod
     def from_env(cls) -> ServiceSettings:
         """Construct settings using the process environment."""
 
+    @classmethod
+    def from_env(cls) -> "ServiceSettings":
         redis_url = os.getenv("RELATIONSHIP_REDIS_URL") or os.getenv("REDIS_URL")
         rate_limit = max(1, int(os.getenv("RELATIONSHIP_RATE_LIMIT", "60")))
         gzip_min_size = max(128, int(os.getenv("RELATIONSHIP_GZIP_MIN", "512")))
