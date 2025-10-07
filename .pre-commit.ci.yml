@@ -1,3 +1,4 @@
 # >>> AUTO-GEN BEGIN: pre-commit ci v1.0
 autoupdate_schedule: quarterly
+autofix_prs: true
 # >>> AUTO-GEN END: pre-commit ci v1.0
