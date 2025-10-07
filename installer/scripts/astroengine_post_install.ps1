@@ -17,6 +17,8 @@ param(
     [Parameter()]
     [string]$ManifestPath = '',
 
+    [switch]$InstallPython,
+
     [switch]$ConfigureFirewall,
 
     [Parameter()]
@@ -60,29 +62,54 @@ function Resolve-Manifest {
     return $json
 }
 
-function Get-PythonZip {
+function Test-FileHash {
+    param(
+        [string]$Path,
+        [string]$Expected,
+        [string]$Label
+    )
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "$Label not found at $Path"
+    }
+    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
+    if ($hash -ne $Expected.ToLowerInvariant()) {
+        throw "$Label checksum mismatch. Expected $Expected but received $hash."
+    }
+}
+
+function Get-PythonPayload {
+    $manifest = Resolve-Manifest -Path $ManifestPath
     if ($Mode -eq 'Online') {
-        $manifest = Resolve-Manifest -Path $ManifestPath
         $downloadRoot = Join-Path $InstallRoot 'installer\cache'
         Ensure-Directory -Path $downloadRoot
         $destination = Join-Path $downloadRoot (Split-Path -Leaf $manifest.python.url)
         Write-Log "Downloading Python runtime from $($manifest.python.url)"
         Invoke-WebRequest -Uri $manifest.python.url -OutFile $destination -UseBasicParsing
-        $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash.ToLowerInvariant()
-        if ($hash -ne $manifest.python.sha256.ToLowerInvariant()) {
-            throw "SHA256 mismatch for Python runtime. Expected $($manifest.python.sha256), got $hash."
-        }
-        return $destination
+        Test-FileHash -Path $destination -Expected $manifest.python.sha256 -Label 'Python runtime download'
+        return @{ Path = $destination; Manifest = $manifest }
     }
+
     $offlineRoot = Join-Path $InstallRoot 'installer\offline'
     if (-not (Test-Path -LiteralPath $offlineRoot)) {
         throw "Offline payload directory missing at $offlineRoot"
     }
-    $files = Get-ChildItem -LiteralPath $offlineRoot -Filter 'python-3.11*-embed-amd64.zip'
-    if ($files.Count -ne 1) {
-        throw "Offline mode expects exactly one python-3.11*-embed-amd64.zip in $offlineRoot"
+    $offlinePath = Join-Path $offlineRoot (Split-Path -Leaf $manifest.python.url)
+    if (-not (Test-Path -LiteralPath $offlinePath)) {
+        throw "Offline payload expected at $offlinePath but was not found"
     }
-    return $files[0].FullName
+    Test-FileHash -Path $offlinePath -Expected $manifest.python.sha256 -Label 'Offline Python runtime'
+
+    if ($manifest.wheels -and $manifest.wheels.Count -gt 0) {
+        foreach ($wheel in $manifest.wheels) {
+            if (-not $wheel.sha256) {
+                throw "Wheel manifest entry for $($wheel.name) is missing a sha256 field."
+            }
+            $wheelPath = Join-Path $offlineRoot $wheel.name
+            Test-FileHash -Path $wheelPath -Expected $wheel.sha256 -Label "Wheel $($wheel.name)"
+        }
+    }
+
+    return @{ Path = $offlinePath; Manifest = $manifest }
 }
 
 function Expand-PythonRuntime {
@@ -207,13 +234,25 @@ function Write-EnvironmentFiles {
     Ensure-Directory -Path $configDir
     $configPath = Join-Path $configDir 'config.json'
     if (-not (Test-Path -LiteralPath $configPath)) {
-        $config = @{ 
+        $config = @{
             runtime = @{ python = 'runtime\\python311'; venv = 'env' }
             logging = @{ level = 'INFO' }
             scope = $Scope
+            mode = $Mode
         } | ConvertTo-Json -Depth 4
         Write-Log "Writing config.json to $configPath"
         $config | Set-Content -LiteralPath $configPath -Encoding UTF8
+    }
+}
+
+function Initialize-PortConfiguration {
+    $configDir = Join-Path $InstallRoot 'config'
+    Ensure-Directory -Path $configDir
+    $portsPath = Join-Path $configDir 'ports.json'
+    if (-not (Test-Path -LiteralPath $portsPath)) {
+        $ports = @{ api = 8000; ui = 8501 } | ConvertTo-Json -Depth 2
+        Write-Log "Seeding default ports configuration at $portsPath"
+        $ports | Set-Content -LiteralPath $portsPath -Encoding UTF8
     }
 }
 
@@ -289,15 +328,16 @@ if (-not $LogPath) {
 Ensure-Directory -Path (Split-Path -Path $LogPath -Parent)
 $script:LogFile = $LogPath
 
-Write-Log "Starting AstroEngine post-install sequence (Mode=$Mode, Scope=$Scope)"
+Write-Log "Starting AstroEngine post-install sequence (Mode=$Mode, Scope=$Scope, InstallPython=$InstallPython)"
 try {
-    $pythonZip = Get-PythonZip
-    $pythonExe = Expand-PythonRuntime -ZipPath $pythonZip
+    $payload = Get-PythonPayload
+    $pythonExe = Expand-PythonRuntime -ZipPath $payload.Path
     $venvRoot = Initialize-Venv -PythonExe $pythonExe
     Install-Dependencies -VenvRoot $venvRoot
     Copy-SwissEphemeris
     Initialize-Database -VenvRoot $venvRoot
     Write-EnvironmentFiles
+    Initialize-PortConfiguration
     Configure-FirewallRules
     Test-Health -VenvRoot $venvRoot
     Write-Log 'Post-install tasks completed successfully.'

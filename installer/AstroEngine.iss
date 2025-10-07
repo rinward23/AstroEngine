@@ -36,6 +36,7 @@ Name: "{app}\var"; Flags: uninsalwaysuninstall
 Name: "{app}\logs"; Flags: uninsalwaysuninstall
 Name: "{app}\logs\install"; Flags: uninsalwaysuninstall
 Name: "{app}\installer\cache"; Flags: uninsalwaysuninstall
+Name: "{app}\config"; Flags: uninsalwaysuninstall
 
 [Files]
 Source: "..\app\*"; DestDir: "{app}\app"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -60,6 +61,9 @@ Source: "..\docs\module\developer_platform\submodules\installers\windows_one_cli
 Name: "{group}\Start AstroEngine"; Filename: "{app}\env\Scripts\python.exe"; Parameters: """{app}\installer\windows_portal_entry.py""" --launch both --wait"; WorkingDir: "{app}"
 Name: "{group}\Start API Only"; Filename: "{app}\env\Scripts\python.exe"; Parameters: """{app}\installer\windows_portal_entry.py""" --launch api --wait --no-browser"; WorkingDir: "{app}"
 Name: "{group}\Start UI Only"; Filename: "{app}\env\Scripts\python.exe"; Parameters: """{app}\installer\windows_portal_entry.py""" --launch ui --wait"; WorkingDir: "{app}"
+Name: "{group}\Repair AstroEngine"; Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File \"{app}\installer\scripts\astroengine_post_install.ps1\" -InstallRoot \"{app}\" -Mode \"{code:GetInstallMode}\" -Scope \"{code:GetInstallScope}\" -InstallPython -LogPath \"{app}\logs\install\repair.log\""; WorkingDir: "{app}"
+Name: "{group}\Open Logs Folder"; Filename: "explorer.exe"; Parameters: "\"{app}\\logs\""
+Name: "{group}\Open Data Folder"; Filename: "explorer.exe"; Parameters: "\"{app}\\var\""
 Name: "{group}\Uninstall AstroEngine"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\Start AstroEngine"; Filename: "{app}\env\Scripts\python.exe"; Parameters: """{app}\installer\windows_portal_entry.py""" --launch both"; WorkingDir: "{app}"; Tasks: desktopicon
 

@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -24,6 +25,9 @@ DEFAULT_UI_HOST = "127.0.0.1"
 PID_API = "api.pid"
 PID_UI = "ui.pid"
 HEALTH_PATH = "/health"
+PORTS_RELATIVE_PATH = Path("config") / "ports.json"
+
+_RESOLVED_PORTS: dict[str, int] | None = None
 
 
 class LaunchError(RuntimeError):
@@ -34,6 +38,92 @@ def _bundle_root() -> Path:
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         return Path(sys._MEIPASS)  # type: ignore[attr-defined]
     return Path(__file__).resolve().parents[1]
+
+
+def _ports_path() -> Path:
+    root = _bundle_root()
+    config_dir = root / PORTS_RELATIVE_PATH.parent
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir / PORTS_RELATIVE_PATH.name
+
+
+def _load_ports_file(path: Path) -> dict[str, int]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"api": DEFAULT_API_PORT, "ui": DEFAULT_UI_PORT}
+    except json.JSONDecodeError as error:
+        raise LaunchError(f"Invalid port configuration: {error}") from error
+
+    result: dict[str, int] = {}
+    for key, fallback in ("api", DEFAULT_API_PORT), ("ui", DEFAULT_UI_PORT):
+        value = data.get(key, fallback)
+        try:
+            result[key] = int(value)
+        except (TypeError, ValueError) as error:
+            raise LaunchError(f"Configured {key} port '{value}' is not an integer") from error
+    return result
+
+
+def _is_port_available(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind(("127.0.0.1", port))
+        except OSError:
+            return False
+    return True
+
+
+def _next_open_port(start: int) -> int:
+    for candidate in range(start, 65535):
+        if _is_port_available(candidate):
+            return candidate
+    raise LaunchError("Unable to locate an open TCP port for AstroEngine.")
+
+
+def _resolve_ports() -> dict[str, int]:
+    path = _ports_path()
+    ports = _load_ports_file(path)
+
+    def _read_env(name: str, fallback: int) -> int:
+        raw = os.environ.get(name)
+        if raw is None:
+            return fallback
+        try:
+            return int(raw)
+        except ValueError as error:
+            raise LaunchError(f"Environment variable {name} must be an integer: {raw}") from error
+
+    desired = {
+        "api": _read_env("ASTROENGINE_API_PORT", ports.get("api", DEFAULT_API_PORT)),
+        "ui": _read_env("ASTROENGINE_UI_PORT", ports.get("ui", DEFAULT_UI_PORT)),
+    }
+
+    changed = False
+    for key, fallback in ("api", DEFAULT_API_PORT), ("ui", DEFAULT_UI_PORT):
+        port = desired[key]
+        start = max(port, fallback)
+        if not _is_port_available(port):
+            port = _next_open_port(start + 1)
+            desired[key] = port
+            changed = True
+
+    if changed or not path.exists():
+        path.write_text(json.dumps(desired, indent=2), encoding="utf-8")
+
+    return desired
+
+
+def _ports() -> dict[str, int]:
+    global _RESOLVED_PORTS
+    if _RESOLVED_PORTS is None:
+        _RESOLVED_PORTS = _resolve_ports()
+        print(
+            "AstroEngine port assignment:",
+            f"API={_RESOLVED_PORTS['api']} UI={_RESOLVED_PORTS['ui']}",
+        )
+    return _RESOLVED_PORTS
 
 
 def _var_dir() -> Path:
@@ -165,7 +255,7 @@ def _streamlit_command(script: Path, host: str, port: int) -> list[str]:
 
 
 def _api_port() -> int:
-    return int(os.environ.get("ASTROENGINE_API_PORT", DEFAULT_API_PORT))
+    return _ports()["api"]
 
 
 def _api_host() -> str:
@@ -173,7 +263,7 @@ def _api_host() -> str:
 
 
 def _ui_port() -> int:
-    return int(os.environ.get("ASTROENGINE_UI_PORT", DEFAULT_UI_PORT))
+    return _ports()["ui"]
 
 
 def _ui_host() -> str:
@@ -186,9 +276,7 @@ def _open_browser(port: int, host: str) -> None:
 
 
 def _start_api(env: dict[str, str]) -> int:
-    existing = _read_pid(PID_API)
-    if existing and _is_process_alive(existing):
-        return existing
+    _stop_process(PID_API)
     command = _uvicorn_command(_api_host(), _api_port())
     process = _start_process(command, env=env)
     _store_pid(PID_API, process.pid)
@@ -196,9 +284,7 @@ def _start_api(env: dict[str, str]) -> int:
 
 
 def _start_ui(env: dict[str, str]) -> int:
-    existing = _read_pid(PID_UI)
-    if existing and _is_process_alive(existing):
-        return existing
+    _stop_process(PID_UI)
     script = _resolve_streamlit_script()
     command = _streamlit_command(script, _ui_host(), _ui_port())
     process = _start_process(command, env=env)
@@ -213,6 +299,8 @@ def _stop_process(name: str) -> bool:
     if not _is_process_alive(pid):
         _remove_pid(name)
         return False
+    label = "API" if name == PID_API else "UI" if name == PID_UI else name
+    print(f"Stopping existing {label} process (PID {pid})")
     try:
         os.kill(pid, signal.SIGTERM)
     except OSError:
@@ -252,6 +340,9 @@ def _status() -> dict[str, Any]:
 
 def launch(mode: str, *, open_browser: bool, wait: bool, timeout: float) -> None:
     env = _default_env()
+    ports = _ports()
+    env["ASTROENGINE_API_PORT"] = str(ports["api"])
+    env["ASTROENGINE_UI_PORT"] = str(ports["ui"])
 
     if mode in {"api", "both"}:
         _start_api(env)
