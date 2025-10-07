@@ -58,15 +58,16 @@ Source: "..\installer\manifests\*"; DestDir: "{app}\installer\manifests"; Flags:
 Source: "..\docs\module\developer_platform\submodules\installers\windows_one_click.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Start AstroEngine"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File \"{app}\installer\scripts\start_both.ps1\""; WorkingDir: "{app}"
-Name: "{group}\Start API Only";  Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File \"{app}\installer\scripts\start_api.ps1\"";  WorkingDir: "{app}"
-Name: "{group}\Start UI Only";   Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File \"{app}\installer\scripts\start_ui.ps1\"";   WorkingDir: "{app}"
+Name: "{group}\Start AstroEngine"; Filename: "{code:GetPwshPath}"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File \"{app}\installer\scripts\start_both.ps1\""; WorkingDir: "{app}"
+Name: "{group}\Start API Only";  Filename: "{code:GetPwshPath}"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File \"{app}\installer\scripts\start_api.ps1\"";  WorkingDir: "{app}"
+Name: "{group}\Start UI Only";   Filename: "{code:GetPwshPath}"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File \"{app}\installer\scripts\start_ui.ps1\"";   WorkingDir: "{app}"
+Name: "{group}\Repair AstroEngine"; Filename: "{code:GetPwshPath}"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File \"{app}\installer\scripts\repair.ps1\""; WorkingDir: "{app}"
 Name: "{group}\Uninstall AstroEngine"; Filename: "{uninstallexe}"
-Name: "{userdesktop}\Start AstroEngine"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File \"{app}\installer\scripts\start_both.ps1\""; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{userdesktop}\Start AstroEngine"; Filename: "{code:GetPwshPath}"; Parameters: "-NoProfile -ExecutionPolicy Bypass -NoExit -File \"{app}\installer\scripts\start_both.ps1\""; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
-  Parameters: "-NoProfile -ExecutionPolicy Bypass -File \"{app}\installer\scripts\astroengine_post_install.ps1\" -InstallRoot \"{app}\" -Mode \"{code:GetInstallMode}\" -Scope \"{code:GetInstallScope}\" -InstallPython \"{code:GetInstallPython}\" -ManifestPath \"{app}\installer\manifests\online_python.json\" -LogPath \"{app}\logs\install\post_install.log\""; \
+Filename: "{code:GetPwshPath}"; \
+  Parameters: "-NoProfile -ExecutionPolicy Bypass -File \"{app}\installer\scripts\astroengine_post_install.ps1\" -InstallRoot \"{app}\" -Mode \"{code:GetInstallMode}\" -Scope \"{code:GetInstallScope}\" {code:GetInstallPython} -ManifestPath \"{app}\installer\manifests\online_python.json\" -LogPath \"{app}\logs\install\post_install.log\""; \
   WorkingDir: "{app}"; Flags: runhidden waituntilterminated
 
 [UninstallDelete]
@@ -80,6 +81,16 @@ var
   ModePage: TWizardPage;
   OnlineRadio, OfflineRadio: TNewRadioButton;
   InstallPython: Boolean;
+
+function GetPwshPath(Param: string): string;
+begin
+  if FileExists(ExpandConstant('{pf}\PowerShell\7\pwsh.exe')) then
+    Result := ExpandConstant('{pf}\PowerShell\7\pwsh.exe')
+  else if FileExists(ExpandConstant('{localappdata}\Microsoft\WindowsApps\pwsh.exe')) then
+    Result := ExpandConstant('{localappdata}\Microsoft\WindowsApps\pwsh.exe')
+  else
+    Result := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+end;
 
 function DetectSystemPython311(): Boolean;
 var
@@ -145,7 +156,10 @@ end;
 
 function GetInstallPython(Param: string): string;
 begin
-  if InstallPython then Result := 'True' else Result := 'False';
+  if InstallPython then
+    Result := '-InstallPython'
+  else
+    Result := '';
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
