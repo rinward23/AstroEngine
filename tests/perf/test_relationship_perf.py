@@ -5,6 +5,11 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip(
+    "pytest_benchmark",
+    reason="pytest-benchmark not installed; install extras with `pip install -e .[dev]`.",
+)
+
 from core.rel_plus.synastry import clear_synastry_memoization, synastry_interaspects
 
 BASELINE_PATH = Path(__file__).with_name("baseline_synastry.json")

@@ -1,0 +1,3 @@
+# Minimal Bandit configuration; expand as security policies evolve.
+skips:
+  - B101

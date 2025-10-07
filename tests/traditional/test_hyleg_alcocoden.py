@@ -3,10 +3,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from astroengine.chart.natal import ChartLocation, compute_natal_chart
+from astroengine.engine.traditional import (
+    build_chart_context,
+    find_alcocoden,
+    find_hyleg,
+    load_traditional_profiles,
+)
+from astroengine.engine.traditional.sect import sect_info
 from core.lots_plus.catalog import Sect as LotSect
 from core.lots_plus.catalog import compute_lots
-from astroengine.engine.traditional import build_chart_context, find_alcocoden, find_hyleg, load_traditional_profiles
-from astroengine.engine.traditional.sect import sect_info
 
 
 def _context(include_fortune: bool = False):

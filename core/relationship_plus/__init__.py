@@ -1,21 +1,22 @@
 """Relationship-focused composite and Davison chart utilities."""
 
-from .composite import (
-    Geo,
-    PositionProvider,
-    composite_positions,
-    davison_midpoints,
-    davison_positions,
-    midpoint_angle,
-    norm360,
-    delta_short,
-)
 from core.rel_plus.houses import (  # noqa: F401
     FALLBACK_ORDER,
     HouseError,
     HouseResult,
     composite_houses,
     davison_houses,
+)
+
+from .composite import (
+    Geo,
+    PositionProvider,
+    composite_positions,
+    davison_midpoints,
+    davison_positions,
+    delta_short,
+    midpoint_angle,
+    norm360,
 )
 from .synastry import (
     SynastryHit,

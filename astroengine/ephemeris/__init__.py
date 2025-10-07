@@ -20,11 +20,9 @@ from .refinement import (
 from .support import SupportIssue, filter_supported
 from .swisseph_adapter import (
     BodyPosition,
-
     FixedStarPosition,
     HousePositions,
     RiseTransitResult,
-
     SwissEphemerisAdapter,
 )
 

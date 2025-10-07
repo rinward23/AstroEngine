@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Mapping
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -37,7 +38,7 @@ def render_grid(grid: Mapping[str, Mapping[str, str]]) -> pd.DataFrame | None:
     if not grid:
         st.info("Aspect grid unavailable for the current result set.")
         return None
-    data: Dict[str, Dict[str, str]] = {}
+    data: dict[str, dict[str, str]] = {}
     for a_body, row in grid.items():
         data[a_body] = {}
         for b_body, aspect in row.items():
@@ -48,8 +49,8 @@ def render_grid(grid: Mapping[str, Mapping[str, str]]) -> pd.DataFrame | None:
     return frame
 
 
-def _summarise_families(hits: Iterable[Mapping[str, Any]]) -> Dict[str, float]:
-    totals: Dict[str, float] = {key: 0.0 for key in FAMILY_LABELS}
+def _summarise_families(hits: Iterable[Mapping[str, Any]]) -> dict[str, float]:
+    totals: dict[str, float] = {key: 0.0 for key in FAMILY_LABELS}
     for hit in hits:
         aspect = str(hit.get("aspect"))
         severity = float(hit.get("severity", 0.0))
@@ -58,7 +59,7 @@ def _summarise_families(hits: Iterable[Mapping[str, Any]]) -> Dict[str, float]:
     return totals
 
 
-def _summarise_bodies(hits: Iterable[Mapping[str, Any]]) -> Dict[str, Dict[str, float]]:
+def _summarise_bodies(hits: Iterable[Mapping[str, Any]]) -> dict[str, dict[str, float]]:
     per_side = {"Chart A": {}, "Chart B": {}}
     for hit in hits:
         severity = float(hit.get("severity", 0.0))
@@ -69,7 +70,7 @@ def _summarise_bodies(hits: Iterable[Mapping[str, Any]]) -> Dict[str, Dict[str, 
     return per_side
 
 
-def render_scores(hits: Iterable[Mapping[str, Any]], *, overall: float | None = None) -> Dict[str, Any]:
+def render_scores(hits: Iterable[Mapping[str, Any]], *, overall: float | None = None) -> dict[str, Any]:
     hit_list = list(hits)
     total = overall if overall is not None else sum(float(hit.get("severity", 0.0)) for hit in hit_list)
     families = _summarise_families(hit_list)
@@ -84,7 +85,7 @@ def render_scores(hits: Iterable[Mapping[str, Any]], *, overall: float | None = 
         st.bar_chart(fam_df.rename(columns={0: "Severity"}))
 
     body_tabs = st.tabs(list(bodies.keys()))
-    for tab, (label, values) in zip(body_tabs, bodies.items()):
+    for tab, (label, values) in zip(body_tabs, bodies.items(), strict=False):
         with tab:
             if values:
                 df = pd.DataFrame(sorted(values.items(), key=lambda kv: kv[1], reverse=True), columns=[label, "Severity"])
@@ -100,7 +101,7 @@ def render_overlay_table(overlay: Mapping[str, Mapping[str, Any]]) -> pd.DataFra
     if not overlay:
         st.info("Overlay data unavailable for the current result set.")
         return None
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     for body, data in overlay.items():
         row = {"Body": body}
         if "A" in data:

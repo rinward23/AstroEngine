@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import csv
 import json
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from io import StringIO
-from typing import Any, Iterable, Mapping, MutableMapping, Sequence, Tuple
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from .timezone_blocks import build_vtimezone
@@ -187,7 +188,7 @@ def _coerce_alarm(payload: Mapping[str, Any]) -> Alarm:
     )
 
 
-def _resolve_timezone(tz: str | ZoneInfo | None) -> Tuple[ZoneInfo, str]:
+def _resolve_timezone(tz: str | ZoneInfo | None) -> tuple[ZoneInfo, str]:
     if isinstance(tz, ZoneInfo):
         return tz, getattr(tz, "key", "UTC") or "UTC"
     if tz in (None, "UTC", "utc"):

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from astroengine.engine.lots import aspects_to_lots, scan_lot_events
 from astroengine.engine.lots.aspects import AspectHit
@@ -40,7 +40,7 @@ class LinearEphemeris:
 
 
 def test_event_scan_linear_motion():
-    start = datetime(2023, 1, 1, tzinfo=timezone.utc)
+    start = datetime(2023, 1, 1, tzinfo=UTC)
     ephem = LinearEphemeris(start, base=0.0, speed=1.0)
     lot_lambda = 10.0
     events = scan_lot_events(
@@ -60,3 +60,21 @@ def test_event_scan_linear_motion():
     assert abs(event.angle - 0.0) < 1e-6
     assert event.timestamp >= start + timedelta(days=9)
     assert event.timestamp <= start + timedelta(days=11)
+
+
+def test_event_scan_checks_each_angle():
+    start = datetime(2023, 1, 1, tzinfo=UTC)
+    ephem = LinearEphemeris(start, base=0.0, speed=30.0)
+    events = scan_lot_events(
+        ephem,
+        0.0,
+        ["Mars"],
+        start,
+        start + timedelta(days=7),
+        _policy(),
+        [1, 4],
+        step_hours=6.0,
+        lot_name="Fortune",
+    )
+    angles = {round(event.angle, 6) for event in events}
+    assert {0.0, 90.0}.issubset(angles)

@@ -1,6 +1,11 @@
 from datetime import UTC, datetime
 
-import swisseph as swe
+import pytest
+
+swe = pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `.[providers]`",
+)
 
 from astroengine.core.time import TimeConversion, ensure_utc, to_tt
 
@@ -21,14 +26,14 @@ def test_ensure_utc_converts_naive():
 def test_to_tt_matches_swisseph_delta():
     moment = datetime(2024, 5, 5, 6, 0, tzinfo=UTC)
     conversion = to_tt(moment)
-    jd_tt, jd_ut = swe.utc_to_jd(
+    jd_tt, jd_ut = swe().utc_to_jd(
         moment.year,
         moment.month,
         moment.day,
         moment.hour,
         moment.minute,
         moment.second + moment.microsecond / 1e6,
-        swe.GREG_CAL,
+        swe().GREG_CAL,
     )
     assert abs(conversion.jd_tt - jd_tt) < 1e-8
     assert abs(conversion.jd_utc - jd_ut) < 1e-8

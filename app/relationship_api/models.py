@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Literal, Tuple
+from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, RootModel
 
@@ -32,7 +32,7 @@ class EclipticPos(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class ChartPositions(RootModel[Dict[Body, EclipticPos]]):
+class ChartPositions(RootModel[dict[Body, EclipticPos]]):
     pass
 
 
@@ -51,15 +51,15 @@ class BirthEvent(BaseModel):
 
 
 class OrbPolicy(BaseModel):
-    base_orb_by_body: Dict[str, float] = Field(default_factory=dict)
-    cap_by_aspect: Dict[int, float] = Field(default_factory=dict)
+    base_orb_by_body: dict[str, float] = Field(default_factory=dict)
+    cap_by_aspect: dict[int, float] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid")
 
 
 class Weights(BaseModel):
-    aspect_family: Dict[str, float] = Field(default_factory=dict)
-    body_family: Dict[str, float] = Field(default_factory=dict)
+    aspect_family: dict[str, float] = Field(default_factory=dict)
+    body_family: dict[str, float] = Field(default_factory=dict)
     conjunction_sign: float = 1.0
 
     model_config = ConfigDict(extra="forbid")
@@ -68,7 +68,7 @@ class Weights(BaseModel):
 class SynastryRequest(BaseModel):
     positionsA: ChartPositions
     positionsB: ChartPositions
-    aspects: Tuple[Aspect, ...] | None = None
+    aspects: tuple[Aspect, ...] | None = None
     orb_policy: OrbPolicy | None = None
     weights: Weights | None = None
     gamma: float = Field(default=1.0, ge=0.1, le=4.0)
@@ -119,8 +119,8 @@ class Overlay(BaseModel):
 
 
 class Scores(BaseModel):
-    by_aspect_family: Dict[str, float]
-    by_body_family: Dict[str, float]
+    by_aspect_family: dict[str, float]
+    by_body_family: dict[str, float]
     overall: float
 
     model_config = ConfigDict(extra="forbid")
@@ -128,7 +128,7 @@ class Scores(BaseModel):
 
 class SynastryResponse(BaseModel):
     hits: list[Hit]
-    grid: Dict[str, Dict[str, GridCell]]
+    grid: dict[str, dict[str, GridCell]]
     overlay: Overlay
     scores: Scores
 
@@ -182,7 +182,7 @@ class DavisonResponse(BaseModel):
 class ApiError(BaseModel):
     code: str
     message: str
-    details: Dict[str, object] | None = None
+    details: dict[str, object] | None = None
 
     model_config = ConfigDict(extra="forbid")
 

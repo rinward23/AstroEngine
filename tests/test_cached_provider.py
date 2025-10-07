@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from astroengine.core.aspects_plus.provider_wrappers import cached_position_provider
 
@@ -12,7 +12,7 @@ def test_cached_provider_buckets_and_caches():
 
     cached = cached_position_provider(provider, resolution_minutes=5, ttl_seconds=60)
 
-    t0 = datetime(2025, 1, 1, 12, 3, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, 12, 3, tzinfo=UTC)
     t1 = t0 + timedelta(minutes=1)  # same 5-min bucket
     t2 = t0 + timedelta(minutes=7)  # next bucket
 

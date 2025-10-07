@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -10,14 +9,47 @@ from pydantic import BaseModel, Field, field_validator
 
 from ..engine.horary import GeoLocation, evaluate_case, get_profile
 from ..engine.horary.profiles import HoraryProfile, list_profiles, upsert_profile
+from ._time import UtcDateTime
 
 router = APIRouter(prefix="/horary", tags=["horary"])
 
 
 class LocationModel(BaseModel):
-    lat: float = Field(..., description="Latitude in decimal degrees")
-    lon: float = Field(..., description="Longitude in decimal degrees")
-    altitude: float | None = Field(None, description="Altitude in meters")
+    lat: float = Field(
+        ..., description="Latitude in decimal degrees", ge=-90.0, le=90.0
+    )
+    lon: float = Field(
+        ..., description="Longitude in decimal degrees", ge=-180.0, le=180.0
+    )
+    altitude: float | None = Field(
+        None, description="Altitude in meters", ge=-2000.0, le=12000.0
+    )
+
+    @field_validator("lat", "lon", mode="before")
+    @classmethod
+    def _coerce_coordinate(cls, value: Any) -> float:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+        if isinstance(value, str):
+            candidate = value.strip()
+            if not candidate:
+                raise ValueError("coordinate must not be empty")
+            return float(candidate)
+        raise TypeError("coordinate must be numeric or numeric string")
+
+    @field_validator("altitude", mode="before")
+    @classmethod
+    def _coerce_altitude(cls, value: Any) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+        if isinstance(value, str):
+            candidate = value.strip()
+            if not candidate:
+                return None
+            return float(candidate)
+        raise TypeError("altitude must be numeric")
 
     def to_location(self) -> GeoLocation:
         return GeoLocation(latitude=self.lat, longitude=self.lon, altitude=self.altitude or 0.0)
@@ -25,7 +57,7 @@ class LocationModel(BaseModel):
 
 class HoraryCaseRequest(BaseModel):
     question: str
-    asked_at: datetime
+    asked_at: UtcDateTime
     location: LocationModel
     house_system: str = "placidus"
     quesited_house: int

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import io
 import importlib.util
+import io
 from dataclasses import dataclass
 from typing import Any
 

@@ -41,6 +41,7 @@
 
 - Playground logs segregated with anonymised identifiers; telemetry includes dataset hash references ensuring reproducibility.
 - Docs build includes automated link checker and sample execution harness that verifies each code block using mock server seeded with real data.
+- CLI tooling (`astroengine diagnose`) audits runtime dependencies against the locked requirement set so operators notice missing Solar Fire ingest prerequisites before deployment.
 - Version switcher exposes historical docs tied to previous `openapi/v*.json` schemas; ensures developers can reference legacy behaviour without module loss.
 - Accessibility guidelines follow WCAG 2.1 AA; colour palettes validated for charts that visualise astrological cycles.
 

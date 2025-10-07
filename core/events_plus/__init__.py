@@ -8,7 +8,6 @@ from .detectors import (
     detect_combust_cazimi,
     detect_returns,
     detect_voc_moon,
-
 )
 
 __all__ = [

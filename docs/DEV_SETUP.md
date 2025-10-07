@@ -19,10 +19,15 @@ conda activate astroengine
 
 * Export `SWE_EPH_PATH` to a folder containing `sepl_*.se1`/`semo_*.se1` etc.
 * Or place ephemeris files under `./ephe/` and set `SWE_EPH_PATH=./ephe`.
+* Without licensed data the package falls back to the bundled
+  `astroengine/datasets/swisseph_stub` directory for deterministic tests.
 
 ## Optional feature groups
 
-Install extras as needed:
+The base installation already bundles the exporters, providers, CLI, and UI
+dependencies so the Solar Fire data ingestion workflows operate without extra
+flags. Extras remain available for compatibility with existing deployment
+scripts; install them as needed:
 
 ```bash
 pip install -e .[api]           # FastAPI server

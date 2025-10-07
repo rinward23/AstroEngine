@@ -1,4 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
+import pytest
 
 from astroengine.core.aspects_plus.scan import (
     AspectSpec,
@@ -33,7 +35,7 @@ POLICY = {"per_object": {}, "per_aspect": {"sextile": 3.0}, "adaptive_rules": {}
 
 
 def test_find_single_sextile_with_bisection():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Mars": 10.0, "Venus": 0.0},
@@ -59,8 +61,14 @@ def test_find_single_sextile_with_bisection():
     assert h0.orb <= 1e-3
 
 
+def test_timewindow_requires_timezone():
+    t0 = datetime(2025, 1, 1)
+    with pytest.raises(ValueError, match="timezone-aware"):
+        TimeWindow(start=t0, end=t0 + timedelta(days=1))
+
+
 def test_multi_pair_scan_wrapper():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Mars": 10.0, "Venus": 0.0, "Sun": 0.0},
@@ -79,3 +87,31 @@ def test_multi_pair_scan_wrapper():
     )
 
     assert hits == sorted(hits, key=lambda h: h.exact_time)
+
+
+def test_scan_time_range_includes_antiscia_hits():
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
+    eph = LinearEphemeris(
+        t0,
+        base={"Mars": 10.0, "Venus": 100.0},
+        rates_deg_per_day={"Mars": 0.5, "Venus": 1.2},
+    )
+    win = TimeWindow(start=t0, end=t0 + timedelta(days=60))
+
+    hits = scan_time_range(
+        objects=["Mars", "Venus"],
+        window=win,
+        position_provider=eph,
+        aspects=["conjunction"],
+        harmonics=[],
+        orb_policy=POLICY,
+        step_minutes=720,
+        include_antiscia=True,
+        antiscia_orb=1.0,
+    )
+
+    mirror_hits = [
+        h for h in hits if (getattr(h, "meta", {}) or {}).get("aspect") in {"antiscia", "contra_antiscia"}
+    ]
+    assert mirror_hits, "expected antiscia hits when feature enabled"
+    assert all((hit.meta or {}).get("kind") == "mirror" for hit in mirror_hits)

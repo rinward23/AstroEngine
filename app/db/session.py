@@ -1,11 +1,23 @@
 from __future__ import annotations
+
 import os
 from contextlib import contextmanager
-from sqlalchemy import create_engine
+from typing import Any
+
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import URL, Engine, make_url
 from sqlalchemy.orm import sessionmaker
+
+from astroengine.infrastructure.storage.sqlite import apply_default_pragmas
 
 DB_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
 engine = create_engine(DB_URL, echo=False, future=True)
+
+if engine.url.get_backend_name() == "sqlite":
+    # Apply PRAGMAs on each connection (Windows-friendly performance tuning)
+    @event.listens_for(engine, "connect")  # pragma: no cover - driver dependent
+    def _sqlite_configure(dbapi_connection, connection_record):
+        apply_default_pragmas(dbapi_connection)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True)
 
 @contextmanager

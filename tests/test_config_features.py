@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 
 from astroengine.config.features import (
-    IMPLEMENTED_MODALITIES,
     EXPERIMENTAL_MODALITIES,
+    IMPLEMENTED_MODALITIES,
     available_modalities,
     experimental_modalities_from_env,
     is_enabled,

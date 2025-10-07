@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from functools import lru_cache
-from typing import Any, Iterable
+from typing import Any
 
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 from mdit_py_plugins.attrs import attrs_plugin
 from mdit_py_plugins.footnote import footnote_plugin
-
 
 HEADING_PATTERN = re.compile(r"[^a-z0-9]+")
 

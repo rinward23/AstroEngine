@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Iterable, Optional
+from collections.abc import Iterable, Sequence
+from typing import Any
 
 import requests
 from requests import Response
@@ -9,7 +10,7 @@ from requests import Response
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 
-def _extract_error_message(response: Optional[Response]) -> Optional[str]:
+def _extract_error_message(response: Response | None) -> str | None:
     """Attempt to pull a human-friendly error message from a response."""
 
     if response is None:
@@ -42,11 +43,11 @@ class APIClient:
     def _post_json(
         self,
         path: str,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
         *,
         timeout: int,
-        params: Dict[str, Any] | None = None,
-    ) -> Dict[str, Any] | list[Any]:
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | list[Any]:
         """POST ``payload`` to ``path`` and return the parsed JSON response."""
 
         if not path.startswith("/"):
@@ -67,8 +68,48 @@ class APIClient:
         except ValueError as exc:  # pragma: no cover - streamlit UI only
             raise RuntimeError("API returned a non-JSON response") from exc
 
+    def system_doctor(self) -> dict[str, Any]:
+        """Return the diagnostics payload from the /v1/doctor endpoint."""
+
+        response = requests.get(f"{self.base}/v1/doctor", timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/doctor")
+        return data
+
+    # ---- Natals ------------------------------------------------------------
+    def list_natals(self, page: int = 1, page_size: int = 100) -> dict[str, Any]:
+        """Return a page of stored natal charts."""
+
+        response = requests.get(
+            f"{self.base}/v1/natals",
+            params={"page": page, "page_size": page_size},
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/natals")
+        return data
+
+    # ---- Analysis ----------------------------------------------------------
+    def analysis_lots(self, natal_id: str) -> dict[str, Any]:
+        """Compute Arabic Parts for ``natal_id`` via the analysis endpoint."""
+
+        response = requests.get(
+            f"{self.base}/v1/analysis/lots",
+            params={"natal_id": natal_id},
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/analysis/lots")
+        return data
+
     # ---- Aspects -----------------------------------------------------------
-    def aspects_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def aspects_search(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Call the aspect search endpoint and return the parsed JSON body."""
 
         data = self._post_json("/aspects/search", payload, timeout=60)
@@ -76,8 +117,18 @@ class APIClient:
             raise RuntimeError("Unexpected response payload from /aspects/search")
         return data
 
+    def declination_aspects(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Invoke the declination aspects endpoint and return the JSON payload."""
+
+        data = self._post_json("/declinations/aspects", payload, timeout=30)
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError(
+                "Unexpected response payload from /declinations/aspects"
+            )
+        return data
+
     # ---- OrbPolicy CRUD ----------------------------------------------------
-    def list_policies(self, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+    def list_policies(self, limit: int = 100, offset: int = 0) -> dict[str, Any]:
         r = requests.get(
             f"{self.base}/policies",
             params={"limit": limit, "offset": offset},
@@ -86,69 +137,243 @@ class APIClient:
         r.raise_for_status()
         return r.json()
 
-    def get_policy(self, policy_id: int) -> Dict[str, Any]:
+    def get_policy(self, policy_id: int) -> dict[str, Any]:
         r = requests.get(f"{self.base}/policies/{policy_id}", timeout=30)
         r.raise_for_status()
         return r.json()
 
-    def create_policy(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def create_policy(self, payload: dict[str, Any]) -> dict[str, Any]:
         r = requests.post(f"{self.base}/policies", json=payload, timeout=30)
         r.raise_for_status()
         return r.json()
 
-    def update_policy(self, policy_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def update_policy(self, policy_id: int, payload: dict[str, Any]) -> dict[str, Any]:
         r = requests.put(f"{self.base}/policies/{policy_id}", json=payload, timeout=30)
         r.raise_for_status()
         return r.json()
 
+    # ---- Natals -----------------------------------------------------------
+    def list_natals(self, limit: int = 250) -> list[dict[str, Any]]:
+        r = requests.get(
+            f"{self.base}/v1/natals",
+            params={"page_size": limit},
+            timeout=30,
+        )
+        r.raise_for_status()
+        data = r.json()
+        items = data.get("items") if isinstance(data, dict) else None
+        if not isinstance(items, list):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/natals")
+        return items
+
+    # ---- Forecast ---------------------------------------------------------
+    def forecast_stack(
+        self,
+        natal_id: str,
+        start_iso: str,
+        end_iso: str,
+        *,
+        techniques: list[str] | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"natal_id": natal_id, "from": start_iso, "to": end_iso}
+        if techniques:
+            params["techniques"] = techniques
+        r = requests.get(f"{self.base}/v1/forecast", params=params, timeout=60)
+        r.raise_for_status()
+        data = r.json()
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/forecast")
+        return data
+
+    def forecast_stack_csv(
+        self,
+        natal_id: str,
+        start_iso: str,
+        end_iso: str,
+        *,
+        techniques: list[str] | None = None,
+    ) -> str:
+        params: dict[str, Any] = {
+            "natal_id": natal_id,
+            "from": start_iso,
+            "to": end_iso,
+            "format": "csv",
+        }
+        if techniques:
+            params["techniques"] = techniques
+        r = requests.get(f"{self.base}/v1/forecast", params=params, timeout=60)
+        r.raise_for_status()
+        return r.text
+
+    # ---- Charts ------------------------------------------------------------
+    def search_charts(
+        self,
+        *,
+        query: str | None = None,
+        tags: Sequence[str] | None = None,
+        created_from: str | None = None,
+        created_to: str | None = None,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {}
+        if query:
+            params["q"] = query
+        if tags:
+            params["tag"] = list(tags)
+        if created_from:
+            params["created_from"] = created_from
+        if created_to:
+            params["created_to"] = created_to
+        response = requests.get(f"{self.base}/v1/charts", params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, list):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/charts")
+        return data
+
+    def list_deleted_charts(self) -> list[dict[str, Any]]:
+        response = requests.get(f"{self.base}/v1/charts/deleted", timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, list):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/charts/deleted")
+        return data
+
+    def update_chart_tags(self, chart_id: int, tags: Sequence[str]) -> dict[str, Any]:
+        response = requests.patch(
+            f"{self.base}/v1/charts/{chart_id}/tags",
+            json={"tags": list(tags)},
+            timeout=15,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def soft_delete_chart(self, chart_id: int) -> None:
+        response = requests.delete(f"{self.base}/v1/charts/{chart_id}", timeout=15)
+        if response.status_code == 404:  # pragma: no cover - defensive
+            raise RuntimeError("Chart not found")
+        response.raise_for_status()
+
+    def restore_chart(self, chart_id: int) -> dict[str, Any]:
+        response = requests.post(f"{self.base}/v1/charts/{chart_id}/restore", timeout=15)
+        response.raise_for_status()
+        return response.json()
+
     # ---- Synastry & Composites --------------------------------------------
-    def synastry_compute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def synastry_compute(self, payload: dict[str, Any]) -> dict[str, Any]:
         data = self._post_json("/synastry/compute", payload, timeout=60)
         if not isinstance(data, dict):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /synastry/compute")
         return data
 
-    def composite_midpoint(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def composite_midpoint(self, payload: dict[str, Any]) -> dict[str, Any]:
         data = self._post_json("/composites/midpoint", payload, timeout=30)
         if not isinstance(data, dict):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /composites/midpoint")
         return data
 
-    def composite_davison(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def composite_davison(self, payload: dict[str, Any]) -> dict[str, Any]:
         data = self._post_json("/composites/davison", payload, timeout=30)
         if not isinstance(data, dict):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /composites/davison")
         return data
 
     # ---- Events ------------------------------------------------------------
-    def voc_moon(self, payload: Dict[str, Any]) -> list[Dict[str, Any]]:
+    def voc_moon(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
         data = self._post_json("/events/voc-moon", payload, timeout=60)
         if not isinstance(data, list):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /events/voc-moon")
         return data
 
-    def combust_cazimi(self, payload: Dict[str, Any]) -> list[Dict[str, Any]]:
+    def combust_cazimi(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
         data = self._post_json("/events/combust-cazimi", payload, timeout=60)
         if not isinstance(data, list):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /events/combust-cazimi")
         return data
 
-    def returns(self, payload: Dict[str, Any]) -> list[Dict[str, Any]]:
+    def returns(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
         data = self._post_json("/events/returns", payload, timeout=60)
         if not isinstance(data, list):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /events/returns")
         return data
 
-    def electional_search(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    # ---- Data IO -----------------------------------------------------------
+    def export_bundle(self, scope: Sequence[str] | None = None) -> bytes:
+        """Download a ZIP archive of stored charts and configuration."""
+
+        scope_parts = [str(item).strip() for item in (scope or []) if str(item).strip()]
+        scope_value = ",".join(scope_parts) if scope_parts else "charts,settings"
+        try:
+            response = requests.get(
+                f"{self.base}/v1/export",
+                params={"scope": scope_value},
+                timeout=60,
+            )
+            response.raise_for_status()
+        except requests.HTTPError as exc:  # pragma: no cover - streamlit UI only
+            message = _extract_error_message(exc.response) or str(exc)
+            raise RuntimeError(message) from exc
+        except requests.RequestException as exc:  # pragma: no cover - streamlit UI only
+            raise RuntimeError(str(exc)) from exc
+        return response.content
+
+    # ---- Timeline ---------------------------------------------------------
+    def timeline(
+        self,
+        start_iso: str,
+        end_iso: str,
+        *,
+        types: Sequence[str] | None = None,
+        bodies: Sequence[str] | None = None,
+        sign_orb: float | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"from": start_iso, "to": end_iso}
+        if types:
+            params["types"] = ",".join(types)
+        if bodies:
+            params["bodies"] = ",".join(bodies)
+        if sign_orb is not None:
+            params["sign_orb"] = float(sign_orb)
+        r = requests.get(f"{self.base}/v1/timeline", params=params, timeout=60)
+        r.raise_for_status()
+        data = r.json()
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected response payload from /v1/timeline")
+        return data
+
+    def electional_search(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Invoke the electional search endpoint."""
 
-        r = requests.post(f"{self.base}/electional/search", json=payload, timeout=90)
+        r = requests.post(f"{self.base}/v1/electional/search", json=payload, timeout=90)
         r.raise_for_status()
         return r.json()
 
+    # ---- Analysis ---------------------------------------------------------
+    def dignities_analysis(self, natal_id: str) -> dict[str, Any]:
+        """Retrieve Lilly dignity report for a stored natal chart."""
+
+        params = {"natal_id": natal_id}
+        try:
+            response = requests.get(
+                f"{self.base}/v1/analysis/dignities", params=params, timeout=30
+            )
+            response.raise_for_status()
+        except requests.HTTPError as exc:  # pragma: no cover - UI path only
+            message = _extract_error_message(exc.response) or str(exc)
+            raise RuntimeError(message) from exc
+        except requests.RequestException as exc:  # pragma: no cover - UI path only
+            raise RuntimeError(str(exc)) from exc
+
+        try:
+            data = response.json()
+        except ValueError as exc:  # pragma: no cover - UI path only
+            raise RuntimeError("API returned a non-JSON response") from exc
+        if not isinstance(data, dict):  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected payload from /v1/analysis/dignities")
+        return data
+
 
     # ---- Relationship ------------------------------------------------------
-    def relationship_synastry(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def relationship_synastry(self, payload: dict[str, Any]) -> dict[str, Any]:
         data = self._post_json("/relationship/synastry", payload, timeout=60)
         if not isinstance(data, dict):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /relationship/synastry")
@@ -156,11 +381,11 @@ class APIClient:
 
     def relationship_composite(
         self,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
         *,
         houses: bool = False,
         hsys: str = "P",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         params = {"houses": str(bool(houses)).lower(), "hsys": hsys}
         data = self._post_json("/relationship/composite", payload, timeout=30, params=params)
         if not isinstance(data, dict):  # pragma: no cover - defensive
@@ -169,11 +394,11 @@ class APIClient:
 
     def relationship_davison(
         self,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
         *,
         houses: bool = False,
         hsys: str = "P",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         params = {"houses": str(bool(houses)).lower(), "hsys": hsys}
         data = self._post_json("/relationship/davison", payload, timeout=60, params=params)
         if not isinstance(data, dict):  # pragma: no cover - defensive

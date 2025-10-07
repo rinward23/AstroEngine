@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Tuple
 
 __all__ = [
     "SECONDS_PER_DAY",
@@ -16,7 +16,7 @@ __all__ = [
 SECONDS_PER_DAY: float = 86_400.0
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RefineResult:
     """Result metadata returned by :func:`refine_root` and :func:`refine_event`.
 
@@ -48,7 +48,7 @@ def _to_days(seconds: float) -> float:
 
 def bracket_root(
     f: Callable[[float], float], t0_jd: float, t1_jd: float
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Return a bracket ``(t_lo, t_hi)`` ensuring opposite signs.
 
     Raises
@@ -153,7 +153,7 @@ def refine_root(
 
 
 def refine_event(
-    bracket: Tuple[float, float],
+    bracket: tuple[float, float],
     *,
     delta_fn: Callable[[float], float],
     tol_seconds: float = 1.0,

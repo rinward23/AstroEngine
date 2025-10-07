@@ -2,24 +2,55 @@
 
 from __future__ import annotations
 
+import math
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 from io import BytesIO
-import math
-from typing import Iterable, Sequence
+from typing import TYPE_CHECKING, Any
 
-from PIL import Image, ImageDraw, ImageFont
+from astroengine.ephemeris.swe import has_swe, swe
 
+from ...core.dependencies import require_dependency
 from ...ephemeris.adapter import EphemerisAdapter, ObserverLocation
 from .events import rise_set_times, transit_time
 from .topocentric import MetConditions, horizontal_from_equatorial, topocentric_equatorial
 
-try:  # pragma: no cover - optional Swiss Ephemeris dependency
-    import swisseph as swe
-except ModuleNotFoundError:  # pragma: no cover
-    swe = None
+if TYPE_CHECKING:  # pragma: no cover - imported for static typing only
+    from PIL import ImageDraw as PILImageDraw
+    from PIL import ImageFont as PILImageFont
+else:  # pragma: no cover - fallbacks used at runtime without Pillow
+    PILImageDraw = Any
+    PILImageFont = Any
 
-_SUN_ID = getattr(swe, "SUN", 0)
+_HAS_SWE = has_swe()
+_SUN_ID = int(getattr(swe(), "SUN", 0)) if _HAS_SWE else 0
+
+
+@lru_cache(maxsize=1)
+def _pillow_modules():
+    """Return Pillow modules required for PNG rendering."""
+
+    image = require_dependency(
+        "PIL.Image",
+        package="Pillow",
+        extras=("reports", "ui"),
+        purpose="render observational diagrams as PNG",
+    )
+    image_draw = require_dependency(
+        "PIL.ImageDraw",
+        package="Pillow",
+        extras=("reports", "ui"),
+        purpose="render observational diagrams as PNG",
+    )
+    image_font = require_dependency(
+        "PIL.ImageFont",
+        package="Pillow",
+        extras=("reports", "ui"),
+        purpose="render observational diagrams as PNG",
+    )
+    return image, image_draw, image_font
 
 
 @dataclass(frozen=True)
@@ -268,6 +299,8 @@ def _render_png(
     start: datetime,
     end: datetime,
 ) -> bytes:
+    image_module, image_draw_module, image_font_module = _pillow_modules()
+
     width = 900
     height = 580
     margin_left = 70
@@ -275,9 +308,9 @@ def _render_png(
     plot_width = width - margin_left - 40
     plot_height = 260
 
-    img = Image.new("RGBA", (width, height), "#0b1021")
-    draw = ImageDraw.Draw(img)
-    font = ImageFont.load_default()
+    img = image_module.new("RGBA", (width, height), "#0b1021")
+    draw = image_draw_module.Draw(img)
+    font = image_font_module.load_default()
 
     if not samples:
         buffer = BytesIO()
@@ -318,7 +351,14 @@ def _render_png(
     _draw_time_labels(draw, start, end, margin_left, plot_width, margin_top + plot_height + 10, font)
     _draw_altitude_labels(draw, min_alt, max_alt, margin_left - 40, margin_top, plot_height, font)
 
-    _draw_polar(draw, samples, margin_left + plot_width / 2, margin_top + plot_height + 220, 160)
+    _draw_polar(
+        draw,
+        samples,
+        margin_left + plot_width / 2,
+        margin_top + plot_height + 220,
+        160,
+        font,
+    )
 
     buffer = BytesIO()
     img.save(buffer, format="PNG")
@@ -421,7 +461,13 @@ def _altitude_labels(min_alt: float, max_alt: float, x: float, y0: float, height
     return "".join(labels)
 
 
-def _draw_twilight(draw: ImageDraw.ImageDraw, samples: Sequence[AltAzSample], x_pos, margin_top: float, plot_height: float) -> None:
+def _draw_twilight(
+    draw: PILImageDraw.ImageDraw,
+    samples: Sequence[AltAzSample],
+    x_pos,
+    margin_top: float,
+    plot_height: float,
+) -> None:
     bands = [(-90.0, -18.0, (0, 29, 61, 128)), (-18.0, -12.0, (18, 63, 115, 128)), (-12.0, -6.0, (36, 82, 123, 128))]
     for low, high, color in bands:
         spans = _sun_band(samples, low, high)
@@ -432,14 +478,14 @@ def _draw_twilight(draw: ImageDraw.ImageDraw, samples: Sequence[AltAzSample], x_
             )
 
 
-def _draw_event_line(draw: ImageDraw.ImageDraw, x_pos, margin_top: float, plot_height: float, moment: datetime | None, color: str) -> None:
+def _draw_event_line(draw: PILImageDraw.ImageDraw, x_pos, margin_top: float, plot_height: float, moment: datetime | None, color: str) -> None:
     if moment is None:
         return
     x = x_pos(moment)
     draw.line([x, margin_top, x, margin_top + plot_height], fill=color, width=2, joint="curve")
 
 
-def _draw_time_labels(draw: ImageDraw.ImageDraw, start: datetime, end: datetime, x0: float, width: float, y: float, font: ImageFont.ImageFont) -> None:
+def _draw_time_labels(draw: PILImageDraw.ImageDraw, start: datetime, end: datetime, x0: float, width: float, y: float, font: PILImageFont.ImageFont) -> None:
     span = (end - start).total_seconds()
     ticks = 6
     for idx in range(ticks + 1):
@@ -449,13 +495,28 @@ def _draw_time_labels(draw: ImageDraw.ImageDraw, start: datetime, end: datetime,
         draw.text((x - 15, y), moment.strftime("%H:%M"), fill="#ffffff80", font=font)
 
 
-def _draw_altitude_labels(draw: ImageDraw.ImageDraw, min_alt: float, max_alt: float, x: float, y0: float, height: float, font: ImageFont.ImageFont) -> None:
+def _draw_altitude_labels(
+    draw: PILImageDraw.ImageDraw,
+    min_alt: float,
+    max_alt: float,
+    x: float,
+    y0: float,
+    height: float,
+    font: PILImageFont.ImageFont,
+) -> None:
     for alt in range(int(math.floor(min_alt / 10) * 10), int(math.ceil(max_alt / 10) * 10) + 1, 10):
         pos = y0 + height - ((alt - min_alt) / (max_alt - min_alt or 1.0)) * height
         draw.text((x, pos - 7), f"{alt}°", fill="#ffffff80", font=font)
 
 
-def _draw_polar(draw: ImageDraw.ImageDraw, samples: Sequence[AltAzSample], cx: float, cy: float, radius: float) -> None:
+def _draw_polar(
+    draw: ImageDraw.ImageDraw,
+    samples: Sequence[AltAzSample],
+    cx: float,
+    cy: float,
+    radius: float,
+    font: ImageFont.ImageFont,
+) -> None:
     for alt in (90, 60, 30, 0):
         r = _polar_radius(alt, radius)
         draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline="#ffffff30")
@@ -464,10 +525,10 @@ def _draw_polar(draw: ImageDraw.ImageDraw, samples: Sequence[AltAzSample], cx: f
         x = cx + radius * math.sin(theta)
         y = cy - radius * math.cos(theta)
         draw.line([cx, cy, x, y], fill="#ffffff20")
-    draw.text((cx - 5, cy - radius - 20), "N", fill="#ffffff", font=ImageFont.load_default())
-    draw.text((cx + radius + 5, cy - 5), "E", fill="#ffffff", font=ImageFont.load_default())
-    draw.text((cx - 5, cy + radius + 5), "S", fill="#ffffff", font=ImageFont.load_default())
-    draw.text((cx - radius - 20, cy - 5), "W", fill="#ffffff", font=ImageFont.load_default())
+    draw.text((cx - 5, cy - radius - 20), "N", fill="#ffffff", font=font)
+    draw.text((cx + radius + 5, cy - 5), "E", fill="#ffffff", font=font)
+    draw.text((cx - 5, cy + radius + 5), "S", fill="#ffffff", font=font)
+    draw.text((cx - radius - 20, cy - 5), "W", fill="#ffffff", font=font)
     path = []
     for s in samples:
         r = _polar_radius(s.altitude_deg, radius)

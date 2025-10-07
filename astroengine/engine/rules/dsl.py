@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import List, Sequence, Tuple
 
 __all__ = [
     "DSLParseError",
@@ -74,7 +74,7 @@ class Identifier(Expr):
 @dataclass(frozen=True)
 class CallExpr(Expr, BooleanNode):
     name: str
-    args: Tuple[Expr, ...]
+    args: tuple[Expr, ...]
 
 
 @dataclass(frozen=True)
@@ -115,7 +115,7 @@ class RuleNode(Node):
     when: BooleanNode
     then: Expr
     weight: float
-    tags: Tuple[str, ...]
+    tags: tuple[str, ...]
 
 
 _KEYWORDS = {
@@ -164,8 +164,8 @@ class Tokenizer:
         self._line = 1
         self._column = 1
 
-    def tokenize(self) -> List[Token]:
-        tokens: List[Token] = []
+    def tokenize(self) -> list[Token]:
+        tokens: list[Token] = []
         while not self._is_at_end:
             ch = self._peek()
             if ch.isspace():
@@ -222,7 +222,7 @@ class Tokenizer:
 
     def _read_identifier(self) -> Token:
         start_line, start_col = self._line, self._column
-        value_chars: List[str] = []
+        value_chars: list[str] = []
         while not self._is_at_end and (self._peek().isalnum() or self._peek() == "_"):
             value_chars.append(self._advance())
         text = "".join(value_chars)
@@ -263,7 +263,7 @@ class Tokenizer:
     def _read_string(self) -> Token:
         quote = self._advance()
         start_line, start_col = self._line, self._column - 1
-        value_chars: List[str] = []
+        value_chars: list[str] = []
         while not self._is_at_end:
             ch = self._advance()
             if ch == quote:
@@ -322,8 +322,8 @@ class Parser:
         self._consume("RBRACE", "Expected '}'")
         return rule
 
-    def parse_rules(self) -> List[RuleNode]:
-        rules: List[RuleNode] = []
+    def parse_rules(self) -> list[RuleNode]:
+        rules: list[RuleNode] = []
         while not self._check("EOF"):
             rules.append(self.parse_rule())
         self._consume("EOF", "Unexpected trailing tokens")
@@ -341,7 +341,7 @@ class Parser:
         self._consume("WEIGHT", "Expected 'weight' section")
         self._consume("COLON", "Expected ':' after 'weight'")
         weight_token = self._consume("NUMBER", "Weight must be a number")
-        tags: Tuple[str, ...] = ()
+        tags: tuple[str, ...] = ()
         if self._match("COMMA"):
             if self._match("TAGS"):
                 self._consume("COLON", "Expected ':' after 'tags'")
@@ -352,9 +352,9 @@ class Parser:
                 self._error(token, "Expected 'tags' section")
         return RuleNode(name=name, when=when_expr, then=then_expr, weight=float(weight_token.value), tags=tags)
 
-    def _parse_tags(self) -> Tuple[str, ...]:
+    def _parse_tags(self) -> tuple[str, ...]:
         self._consume("LBRACKET", "Expected '[' to start tag list")
-        tags: List[str] = []
+        tags: list[str] = []
         if not self._check("RBRACKET"):
             while True:
                 if self._check("STRING"):
@@ -456,8 +456,8 @@ class Parser:
         self._error(token, "Unexpected token in expression")
         raise AssertionError("unreachable")
 
-    def _parse_call_arguments(self) -> Tuple[Expr, ...]:
-        args: List[Expr] = []
+    def _parse_call_arguments(self) -> tuple[Expr, ...]:
+        args: list[Expr] = []
         if not self._check("RPAREN"):
             while True:
                 args.append(self._parse_expr())
@@ -505,7 +505,7 @@ class Parser:
         raise DSLParseError(message, token.line, token.column)
 
 
-def parse_rules(source: str) -> List[RuleNode]:
+def parse_rules(source: str) -> list[RuleNode]:
     """Parse a string containing one or more rule definitions."""
 
     tokens = Tokenizer(source).tokenize()

@@ -10,7 +10,10 @@ from typing import Any, Literal, Protocol
 _SQLITE_IMPORT_ERROR: ModuleNotFoundError | None = None
 
 try:  # pragma: no cover - optional storage dependency
-    from .infrastructure.storage.sqlite import ensure_sqlite_schema
+    from .infrastructure.storage.sqlite import (
+        apply_default_pragmas,
+        ensure_sqlite_schema,
+    )
 except ModuleNotFoundError as exc:  # pragma: no cover - allows lightweight imports
     _SQLITE_IMPORT_ERROR = exc
 
@@ -20,6 +23,59 @@ except ModuleNotFoundError as exc:  # pragma: no cover - allows lightweight impo
             "SQLite storage support unavailable"
         ) from _SQLITE_IMPORT_ERROR
 
+    def apply_default_pragmas(*_args, **_kwargs):  # type: ignore
+
+        raise RuntimeError(
+            "SQLite storage support unavailable"
+        ) from _SQLITE_IMPORT_ERROR
+
+
+
+_CANONICAL_PRECISION = 5
+
+
+def canonical_round(value: float) -> float:
+    """Round ``value`` to the canonical precision used for ephemeris payloads."""
+
+    return round(float(value), _CANONICAL_PRECISION)
+
+
+def _normalize_longitude(value: float) -> float:
+    """Return ``value`` wrapped into ``[0, 360)`` with canonical rounding."""
+
+    lon = float(value) % 360.0
+    if lon < 0:
+        lon += 360.0
+    normalized = canonical_round(lon)
+    # Guard against values like 359.9999999999 -> 360.0 due to rounding.
+    if normalized >= 360.0:
+        return 0.0
+    return normalized
+
+
+def _normalize_declination(value: float) -> float:
+    """Clamp declinations to ``[-90, +90]`` and round deterministically."""
+
+    dec = max(-90.0, min(90.0, float(value)))
+    return canonical_round(dec)
+
+
+def normalize_longitude(value: float) -> float:
+    """Public wrapper returning ``value`` normalized to ``[0, 360)`` degrees."""
+
+    return _normalize_longitude(value)
+
+
+def normalize_declination(value: float) -> float:
+    """Public wrapper returning ``value`` clamped to ``[-90, +90]`` degrees."""
+
+    return _normalize_declination(value)
+
+
+def normalize_speed_per_day(value: float) -> float:
+    """Return the longitudinal speed normalised to degrees/day precision."""
+
+    return canonical_round(value)
 
 
 AspectName = Literal[
@@ -55,6 +111,22 @@ class BodyPosition:
     lat: float
     dec: float
     speed_lon: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "lon", _normalize_longitude(self.lon))
+        object.__setattr__(self, "lat", canonical_round(self.lat))
+        object.__setattr__(self, "dec", _normalize_declination(self.dec))
+        object.__setattr__(self, "speed_lon", canonical_round(self.speed_lon))
+
+    def as_mapping(self) -> dict[str, float]:
+        """Return the position as a canonical mapping payload."""
+
+        return {
+            "lon": self.lon,
+            "lat": self.lat,
+            "decl": self.dec,
+            "speed_lon": self.speed_lon,
+        }
 
 
 @dataclass(frozen=True)
@@ -299,6 +371,7 @@ def sqlite_write_canonical(
 
     ensure_sqlite_schema(db_path)
     con = sqlite3.connect(db_path)
+    apply_default_pragmas(con)
     try:
         cur = con.cursor()
         cur.executemany(
@@ -330,6 +403,7 @@ def sqlite_read_canonical(
     ensure_sqlite_schema(db_path)
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
+    apply_default_pragmas(con)
     try:
         query = (
 
@@ -444,6 +518,10 @@ def parquet_write_canonical(
 # >>> AUTO-GEN END: Canonical Types & Adapters v1.0
 
 __all__ = [
+    "canonical_round",
+    "normalize_longitude",
+    "normalize_declination",
+    "normalize_speed_per_day",
     "AspectName",
     "BodyPosition",
     "TransitEvent",

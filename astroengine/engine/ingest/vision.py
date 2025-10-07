@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional
-
 
 DATE_PATTERN = re.compile(r"(?P<month>\w+)\s+(?P<day>\d{1,2}),?\s+(?P<year>\d{4})", re.I)
 TIME_PATTERN = re.compile(r"(?P<hour>\d{1,2}):(?P<minute>\d{2})\s*(?P<ampm>am|pm)?", re.I)
@@ -13,17 +11,17 @@ POSITION_PATTERN = re.compile(r"(?P<body>[A-Za-z]+)\s+(?P<deg>\d{1,2})°(?P<min>
 
 @dataclass
 class VisionParseResult:
-    fields: Dict[str, str]
+    fields: dict[str, str]
     confidence: float
-    raw_lines: List[str]
+    raw_lines: list[str]
 
 
 class ChartVisionParser:
-    def parse(self, text: str) -> Optional[VisionParseResult]:
+    def parse(self, text: str) -> VisionParseResult | None:
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         if not lines:
             return None
-        fields: Dict[str, str] = {}
+        fields: dict[str, str] = {}
         confidence = 0.2
         for line in lines:
             if "house system" in line.lower():

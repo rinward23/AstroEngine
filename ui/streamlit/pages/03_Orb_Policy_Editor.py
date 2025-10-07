@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, Iterable, List
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -18,13 +20,13 @@ api = APIClient()
 
 
 def _allowed_policy_keys(include_name: bool = True) -> Iterable[str]:
-    keys: List[str] = ["description", "per_object", "per_aspect", "adaptive_rules"]
+    keys: list[str] = ["description", "per_object", "per_aspect", "adaptive_rules"]
     if include_name:
         keys.insert(0, "name")
     return keys
 
 
-def sanitise_policy(payload: Dict[str, Any], include_name: bool = True) -> Dict[str, Any]:
+def sanitise_policy(payload: dict[str, Any], include_name: bool = True) -> dict[str, Any]:
     """Return a shallow copy containing only fields accepted by the API."""
 
     allowed = set(_allowed_policy_keys(include_name=include_name))
@@ -41,7 +43,7 @@ def taper_by_orb(orb: float, limit: float) -> float:
     return 0.5 * (1.0 + np.cos(np.pi * x)) if x < 1.0 else 0.0
 
 # Severity proxy in UI (weight × taper). Backend may add modifiers later.
-def sev_ui(aspect: str, orb: float, limit: float, weights: Dict[str, float]) -> float:
+def sev_ui(aspect: str, orb: float, limit: float, weights: dict[str, float]) -> float:
     w = float(weights.get(aspect, DEFAULT_WEIGHTS.get(aspect, 0.5)))
     return max(0.0, w * taper_by_orb(orb, limit))
 
@@ -61,7 +63,7 @@ options = ["— New Policy —"] + list(id_by_name.keys())
 choice = st.sidebar.selectbox("Select policy", options)
 
 is_new = choice == "— New Policy —"
-policy: Dict[str, Any] = {
+policy: dict[str, Any] = {
     "name": "classic",
     "description": "Default classical orbs",
     "per_object": {"Sun": 8.0, "Moon": 6.0},
@@ -187,7 +189,7 @@ with st.expander("Run a quick 14‑day sample to see effect on hit counts/avg se
     objs = st.multiselect("Objects", ["Sun","Moon","Mercury","Venus","Mars"], default=["Sun","Moon","Venus","Mars"])  # small set
     step_minutes = st.slider("Step (minutes)", 5, 120, 60, 5)
     if st.button("Run Sample Search"):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload = {
             "objects": objs,
             "aspects": [asp],

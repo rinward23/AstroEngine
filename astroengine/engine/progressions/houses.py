@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - import guarded for optional swe
-    from ...ephemeris import HousePositions, SwissEphemerisAdapter
+    from ...ephemeris import HousePositions
 
 __all__ = ["HouseOptions", "compute_angles_houses"]
 
@@ -22,7 +22,7 @@ def compute_angles_houses(
     loc_lon: float,
     *,
     options: HouseOptions | None = None,
-) -> "HousePositions":
+) -> HousePositions:
     """Compute houses for the requested instant and location."""
 
     from ...ephemeris import SwissEphemerisAdapter

@@ -1,8 +1,10 @@
 from __future__ import annotations
+
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Dict, Iterable, Optional, Set
 
 from core.lots_plus.engine import eval_formula
+from core.lots_plus.parser import extract_symbols
 
 
 @dataclass
@@ -20,7 +22,7 @@ class LotDef:
 #  Eros                day = Asc + Venus - Spirit ; night = Asc + Spirit - Venus
 #  Necessity           day = Asc + Spirit - Mercury ; night = Asc + Mercury - Spirit
 #  Victory (Nike)      day = Asc + Jupiter - Spirit ; night = Asc + Spirit - Jupiter
-BUILTIN: Dict[str, LotDef] = {
+BUILTIN: dict[str, LotDef] = {
     "Fortune": LotDef("Fortune", day="Asc + Moon - Sun", night="Asc + Sun - Moon", description="Part of Fortune (Tyche)"),
     "Spirit": LotDef("Spirit", day="Asc + Sun - Moon", night="Asc + Moon - Sun", description="Part of Spirit (Daimon)"),
     "Eros": LotDef("Eros", day="Asc + Venus - Spirit", night="Asc + Spirit - Venus", description="Part of Eros"),
@@ -29,7 +31,7 @@ BUILTIN: Dict[str, LotDef] = {
 }
 
 # Runtime registry (starts with BUILTIN; can be extended)
-REGISTRY: Dict[str, LotDef] = dict(BUILTIN)
+REGISTRY: dict[str, LotDef] = dict(BUILTIN)
 
 
 def register_lot(defn: LotDef, overwrite: bool = False) -> None:
@@ -48,21 +50,7 @@ class Sect:
     NIGHT = "night"
 
 
-def _extract_symbols(expr: str) -> Set[str]:
-    symbols: Set[str] = set()
-    for raw in expr.replace('+', ' ').replace('-', ' ').split():
-        token = raw.strip()
-        if not token:
-            continue
-        try:
-            float(token)
-        except ValueError:
-            if token.replace('_', '').isalnum():
-                symbols.add(token)
-    return symbols
-
-
-def compute_lot(name: str, pos: Dict[str, float], sect: str, _stack: Optional[Set[str]] = None) -> float:
+def compute_lot(name: str, pos: dict[str, float], sect: str, _stack: set[str] | None = None) -> float:
     if sect not in (Sect.DAY, Sect.NIGHT):
         raise ValueError(f"Invalid sect: {sect}")
     if name not in REGISTRY:
@@ -78,7 +66,7 @@ def compute_lot(name: str, pos: Dict[str, float], sect: str, _stack: Optional[Se
 
     # Prepare a working copy of positions so we can inject dependent lot values.
     working_pos = dict(pos)
-    for symbol in _extract_symbols(expr):
+    for symbol in extract_symbols(expr):
         if symbol in working_pos or symbol == name:
             continue
         if symbol in REGISTRY:
@@ -87,8 +75,8 @@ def compute_lot(name: str, pos: Dict[str, float], sect: str, _stack: Optional[Se
     return eval_formula(expr, working_pos)
 
 
-def compute_lots(names: Iterable[str], pos: Dict[str, float], sect: str) -> Dict[str, float]:
-    out: Dict[str, float] = {}
+def compute_lots(names: Iterable[str], pos: dict[str, float], sect: str) -> dict[str, float]:
+    out: dict[str, float] = {}
     for n in names:
         out[n] = compute_lot(n, pos, sect)
     return out

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from astroengine.engine.nlp.sentiment import RuleBasedSentimentBackend, TransformerSentimentBackend, classify_sentiment
+from astroengine.engine.nlp.sentiment import (
+    RuleBasedSentimentBackend,
+    TransformerSentimentBackend,
+    classify_sentiment,
+)
 
 
 def test_rule_based_sentiment_distinguishes_polarity():

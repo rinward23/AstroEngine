@@ -24,13 +24,13 @@ ORB_STRATEGY = st.floats(
 
 
 def _orb_abs(hit: Any) -> float:
-    return float(getattr(hit, "orb_abs"))
+    return float(hit.orb_abs)
 
 
 def _angle_value(hit: Any) -> float:
     if hasattr(hit, "angle_deg"):
-        return float(getattr(hit, "angle_deg"))
-    return float(getattr(hit, "angle"))
+        return float(hit.angle_deg)
+    return float(hit.angle)
 
 
 def _sorted_hits(hits: list[Any]) -> list[Any]:

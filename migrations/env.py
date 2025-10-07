@@ -8,8 +8,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.db.base import Base
 from app.db import models  # noqa: F401 - ensure models are registered with the metadata
+from app.db.base import Base
 
 DEFAULT_DB_URL = "sqlite:///./dev.db"
 
@@ -30,6 +30,7 @@ def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
+        metadata=target_metadata,
         target_metadata=target_metadata,
         literal_binds=True,
         render_as_batch=True,
@@ -55,6 +56,7 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
+            metadata=target_metadata,
             target_metadata=target_metadata,
             render_as_batch=True,
         )

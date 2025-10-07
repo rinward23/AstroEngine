@@ -19,7 +19,13 @@ can be indexed safely without losing any modules during future edits.
 make setup    # or follow docs/DEV_ENV.md
 make doctor   # environment sanity (strict)
 make test     # run unit tests
+make migrate  # apply latest alembic migrations to your local DB
+make cache-warm  # populate ephemeris cache with verified data
+make run-api  # start the FastAPI service on http://127.0.0.1:8000
+make run-ui   # launch the Streamlit workspace on http://127.0.0.1:8501
 export SE_EPHE_PATH=/path/to/se/data   # optional for precision; falls back if missing
+# Windows (PowerShell): $env:SE_EPHE_PATH="C:/AstroEngine/ephe"
+# Windows (Command Prompt, persistent): setx SE_EPHE_PATH "C:\AstroEngine\ephe"
 ```
 
 ### One-command usability check
@@ -36,14 +42,95 @@ See `docs/DIAGNOSTICS.md`, `docs/SWISS_EPHEMERIS.md`, and `docs/QUALITY_GATE.md`
 
 ```bash
 export DATABASE_URL="sqlite+pysqlite:///${PWD}/dev.db" SE_EPHE_PATH="$HOME/.sweph/ephe"
-(uvicorn app.relationship_api:create_app --factory --host 0.0.0.0 --port 8000 & streamlit run ui/streamlit/pages/05_Synastry_Composite.py)
+make run-api
+make run-ui
 ```
 
-The first command pins the SQLite dev database (`dev.db` in the repo root) and
-points Swiss Ephemeris to your local data so neither service falls back to the
-reduced-precision providers. The subshell then launches the FastAPI service and
-Streamlit playground together so the UI can call the freshly started API.
+The environment exports pin the SQLite dev database (`dev.db` in the repo root)
+and point Swiss Ephemeris to your local data so neither service falls back to
+reduced-precision providers. Separate terminals running `make run-api` and
+`make run-ui` mimic the production topology while staying entirely data-backed.
+
+### Docker Compose workflow
+
+The repository now ships a compose bundle that launches the API on `:8000` and
+the Streamlit UI on `:8501` while sharing the host `./data` directory.
+
+1. Populate `./data` with any required assets:
+   ```bash
+   mkdir -p data/ephe
+   cp /path/to/dev.db data/dev.db            # optional, created automatically if missing
+   cp /path/to/sweph/* data/ephe/            # optional Swiss Ephemeris files
+   ```
+
+2. Build and start the API:
+   ```bash
+   docker compose up --build api
+   ```
+
+3. In a separate shell, build and start the UI (Compose will reuse the running API container or start one if needed):
+   ```bash
+   docker compose up --build ui
+   ```
+
+The containers mount `./data` at `/app/data`, so database migrations and
+ephemeris files persist between restarts and remain available to both services.
 # >>> AUTO-GEN END: README Quick Start v1.1
+
+### Windows desktop shell
+
+The packaged Windows experience wraps the FastAPI service, Streamlit UI, and
+diagnostics inside a WebView2-powered desktop window. Launch it locally with:
+
+```bash
+python -m app.desktop.launch_desktop
+```
+
+The embedded first-run wizard refuses to save configuration unless it detects
+real Swiss Ephemeris data files in the provided directory and, when the offline
+atlas toggle is enabled, verifies the SQLite database can be read without
+mutation. The wizard prints a summary with file and table counts so operators
+can confirm every module remains data-backed before proceeding to production
+checks.
+
+To build the Windows 11 installer, run `packaging\windows\make.bat` from a
+Developer Command Prompt. The script creates `dist\AstroEngine\AstroEngine.exe`
+using PyInstaller (pointing at the native desktop shell) and, if Inno Setup is
+available, emits an installer at `packaging\windows\Output` that places
+shortcuts in the Start menu and on the desktop. Double-clicking the bundled
+`AstroEngine.exe` brings up the self-contained desktop app—no browser is opened
+and the FastAPI/Streamlit processes are orchestrated by the embedded shell.
+
+Key behaviour:
+
+* **Native menus & tray.** Start/stop the API, reopen the embedded UI, tail
+  logs, or quit directly from the title bar menu or system tray icon.
+* **Settings editor.** Configuration lives at
+  `%LOCALAPPDATA%/AstroEngine/config.yaml` and includes database connection
+  details, Swiss Ephemeris path validation, API/Streamlit port overrides,
+  caching knobs (`AE_QCACHE_*`), logging level, theme, and auto-start toggles.
+  Updates are validated (including a live database connectivity check) before
+  being applied.
+* **Observability helpers.** Diagnostics, `/healthz`, `/metrics`, and log
+  viewers are available from the menus, and a one-click issue report bundles an
+  anonymised diagnostics snapshot for support.
+* **Bundled portal launcher.** CI publishes a PyInstaller build generated from
+  `packaging/windows/astroengine.spec`. The executable ships the Streamlit
+  `main_portal.py` experience inside the desktop shell with the Swiss ephemeris
+  stub baked in and keeps user data under `%LOCALAPPDATA%/AstroEngine`.
+* **Ruleset parity.** The PyInstaller spec now copies every packaged ruleset,
+  dataset, schema, and HTML asset so the desktop API uses the same
+  data-backed modules as source installs—no functionality is lost in the
+  Windows bundle.
+* **ChatGPT copilot.** The dockable copilot panel can tail logs, run
+  diagnostics, summarise API errors, and explain endpoints. Provide an OpenAI
+  API key and model in Settings to enable remote completions; otherwise the
+  panel falls back to deterministic tool output. Token usage is tracked with a
+  daily guardrail sourced from the desktop config.
+
+All values surfaced by the desktop shell originate from the same data-backed
+modules shipped with AstroEngine—no synthetic astrology data or guessed
+ephemerides are injected into the workflow.
 
 ### First transit sanity check
 
@@ -126,7 +213,9 @@ channel, and subchannel remains intact and data-backed:
 2. Ensure Swiss ephemeris files exist and set `SE_EPHE_PATH` (if using swiss provider):
 
    ```bash
-   export SE_EPHE_PATH="$HOME/.sweph/ephe"    # Windows: $env:SE_EPHE_PATH="C:/sweph"
+   export SE_EPHE_PATH="$HOME/.sweph/ephe"
+   # Windows (PowerShell): $env:SE_EPHE_PATH="C:/AstroEngine/ephe"
+   # Windows (Command Prompt, persistent): setx SE_EPHE_PATH "C:\AstroEngine\ephe"
    ```
 
 3. (Optional) Pin scan functions by exporting `ASTROENGINE_SCAN_ENTRYPOINTS` (comma/space separated `module:function`):
@@ -140,6 +229,10 @@ channel, and subchannel remains intact and data-backed:
    ```bash
    streamlit run apps/streamlit_transit_scanner.py
    ```
+
+   > **Heads-up:** the repository ships a ``streamlit/`` testing shim for
+   > unit suites. Always start UI scripts with ``streamlit run`` rather than
+   > ``python`` so the real Streamlit package loads before the shim.
 
 * **Scan Transits**: choose provider/time window/bodies/targets; optionally pin an entrypoint; previews canonical events and exports to SQLite/Parquet.
 * **Swiss Smoketest**: runs `scripts/swe_smoketest.py` to validate Swiss setup.
@@ -171,6 +264,29 @@ The page offers real datasets for quick regression checks:
 Sample longitude presets bundled with the page correspond to historical charts
 captured from published ephemerides so the outputs remain fully data-backed.
 
+### Quantized refinement cache tuning
+
+High-frequency refinement loops now consult a tiny process-local LRU that
+quantizes Terrestrial Time (TT) into short bins so repeat calls within the same
+window reuse identical Swiss Ephemeris samples. Control the cache via env vars:
+
+- `AE_QCACHE_SEC` – quantization window in seconds (default `1.0`). Lower values
+  tighten the window; increase to broaden cache hits when input jitter exceeds
+  a second.
+- `AE_QCACHE_SIZE` – maximum cached entries (default `4096`). Raise this if
+  long-running transit scans churn through the default footprint.
+
+Heavy relationship or mundane timeline scans benefit from a denser cache. For
+those workloads export `AE_QCACHE_SEC=0.25 AE_QCACHE_SIZE=16384` to mirror the
+container tuned defaults.
+
+Daily Swiss-ephemeris lookups can be precomputed on disk across the 1900‑2100
+span via `make cache-warm`. Override the range with `AE_WARM_START` and
+`AE_WARM_END` when you need narrower warms (e.g. CI disk quotas).
+
+Both knobs act locally per process and can be tuned without code changes when
+profiling heavy refinement workloads.
+
 ### Relationship API (v1)
 
 The new FastAPI-powered relationship service exposes deterministic REST
@@ -179,6 +295,11 @@ endpoints at the `/v1` base path. Launch it via Uvicorn with
 ```bash
 uvicorn app.relationship_api:create_app --factory --host 0.0.0.0 --port 8000
 ```
+
+The Docker entrypoint now auto-detects an appropriate worker count using
+`os.cpu_count()` so container deployments saturate available vCPUs. Override the
+value by exporting `UVICORN_WORKERS` when launching locally or in orchestration
+manifests.
 
 Key routes:
 
@@ -275,7 +396,7 @@ astroengine query --sqlite events.db --limit 5 --natal-id n001
 
 # >>> AUTO-GEN END: Canonical Transit Types v1.0
 
-The CI workflow `.github/workflows/ci.yml` covers Python 3.10–3.12 and archives diagnostics output for each run.
+The CI workflow `.github/workflows/ci.yml` covers Python 3.10–3.11 and archives diagnostics output for each run.
 
 The package exposes a registry-based API for discovering datasets and
 rulesets.  See `astroengine/modules` for details.
@@ -318,8 +439,12 @@ Pass `--check` to verify whether the tracked files already match the
 
 # >>> AUTO-GEN BEGIN: AE README Providers Addendum v1.2
 ### Optional providers & catalogs
-Use the helper script to install the complete optional stack, including the
-patched flatlib workflow that keeps `pyswisseph` at 2.10.3.2:
+The core package now installs the previously optional exporters, narrative, CLI,
+UI, and reporting stacks by default so Solar Fire derived datasets and
+rendering workflows work out of the box. Use the helper script to install the
+complete optional stack, including the
+patched flatlib workflow that keeps the mandatory `pyswisseph` runtime at
+2.10.3.2:
 
 ```bash
 make install-optional
@@ -327,10 +452,11 @@ make install-optional
 python scripts/install_optional_dependencies.py --upgrade-pip
 ```
 
-The script installs `requirements-optional.txt`, verifies critical imports such
-as `pymeeus`, `PyYAML`, and `pydantic`, and installs `flatlib==0.2.3` without
-pulling its outdated `pyswisseph==2.08` constraint so the Swiss bindings remain
-on the supported 2.10 series.
+The script installs `requirements-optional.txt`, verifies every optional stack
+import—including exporters like `ics`, reporting libraries such as
+`weasyprint`, and runtime services like `fastapi`—and installs `flatlib==0.2.3`
+without pulling its outdated `pyswisseph==2.08` constraint so the Swiss
+bindings remain on the supported 2.10 series.
 
 ### CLI
 
@@ -341,15 +467,23 @@ astroengine scan --start-utc 2024-01-01T00:00:00Z --end-utc 2024-01-02T00:00:00Z
   --moving Sun Moon --targets natal:Sun natal:Moon --target-frame natal --detector lunations
 ```
 
+Use `astroengine codex tree` to render the module → submodule → channel →
+subchannel hierarchy directly in the terminal, or `astroengine codex show` to
+inspect metadata for specific entries. The command is backed by the same
+`astroengine.codex` helpers that power developer tooling, so every path it
+reports corresponds to real documentation or dataset files in the repository.
+
 > **Licensing note:** Swiss Ephemeris is AGPL/commercial for distribution. Keep data files outside the wheel; users should provide `SWE_EPH_PATH/SE_EPHE_PATH`.
 
-When `pyswisseph` is unavailable the engine automatically registers a
-**Swiss fallback provider** powered by PyMeeus analytical series.  The
-fallback keeps the Swiss handle usable inside this repository’s test
+`pyswisseph==2.10.3.2` now ships with the core package, ensuring Swiss
+Ephemeris integrations are present for every install. If the binding cannot
+load (for example, due to missing system libraries) the engine automatically
+registers a **Swiss fallback provider** powered by PyMeeus analytical series.
+The fallback keeps the Swiss handle usable inside this repository’s test
 environment while still producing real geocentric ecliptic longitudes,
-latitudes, and longitudinal speeds for the visible planets and Pluto.
-Install `pyswisseph` alongside the official ephemeris files for
-production deployments to regain full Swiss Ephemeris precision.
+latitudes, and longitudinal speeds for the visible planets and Pluto. Install
+the official Swiss ephemeris data files for production deployments to regain
+full Swiss precision.
 
 # External integrations registry
 

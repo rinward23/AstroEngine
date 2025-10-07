@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime, timedelta
-from typing import Iterable
 
 from ...chart.natal import NatalChart
-from ...utils.angles import delta_angle, norm360, classify_applying_separating
+from ...utils.angles import classify_applying_separating, delta_angle, norm360
 from .models import AspectContact, CollectionOfLight, Prohibition, TranslationOfLight
 from .profiles import HoraryProfile
 

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Iterable, Mapping
 from uuid import uuid4
 
 
@@ -57,6 +57,25 @@ def _ensure_utc(dt: datetime | None) -> datetime | None:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+def _iter_tags(tags: Iterable[str] | str | None) -> Iterable[str]:
+    if tags is None:
+        return []
+    if isinstance(tags, str):
+        return (part for part in tags.split(",") if part)
+    return tags
+
+
+def _normalize_tags(tags: Iterable[str] | str | None) -> list[str]:
+    normalized: list[str] = []
+    if not tags:
+        return normalized
+    for tag in _iter_tags(tags):
+        value = str(tag).strip().lower()
+        if value and value not in normalized:
+            normalized.append(value)
+    return normalized
 
 
 def _uuid_hex() -> str:
@@ -222,6 +241,12 @@ class SeverityProfile(ModuleScopeMixin, TimestampMixin, Base):
 
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    weights: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    modifiers: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    events: Mapped[list["Event"]] = relationship(back_populates="severity_profile")
 
 
 class TraditionalRun(ModuleScopeMixin, TimestampMixin, Base):
@@ -230,6 +255,7 @@ class TraditionalRun(ModuleScopeMixin, TimestampMixin, Base):
     __tablename__ = "traditional_runs"
     __table_args__ = _table_args(
         Index("ix_traditional_runs_kind", "kind"),
+        Index("ix_traditional_runs_kind_name", "kind", "name"),
         UniqueConstraint(
             "module",
             "submodule",
@@ -262,9 +288,6 @@ class TraditionalRun(ModuleScopeMixin, TimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     profile_key = synonym("name")
-
-    events: Mapped[list["Event"]] = relationship(back_populates="severity_profile")
-
 
     def __init__(self, **kwargs: Any) -> None:
         profile_key = kwargs.pop("profile_key", None)
@@ -308,6 +331,7 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
         ),
         Index("ix_charts_dt_utc", "dt_utc"),
         Index("ix_charts_created_at", "created_at"),
+        Index("ix_charts_kind_name", "kind", "name"),
     )
 
 
@@ -318,8 +342,10 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
         String(32), nullable=False, default=ChartKind.natal.value, server_default=text("'natal'")
 
     )
-    profile_key: Mapped[str] = mapped_column(String(64), nullable=False)
-    kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    memo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(32), nullable=True)
     _dt_utc: Mapped[datetime | None] = mapped_column(
         "dt_utc", DateTime(timezone=True), nullable=True
     )
@@ -329,9 +355,20 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     location_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     source: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    location_label: Mapped[str | None] = synonym("location_name")
     data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    settings_snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    narrative_profile: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    bodies: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    houses: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    aspects: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    patterns: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     events: Mapped[list["Event"]] = relationship(
+        back_populates="chart", cascade="all, delete-orphan"
+    )
+    notes: Mapped[list["ChartNote"]] = relationship(
         back_populates="chart", cascade="all, delete-orphan"
     )
 
@@ -356,7 +393,51 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
         kwargs.setdefault("profile_key", str(profile_key or "default"))
 
         data = kwargs.pop("data", None)
+        tags = kwargs.pop("tags", None)
+        deleted_at = kwargs.pop("deleted_at", None)
         kwargs.setdefault("data", data or {})
+        normalized_tags = _normalize_tags(tags)
+        kwargs.setdefault("tags", normalized_tags)
+        if deleted_at is not None:
+            kwargs.setdefault("deleted_at", _ensure_utc(deleted_at))
+
+        snapshot = kwargs.pop("settings_snapshot", None)
+        if snapshot is not None:
+            if hasattr(snapshot, "model_dump"):
+                kwargs["settings_snapshot"] = snapshot.model_dump()  # type: ignore[attr-defined]
+            elif isinstance(snapshot, Mapping):
+                kwargs["settings_snapshot"] = dict(snapshot)
+            else:
+                kwargs["settings_snapshot"] = {}
+
+        bodies = kwargs.pop("bodies", None)
+        if bodies is not None:
+            if isinstance(bodies, Mapping):
+                kwargs["bodies"] = dict(bodies)
+            else:
+                kwargs["bodies"] = dict(bodies or {})  # type: ignore[arg-type]
+
+        houses = kwargs.pop("houses", None)
+        if houses is not None:
+            if isinstance(houses, Mapping):
+                kwargs["houses"] = dict(houses)
+            else:
+                kwargs["houses"] = dict(houses or {})  # type: ignore[arg-type]
+
+        aspects = kwargs.pop("aspects", None)
+        if aspects is not None:
+            if isinstance(aspects, Mapping):
+                kwargs["aspects"] = [dict(aspects)]
+            else:
+                kwargs["aspects"] = list(aspects)  # type: ignore[arg-type]
+
+        patterns = kwargs.pop("patterns", None)
+        if patterns is not None:
+            kwargs["patterns"] = list(patterns)  # type: ignore[arg-type]
+
+        narrative_profile = kwargs.pop("narrative_profile", None)
+        if narrative_profile is not None:
+            kwargs["narrative_profile"] = str(narrative_profile)
 
         super().__init__(**kwargs)
 
@@ -367,6 +448,27 @@ class Chart(ModuleScopeMixin, TimestampMixin, Base):
     @dt_utc.setter
     def dt_utc(self, value: datetime | None) -> None:
         self._dt_utc = _ensure_utc(value) if value is not None else None
+
+
+class ChartNote(Base):
+    """Free-form annotations linked to stored charts."""
+
+    __tablename__ = "notes"
+    __table_args__ = _table_args(
+        Index("ix_notes_chart_id", "chart_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chart_id: Mapped[int] = mapped_column(
+        ForeignKey("charts.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+
+    chart: Mapped[Chart] = relationship(back_populates="notes")
 
 
 class RulesetVersion(ModuleScopeMixin, TimestampMixin, Base):
@@ -392,6 +494,14 @@ class RulesetVersion(ModuleScopeMixin, TimestampMixin, Base):
             "submodule",
             "channel",
             "subchannel",
+        ),
+        Index(
+            "ix_ruleset_versions_scope_key",
+            "module",
+            "submodule",
+            "channel",
+            "subchannel",
+            "ruleset_key",
         ),
         Index("ix_ruleset_versions_created_at", "created_at"),
     )

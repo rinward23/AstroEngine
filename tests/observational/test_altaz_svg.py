@@ -4,6 +4,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+pytest.importorskip(
+    "PIL",
+    reason="Pillow not installed; install extras with `pip install -e .[ui,reports]`.",
+)
+
 from astroengine.engine.observational import render_altaz_diagram
 from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
 
@@ -18,7 +23,7 @@ def test_altaz_diagram_output() -> None:
 
     diagram = render_altaz_diagram(
         adapter,
-        swe.MARS,
+        swe().MARS,
         start,
         end,
         observer,

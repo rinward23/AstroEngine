@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import os
 import sys
 import types
@@ -8,6 +9,11 @@ import warnings
 from pathlib import Path
 
 import pytest
+
+if importlib.util.find_spec("swisseph") is None:
+    pytest.skip("pyswisseph not installed", allow_module_level=True)
+
+import st_shim as _st_shim
 
 
 def _flag_enabled(name: str) -> bool:
@@ -40,6 +46,24 @@ try:
 except Exception:
     # If astroengine is not importable here, let pytest show the normal error later.
     pass
+
+# Provide compatibility alias for the legacy ``streamlit`` shim used in tests.
+_disable_shim = os.getenv("ASTROENGINE_DISABLE_STREAMLIT_SHIM", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+if _disable_shim:
+    try:
+        import streamlit as _streamlit_module  # type: ignore
+    except ModuleNotFoundError:
+        sys.modules.setdefault("streamlit", _st_shim)
+    else:
+        sys.modules.setdefault("streamlit", _streamlit_module)
+else:
+    sys.modules.setdefault("streamlit", _st_shim)
 # >>> AUTO-GEN END: AliasGeneratedToAstroengine v1.0
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

@@ -7,7 +7,8 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter
 
-from ...ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
+from astroengine.ephemeris.swe import has_swe, swe
+
 from ...engine.observational import (
     EventOptions,
     HeliacalProfile,
@@ -23,6 +24,7 @@ from ...engine.observational import (
     transit_time,
     visibility_windows,
 )
+from ...ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
 from ..schemas_observational import (
     DiagramRequest,
     DiagramResponse,
@@ -40,13 +42,9 @@ from ..schemas_observational import (
     VisibilityWindowModel,
 )
 
-try:  # pragma: no cover - optional Swiss Ephemeris dependency
-    import swisseph as swe
-except ModuleNotFoundError:  # pragma: no cover
-    swe = None
-
-_SUN_ID = getattr(swe, "SUN", 0)
-_MOON_ID = getattr(swe, "MOON", 1)
+_HAS_SWE = has_swe()
+_SUN_ID = int(getattr(swe(), "SUN", 0)) if _HAS_SWE else 0
+_MOON_ID = int(getattr(swe(), "MOON", 1)) if _HAS_SWE else 1
 
 router = APIRouter(prefix="/topocentric", tags=["topocentric"])
 

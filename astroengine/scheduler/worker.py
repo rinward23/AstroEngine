@@ -4,16 +4,20 @@ from __future__ import annotations
 import json
 import time
 import traceback
+from collections.abc import Callable
 from threading import Event
-from typing import Any, Callable
+from typing import Any
 
-from .queue import claim_one, done, fail, heartbeat
+from app.devmode.backups import run_backup_job
+
 from ..detectors.directed_aspects import solar_arc_natal_aspects
 from ..detectors.progressed_aspects import progressed_natal_aspects
+from .queue import claim_one, done, fail, heartbeat
 
 HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "scan:progressions": lambda payload: progressed_natal_aspects(**payload),
     "scan:directions": lambda payload: solar_arc_natal_aspects(**payload),
+    "backup:zip": run_backup_job,
 }
 
 

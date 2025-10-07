@@ -1,11 +1,11 @@
 """Canonicalization helpers for relationship caching."""
 from __future__ import annotations
 
+import hashlib
+from collections.abc import Iterable, Mapping, MutableMapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Dict, Iterable, Mapping, MutableMapping
-
-import hashlib
+from typing import Any
 
 from astroengine.utils import json as json_utils
 
@@ -31,15 +31,15 @@ def _normalize_longitude(value: float) -> float:
     return _round_float(lon, _POS_PRECISION)
 
 
-def _normalize_mapping(values: Mapping[str, Any], *, value_fn) -> Dict[str, Any]:
-    normalized: Dict[str, Any] = {}
+def _normalize_mapping(values: Mapping[str, Any], *, value_fn) -> dict[str, Any]:
+    normalized: dict[str, Any] = {}
     for key in sorted(values):
         normalized[key] = value_fn(values[key])
     return normalized
 
 
-def canonicalize_positions(pos: Mapping[str, Any]) -> Dict[str, Any]:
-    normalized: Dict[str, Any] = {}
+def canonicalize_positions(pos: Mapping[str, Any]) -> dict[str, Any]:
+    normalized: dict[str, Any] = {}
     for key in sorted(pos):
         value = pos[key]
         normalized[key] = None if value is None else _normalize_longitude(value)
@@ -56,7 +56,7 @@ def _normalize_policy_value(value: Any) -> Any:
     return value
 
 
-def canonicalize_policy(policy: Mapping[str, Any]) -> Dict[str, Any]:
+def canonicalize_policy(policy: Mapping[str, Any]) -> dict[str, Any]:
     return _normalize_mapping(policy, value_fn=_normalize_policy_value)
 
 
@@ -75,7 +75,7 @@ def canonicalize_synastry_payload(
     gamma: float | None = None,
     node_policy: Any | None = None,
 ) -> CanonicalPayload:
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "positionsA": canonicalize_positions(positions_a),
         "positionsB": canonicalize_positions(positions_b),
         "aspects": canonicalize_aspects(aspects),
@@ -97,7 +97,7 @@ def canonicalize_composite_payload(
     *,
     node_policy: Any | None = None,
 ) -> CanonicalPayload:
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "positionsA": canonicalize_positions(positions_a),
         "positionsB": canonicalize_positions(positions_b),
         "objects": sorted({obj.strip() for obj in objects}),
@@ -118,7 +118,7 @@ def canonicalize_davison_payload(
     lon_b: float,
     node_policy: Any | None = None,
 ) -> CanonicalPayload:
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "objects": sorted({obj.strip() for obj in objects}),
         "dtA": dt_a.astimezone(UTC).isoformat(),
         "dtB": dt_b.astimezone(UTC).isoformat(),

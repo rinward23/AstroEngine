@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 import pytest
 
@@ -39,7 +39,7 @@ class LinearEphemeris:
 
 @pytest.fixture
 def timeline_epoch() -> dt.datetime:
-    return dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc)
+    return dt.datetime(2024, 1, 1, tzinfo=dt.UTC)
 
 
 @pytest.fixture

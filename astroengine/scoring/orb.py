@@ -5,19 +5,19 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources as importlib_resources
 from math import isclose
-
 from pathlib import Path
-from typing import Mapping, Sequence
 
 # Optional: integrate with project body classification if available
 try:  # pragma: no cover - fallback for minimal installs
-    from astroengine.core.bodies import body_class  # type: ignore import
+    from astroengine.core.bodies import body_class as _body_class
 except Exception:  # pragma: no cover
-    def body_class(name: str) -> str:
+
+    def _body_class(name: str) -> str:
         n = (name or "").lower()
         luminaries = {"sun", "moon"}
         personals = {"mercury", "venus", "mars"}
@@ -30,6 +30,12 @@ except Exception:  # pragma: no cover
 
             return "social"
         return "outer"
+
+
+def body_class(name: str) -> str:
+    """Return the configured classification for ``name``."""
+
+    return _body_class(name)
 
 
 def _normalize_name(name: str) -> str:

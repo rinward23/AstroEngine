@@ -1,7 +1,8 @@
 """Session-state helpers for the report builder Streamlit app."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional
+from collections.abc import Mapping, MutableMapping
+from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
 
@@ -14,8 +15,8 @@ class ReportFilters(BaseModel):
     profile: str = "balanced"
     top_k: int = 50
     min_score: float = 0.3
-    include_tags: List[str] = Field(default_factory=list)
-    exclude_tags: List[str] = Field(default_factory=list)
+    include_tags: list[str] = Field(default_factory=list)
+    exclude_tags: list[str] = Field(default_factory=list)
     top_highlights: int = 7
 
 
@@ -29,16 +30,16 @@ class PairIdentity(BaseModel):
 
 class ReportState(BaseModel):
     pair: PairIdentity = Field(default_factory=PairIdentity)
-    aspects: List[int] = Field(default_factory=lambda: list(DEFAULT_ASPECTS))
+    aspects: list[int] = Field(default_factory=lambda: list(DEFAULT_ASPECTS))
     filters: ReportFilters = Field(default_factory=ReportFilters)
     rulepack_id: str = ""
     scope: str = DEFAULT_SCOPE
-    hits: Optional[List[Dict[str, Any]]] = None
-    findings: Optional[Dict[str, Any]] = None
-    inputs: Optional[Dict[str, Any]] = None
-    markdown: Optional[str] = None
+    hits: list[dict[str, Any]] | None = None
+    findings: dict[str, Any] | None = None
+    inputs: dict[str, Any] | None = None
+    markdown: str | None = None
     template_id: str = DEFAULT_TEMPLATE_ID
-    project_payload: Optional[Dict[str, Any]] = None
+    project_payload: dict[str, Any] | None = None
 
 
 def get_state(store: MutableMapping[str, Any]) -> ReportState:
@@ -64,7 +65,7 @@ def update_state(store: MutableMapping[str, Any], **updates: Any) -> ReportState
     return new_state
 
 
-def store_project(store: MutableMapping[str, Any], payload: Dict[str, Any]) -> None:
+def store_project(store: MutableMapping[str, Any], payload: dict[str, Any]) -> None:
     """Persist a project payload inside session state."""
 
     state = get_state(store)

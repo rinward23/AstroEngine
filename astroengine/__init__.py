@@ -4,22 +4,41 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 try:
-    from importlib.metadata import version as _get_version
+    from importlib.metadata import PackageNotFoundError, version as _get_version
+except ImportError:  # pragma: no cover - fallback for Python <3.8 environments
+    from importlib_metadata import PackageNotFoundError, version as _get_version
 
-    __version__ = _get_version("astroengine")
-except Exception:  # pragma: no cover - metadata may be unavailable in editable installs
-    __version__ = "0.0.0.dev"
+try:
+    from ._version import version as __version__
+except ImportError:  # pragma: no cover - setuptools-scm has not generated _version yet
+    try:
+        __version__ = _get_version("astroengine")
+    except PackageNotFoundError:  # pragma: no cover - metadata may be unavailable in editable installs
+        # When running from source without installed metadata (e.g., editable installs),
+        # fall back to the neutral base version so release artefacts never expose
+        # the ``0+unknown`` marker.
+        __version__ = "0.0.0"
+
+
+def get_version() -> str:
+    """Return the resolved AstroEngine package version."""
+
+    return __version__
 
 
 from .atlas.tz import (  # noqa: F401
+    FoldPolicy,
+    GapPolicy,
+    LocalTimeResolution,
     Policy,
     from_utc,
     is_ambiguous,
     is_nonexistent,
     to_utc,
+    to_utc_with_timezone,
     tzid_for,
 )
 
@@ -235,12 +254,17 @@ from .scoring import (
     load_visibility_policy,
     lookup_dignities,
 )
+from .analysis import condition_report, score_accidental, score_essential
 
 __all__ = [
     "__version__",
+    "FoldPolicy",
+    "GapPolicy",
+    "LocalTimeResolution",
     "Policy",
     "tzid_for",
     "to_utc",
+    "to_utc_with_timezone",
     "from_utc",
     "is_ambiguous",
     "is_nonexistent",
@@ -319,7 +343,10 @@ __all__ = [
     "ScoreResult",
     "OrbCalculator",
     "compute_uncertainty_confidence",
+    "condition_report",
     "load_dignities",
+    "score_accidental",
+    "score_essential",
     "lookup_dignities",
     "OrbPolicy",
     "SeverityPolicy",
@@ -437,10 +464,10 @@ try:  # pragma: no cover - optional dependency in some environments
         tz = None
         if min_value.tzinfo is not None:
             tz = min_value.tzinfo
-            min_value = min_value.astimezone(timezone.utc).replace(tzinfo=None)
+            min_value = min_value.astimezone(UTC).replace(tzinfo=None)
         if max_value.tzinfo is not None:
             tz = max_value.tzinfo
-            max_value = max_value.astimezone(timezone.utc).replace(tzinfo=None)
+            max_value = max_value.astimezone(UTC).replace(tzinfo=None)
         if tz is not None and timezones is _hyp_strategies.none():
             timezones = _hyp_strategies.just(tz)
         return _original_datetimes(

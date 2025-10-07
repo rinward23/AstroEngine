@@ -4,12 +4,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
-from typing import Iterable, List
 
-
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SupportIssue:
     """Represents an unsupported body probe against a provider."""
 
@@ -26,7 +25,7 @@ def _probe_timestamp(provider) -> str:
     return "2000-01-01T12:00:00Z"  # J2000 epoch
 
 
-def filter_supported(bodies: Iterable[str], provider) -> tuple[List[str], List[SupportIssue]]:
+def filter_supported(bodies: Iterable[str], provider) -> tuple[list[str], list[SupportIssue]]:
     """Return (supported, issues) for ``bodies`` against ``provider``."""
 
     probe = getattr(provider, "position", None)
@@ -40,8 +39,8 @@ def filter_supported(bodies: Iterable[str], provider) -> tuple[List[str], List[S
                 unique.append(name)
         return unique, []
 
-    supported: List[str] = []
-    issues: List[SupportIssue] = []
+    supported: list[str] = []
+    issues: list[SupportIssue] = []
     probe_ts = _probe_timestamp(provider)
     seen: set[str] = set()
     for body in bodies:

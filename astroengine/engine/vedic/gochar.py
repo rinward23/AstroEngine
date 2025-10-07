@@ -15,9 +15,9 @@ delegating persistence and presentation to downstream modules.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Iterable, Mapping, Sequence
 
 from ...detectors.common import delta_deg
 from ...timelords.profections import SIGN_RULERS

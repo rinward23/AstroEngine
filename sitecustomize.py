@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
+import os
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
+
+# Pytest auto-loads entry point based plugins by default which introduces
+# substantial import overhead in this repository.  Disable the implicit scan
+# unless a developer explicitly opts back in.
+if not os.getenv("ASTROENGINE_ENABLE_PYTEST_AUTOLOAD"):
+    os.environ.setdefault("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1")
+
 
 def _install_hypothesis_patch(module: Any) -> None:
     """Install a timezone-aware `datetimes` helper on the provided module."""
@@ -38,7 +47,7 @@ def _install_hypothesis_patch(module: Any) -> None:
     except Exception:  # pragma: no cover - internal layout may change
         _datetime_module = None
     else:
-        setattr(_datetime_module, "datetimes", _patched_datetimes)
+        _datetime_module.datetimes = _patched_datetimes
     module._astroengine_datetimes_patched = True
 
 

@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
-from typing import Any, Callable, Dict
-
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from app.schemas.aspects import (
     AspectHit,
@@ -25,8 +24,8 @@ from astroengine.core.aspects_plus.provider_wrappers import (
 from astroengine.core.aspects_plus.scan import TimeWindow, scan_time_range
 
 try:  # Optional repositories for policy lookup
-    from app.repo.orb_policies import OrbPolicyRepo  # type: ignore
     from app.db.session import session_scope  # type: ignore
+    from app.repo.orb_policies import OrbPolicyRepo  # type: ignore
 except Exception:  # pragma: no cover
     OrbPolicyRepo = None  # type: ignore
     session_scope = None  # type: ignore
@@ -37,10 +36,10 @@ __all__ = ["router", "configure_position_provider", "clear_position_provider"]
 # -----------------------------------------------------------------------------
 # Position provider injection
 # -----------------------------------------------------------------------------
-position_provider: Callable[[datetime], Dict[str, float]] | None = None
+position_provider: Callable[[datetime], dict[str, float]] | None = None
 _cached: tuple[
-    Callable[[datetime], Dict[str, float]],
-    Callable[[datetime], Dict[str, float]],
+    Callable[[datetime], dict[str, float]],
+    Callable[[datetime], dict[str, float]],
 ] | None = None
 
 
@@ -97,7 +96,7 @@ def _get_provider() -> PositionProvider:
 # -----------------------------------------------------------------------------
 # Orb policy resolution
 # -----------------------------------------------------------------------------
-DEFAULT_POLICY: Dict[str, Any] = {
+DEFAULT_POLICY: dict[str, Any] = {
     "per_object": {},
     "per_aspect": {
         "conjunction": 8.0,
@@ -119,7 +118,7 @@ DEFAULT_POLICY: Dict[str, Any] = {
 }
 
 
-def _resolve_orb_policy(req: AspectSearchRequest) -> Dict[str, Any]:
+def _resolve_orb_policy(req: AspectSearchRequest) -> dict[str, Any]:
     if req.orb_policy_inline is not None:
         return req.orb_policy_inline.model_dump()
     if req.orb_policy_id is not None:
@@ -153,12 +152,17 @@ def _resolve_orb_policy(req: AspectSearchRequest) -> Dict[str, Any]:
     ),
     operation_id="plus_aspects_search",
 )
-def aspects_search(req: AspectSearchRequest):
+def aspects_search(req: AspectSearchRequest, request: Request):
     provider = _get_provider()
     policy = _resolve_orb_policy(req)
 
-    start = req.window.start.astimezone(timezone.utc)
-    end = req.window.end.astimezone(timezone.utc)
+    settings = getattr(request.app.state, "settings", None)
+    antiscia_cfg = getattr(settings, "antiscia", None) if settings is not None else None
+    antiscia_enabled = bool(getattr(antiscia_cfg, "enabled", False)) if antiscia_cfg else False
+    antiscia_orb = getattr(antiscia_cfg, "orb", None) if antiscia_cfg else None
+
+    start = req.window.start.astimezone(UTC)
+    end = req.window.end.astimezone(UTC)
     window = TimeWindow(start=start, end=end)
 
     hits = scan_time_range(
@@ -170,6 +174,8 @@ def aspects_search(req: AspectSearchRequest):
         orb_policy=policy,
         pairs=req.pairs,
         step_minutes=req.step_minutes,
+        include_antiscia=antiscia_enabled,
+        antiscia_orb=antiscia_orb,
     )
 
     ranked = rank_hits(hits, profile=None, order_by=req.order_by)

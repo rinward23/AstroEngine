@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from ...ephemeris.adapter import EphemerisAdapter, EphemerisSample, ObserverLocation
-
+from .diagrams import AltAzDiagram, render_altaz_diagram
 from .earth import ecef_from_geodetic, gcrs_from_ecef
+from .events import EventOptions, rise_set_times, transit_time
+from .sun import solar_cycle, solar_cycle_for_location
 from .topocentric import (
     HorizontalCoordinates,
     MetConditions,
@@ -15,8 +17,6 @@ from .topocentric import (
     topocentric_ecliptic,
     topocentric_equatorial,
 )
-from .events import EventOptions, rise_set_times, transit_time
-from .sun import solar_cycle, solar_cycle_for_location
 from .windows import (
     HeliacalProfile,
     VisibilityConstraints,
@@ -24,7 +24,6 @@ from .windows import (
     heliacal_candidates,
     visibility_windows,
 )
-from .diagrams import AltAzDiagram, render_altaz_diagram
 
 __all__ = [
     "AltAzDiagram",

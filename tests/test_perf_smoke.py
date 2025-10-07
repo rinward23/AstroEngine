@@ -4,16 +4,15 @@ import os
 
 import pytest
 
+pytest.importorskip(
+    "swisseph", reason="Install with `.[providers]` or set SE_EPHE_PATH"
+)
+
 pytestmark = [pytest.mark.perf, pytest.mark.swiss]
 
 
-def _have_swiss():
-    try:
-        import swisseph as _  # noqa
-
-        return bool(os.getenv("SE_EPHE_PATH"))
-    except Exception:
-        return False
+def _have_swiss() -> bool:
+    return bool(os.getenv("SE_EPHE_PATH") or os.getenv("SWE_EPH_PATH"))
 
 
 @pytest.mark.skipif(not _have_swiss(), reason="Swiss unavailable")
@@ -34,24 +33,23 @@ def test_fast_scan_runs_under_budget():
 def test_fast_scan_year_budget_guard() -> None:
     from time import perf_counter
 
-    import swisseph as swe  # type: ignore
-
     from astroengine.engine import ScanConfig, fast_scan
+    from astroengine.ephemeris.swe import swe
 
     start = dt.datetime(2020, 1, 1, 0, 0)
     end = dt.datetime(2021, 1, 1, 0, 0)
 
     base_bodies = [
-        int(swe.SUN),
-        int(swe.MOON),
-        int(swe.MERCURY),
-        int(swe.VENUS),
-        int(swe.MARS),
-        int(swe.JUPITER),
-        int(swe.SATURN),
-        int(swe.URANUS),
-        int(swe.NEPTUNE),
-        int(swe.PLUTO),
+        int(swe().SUN),
+        int(swe().MOON),
+        int(swe().MERCURY),
+        int(swe().VENUS),
+        int(swe().MARS),
+        int(swe().JUPITER),
+        int(swe().SATURN),
+        int(swe().URANUS),
+        int(swe().NEPTUNE),
+        int(swe().PLUTO),
     ]
     bodies = base_bodies + base_bodies[:5]
 

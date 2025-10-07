@@ -1,11 +1,14 @@
 from __future__ import annotations
-from typing import Generic, TypeVar, Type, Optional, Iterable
+
+from collections.abc import Iterable
+from typing import Generic, TypeVar
+
 from sqlalchemy.orm import Session
 
 T = TypeVar("T")
 
 class BaseRepo(Generic[T]):
-    def __init__(self, model: Type[T]):
+    def __init__(self, model: type[T]):
         self.model = model
 
     def create(self, db: Session, **kwargs) -> T:
@@ -14,7 +17,7 @@ class BaseRepo(Generic[T]):
         db.flush()  # assign PK
         return obj
 
-    def get(self, db: Session, id: int) -> Optional[T]:
+    def get(self, db: Session, id: int) -> T | None:
         return db.get(self.model, id)
 
     def list(self, db: Session, limit: int = 100, offset: int = 0) -> Iterable[T]:

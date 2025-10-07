@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 
 from astroengine.engine.vedic import build_context, lunar_month
 
-
 DELHI_LAT = 28.6139
 DELHI_LON = 77.2090
 

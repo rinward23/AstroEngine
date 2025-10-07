@@ -10,6 +10,20 @@ from typing import TYPE_CHECKING, Any
 
 import pluggy
 
+from .registry import (
+    ASPECT_REGISTRY,
+    LOT_REGISTRY,
+    AspectPluginSpec,
+    LotPluginSpec,
+    apply_plugin_settings,
+    ensure_user_plugins_loaded,
+    iter_aspect_plugins,
+    iter_lot_plugins,
+    load_user_plugins,
+    register_aspect,
+    register_lot,
+)
+
 if TYPE_CHECKING:  # pragma: no cover - imports for static typing only
     from astroengine.exporters import LegacyTransitEvent
     from astroengine.scoring import ScoreInputs, ScoreResult
@@ -130,7 +144,13 @@ class ScoreExtensionRegistry:
 
     def apply(self, inputs: ScoreInputs, result: ScoreResult) -> None:
         for spec in self._extensions:
-            payload = spec.callback(inputs, result) or {}
+            try:
+                payload = spec.callback(inputs, result) or {}
+            except Exception as exc:  # pragma: no cover - plugin isolation
+                LOGGER.warning(
+                    "score extension '%s' raised an exception: %s", spec.name, exc
+                )
+                continue
             for key, value in payload.items():
                 namespaced = f"{spec.namespace}.{key}" if spec.namespace else key
                 if namespaced in result.components:
@@ -318,7 +338,10 @@ class PluginRuntime:
 
     def post_export(self, context: ExportContext) -> None:
         self._ensure_entrypoints()
-        self._pm.hook.post_export(context=context)
+        try:
+            self._pm.hook.post_export(context=context)
+        except Exception as exc:  # pragma: no cover - plugin isolation
+            LOGGER.warning("post_export hook raised an exception: %s", exc)
 
     # ------------------------------------------------------------------
     # Compatibility helpers
@@ -444,18 +467,29 @@ def apply_score_extensions(inputs: ScoreInputs, result: ScoreResult) -> ScoreRes
 
 
 __all__ = [
+    "ASPECT_REGISTRY",
     "PLUGIN_API_VERSION",
+    "LOT_REGISTRY",
     "DetectorContext",
     "DetectorRegistry",
     "DetectorSpec",
     "ExportContext",
+    "AspectPluginSpec",
     "PluginRuntime",
     "ScoreExtensionRegistry",
     "ScoreExtensionSpec",
+    "LotPluginSpec",
     "UIPanelSpec",
+    "apply_plugin_settings",
     "apply_score_extensions",
+    "ensure_user_plugins_loaded",
     "get_plugin_manager",
     "hookimpl",
     "hookspec",
+    "iter_aspect_plugins",
+    "iter_lot_plugins",
+    "load_user_plugins",
+    "register_aspect",
+    "register_lot",
     "set_plugin_manager",
 ]

@@ -1,11 +1,19 @@
 # >>> AUTO-GEN BEGIN: AE Skyfield Provider v1.0
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
+
+LOG = logging.getLogger(__name__)
 
 try:
     from skyfield.api import load
-except Exception:  # pragma: no cover
+except ImportError:
+    LOG.info(
+        "skyfield load helper unavailable",
+        extra={"err_code": "SKYFIELD_IMPORT", "provider": "skyfield"},
+        exc_info=True,
+    )
     load = None
 
 from . import register_provider
@@ -27,17 +35,39 @@ _PLANET_KEYS = {
 class SkyfieldProvider:
     def __init__(self) -> None:
         if load is None:
+            LOG.warning(
+                "skyfield not installed",
+                extra={"err_code": "SKYFIELD_IMPORT", "provider": "skyfield"},
+            )
             raise ImportError("skyfield/jplephem not installed")
         # Try common local kernels; do not fetch from internet.
+        self.kernel = None
         for name in ("de440s.bsp", "de421.bsp", "de430t.bsp"):
             try:
                 self.kernel = load(name)
                 break
-            except Exception:
+            except (OSError, ValueError, RuntimeError):
+                LOG.warning(
+                    "skyfield kernel unavailable",
+                    extra={"err_code": "SKYFIELD_KERNEL_MISSING", "kernel": name},
+                    exc_info=True,
+                )
                 self.kernel = None
         if self.kernel is None:
+            LOG.error(
+                "no local skyfield kernel found",
+                extra={"err_code": "SKYFIELD_KERNEL_NOT_FOUND"},
+            )
             raise FileNotFoundError("No local JPL kernel found (e.g., de440s.bsp)")
-        self.ts = load.timescale()
+        try:
+            self.ts = load.timescale()
+        except (OSError, ValueError, RuntimeError) as exc:
+            LOG.error(
+                "failed to initialize skyfield timescale",
+                extra={"err_code": "SKYFIELD_TIMESCALE"},
+                exc_info=True,
+            )
+            raise RuntimeError("Failed to initialize skyfield timescale") from exc
         self.ecliptic = (
             None  # skyfield computes ecliptic-of-date via .ecliptic_position()
         )
@@ -67,9 +97,23 @@ def _register() -> None:
     if load is not None:
         try:
             register_provider("skyfield", SkyfieldProvider())
+        except FileNotFoundError:
+            LOG.info(
+                "skyfield provider registration skipped",
+                extra={"err_code": "SKYFIELD_KERNEL_NOT_FOUND", "provider": "skyfield"},
+                exc_info=True,
+            )
+        except ImportError:
+            LOG.info(
+                "skyfield provider import unavailable",
+                extra={"err_code": "SKYFIELD_IMPORT", "provider": "skyfield"},
+                exc_info=True,
+            )
         except Exception:
-            # If kernel missing, skip registration to avoid noisy failures
-            pass
+            LOG.exception(
+                "unexpected skyfield provider registration failure",
+                extra={"err_code": "SKYFIELD_REGISTER_UNEXPECTED", "provider": "skyfield"},
+            )
 
 
 _register()

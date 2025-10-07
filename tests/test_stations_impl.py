@@ -8,17 +8,15 @@ import pytest
 from astroengine.detectors.common import iso_to_jd
 from astroengine.detectors.stations import find_shadow_periods, find_stations
 
-try:  # pragma: no cover - optional dependency guard
-    import swisseph as swe  # type: ignore
-
-    HAVE_SWISS = True
-except Exception:  # pragma: no cover - defensive fallback
-    HAVE_SWISS = False
+swe = pytest.importorskip(
+    "swisseph", reason="Install with `.[providers]` or set SE_EPHE_PATH"
+)
 
 SE_OK = bool(os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH"))
 
 pytestmark = pytest.mark.skipif(
-    not (HAVE_SWISS and SE_OK), reason="Swiss ephemeris not available"
+    not SE_OK,
+    reason="Swiss ephemeris path not configured (set SE_EPHE_PATH or SWE_EPH_PATH)",
 )
 
 
@@ -39,17 +37,17 @@ def test_station_refines_speed():
     assert events
 
     mercury = _find_station(events, "2025-03-15T06:46:11Z", "mercury")
-    values, _ = swe.calc_ut(mercury.jd, swe.MERCURY, swe.FLG_SWIEPH | swe.FLG_SPEED)
+    values, _ = swe().calc_ut(mercury.jd, swe().MERCURY, swe().FLG_SWIEPH | swe().FLG_SPEED)
     assert abs(values[3]) < 5e-6
 
     offsets = (0.5 / 24.0, 1.0 / 24.0, 2.0 / 24.0)
     expected_station = None
     for delta in offsets:
-        before_values, _ = swe.calc_ut(
-            mercury.jd - delta, swe.MERCURY, swe.FLG_SWIEPH | swe.FLG_SPEED
+        before_values, _ = swe().calc_ut(
+            mercury.jd - delta, swe().MERCURY, swe().FLG_SWIEPH | swe().FLG_SPEED
         )
-        after_values, _ = swe.calc_ut(
-            mercury.jd + delta, swe.MERCURY, swe.FLG_SWIEPH | swe.FLG_SPEED
+        after_values, _ = swe().calc_ut(
+            mercury.jd + delta, swe().MERCURY, swe().FLG_SWIEPH | swe().FLG_SPEED
         )
         before = before_values[3]
         after = after_values[3]

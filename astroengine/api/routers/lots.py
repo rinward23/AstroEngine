@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from ...chart.natal import ChartLocation
@@ -24,6 +24,7 @@ from ...engine.lots.dsl import CompiledProgram
 from ...engine.lots.events import scan_lot_events
 from ...ephemeris.adapter import EphemerisAdapter
 from ...scoring.policy import load_orb_policy
+from ...web.responses import conditional_json_response
 
 router = APIRouter(prefix="/lots", tags=["lots"])
 
@@ -46,7 +47,7 @@ class ChartInput(BaseModel):
     angles: dict[str, float] | None = None
     is_day: bool | None = None
     sun_altitude: float | None = None
-    moment: datetime | None = None
+    moment: UtcDateTime | None = None
     latitude: float | None = None
     longitude: float | None = None
     zodiac: str | None = None
@@ -95,8 +96,8 @@ class EventScanRequest(BaseModel):
     lot_name: str
     lot_longitude: float
     bodies: list[str]
-    start: datetime
-    end: datetime
+    start: UtcDateTime
+    end: UtcDateTime
     harmonics: list[int] = Field(default_factory=lambda: [1, 2])
     policy: dict[str, Any] | None = None
     step_hours: float | None = None
@@ -160,7 +161,9 @@ def compute_lots(request: LotComputeRequest) -> LotComputeResponse:
 
 
 @router.get("/presets", response_model=list[dict[str, Any]])
-def list_presets() -> list[dict[str, Any]]:
+def list_presets(
+    if_none_match: str | None = Header(default=None, alias="If-None-Match")
+) -> Response:
     presets = [
         {
             "profile_id": profile.profile_id,
@@ -188,7 +191,11 @@ def list_presets() -> list[dict[str, Any]]:
                 "source_refs": profile.source_refs,
             }
         )
-    return presets
+    return conditional_json_response(
+        presets,
+        if_none_match=if_none_match,
+        max_age=86400,
+    )
 
 
 @router.post("/presets", response_model=dict)
@@ -229,23 +236,24 @@ def scan_aspects(request: AspectScanRequest) -> AspectScanResponse:
     )
 
 
-try:  # pragma: no cover - optional dependency
-    import swisseph as swe
-except Exception:  # pragma: no cover
-    swe = None
+from astroengine.ephemeris.swe import has_swe, swe
 
+if has_swe():
+    swe_module = swe()
+else:
+    swe_module = None
 
 _BODY_CODES = {
-    "sun": getattr(swe, "SUN", None) if swe is not None else None,
-    "moon": getattr(swe, "MOON", None) if swe is not None else None,
-    "mercury": getattr(swe, "MERCURY", None) if swe is not None else None,
-    "venus": getattr(swe, "VENUS", None) if swe is not None else None,
-    "mars": getattr(swe, "MARS", None) if swe is not None else None,
-    "jupiter": getattr(swe, "JUPITER", None) if swe is not None else None,
-    "saturn": getattr(swe, "SATURN", None) if swe is not None else None,
-    "uranus": getattr(swe, "URANUS", None) if swe is not None else None,
-    "neptune": getattr(swe, "NEPTUNE", None) if swe is not None else None,
-    "pluto": getattr(swe, "PLUTO", None) if swe is not None else None,
+    "sun": getattr(swe_module, "SUN", None) if swe_module is not None else None,
+    "moon": getattr(swe_module, "MOON", None) if swe_module is not None else None,
+    "mercury": getattr(swe_module, "MERCURY", None) if swe_module is not None else None,
+    "venus": getattr(swe_module, "VENUS", None) if swe_module is not None else None,
+    "mars": getattr(swe_module, "MARS", None) if swe_module is not None else None,
+    "jupiter": getattr(swe_module, "JUPITER", None) if swe_module is not None else None,
+    "saturn": getattr(swe_module, "SATURN", None) if swe_module is not None else None,
+    "uranus": getattr(swe_module, "URANUS", None) if swe_module is not None else None,
+    "neptune": getattr(swe_module, "NEPTUNE", None) if swe_module is not None else None,
+    "pluto": getattr(swe_module, "PLUTO", None) if swe_module is not None else None,
 }
 
 

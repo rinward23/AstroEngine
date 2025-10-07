@@ -6,6 +6,7 @@ from ...esoteric import (
     ALCHEMY_STAGES,
     DECANS,
     ELDER_FUTHARK_RUNES,
+    GEOMANTIC_FIGURES,
     GOLDEN_DAWN_GRADES,
     I_CHING_HEXAGRAMS,
     MASTER_NUMBERS,
@@ -43,6 +44,7 @@ def register_esoteric_module(registry: AstroRegistry) -> None:
                 "numerology_master_numbers",
                 "iching_king_wen",
                 "elder_futhark_runes",
+                "geomancy_figures_classical",
             ],
         },
     )
@@ -199,6 +201,31 @@ def register_esoteric_module(registry: AstroRegistry) -> None:
         payload={"spreads": [spread.to_payload() for spread in TAROT_SPREADS]},
     )
 
+    adapters = module.register_submodule(
+        "adapters",
+        metadata={
+            "description": "Optional tarot and numerology prompts mapped from natal data.",
+            "notes": "Helpers surface meditative overlays only when explicitly requested.",
+        },
+    )
+    adapters.register_channel(
+        "optional_tools",
+        metadata={
+            "tarot_mapper": "astroengine.esoteric.adapters.tarot_mapper",
+            "numerology_mapper": "astroengine.esoteric.adapters.numerology_mapper",
+        },
+    ).register_subchannel(
+        "tarot_numerology",
+        metadata={
+            "description": "Expose optional tarot and numerology adapters with disclaimers.",
+            "tests": ["tests/test_esoteric_adapters.py"],
+        },
+        payload={
+            "tarot_mapper": "astroengine.esoteric.adapters.tarot_mapper",
+            "numerology_mapper": "astroengine.esoteric.adapters.numerology_mapper",
+        },
+    )
+
     numerology = module.register_submodule(
         "numerology",
         metadata={
@@ -258,4 +285,21 @@ def register_esoteric_module(registry: AstroRegistry) -> None:
         "elder_futhark",
         metadata={"description": "Twenty-four runes with phonetic and elemental keys."},
         payload={"runes": [rune.to_payload() for rune in ELDER_FUTHARK_RUNES]},
+    )
+    divination.register_channel(
+        "geomancy",
+        metadata={
+            "description": "Renaissance geomantic figures applied alongside horary astrology.",
+            "count": len(GEOMANTIC_FIGURES),
+            "sources": [
+                "Heinrich Cornelius Agrippa — De Occulta Philosophia (1533)",
+                "John Michael Greer — The Art and Practice of Geomancy (1999)",
+            ],
+        },
+    ).register_subchannel(
+        "agrippa_sequence",
+        metadata={
+            "description": "Sixteen figures with planetary and zodiacal rulers in classical order."
+        },
+        payload={"figures": [figure.to_payload() for figure in GEOMANTIC_FIGURES]},
     )

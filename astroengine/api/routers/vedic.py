@@ -4,11 +4,11 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ...chart import ChartLocation
 from ...chart.natal import DEFAULT_BODIES
-from ...detectors.ingresses import sign_index, ZODIAC_SIGNS
+from ...detectors.ingresses import ZODIAC_SIGNS, sign_index
 from ...engine.vedic import (
     VimshottariOptions,
     build_context,
@@ -21,18 +21,13 @@ from ...engine.vedic import (
     position_for,
 )
 from ...engine.vedic.dasha_yogini import YoginiOptions
+from .._time import UtcDateTime, ensure_utc_datetime
 
 router = APIRouter(prefix="/v1/vedic", tags=["vedic"])
 
 
-def _normalize_datetime(value: datetime) -> datetime:
-    if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
-        return value.replace(tzinfo=UTC)
-    return value.astimezone(UTC)
-
-
 class NatalPayload(BaseModel):
-    moment: datetime = Field(alias="datetime")
+    moment: UtcDateTime = Field(alias="datetime")
     model_config = ConfigDict(populate_by_name=True)
     lat: float
     lon: float
@@ -40,12 +35,7 @@ class NatalPayload(BaseModel):
     @field_validator("moment", mode="before")
     @classmethod
     def _coerce_datetime(cls, value: Any) -> datetime:
-        if isinstance(value, datetime):
-            return _normalize_datetime(value)
-        if isinstance(value, str):
-            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            return _normalize_datetime(dt)
-        raise TypeError("datetime must be ISO-8601 string or datetime")
+        return ensure_utc_datetime(value)
 
     @field_validator("lat")
     @classmethod

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import time
 
-import pytest
 import pandas as pd
+import pytest
 
 from astroengine.cache.relationship import (
     RelationshipResponseCache,

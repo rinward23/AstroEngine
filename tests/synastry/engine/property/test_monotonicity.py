@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from astroengine.synastry.engine import ChartPositions, DEFAULT_ORB_POLICY, detect_hits
+from astroengine.synastry.engine import DEFAULT_ORB_POLICY, ChartPositions, detect_hits
 
 
 def test_severity_monotonic() -> None:

@@ -1,16 +1,16 @@
 # >>> AUTO-GEN BEGIN: packaging-and-extras v1.0
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=68", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "astroengine"
-version = "1.0.0"
+dynamic = ["version"]
 description = "AstroEngine — modular transit engine and astrology toolkit"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "AstroEngine Maintainers" }]
-license = { text = "Proprietary" }
+license = "LicenseRef-Proprietary"
 keywords = ["astrology", "ephemeris", "transits", "astronomy"]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -18,40 +18,57 @@ classifiers = [
   "License :: Other/Proprietary License",
 ]
 
-# Core runtime deps kept lean. Everything else under extras.
+# Core runtime deps kept lean while ensuring Swiss Ephemeris support ships by default.
 dependencies = [
   "numpy>=1.26",
   "pandas>=2.2",
   "python-dateutil>=2.8",
   "pydantic>=2.11,<3",
-
   "PyYAML>=6.0",
 
   "jsonschema>=4.21",
-  "PyYAML>=6.0",
   "requests>=2.31",
   "python-multipart>=0.0.9",
   "SQLAlchemy>=2.0",
   "alembic>=1.13",
   "duckdb>=0.10",
+  "ics>=0.7",
+  "astroquery>=0.4",
   "timezonefinder>=8.1",
-  "tzdata>=2024.1",
+  "tzdata==2024.1",
   "pluggy>=1.5",
   "skyfield>=1.49",
   "jplephem>=2.21",
-  "fastapi>=0.117,<0.118",
+  "fastapi[all]>=0.117,<0.118",
   "httpx>=0.28,<0.29",
+  "ics>=0.7",
   "orjson>=3.10",
   "redis>=5.0",
+  "pyarrow>=16",
+  "jinja2>=3.1",
+  "numba>=0.58",
+  "click>=8.1",
+  "rich>=13.7",
+  "pypdf>=4.2",
+  "weasyprint>=62",
+  "python-docx>=1.1",
+  "playwright>=1.45",
+  "pypandoc>=1.12",
+  "mdit-py-plugins>=0.5",
+  "streamlit>=1.35",
+  "plotly>=5.20",
+  "Pillow>=10.0",
+  "icalendar>=6",
   "cachetools>=5.3",
   "zstandard>=0.22",
   "prometheus-client>=0.20",
+  "pytest-benchmark>=4.0",
 ]
 
 [project.optional-dependencies]
 # Core astroengine stacks
 ephem = [
-  "pyswisseph>=2.10; python_version < \"3.12\"",
+  "pyswisseph>=2.10.3; python_version < \"3.12\"",
   "pymeeus>=0.5.12",
 ]
 skyfield = [
@@ -63,6 +80,7 @@ catalogs = [
 ]
 exporters = [
   "pyarrow>=16",
+  "ics>=0.7",
 ]
 narrative = [
   "jinja2>=3.1",
@@ -82,6 +100,8 @@ reports = [
   "python-docx>=1.1",
   "playwright>=1.45",
   "pypandoc>=1.12",
+  "markdown-it-py>=4.0",
+  "mdit-py-plugins>=0.5",
 ]
 
 streamlit = [
@@ -94,18 +114,33 @@ ui = [
   "plotly>=5.20",
 ]
 
+desktop = [
+  "pywebview>=4.4",
+  "pystray>=0.19",
+  "openai>=1.0",
+]
+
+# Observability helpers
+obs = [
+  "opentelemetry-sdk>=1.26",
+  "opentelemetry-exporter-otlp>=1.26",
+  "opentelemetry-instrumentation-fastapi>=0.48b0",
+  "opentelemetry-instrumentation-requests>=0.48b0",
+  "opentelemetry-instrumentation-sqlalchemy>=0.48b0",
+]
+
 # Release bundles
 api = [
-  "fastapi>=0.117,<0.118",
-  "uvicorn>=0.37,<0.38",
+  "fastapi[all]>=0.117,<0.118",
+  "uvicorn[standard]>=0.37,<0.38",
   "pydantic>=2.11,<3",
   "icalendar>=6",
   "httpx>=0.28,<0.29",
 ]
 providers = [
-  "pyswisseph>=2.10",
+  "pyswisseph>=2.10.3; python_version < \"3.12\"",
   "timezonefinder>=8.1",
-  "tzdata>=2024.1",
+  "tzdata==2024.1",
 ]
 dev = [
   "pytest",
@@ -113,15 +148,21 @@ dev = [
   "ruff",
   "mypy",
   "pytest-benchmark>=4.0",
+  "opentelemetry-sdk>=1.26",
+  "opentelemetry-exporter-otlp>=1.26",
+  "opentelemetry-instrumentation-fastapi>=0.48b0",
+  "opentelemetry-instrumentation-requests>=0.48b0",
+  "opentelemetry-instrumentation-sqlalchemy>=0.48b0",
 ]
 
 all = [
-  "pyswisseph>=2.10; python_version < \"3.12\"",
+  "pyswisseph>=2.10.3; python_version < \"3.12\"",
   "pymeeus>=0.5.12",
   "skyfield>=1.49",
   "jplephem>=2.21",
   "astroquery>=0.4",
   "pyarrow>=16",
+  "ics>=0.7",
   "jinja2>=3.1",
   "numba>=0.58",
   "click>=8.1",
@@ -129,35 +170,47 @@ all = [
   "pluggy>=1.5",
   "streamlit>=1.35",
   "plotly>=5.20",
-  "fastapi>=0.117,<0.118",
-  "uvicorn>=0.37,<0.38",
+  "fastapi[all]>=0.117,<0.118",
+  "uvicorn[standard]>=0.37,<0.38",
   "pydantic>=2.11,<3",
   "icalendar>=6",
   "httpx>=0.28,<0.29",
   "timezonefinder>=8.1",
-  "tzdata>=2024.1",
+  "tzdata==2024.1",
   "pypdf>=4.2",
   "weasyprint>=62",
   "python-docx>=1.1",
   "playwright>=1.45",
   "pypandoc>=1.12",
+  "pywebview>=4.4",
+  "pystray>=0.19",
+  "openai>=1.0",
   "pytest",
   "hypothesis",
   "ruff",
   "mypy",
   "pytest-benchmark>=4.0",
+  "opentelemetry-sdk>=1.26",
+  "opentelemetry-exporter-otlp>=1.26",
+  "opentelemetry-instrumentation-fastapi>=0.48b0",
+  "opentelemetry-instrumentation-requests>=0.48b0",
+  "opentelemetry-instrumentation-sqlalchemy>=0.48b0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/rinward23/AstroEngine"
 
 [project.scripts]
-astroengine = "astroengine.cli:main"
+astroengine = "astroengine.cli.__main__:main"
 astroengine-api = "astroengine.api_server:run"  # guarded import; only works with [api]
 astroengine-streamlit = "astroengine.ux.streamlit.cli:main"
 
 [tool.setuptools.package-data]
-astroengine = ["py.typed"]
+astroengine = [
+  "py.typed",
+  "datasets/swisseph_stub/*",
+  "data/*.csv",
+]
 
 [project.entry-points."astroengine.plugins"]
 # name = "module:function"
@@ -168,10 +221,15 @@ example = "astroengine.ux.plugins.example:ExamplePlugin"
 # name = "module:function"
 
 
+[tool.setuptools_scm]
+write_to = "astroengine/_version.py"
+fallback_version = "0.0.0"
+
 [tool.setuptools]
 # Install the real package directory (not the generated skeleton only)
 packages = { find = { where = ["."], include = ["astroengine*"] } }
 include-package-data = true
+license-files = ["LICENSE", "NOTICE*", "COPYING*"]
 # >>> AUTO-GEN END: packaging-and-extras v1.0
 
 # >>> AUTO-GEN BEGIN: ruff target py311 v1.1

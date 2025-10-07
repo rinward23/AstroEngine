@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from astroengine.core.aspects_plus.harmonics import BASE_ASPECTS
 from astroengine.core.aspects_plus.matcher import angular_sep_deg
 from astroengine.core.aspects_plus.orb_policy import ASPECT_DEFAULTS, orb_limit
+from astroengine.utils.i18n import translate
 
 from .models import (
     Finding,
@@ -289,7 +291,9 @@ def evaluate_relationship(
 
     if request.scope == "synastry":
         if request.synastry is None:
-            raise InterpretationError("synastry scope requires synastry payload")
+            raise InterpretationError(
+                translate("interpret.error.synastry_missing")
+            )
         if hasattr(request.synastry, "hits"):
             hits = _normalize_hits_from_payload(request.synastry.hits)
         else:
@@ -300,7 +304,9 @@ def evaluate_relationship(
             findings.extend(_evaluate_synastry(rulepack, rule, hits, profile))
     elif request.scope == "composite":
         if not request.composite:
-            raise InterpretationError("composite scope requires positions")
+            raise InterpretationError(
+                translate("interpret.error.composite_missing")
+            )
         positions = {str(k): float(v) for k, v in request.composite.positions.items()}
         for rule in rulepack.rules:
             if rule.scope != "composite":
@@ -308,14 +314,20 @@ def evaluate_relationship(
             findings.extend(_evaluate_positions(rule, positions, profile))
     elif request.scope == "davison":
         if not request.davison:
-            raise InterpretationError("davison scope requires positions")
+            raise InterpretationError(
+                translate("interpret.error.davison_missing")
+            )
         positions = {str(k): float(v) for k, v in request.davison.positions.items()}
         for rule in rulepack.rules:
             if rule.scope != "davison":
                 continue
             findings.extend(_evaluate_positions(rule, positions, profile))
     else:  # pragma: no cover - guarded by request model
-        raise InterpretationError(f"unsupported scope {request.scope}")
+        raise InterpretationError(
+            translate(
+                "interpret.error.scope_unsupported", scope=request.scope
+            )
+        )
 
     filtered = _apply_filters(findings, request.filters)
     totals = _aggregate(filtered)

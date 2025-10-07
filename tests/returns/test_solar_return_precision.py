@@ -1,11 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+import pytest
+
+pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `pip install -e .[ephem,providers]`.",
+)
+
+from astroengine.core.time import to_tt
 from astroengine.engine.returns import find_return_instant, guess_window
 from astroengine.engine.returns._codes import resolve_body_code
 from astroengine.ephemeris import EphemerisAdapter
-from astroengine.core.time import to_tt
 
 
 def _wrap(delta: float) -> float:
@@ -14,12 +21,12 @@ def _wrap(delta: float) -> float:
 
 def test_solar_return_precision() -> None:
     adapter = EphemerisAdapter()
-    natal_dt = datetime(1990, 5, 4, 12, 30, tzinfo=timezone.utc)
+    natal_dt = datetime(1990, 5, 4, 12, 30, tzinfo=UTC)
     code = resolve_body_code("Sun").code
     natal_conv = to_tt(natal_dt)
     natal_lon = adapter.sample(code, natal_conv).longitude % 360.0
 
-    around = datetime(2026, 5, 4, 12, 30, tzinfo=timezone.utc)
+    around = datetime(2026, 5, 4, 12, 30, tzinfo=UTC)
     window = guess_window("Sun", None, around)
     instant = find_return_instant(adapter, "Sun", natal_lon, window)
 

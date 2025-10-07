@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Iterable
+from collections.abc import Iterable
 
 __all__ = ["cosine_taper", "batch_cosine_taper"]
 
@@ -38,5 +38,5 @@ def cosine_taper(offset: float, orb: float, gamma: float = 1.0) -> float:
 def batch_cosine_taper(offsets: Iterable[float], orbs: Iterable[float], gamma: float = 1.0) -> list[float]:
     """Return severity values for corresponding ``offsets`` and ``orbs``."""
 
-    return [cosine_taper(offset, orb, gamma=gamma) for offset, orb in zip(offsets, orbs)]
+    return [cosine_taper(offset, orb, gamma=gamma) for offset, orb in zip(offsets, orbs, strict=False)]
 

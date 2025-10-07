@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -16,7 +16,7 @@ from astroengine.engine.vedic.karmic import build_karmic_profile
 
 def _context():
     return build_context(
-        datetime(1984, 10, 17, 4, 30, tzinfo=timezone.utc),
+        datetime(1984, 10, 17, 4, 30, tzinfo=UTC),
         40.7128,
         -74.0060,
     )

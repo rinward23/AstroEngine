@@ -5,10 +5,13 @@ import pytest
 
 pytestmark = pytest.mark.swiss  # will auto-skip unless Swiss is available
 
+swe = pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `.[providers]`",
+)
+
 
 def test_swiss_import_and_path():
-    import swisseph as swe
-
     p = os.getenv("SE_EPHE_PATH")
     assert p, "SE_EPHE_PATH must be set for Swiss tests"
     assert swe is not None

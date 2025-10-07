@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import threading
-from typing import Dict, Iterable, List, Optional, Tuple
+from collections.abc import Iterable
 
 from cachetools import TTLCache
 
@@ -22,8 +22,8 @@ _MEMO_CACHE = TTLCache(
 _MEMO_LOCK = threading.Lock()
 
 
-def _memoize_hits(key: str, hits: List[Dict]) -> List[Dict]:
-    encoded: Tuple[Tuple[Tuple[str, object], ...], ...] = tuple(
+def _memoize_hits(key: str, hits: list[dict]) -> list[dict]:
+    encoded: tuple[tuple[tuple[str, object], ...], ...] = tuple(
         tuple(sorted(hit.items())) for hit in hits
     )
     with _MEMO_LOCK:
@@ -31,7 +31,7 @@ def _memoize_hits(key: str, hits: List[Dict]) -> List[Dict]:
     return [dict(item) for item in encoded]
 
 
-def _get_memoized(key: str) -> Optional[List[Dict]]:
+def _get_memoized(key: str) -> list[dict] | None:
     with _MEMO_LOCK:
         cached = _MEMO_CACHE.get(key)
     if cached is None:
@@ -50,9 +50,9 @@ def _best_aspect_for_delta(
     b_name: str,
     delta: float,
     aspects: Iterable[str],
-    policy: Dict,
-) -> Optional[dict]:
-    best: Optional[dict] = None
+    policy: dict,
+) -> dict | None:
+    best: dict | None = None
     for asp in aspects:
         key = asp.lower()
         angle = BASE_ASPECTS.get(key)
@@ -76,14 +76,14 @@ def _best_aspect_for_delta(
 
 
 def synastry_interaspects(
-    pos_a: Dict[str, float],
-    pos_b: Dict[str, float],
+    pos_a: dict[str, float],
+    pos_b: dict[str, float],
     aspects: Iterable[str],
-    policy: Dict,
-    weights: Optional[Dict] = None,
-    gamma: Optional[float] = None,
-    node_policy: Optional[object] = None,
-) -> List[Dict]:
+    policy: dict,
+    weights: dict | None = None,
+    gamma: float | None = None,
+    node_policy: object | None = None,
+) -> list[dict]:
     """Return best inter-aspect matches for each A×B pair within the orb policy."""
     memo_key = canonicalize_synastry_payload(
         pos_a,
@@ -97,7 +97,7 @@ def synastry_interaspects(
     cached = _get_memoized(memo_key)
     if cached is not None:
         return cached
-    hits: List[Dict] = []
+    hits: list[dict] = []
     for a_name, a_lon in pos_a.items():
         for b_name, b_lon in pos_b.items():
             delta = angular_sep_deg(a_lon, b_lon)
@@ -108,9 +108,9 @@ def synastry_interaspects(
     return _memoize_hits(memo_key, hits)
 
 
-def synastry_grid(hits: List[Dict]) -> Dict[str, Dict[str, int]]:
+def synastry_grid(hits: list[dict]) -> dict[str, dict[str, int]]:
     """Build a grid of counts per A-object × B-object using best aspects only."""
-    grid: Dict[str, Dict[str, int]] = {}
+    grid: dict[str, dict[str, int]] = {}
     for hit in hits:
         a_name = hit["a_obj"]
         b_name = hit["b_obj"]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import List, Mapping, Sequence, Tuple
+from collections.abc import Mapping, Sequence
 
 SIGN_GLYPHS = [
     "♈",
@@ -45,7 +45,7 @@ def _resolve_label(body: str) -> str:
 
 
 def render_wheel_svg(
-    positions: Mapping[str, float] | Sequence[Tuple[str, float]],
+    positions: Mapping[str, float] | Sequence[tuple[str, float]],
     *,
     size: int = 420,
     font_family: str = "'Segoe UI Symbol', 'Noto Sans Symbols', sans-serif",
@@ -63,10 +63,10 @@ def render_wheel_svg(
     tick_r = outer_r - 10
     sign_r = outer_r - 24
 
-    parts: List[str] = [
+    parts: list[str] = [
         f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" '
         "xmlns='http://www.w3.org/2000/svg'>",
-        f'<rect width="100%" height="100%" fill="white"/>',
+        '<rect width="100%" height="100%" fill="white"/>',
         f'<circle cx="{cx}" cy="{cy}" r="{outer_r}" fill="none" stroke="#333" stroke-width="1"/>',
     ]
 
@@ -88,7 +88,7 @@ def render_wheel_svg(
             f"font-size='16' font-family={font_family}>{glyph}</text>"
         )
 
-    used_lons: List[float] = []
+    used_lons: list[float] = []
     for body, lon in items:
         lon = _normalize_lon(lon)
         while any(abs(((lon - other + 180.0) % 360.0) - 180.0) < 6.0 for other in used_lons):

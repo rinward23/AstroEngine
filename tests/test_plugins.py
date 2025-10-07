@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 import math
+import sys
+import textwrap
+from pathlib import Path
 
 import pytest
 
-from astroengine.plugins import DetectorContext, PluginRuntime, set_plugin_manager
+from astroengine.plugins import (
+    DetectorContext,
+    PluginRuntime,
+    hookimpl,
+    set_plugin_manager,
+)
 from astroengine.plugins.examples import fixed_star_hits
 from astroengine.scoring import ScoreInputs, compute_score
 
@@ -24,6 +32,29 @@ def reset_plugins():
     set_plugin_manager(None)
     yield
     set_plugin_manager(None)
+
+
+@pytest.fixture()
+def user_plugin_workspace(tmp_path, monkeypatch):
+    from astroengine.plugins import registry as plugin_registry
+
+    plugin_dir = tmp_path / "plugins"
+    plugin_dir.mkdir()
+    monkeypatch.setenv("ASTROENGINE_PLUGIN_DIR", str(plugin_dir))
+    original_directory = plugin_registry.PLUGIN_DIRECTORY
+    plugin_registry.PLUGIN_DIRECTORY = plugin_dir
+    plugin_registry._USER_PLUGINS_IMPORTED = False
+    plugin_registry._USER_PLUGIN_MODULES[:] = []
+    plugin_registry._USER_PLUGIN_ERRORS[:] = []
+    yield plugin_dir
+
+    for name in list(sys.modules):
+        if name.startswith(plugin_registry._USER_PLUGIN_NAMESPACE):
+            sys.modules.pop(name, None)
+    plugin_registry._USER_PLUGINS_IMPORTED = False
+    plugin_registry._USER_PLUGIN_MODULES[:] = []
+    plugin_registry._USER_PLUGIN_ERRORS[:] = []
+    plugin_registry.PLUGIN_DIRECTORY = original_directory
 
 
 def _score_inputs() -> ScoreInputs:
@@ -77,3 +108,72 @@ def test_plugin_isolation_between_runtimes():
     set_plugin_manager(runtime_without_plugin)
     score_without = compute_score(_score_inputs())
     assert "fixed_star.bonus" not in score_without.components
+
+
+def test_user_plugin_allowlist_blocks_disallowed_imports(user_plugin_workspace):
+    from astroengine.plugins import registry as plugin_registry
+
+    good_path = user_plugin_workspace / "good.py"
+    good_path.write_text(
+        textwrap.dedent(
+            """
+            import math
+
+            VALUE = math.pi
+            """
+        )
+    )
+    bad_path = user_plugin_workspace / "bad.py"
+    bad_path.write_text("import requests\n")
+
+    modules = plugin_registry.load_user_plugins(force=True)
+    assert f"{plugin_registry._USER_PLUGIN_NAMESPACE}.good" in modules
+    assert all("bad" not in name for name in modules)
+
+    errors = plugin_registry.get_user_plugin_errors()
+    assert errors, "bad plugin should record an error"
+    error_paths = [Path(path) for path, _ in errors]
+    assert bad_path in error_paths
+    assert any("requests" in message for _, message in errors)
+
+
+def test_user_plugin_errors_reset(user_plugin_workspace):
+    from astroengine.plugins import registry as plugin_registry
+
+    bad_path = user_plugin_workspace / "bad.py"
+    bad_path.write_text("import requests\n")
+    plugin_registry.load_user_plugins(force=True)
+    assert plugin_registry.get_user_plugin_errors()
+
+    bad_path.write_text(
+        textwrap.dedent(
+            """
+            import math
+
+            VALUE = 42
+            """
+        )
+    )
+    modules = plugin_registry.load_user_plugins(force=True)
+    assert plugin_registry.get_user_plugin_errors() == ()
+    assert f"{plugin_registry._USER_PLUGIN_NAMESPACE}.bad" in modules
+
+
+def test_score_extension_exceptions_are_isolated():
+    runtime = PluginRuntime(autoload_entrypoints=False)
+
+    class _BadScorePlugin:
+        ASTROENGINE_PLUGIN_API = "1.0"
+
+        @hookimpl
+        def extend_scoring(self, registry):
+            def _boom(inputs, result):
+                raise RuntimeError("boom")
+
+            registry.register("bad_bonus", _boom)
+
+    runtime.register_plugin(_BadScorePlugin())
+    set_plugin_manager(runtime)
+
+    score = compute_score(_score_inputs())
+    assert "bad_bonus.bonus" not in score.components

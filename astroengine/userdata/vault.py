@@ -5,6 +5,7 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from ..chart.config import ChartConfig
 from ..infrastructure.home import ae_home
 
 BASE = ae_home() / "natals"
@@ -20,6 +21,18 @@ class Natal:
     lon: float
     tz: str | None = None
     place: str | None = None
+    house_system: str = "placidus"
+    zodiac: str = "tropical"
+    ayanamsa: str | None = None
+
+    def chart_config(self) -> ChartConfig:
+        """Return a normalized :class:`ChartConfig` for this natal record."""
+
+        return ChartConfig(
+            zodiac=self.zodiac,
+            ayanamsha=self.ayanamsa,
+            house_system=self.house_system,
+        )
 
 
 def _path(natal_id: str) -> Path:
@@ -29,7 +42,13 @@ def _path(natal_id: str) -> Path:
 def save_natal(n: Natal) -> Path:
     p = _path(n.natal_id)
     with open(p, "w", encoding="utf-8") as f:
-        json.dump(asdict(n), f, indent=2)
+        data = asdict(n)
+        data["houses"] = {"system": n.house_system}
+        zodiac_payload: dict[str, object] = {"type": n.zodiac}
+        if n.ayanamsa is not None:
+            zodiac_payload["ayanamsa"] = n.ayanamsa
+        data["zodiac"] = zodiac_payload
+        json.dump(data, f, indent=2)
     return p
 
 
@@ -37,6 +56,19 @@ def load_natal(natal_id: str) -> Natal:
     p = _path(natal_id)
     with open(p, encoding="utf-8") as f:
         data = json.load(f)
+    houses_payload = data.pop("houses", None)
+    if isinstance(houses_payload, dict):
+        system = houses_payload.get("system")
+        if system is not None:
+            data.setdefault("house_system", system)
+    zodiac_payload = data.pop("zodiac", None)
+    if isinstance(zodiac_payload, dict):
+        zodiac_type = zodiac_payload.get("type")
+        if zodiac_type is not None:
+            data.setdefault("zodiac", zodiac_type)
+        if "ayanamsa" in zodiac_payload:
+            ayanamsa_value = zodiac_payload.get("ayanamsa")
+            data.setdefault("ayanamsa", ayanamsa_value)
     return Natal(**data)
 
 

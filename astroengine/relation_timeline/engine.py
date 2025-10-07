@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import datetime as dt
 import math
-from dataclasses import dataclass, field
-from typing import Iterable, Mapping, Sequence
+import os
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 
+import numpy as np
+
+from ..cache.positions_cache import get_daily_entry, supported_body
+from ..core.qcache import DEFAULT_QSEC
+from ..core.time import to_tt
 from ..ephemeris.adapter import EphemerisAdapter, EphemerisSample
 from ..utils.angles import delta_angle, norm360
 from .policy import (
@@ -39,9 +45,43 @@ _ROOT_TOL_SECONDS = 1.0
 _ORBITAL_ZERO_TOL = 1e-6
 
 try:  # pragma: no cover - import fallback mirrors other packages
-    import swisseph as swe
+    from astroengine.ephemeris.swe import swe
 except Exception:  # pragma: no cover - tests rely on dependency stub
     swe = None
+
+
+_AE_JIT_ENABLED = os.getenv("AE_JIT", "").strip().lower() in {"1", "true", "yes"}
+if _AE_JIT_ENABLED:
+    try:  # pragma: no cover - optional acceleration
+        from numba import njit
+    except Exception:  # pragma: no cover - numba not available
+        njit = None  # type: ignore[assignment]
+        _AE_JIT_ENABLED = False
+else:  # pragma: no cover - JIT disabled
+    njit = None  # type: ignore[assignment]
+
+if _AE_JIT_ENABLED and njit is not None:  # pragma: no cover - depends on numba availability
+
+    @njit(cache=True)
+    def _jit_interpolate(base: np.ndarray, speeds: np.ndarray, offsets: np.ndarray) -> np.ndarray:
+        n = base.shape[0]
+        out = np.empty(n, dtype=np.float64)
+        for i in range(n):
+            value = base[i] + speeds[i] * offsets[i]
+            value %= 360.0
+            if value < 0.0:
+                value += 360.0
+            out[i] = value
+        return out
+
+else:
+
+    def _jit_interpolate(base: np.ndarray, speeds: np.ndarray, offsets: np.ndarray) -> np.ndarray:
+        values = (base + speeds * offsets) % 360.0
+        mask = values < 0.0
+        if np.any(mask):
+            values[mask] += 360.0
+        return values
 
 
 _DEFAULT_BODY_IDS = {
@@ -214,17 +254,74 @@ class _TimelineEngine:
             code = self._resolve_body(name)
             step_hours = self._STEP_HOURS.get(name, 12)
             step = dt.timedelta(hours=step_hours)
+            moments: list[dt.datetime] = []
             current = request.range_start
-            entries: list[tuple[dt.datetime, float]] = []
             while current <= request.range_end:
-                lon = self._longitude(code, current)
-                entries.append((current, lon))
+                moments.append(current)
                 current += step
-            if entries[-1][0] < request.range_end:
-                lon = self._longitude(code, request.range_end)
-                entries.append((request.range_end, lon))
+            if not moments or moments[-1] < request.range_end:
+                moments.append(request.range_end)
+
+            longitudes = self._batched_longitudes(name, code, moments)
+            entries = [
+                (moment, float(lon)) for moment, lon in zip(moments, longitudes, strict=False)
+            ]
             samples[name] = entries
         return samples
+
+    def _batched_longitudes(
+        self, name: str, code: int, moments: Sequence[dt.datetime]
+    ) -> list[float]:
+        if not moments:
+            return []
+        if not supported_body(name):
+            return [self._longitude(code, moment) for moment in moments]
+
+        try:
+            jd_utc = np.array([to_tt(moment).jd_utc for moment in moments], dtype=np.float64)
+            day_bins = np.floor(jd_utc).astype(np.int64)
+            offsets = jd_utc - day_bins.astype(np.float64)
+
+            quant = float(DEFAULT_QSEC)
+            if quant > 0.0:
+                offset_seconds = offsets * 86400.0
+                offset_seconds = np.round(offset_seconds / quant) * quant
+                offsets = offset_seconds / 86400.0
+
+            unique_days, inverse = np.unique(day_bins, return_inverse=True)
+            base = np.empty(unique_days.shape[0], dtype=np.float64)
+            speeds = np.empty(unique_days.shape[0], dtype=np.float64)
+            missing_speed = np.zeros(unique_days.shape[0], dtype=bool)
+
+            for idx, day in enumerate(unique_days):
+                lon, _, speed = get_daily_entry(float(day), name)
+                base[idx] = float(lon)
+                if speed is None:
+                    speeds[idx] = 0.0
+                    missing_speed[idx] = True
+                else:
+                    speeds[idx] = float(speed)
+
+            base_full = base[inverse]
+            speed_full = speeds[inverse]
+            interpolated = _jit_interpolate(base_full, speed_full, offsets.astype(np.float64))
+
+            if missing_speed.any():
+                missing_mask = missing_speed[inverse]
+                if np.any(missing_mask):
+                    for idx in np.nonzero(missing_mask)[0]:
+                        sample = self._adapter.sample(code, moments[idx])
+                        interpolated[idx] = norm360(float(sample.longitude))
+
+            edge_indices = {0, len(moments) - 1}
+            for idx in edge_indices:
+                sample = self._adapter.sample(code, moments[idx])
+                interpolated[idx] = norm360(float(sample.longitude))
+
+            return [float(value) for value in interpolated]
+
+        except RuntimeError:
+            return [self._longitude(code, moment) for moment in moments]
 
     def _longitude(self, code: int, moment: dt.datetime) -> float:
         sample: EphemerisSample = self._adapter.sample(code, moment)
@@ -607,8 +704,8 @@ class _TimelineEngine:
 
 def _ensure_utc(moment: dt.datetime) -> dt.datetime:
     if moment.tzinfo is None:
-        return moment.replace(tzinfo=dt.timezone.utc)
-    return moment.astimezone(dt.timezone.utc)
+        return moment.replace(tzinfo=dt.UTC)
+    return moment.astimezone(dt.UTC)
 
 
 def _is_bracket(a: float, b: float) -> bool:
@@ -657,7 +754,7 @@ def _update_calendar(storage: dict[str, float], event: Event) -> None:
         next_day = dt.datetime.combine(
             (cursor + dt.timedelta(days=1)).date(),
             dt.time.min,
-            tzinfo=dt.timezone.utc,
+            tzinfo=dt.UTC,
         )
         segment_end = min(next_day, end)
         hours = (segment_end - cursor).total_seconds() / 3600.0

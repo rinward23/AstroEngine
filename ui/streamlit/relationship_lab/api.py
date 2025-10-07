@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Mapping, MutableMapping, Optional, Protocol
+from typing import Any, Protocol
 
 import requests
 
@@ -32,13 +33,13 @@ from core.relationship_plus.synastry import (
 class RelationshipBackend(Protocol):
     """Protocol describing the operations required by the UI layer."""
 
-    def synastry(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    def synastry(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         ...
 
-    def composite(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    def composite(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         ...
 
-    def davison(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    def davison(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         ...
 
 
@@ -51,7 +52,7 @@ class RelationshipAPI(RelationshipBackend):
     timeout_composite: int = 30
     timeout_davison: int = 60
 
-    def _post(self, path: str, payload: Mapping[str, Any], *, timeout: int) -> Dict[str, Any]:
+    def _post(self, path: str, payload: Mapping[str, Any], *, timeout: int) -> dict[str, Any]:
         root = self.base_url.rstrip("/")
         url = f"{root}{path}" if path.startswith("/") else f"{root}/{path}"
         response = requests.post(url, json=payload, timeout=timeout)
@@ -64,13 +65,13 @@ class RelationshipAPI(RelationshipBackend):
             raise RuntimeError("Unexpected response type from relationship API")
         return dict(data)
 
-    def synastry(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    def synastry(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         return self._post("/relationship/synastry", payload, timeout=self.timeout_synastry)
 
-    def composite(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    def composite(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         return self._post("/relationship/composite", payload, timeout=self.timeout_composite)
 
-    def davison(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    def davison(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         return self._post("/relationship/davison", payload, timeout=self.timeout_davison)
 
 
@@ -78,7 +79,7 @@ class RelationshipAPI(RelationshipBackend):
 class RelationshipInProcess(RelationshipBackend):
     """In-process adapter that mirrors the behaviour of the HTTP API."""
 
-    def synastry(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    def synastry(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         pos_a = _require_mapping(payload.get("posA"), "posA")
         pos_b = _require_mapping(payload.get("posB"), "posB")
         aspects = list(payload.get("aspects") or [])
@@ -105,14 +106,14 @@ class RelationshipInProcess(RelationshipBackend):
             "meta": {"count": len(hits)},
         }
 
-    def composite(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    def composite(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         pos_a = _require_mapping(payload.get("posA"), "posA")
         pos_b = _require_mapping(payload.get("posB"), "posB")
         bodies = payload.get("bodies")
         positions = composite_positions(pos_a, pos_b, bodies=bodies)
         return {"positions": positions, "meta": {"bodies": list(positions.keys())}}
 
-    def davison(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    def davison(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         if aspects_module is None:
             raise RuntimeError(
                 "Local Davison computation requires the API aspects module to resolve providers."
@@ -149,7 +150,7 @@ def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
     return value
 
 
-def _hit_to_dict(hit: SynastryHit) -> Dict[str, Any]:
+def _hit_to_dict(hit: SynastryHit) -> dict[str, Any]:
     return {
         "a": hit.a,
         "b": hit.b,
@@ -162,7 +163,7 @@ def _hit_to_dict(hit: SynastryHit) -> Dict[str, Any]:
     }
 
 
-def build_backend(mode: str, *, base_url: Optional[str] = None) -> RelationshipBackend:
+def build_backend(mode: str, *, base_url: str | None = None) -> RelationshipBackend:
     """Return a backend implementation based on ``mode``."""
 
     if mode == "api":

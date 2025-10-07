@@ -1,0 +1,17 @@
+# AstroEngine desktop defaults
+schema_version: 1
+database_url: sqlite:///astroengine-desktop.db
+se_ephe_path: ""
+api_host: 127.0.0.1
+api_port: 8000
+streamlit_port: 8501
+qcache_sec: 1.0
+qcache_size: 4096
+logging_level: INFO
+theme: system
+openai_api_key: ""
+openai_model: gpt-4o-mini
+openai_base_url: null
+copilot_daily_limit: 50000
+copilot_session_limit: 8000
+autostart: false

@@ -2,17 +2,27 @@
 
 - **Module**: `interop`
 - **Maintainer**: Integration Guild
+- **Last updated**: 2024-04-07
 - **Source artifacts**:
   - `schemas/result_schema_v1.json`
   - `schemas/result_schema_v1_with_domains.json`
   - `schemas/contact_gate_schema_v2.json`
   - `schemas/natal_input_v1_ext.json`
   - `schemas/orbs_policy.json`
-  - Test coverage in `tests/test_result_schema.py`, `tests/test_contact_gate_schema.py`, and `tests/test_orbs_policy.py`
+  - `docs/module/providers_and_frames.md` (provider cadence expectations referenced by transit exports)
+  - Sample Solar Fire exports archived under `datasets/solarfire/*.sf`
+  - Swiss Ephemeris kernels staged in `datasets/swisseph_stub/` (placeholder for production eph files)
+  - Validation coverage: `tests/test_result_schema.py`, `tests/test_contact_gate_schema.py`, `tests/test_orbs_policy.py`
 
-The AstroEngine validation layer loads JSON schemas and supporting data from `./schemas`. This document describes the current files so downstream exporters know which payloads are supported and how they are tested. The schema keys are registered via `astroengine.data.schemas` and exercised through `astroengine.validation.validate_payload`.
+AstroEngine’s interoperability layer guarantees that every payload emitted from the runtime traces back to an auditable data
+source—either a Solar Fire export, a Swiss Ephemeris calculation, or a user-supplied natal dataset. This document captures the
+contracts governing JSON, tabular, SQLite, and calendar exports so downstream consumers can verify provenance without reverse
+engineering implementation details. All field definitions below map to real measurements preserved in source archives; synthetic
+values are expressly forbidden.
 
 ## Registry mapping
+
+The schema registry currently exposes the following keys via `astroengine.data.schemas`:
 
 - `interop.schemas.json_schema.result_v1`
 - `interop.schemas.json_schema.result_v1_with_domains`
@@ -20,49 +30,197 @@ The AstroEngine validation layer loads JSON schemas and supporting data from `./
 - `interop.schemas.json_schema.natal_input_v1_ext`
 - `interop.schemas.json_data.orbs_policy`
 
-These registry nodes ensure every export payload cites an audited schema or data document.
+These nodes ensure every export payload cites an audited schema or data document. New schemas MUST be registered alongside a
+documented provenance trail before runtime code consumes them.
 
-## Schema catalogue
+## AstroJSON schema family
 
-| Key | File | Purpose | Primary sections |
+AstroJSON is the canonical interchange format for AstroEngine. Each schema below is versioned independently to preserve backward
+compatibility when observational datasets introduce new fields.
+
+### `natal_v1`
+
+Captures a single subject’s natal chart derived from Solar Fire (`*.sf`) exports or user-supplied data verified against Swiss
+Ephemeris reproductions.
+
+| Field | Type | Units / Format | Notes & Provenance |
 | --- | --- | --- | --- |
-| `result_v1` | `schemas/result_schema_v1.json` | Defines the baseline run result payload used by `tests/test_result_schema.py`. Events must cite `provenance` URIs that map back to Solar Fire or Swiss Ephemeris exports. | `schema`, `run`, `window`, `subjects`, `channels`, `events`. |
-| `result_v1_with_domains` | `schemas/result_schema_v1_with_domains.json` | Extends `result_v1` with domain annotations for each subject/channel. | Adds `domains` array alongside the standard result structure. |
-| `contact_gate_v2` | `schemas/contact_gate_schema_v2.json` | Captures gating decisions that map result events into UI narratives, including audit trails to Solar Fire verification datasets. | `schema`, `run`, `gates[*].{channel, decision, window, evidence, audit}`. |
-| `natal_input_v1_ext` | `schemas/natal_input_v1_ext.json` | Documents optional metadata collected with Solar Fire imports (rating, zodiac mode, house system). Implementations should also persist the export checksum via the schema’s open `additionalProperties`. | Enumerated values for `source_rating`, `zodiac`, `house_system`, `coordinate_system`; additional properties permitted. |
-| `orbs_policy` | `schemas/orbs_policy.json` | JSON data (not a JSON Schema) exposing aspect families and profile multipliers so external tools can align orbs with the engine. | `schema`, `profiles.{standard,tight,wide}`, `aspects.{conjunction,…}`. |
+| `profile_id` | string | slug | References the runtime profile (e.g., `profiles/base_profile.yaml#id`). |
+| `subject.id` | string | UUID | Primary key mirroring `schemas/natal_input_v1_ext.json#/properties/subject_id`. |
+| `subject.name` | string | UTF-8 | Pulled verbatim from Solar Fire export header `Name`. |
+| `birth.timestamp` | string | ISO-8601 UTC | Converted from recorded timezone using Olson TZ from Solar Fire metadata. |
+| `birth.location` | object | lat/long (decimal degrees), altitude (meters) | Verified against Solar Fire atlas coordinates; longitudes west are negative. |
+| `coordinate_system` | string | enum (`tropical`, `sidereal`) | Values align with `natal_input_v1_ext.json#/properties/zodiac`. |
+| `ayanamsha` | string | enum | Required when `coordinate_system="sidereal"`; must match Swiss Ephemeris constant names. |
+| `house_system` | string | enum (Placidus, Whole Sign, …) | Mirrors Solar Fire export selection; see `natal_input_v1_ext.json`. |
+| `bodies` | array<object> | | Each entry uses ephemeris longitudes measured in degrees from Solar Fire `.sf` lines validated through Swiss Ephemeris reproduction. |
+| `bodies[*].id` | string | slug | Planet identifier (e.g., `sun`, `moon`, `ascendant`). |
+| `bodies[*].longitude` | number | degrees (0–360) | Derived from export; cross-checked via Swiss Ephemeris `pyswisseph.calc_ut`. |
+| `bodies[*].latitude` | number | degrees | Optional; included when Solar Fire provides declination/latitude columns. |
+| `houses` | array<object> | | Ordered from I–XII; longitudes validated via provider parity checks. |
+| `revision.provenance_uri` | string | URI | Points to signed export archive (e.g., `sf9://natal/2023-08-01-janedoe.sf`). |
+| `revision.checksum` | string | SHA256 hex | Digest of the raw export file captured at import time. |
 
-## Validation hooks
+### `event_v1`
 
-- `tests/test_result_schema.py` loads a canonical payload via `validate_payload("result_v1", ...)` and asserts that removing required fields (e.g., `events[*].channel`) raises `SchemaValidationError`.
-- `tests/test_contact_gate_schema.py` performs the same checks for `contact_gate_v2`.
-- `tests/test_orbs_policy.py` ensures that `schemas/orbs_policy.json` stays in sync with the documentation by loading the document through `astroengine.data.schemas.load_schema_document` and inspecting the multipliers.
-- `tests/test_module_registry.py` indirectly checks that schema keys remain registered by comparing the registry payload emitted by `serialize_vca_ruleset()` with the documentation.
+Represents a normalized event detected by the ruleset engine. Events MUST link back to the natal schema and include precise angle
+measurements from Swiss Ephemeris data or Solar Fire validations.
 
-## Provenance requirements
+| Field | Type | Units / Format | Notes & Provenance |
+| --- | --- | --- | --- |
+| `event_id` | string | UUID | Stable identifier recorded in SQLite export tables. |
+| `subject_ref` | string | UUID | Matches `natal_v1.subject.id`. |
+| `profile_id` | string | slug | Profile used to evaluate rulesets; aligns with CLI/API configuration. |
+| `event_kind` | string | enum (`transit`, `ingress`, `station`, `lunation`, …) | Gate phrases documented in `docs/module/event-detectors/overview.md`. |
+| `timestamp` | string | ISO-8601 UTC | Timestamp at peak or entry using Swiss Ephemeris interpolation; stored with millisecond precision. |
+| `window` | object | start/end ISO-8601 UTC | Defines actionable window used by UI scheduling. |
+| `geometry.aspect` | string | enum of aspect families | Values documented in `docs/module/core-transit-math.md` Aspect Canon. |
+| `geometry.delta_longitude` | number | degrees | Signed Δλ computed from Swiss Ephemeris state vectors. |
+| `geometry.orb` | number | degrees | Derived using policy in `docs/module/core-transit-math.md` (Orbs Matrix). |
+| `severity.score` | number | dimensionless | Calculated per `docs/module/core-transit-math.md` Severity Model; stored with 3 decimal places. |
+| `severity.band` | string | enum (`weak`, `moderate`, `strong`, `peak`) | Determined by severity thresholds. |
+| `provenance.primary_uri` | string | URI | Points to Solar Fire window export or Swiss Ephemeris query bundle. |
+| `provenance.validation_checksum` | string | SHA256 | Digest of JSON payload used for verification. |
+| `ruleset.tag` | string | slug | Links to rule definition in `rulesets/` tree. |
 
-- Result and contact gate payloads must embed dataset URIs (e.g., `sf9://transits_2023.sf#row=5821`) so that every event can be
-  audited against the Solar Fire source data. Tests should include at least one payload that exercises this requirement.
-- When integrating external systems, persist the `natal_input_v1_ext.source_checksum` value alongside the imported chart to prove
-  that runtime output is derived from the recorded dataset.
-- Schema updates that introduce new provenance fields must be mirrored in the corresponding documentation and the governance
-  revision log.
+### `transit_v1`
 
-## Usage notes
+Tracks longitudinal/latitudinal samples for transiting bodies used to reconstruct events and severity scoring.
 
-- Schema identifiers (`$id`) are stable and should be used when emitting payloads to external systems. Any change requires a version bump and a corresponding update to this file and the revision log described in `docs/governance/data_revision_policy.md`.
-- The validation helpers return detailed error messages listing the JSON Pointer path of failing fields. Integrations should surface those messages when rejecting payloads.
-- `orbs_policy` is intentionally distributed as data rather than a JSON Schema so that client applications can present profile-aware orb sliders without hard-coding numbers.
+| Field | Type | Units / Format | Notes & Provenance |
+| --- | --- | --- | --- |
+| `series_id` | string | UUID | Groups samples for a scan window. |
+| `subject_ref` | string | UUID | Matches natal subject (if personal) or `null` for mundane sweeps. |
+| `provider_id` | string | enum (`swiss`, `skyfield`) | Declared provider; must match entries documented in `docs/module/providers_and_frames.md`. |
+| `sample_cadence_minutes` | integer | minutes | Derived from provider cadence; see provider contract. |
+| `bodies` | array<object> | | Sorted by timestamp. |
+| `bodies[*].id` | string | slug | Body name per module registry. |
+| `bodies[*].samples` | array<object> | | Monotonic time series. |
+| `bodies[*].samples[*].timestamp` | string | ISO-8601 UTC | Rounded to nearest second; captured from Swiss Ephemeris `swe_calc_ut`. |
+| `bodies[*].samples[*].longitude` | number | degrees | Real output from provider call (no smoothing). |
+| `bodies[*].samples[*].latitude` | number | degrees | Optional; included for declination-sensitive detectors. |
+| `bodies[*].samples[*].speed_longitude` | number | degrees/day | Derived from adjacent samples; ensure Δλ continuity across 0°/360°. |
+| `provenance.scan_window` | object | start/end ISO-8601 UTC | The requested time range. |
+| `provenance.ephemeris_checksum` | string | SHA256 | Digest of Swiss Ephemeris or Skyfield kernel bundle used. |
+
+## CSV & Parquet exports
+
+AstroEngine produces two tabular families mirroring the JSON schemas above. All CSV files are UTF-8 with Unix line endings;
+Parquet files use Snappy compression.
+
+### `transit_events.csv` / `transit_events.parquet`
+
+- **Partitioning**: `year=YYYY/month=MM` based on `timestamp`.
+- **Columns**:
+  - `event_id` (STRING)
+  - `subject_ref` (STRING)
+  - `profile_id` (STRING)
+  - `event_kind` (STRING)
+  - `aspect` (STRING)
+  - `orb_deg` (DOUBLE)
+  - `severity_score` (DOUBLE)
+  - `severity_band` (STRING)
+  - `timestamp_utc` (TIMESTAMP)
+  - `window_start_utc` (TIMESTAMP)
+  - `window_end_utc` (TIMESTAMP)
+  - `provenance_uri` (STRING)
+  - `ruleset_tag` (STRING)
+
+### `transit_tracks.csv` / `transit_tracks.parquet`
+
+- **Partitioning**: `provider_id` / `year` / `month` to keep provider parity comparisons efficient.
+- **Columns**:
+  - `series_id` (STRING)
+  - `provider_id` (STRING)
+  - `body` (STRING)
+  - `timestamp_utc` (TIMESTAMP)
+  - `longitude_deg` (DOUBLE)
+  - `latitude_deg` (DOUBLE, nullable)
+  - `speed_longitude_deg_per_day` (DOUBLE)
+  - `scan_window_start_utc` (TIMESTAMP)
+  - `scan_window_end_utc` (TIMESTAMP)
+  - `ephemeris_checksum` (STRING)
+
+Writers MUST maintain deterministic column ordering and include a header row in CSV outputs. When converting to Parquet, use
+logical types (`TIMESTAMP_MILLIS`) to preserve millisecond precision, matching Solar Fire’s export granularity.
+
+## SQLite schema (`transits_events` database)
+
+The CLI may persist results to SQLite for local inspection. The database file stores a single logical dataset with supporting
+indexes to accelerate event lookups.
+
+```sql
+CREATE TABLE transits_events (
+    event_id TEXT PRIMARY KEY,
+    subject_ref TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
+    event_kind TEXT NOT NULL,
+    aspect TEXT,
+    orb_deg REAL,
+    severity_score REAL NOT NULL,
+    severity_band TEXT NOT NULL,
+    timestamp_utc TEXT NOT NULL,
+    window_start_utc TEXT NOT NULL,
+    window_end_utc TEXT NOT NULL,
+    provenance_uri TEXT NOT NULL,
+    ruleset_tag TEXT NOT NULL,
+    validation_checksum TEXT NOT NULL
+);
+
+CREATE INDEX idx_transits_events_subject_time
+    ON transits_events (subject_ref, timestamp_utc);
+CREATE INDEX idx_transits_events_kind_band
+    ON transits_events (event_kind, severity_band);
+```
+
+Timestamps are stored as ISO-8601 strings to avoid timezone drift; consumers should parse them with timezone-aware libraries.
+`validation_checksum` stores the SHA256 digest of the serialized `event_v1` payload so SQLite queries remain tied to the JSON
+exports.
+
+## ICS event format
+
+Calendar exports translate each `event_v1` payload into a deterministic VEVENT block. The runtime emits RFC 5545 compliant
+records with the following fields:
+
+- `UID`: `<event_id>@astroengine.io`.
+- `DTSTAMP`: Generation timestamp in UTC.
+- `DTSTART`: `timestamp_utc` converted to the subscriber’s preferred timezone; defaults to UTC if unspecified.
+- `DTEND`: `window_end_utc` projected into the same timezone; if the event is instantaneous, use `DTSTART` + 5 minutes.
+- `SUMMARY`: `"{event_kind|title} – {ruleset_tag}"` (e.g., `"Mars Square Natal Sun – vitality_checks"`).
+- `DESCRIPTION`: Multiline text summarizing severity band, orb, aspect geometry, and provenance URI. Include Solar Fire reference
+  identifiers so analysts can cross-check the original export.
+- `CATEGORIES`: Severity band (capitalized) and channel/subchannel path (e.g., `Transit/Natal`).
+- `URL`: Direct link to the API result if available; otherwise omit.
+- `X-ASTROENGINE-PROVENANCE`: Proprietary extension that repeats `provenance_uri` and `validation_checksum` for calendar clients
+  that archive metadata.
+
+ICS payloads must never downsample or average the underlying event timing. All date conversions rely on the Olson timezone from
+the natal record, ensuring daylight-saving transitions mirror Solar Fire’s documented offsets.
+
+## Provenance & validation requirements
+
+- Every export references a concrete dataset URI. Solar Fire archives should be stored under `datasets/solarfire/` with SHA256
+  digests logged in `docs/governance/data_revision_policy.md`.
+- Ephemeris computations must log the Swiss Ephemeris or Skyfield kernel path plus checksum. When using the Swiss stub during
+  development, document that the data is truncated and unsuitable for production severity scoring.
+- Validation suites (`tests/test_result_schema.py`, etc.) MUST load at least one golden payload per schema, recompute the
+  `validation_checksum`, and compare against recorded expectations.
+- CLI commands emitting CSV/Parquet/SQLite/ICS files should append a manifest JSON alongside the export summarizing profile IDs,
+  scan windows, and checksums to satisfy auditors. The manifest format will be defined in a future revision and linked here.
+- If a downstream integration cannot resolve the recorded URI, the export is considered non-compliant; retry logic must fetch the
+  missing dataset instead of substituting synthetic data.
 
 ## Extending interoperability
 
 When introducing new exports:
 
-1. Add the schema or data file under `schemas/`.
-2. Register a key in the schema loader (see `astroengine/data/schemas.py`).
-3. Document the new file in the table above.
-4. Add pytest coverage that loads the schema via `validate_payload` or `load_schema_document`.
-5. Update `docs/burndown.md` to reflect the new deliverable.
-6. Record the revision following the workflow in `docs/governance/data_revision_policy.md`.
+1. Add the schema or data file under `schemas/` with accompanying provenance notes.
+2. Register the schema via `astroengine.data.schemas` and document it in the appropriate section above.
+3. Add pytest coverage that exercises the new payload end-to-end, including checksum verification against Solar Fire or Swiss
+   Ephemeris reproductions.
+4. Update `docs/burndown.md` and the governance revision log to capture the new deliverable.
+5. Ensure the dataset index (CSV/Parquet/SQLite) maintains compatibility with the module → submodule → channel → subchannel
+   hierarchy; never drop columns without a migration plan.
 
-Keeping the documentation aligned with the actual files guarantees that every run sequence and export references authentic data rather than inferred values.
+Maintaining this specification keeps AstroEngine’s exports demonstrably linked to real observational data, protecting both the
+runtime’s integrity and downstream consumers.

@@ -8,6 +8,7 @@
   - `profiles/vca_outline.json`
   - `schemas/orbs_policy.json`
   - `profiles/base_profile.yaml`
+  - `data/dignities_lilly.json`
 
 AstroEngine bundles a small number of static datasets that are consumed by the registry-backed modules. This document enumerates the files, their fields, and the validation coverage inside the repository so the assets remain traceable and no modules lose access to required inputs.
 
@@ -34,6 +35,16 @@ Each entry points to the datasets listed below with provenance metadata taken di
 - **Integrity**: When modifiers change, update the provenance column and add a revision entry to
   `docs/governance/data_revision_policy.md`. Tests in `tests/test_domain_scoring.py` and `tests/test_vca_profile.py` ensure the
   data stays in sync with `profiles/base_profile.yaml`.
+
+### `data/dignities_lilly.json`
+
+- **Purpose**: Delivers classical (Lilly/Dorothean) essential dignity tables for runtime scoring and reporting.
+- **Origins**: Hand-curated from *Christian Astrology* (1647) with Egyptian terms and Chaldean faces cross-checked against
+  the Solar Fire `ESSENTIAL.DAT` export. The metadata block captures citation notes for audit trails.
+- **Structure**: Top-level `signs` mapping of zodiac keys to domicile, detriment, exaltation, fall, triplicity, term, and face
+  entries. Triplicity records include day/night/participating rulers and degree spans for the bounds/decans.
+- **Integrity**: Used by `astroengine.analysis.dignities`; validated via `tests/analysis/test_dignities.py`. Update the
+  `metadata.source` string when revising the table and record the change in the governance revision log.
 
 ### `profiles/fixed_stars.csv`
 

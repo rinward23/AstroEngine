@@ -1,15 +1,17 @@
 from __future__ import annotations
+
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping
+from typing import Any
 
 
 @dataclass(frozen=True)
 class PreparedOrbPolicy:
     """Normalized, ready-to-use view of an orb policy."""
 
-    per_object: Dict[str, float]
-    per_aspect: Dict[str, float]
-    adaptive_rules: Dict[str, Any]
+    per_object: dict[str, float]
+    per_aspect: dict[str, float]
+    adaptive_rules: dict[str, Any]
 
 
 def prepare_policy(policy: Mapping[str, Any] | None) -> PreparedOrbPolicy:
@@ -29,7 +31,7 @@ def prepare_policy(policy: Mapping[str, Any] | None) -> PreparedOrbPolicy:
     )
 
 # Built-in aspect defaults (deg). Adjust later via policy.per_aspect.
-ASPECT_DEFAULTS: Dict[str, float] = {
+ASPECT_DEFAULTS: dict[str, float] = {
     "conjunction": 8.0,
     "opposition": 7.0,
     "square": 6.0,
@@ -47,19 +49,19 @@ OUTERS = {"Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"}
 MINOR_ASPECTS = {"quincunx", "semisquare", "sesquisquare", "quintile", "biquintile"}
 
 
-def _base_orb(aspect_name: str, per_aspect: Dict[str, float]) -> float:
+def _base_orb(aspect_name: str, per_aspect: dict[str, float]) -> float:
     aspect_key = aspect_name.lower()
     return per_aspect.get(aspect_key, ASPECT_DEFAULTS.get(aspect_key, 3.0))
 
 
-def _object_orb(object_a: str, object_b: str, base: float, per_object: Dict[str, float]) -> float:
+def _object_orb(object_a: str, object_b: str, base: float, per_object: dict[str, float]) -> float:
     # Use the max of overrides as a starting point (most permissive among the pair)
     oa = per_object.get(object_a, base)
     ob = per_object.get(object_b, base)
     return max(base, oa, ob)
 
 
-def _adaptive_multiplier(object_a: str, object_b: str, aspect_name: str, rules: Dict[str, Any]) -> float:
+def _adaptive_multiplier(object_a: str, object_b: str, aspect_name: str, rules: dict[str, Any]) -> float:
     # Default multipliers = 1.0 (no change)
     lum_factor = float(rules.get("luminaries_factor", 1.0))
     out_factor = float(rules.get("outers_factor", 1.0))
@@ -75,7 +77,7 @@ def _adaptive_multiplier(object_a: str, object_b: str, aspect_name: str, rules: 
     return m
 
 
-def orb_limit(object_a: str, object_b: str, aspect_name: str, policy: Dict[str, Any]) -> float:
+def orb_limit(object_a: str, object_b: str, aspect_name: str, policy: dict[str, Any]) -> float:
     """
     Compute allowed orb in degrees for a given pair and aspect using a policy dict.
 

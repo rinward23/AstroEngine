@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .adapters import numerology_mapper, tarot_mapper
 from .alchemy import ALCHEMY_STAGES, AlchemyStage
 from .decans import (
     DECANS,
@@ -10,6 +11,7 @@ from .decans import (
     assign_decans,
     decan_for_longitude,
 )
+from .geomancy import GEOMANTIC_FIGURES, GeomanticFigure
 from .golden_dawn_grades import GOLDEN_DAWN_GRADES, GoldenDawnGrade
 from .iching import I_CHING_HEXAGRAMS, Hexagram
 from .numerology import MASTER_NUMBERS, NUMEROLOGY_NUMBERS, NumerologyNumber
@@ -59,4 +61,8 @@ __all__ = [
     "Hexagram",
     "ELDER_FUTHARK_RUNES",
     "Rune",
+    "GEOMANTIC_FIGURES",
+    "GeomanticFigure",
+    "tarot_mapper",
+    "numerology_mapper",
 ]

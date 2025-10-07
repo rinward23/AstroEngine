@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from astroengine.core.aspects_plus.aggregate import day_bins, paginate, rank_hits
 from astroengine.core.aspects_plus.scan import Hit
@@ -18,7 +18,7 @@ def mk_hit(dt: datetime, orb: float, angle: float = 60.0) -> Hit:
 
 
 def test_rank_hits_and_ordering():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     hits = [mk_hit(t0 + timedelta(hours=2), 0.5), mk_hit(t0 + timedelta(hours=1), 0.1)]
 
     ranked_time = rank_hits(hits, PROFILE, order_by="time")
@@ -32,7 +32,7 @@ def test_rank_hits_and_ordering():
 
 
 def test_day_bins_and_pagination():
-    t0 = datetime(2025, 1, 1, 10, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, 10, tzinfo=UTC)
     hits = [
         mk_hit(t0, 0.1),
         mk_hit(t0 + timedelta(hours=3), 0.2),
@@ -50,7 +50,7 @@ def test_day_bins_and_pagination():
 
 
 def test_day_bins_handles_missing_severity():
-    day = datetime(2025, 5, 1, 9, tzinfo=timezone.utc)
+    day = datetime(2025, 5, 1, 9, tzinfo=UTC)
     hits = [
         {"exact_time": day, "severity": 0.4},
         {"exact_time": day + timedelta(hours=1), "severity": None},
@@ -61,7 +61,7 @@ def test_day_bins_handles_missing_severity():
 
 
 def test_paginate_rejects_negative_values():
-    ranked = rank_hits([mk_hit(datetime(2025, 1, 1, tzinfo=timezone.utc), 0.2)], PROFILE)
+    ranked = rank_hits([mk_hit(datetime(2025, 1, 1, tzinfo=UTC), 0.2)], PROFILE)
     try:
         paginate(ranked, limit=-1, offset=0)
     except ValueError:

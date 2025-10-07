@@ -1,0 +1,72 @@
+name: Nightly Smoke Benchmarks
+
+on:
+  schedule:
+    - cron: '7 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Restore trend cache
+        id: trend-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: observability/trends/nightly-metrics.json
+          key: nightly-trends-${{ github.run_id }}
+          restore-keys: |
+            nightly-trends-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          python -m pip install -e .[providers]
+
+      - name: Ensure ephemeris dataset
+        run: |
+          python - <<'PY'
+          import os, shutil
+          from pathlib import Path
+
+          target = Path.home() / '.astroengine' / 'ephemeris'
+          target.mkdir(parents=True, exist_ok=True)
+          source = Path('datasets') / 'swisseph_stub'
+          if source.exists():
+              for entry in source.iterdir():
+                  destination = target / entry.name
+                  if entry.is_dir():
+                      if destination.exists():
+                          shutil.rmtree(destination)
+                      shutil.copytree(entry, destination)
+                  else:
+                      shutil.copy2(entry, destination)
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as fh:
+              fh.write(f'SE_EPHE_PATH={target}\n')
+          PY
+
+      - name: Run nightly smoke benchmarks
+        run: python scripts/perf/nightly_smoke.py --output observability/trends/nightly-metrics.json
+
+      - name: Upload metrics artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-trends
+          path: observability/trends/nightly-metrics.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Save trend cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: observability/trends/nightly-metrics.json
+          key: nightly-trends-${{ github.run_id }}

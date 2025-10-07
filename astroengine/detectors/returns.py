@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import swisseph as swe
-
 from datetime import UTC, datetime
 
 from ..ephemeris import SwissEphemerisAdapter
+from ..ephemeris.swisseph_adapter import get_swisseph
 from ..events import ReturnEvent
 from .common import delta_deg, jd_to_iso, solve_zero_crossing
 
@@ -20,12 +19,12 @@ def _parse_iso(ts: str) -> datetime:
     return dt.astimezone(UTC)
 
 
-def _body_accessor(kind: str) -> tuple[str, int]:
+def _body_accessor(kind: str, swe_module) -> tuple[str, int]:
     key = kind.lower()
     if key == "solar":
-        return "Sun", swe.SUN
+        return "Sun", swe_module.SUN
     if key == "lunar":
-        return "Moon", swe.MOON
+        return "Moon", swe_module.MOON
     raise ValueError(f"Unsupported return kind '{kind}'")
 
 
@@ -44,7 +43,8 @@ def solar_lunar_returns(
         return []
 
     adapter = adapter or SwissEphemerisAdapter.get_default_adapter()
-    body_name, body_code = _body_accessor(kind)
+    swe = get_swisseph()
+    body_name, body_code = _body_accessor(kind, swe)
 
     def lon_at(jd: float) -> float:
         return (

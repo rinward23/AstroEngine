@@ -5,8 +5,8 @@ from __future__ import annotations
 import io
 import shutil
 import tempfile
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from astroengine.exporters.reports.base import ReportMeta
 
@@ -66,7 +66,7 @@ def _convert_with_python_docx(markdown: str, meta: ReportMeta) -> bytes:
     return buffer.getvalue()
 
 
-def _apply_meta(document: "Document", meta: ReportMeta) -> None:
+def _apply_meta(document: Document, meta: ReportMeta) -> None:
     core = document.core_properties
     core.title = meta.title
     core.subject = meta.subject or ""
@@ -74,7 +74,7 @@ def _apply_meta(document: "Document", meta: ReportMeta) -> None:
     core.keywords = ", ".join(meta.keywords) if meta.keywords else ""
 
 
-def _append_markdown_blocks(document: "Document", markdown: str) -> None:
+def _append_markdown_blocks(document: Document, markdown: str) -> None:
     blocks = _split_blocks(markdown)
     for block in blocks:
         if not block:

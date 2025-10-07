@@ -1,5 +1,12 @@
 """Minor planet ingestion, registries, and indexing utilities."""
 
+from .builtins import (
+    CURATED_MINOR_PLANETS,
+    DEFAULT_MINOR_BODY_ORBS,
+    CuratedMinorPlanet,
+    lilith_mean,
+    lilith_true,
+)
 from .mpc_ingest import (
     Counts,
     MinorPlanet,
@@ -11,13 +18,6 @@ from .mpc_ingest import (
     filter_rows,
     parse_mpcorb,
     upsert_rows,
-)
-from .builtins import (
-    CuratedMinorPlanet,
-    CURATED_MINOR_PLANETS,
-    DEFAULT_MINOR_BODY_ORBS,
-    lilith_mean,
-    lilith_true,
 )
 
 __all__ = [

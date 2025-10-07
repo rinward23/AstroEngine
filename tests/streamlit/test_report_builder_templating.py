@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+
+import pytest
+
+pytest.importorskip(
+    "jinja2",
+    reason="jinja2 not installed; install extras with `pip install -e .[narrative,reports,ui,streamlit]`.",
+)
 
 from ui.streamlit.report_builder.templating import ReportContext, render_markdown
 
@@ -17,7 +24,7 @@ def test_default_template_snapshot() -> None:
         filters=sample["filters"],
         pair=sample["pair"],
         totals=sample["totals"],
-        generated_at=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+        generated_at=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
         top_highlights=2,
         template_id="default",
     )

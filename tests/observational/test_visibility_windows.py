@@ -1,11 +1,22 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import math
+from datetime import UTC, datetime
 
 import pytest
 
-from astroengine.engine.observational import MetConditions, VisibilityConstraints, horizontal_from_equatorial, topocentric_equatorial, visibility_windows
+pytest.importorskip(
+    "PIL",
+    reason="Pillow not installed; install extras with `pip install -e .[ui,reports]`.",
+)
+
+from astroengine.engine.observational import (
+    MetConditions,
+    VisibilityConstraints,
+    horizontal_from_equatorial,
+    topocentric_equatorial,
+    visibility_windows,
+)
 from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
 
 swe = pytest.importorskip("swisseph")
@@ -39,12 +50,12 @@ def test_visibility_windows_constraints() -> None:
         met=MetConditions(temperature_c=12.0, pressure_hpa=1010.0),
         step_seconds=600,
     )
-    windows = visibility_windows(adapter, swe.MARS, start, end, observer, constraints)
+    windows = visibility_windows(adapter, swe().MARS, start, end, observer, constraints)
     assert windows, "Expected at least one visibility window"
 
     for window in windows:
         midpoint = window.start + (window.end - window.start) / 2
-        equ = topocentric_equatorial(adapter, swe.MARS, midpoint, observer)
+        equ = topocentric_equatorial(adapter, swe().MARS, midpoint, observer)
         horiz = horizontal_from_equatorial(
             equ.right_ascension_deg,
             equ.declination_deg,
@@ -55,7 +66,7 @@ def test_visibility_windows_constraints() -> None:
         )
         assert horiz.altitude_deg >= constraints.min_altitude_deg - 0.5
         if constraints.sun_separation_min_deg is not None:
-            sun_equ = topocentric_equatorial(adapter, swe.SUN, midpoint, observer)
+            sun_equ = topocentric_equatorial(adapter, swe().SUN, midpoint, observer)
             sun_sep = _separation(
                 equ.right_ascension_deg,
                 equ.declination_deg,

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from astroengine.core.charts_plus.returns import (
     ReturnWindow,
@@ -21,7 +21,7 @@ class LinearEphemeris:
 
 
 def test_solar_return_linear_rate():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     natal_lon = 10.0
     eph = LinearEphemeris(t0, base={"Sun": natal_lon}, rates={"Sun": 1.0})  # 1°/day → period 360 days
 
@@ -34,7 +34,7 @@ def test_solar_return_linear_rate():
 
 
 def test_lunar_returns_multiple():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     natal_lon = 50.0
     eph = LinearEphemeris(t0, base={"Moon": natal_lon}, rates={"Moon": 13.0})  # ~27.692 days
 
@@ -47,7 +47,7 @@ def test_lunar_returns_multiple():
 
 
 def test_planetary_return_generic():
-    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, tzinfo=UTC)
     natal_lon = 200.0
     eph = LinearEphemeris(t0, base={"Venus": natal_lon}, rates={"Venus": 1.2})  # period 300 days
 

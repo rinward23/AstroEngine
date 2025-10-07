@@ -1,9 +1,9 @@
 """Autolinking helpers for connecting notes to astro events."""
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Iterable, List, Sequence
 
 
 @dataclass
@@ -31,9 +31,9 @@ class AutoLinkScorer:
         self.gamma = gamma
         self.window = window
 
-    def score(self, note_id: str, note_time: datetime, note_tags: Sequence[str], events: Iterable[CandidateEvent]) -> List[SuggestedLink]:
+    def score(self, note_id: str, note_time: datetime, note_tags: Sequence[str], events: Iterable[CandidateEvent]) -> list[SuggestedLink]:
         note_tag_set = set(note_tags)
-        links: List[SuggestedLink] = []
+        links: list[SuggestedLink] = []
         for event in events:
             time_delta = abs((event.timestamp - note_time).total_seconds())
             if time_delta > self.window.total_seconds():

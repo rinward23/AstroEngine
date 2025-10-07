@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
-
-ARCHETYPES: Dict[str, str] = {
+ARCHETYPES: dict[str, str] = {
     "Sun": "Core Self",
     "Moon": "Emotional Body",
     "Mercury": "Mind & Speech",

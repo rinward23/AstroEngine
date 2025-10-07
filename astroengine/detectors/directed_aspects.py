@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Optional
+from time import perf_counter
 
 from ..chart.config import ChartConfig
 from ..chart.natal import DEFAULT_BODIES, ChartLocation, compute_natal_chart
@@ -12,6 +12,7 @@ from ..chart.progressions import compute_secondary_progressed_chart
 from ..core.angles import normalize_degrees, signed_delta
 from ..detectors_aspects import AspectHit
 from ..ephemeris import SwissEphemerisAdapter
+from ..observability import ASPECT_COMPUTE_DURATION, COMPUTE_ERRORS
 
 __all__ = ["solar_arc_natal_aspects"]
 
@@ -31,7 +32,7 @@ def _isoformat(moment: datetime) -> str:
     return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
-def _resolve_body_names(selection: Optional[Sequence[str]]) -> list[str]:
+def _resolve_body_names(selection: Sequence[str] | None) -> list[str]:
     if selection is None:
         return list(DEFAULT_BODIES.keys())
 
@@ -115,129 +116,141 @@ def solar_arc_natal_aspects(
     *,
     aspects: Sequence[int],
     orb_deg: float,
-    bodies: Optional[Sequence[str]] = None,
+    bodies: Sequence[str] | None = None,
     step_days: float = 1.0,
 ) -> list[AspectHit]:
     """Return solar‑arc→natal aspect hits within ``[start_ts, end_ts]``."""
 
-    start = _parse_iso(start_ts)
-    end = _parse_iso(end_ts)
-    if end <= start:
-        return []
+    method_label = "solar_arc_natal_aspects"
+    start_time = perf_counter()
+    try:
+        start = _parse_iso(start_ts)
+        end = _parse_iso(end_ts)
+        if end <= start:
+            return []
 
-    if step_days <= 0:
-        raise ValueError("step_days must be positive for solar arc aspect scans")
+        if step_days <= 0:
+            raise ValueError("step_days must be positive for solar arc aspect scans")
 
-    target_names = _resolve_body_names(bodies)
-    body_codes = {name: DEFAULT_BODIES[name] for name in target_names}
-    if "Sun" not in body_codes:
-        body_codes = {**body_codes, "Sun": DEFAULT_BODIES["Sun"]}
+        target_names = _resolve_body_names(bodies)
+        body_codes = {name: DEFAULT_BODIES[name] for name in target_names}
+        if "Sun" not in body_codes:
+            body_codes = {**body_codes, "Sun": DEFAULT_BODIES["Sun"]}
 
-    chart_config = ChartConfig()
-    adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
-    natal_moment = _parse_iso(natal_ts)
+        chart_config = ChartConfig()
+        adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
+        natal_moment = _parse_iso(natal_ts)
 
-    natal_chart = compute_natal_chart(
-        natal_moment,
-        _DEFAULT_LOCATION,
-        bodies=body_codes,
-        config=chart_config,
-        adapter=adapter,
-    )
-
-    natal_longitudes = {
-        name: normalize_degrees(position.longitude)
-        for name, position in natal_chart.positions.items()
-    }
-    natal_sun = natal_longitudes.get("Sun")
-    if natal_sun is None:
-        raise RuntimeError("Solar arc computation requires the Sun in natal positions")
-
-    aspect_angles = sorted(float(angle) for angle in aspects)
-    motion_history: dict[tuple[str, str, float], float] = {}
-    lon_cache: dict[str, float] = {}
-    time_cache: dict[str, datetime] = {}
-
-    hits: list[AspectHit] = []
-    step = timedelta(days=step_days)
-    current = start
-    detection_bodies = [name for name in target_names if name in natal_longitudes]
-    if "Sun" not in detection_bodies and bodies is None:
-        detection_bodies.append("Sun")
-
-    while current <= end:
-        progressed = compute_secondary_progressed_chart(
-            natal_chart,
-            current,
-            bodies={"Sun": DEFAULT_BODIES["Sun"]},
+        natal_chart = compute_natal_chart(
+            natal_moment,
+            _DEFAULT_LOCATION,
+            bodies=body_codes,
             config=chart_config,
             adapter=adapter,
         )
-        iso_when = _isoformat(current)
-        progressed_sun = next(
-            normalize_degrees(pos.longitude)
-            for name, pos in progressed.chart.positions.items()
-            if name == "Sun"
-        )
-        arc = (progressed_sun - natal_sun) % 360.0
 
-        directed_positions = {
-            name: normalize_degrees(natal_longitudes[name] + arc)
-            for name in detection_bodies
-            if name in natal_longitudes
+        natal_longitudes = {
+            name: normalize_degrees(position.longitude)
+            for name, position in natal_chart.positions.items()
         }
+        natal_sun = natal_longitudes.get("Sun")
+        if natal_sun is None:
+            raise RuntimeError("Solar arc computation requires the Sun in natal positions")
 
-        for moving, directed_lon in directed_positions.items():
-            speed = _update_speed(
-                lon_cache,
-                time_cache,
-                moving,
-                directed_lon,
+        aspect_angles = sorted(float(angle) for angle in aspects)
+        motion_history: dict[tuple[str, str, float], float] = {}
+        lon_cache: dict[str, float] = {}
+        time_cache: dict[str, datetime] = {}
+
+        hits: list[AspectHit] = []
+        step = timedelta(days=step_days)
+        current = start
+        detection_bodies = [name for name in target_names if name in natal_longitudes]
+        if "Sun" not in detection_bodies and bodies is None:
+            detection_bodies.append("Sun")
+
+        while current <= end:
+            progressed = compute_secondary_progressed_chart(
+                natal_chart,
                 current,
-                0.0,
+                bodies={"Sun": DEFAULT_BODIES["Sun"]},
+                config=chart_config,
+                adapter=adapter,
             )
-            retrograde = speed < 0
-            for target, natal_lon in natal_longitudes.items():
-                if moving == target:
-                    continue
-                separation = _smallest_separation(directed_lon, natal_lon)
-                delta_lambda = normalize_degrees(directed_lon - natal_lon)
-                for angle in aspect_angles:
-                    offset = separation - angle
-                    orb_abs = abs(offset)
-                    if orb_abs <= orb_deg + 1e-9:
-                        phase = _update_motion_state(
-                            motion_history,
-                            moving,
-                            target,
-                            angle,
-                            orb_abs,
-                            offset,
-                        )
-                        hits.append(
-                            AspectHit(
-                                kind="solar_arc_natal_aspect",
-                                when_iso=iso_when,
-                                moving=moving,
-                                target=target,
-                                angle_deg=float(angle),
-                                lon_moving=float(directed_lon),
-                                lon_target=float(natal_lon),
-                                delta_lambda_deg=float(delta_lambda),
-                                offset_deg=float(offset),
-                                orb_abs=float(orb_abs),
-                                orb_allow=float(orb_deg),
-                                is_partile=orb_abs <= _PARTILE_THRESHOLD_DEG,
-                                applying_or_separating=phase,
-                                family="directed-natal",
-                                corridor_width_deg=None,
-                                corridor_profile=None,
-                                speed_deg_per_day=float(speed),
-                                retrograde=retrograde,
-                            )
-                        )
-        current += step
+            iso_when = _isoformat(current)
+            progressed_sun = next(
+                normalize_degrees(pos.longitude)
+                for name, pos in progressed.chart.positions.items()
+                if name == "Sun"
+            )
+            arc = (progressed_sun - natal_sun) % 360.0
 
-    hits.sort(key=lambda hit: (hit.when_iso, hit.moving, hit.target, hit.angle_deg))
-    return hits
+            directed_positions = {
+                name: normalize_degrees(natal_longitudes[name] + arc)
+                for name in detection_bodies
+                if name in natal_longitudes
+            }
+
+            for moving, directed_lon in directed_positions.items():
+                speed = _update_speed(
+                    lon_cache,
+                    time_cache,
+                    moving,
+                    directed_lon,
+                    current,
+                    0.0,
+                )
+                retrograde = speed < 0
+                for target, natal_lon in natal_longitudes.items():
+                    if moving == target:
+                        continue
+                    separation = _smallest_separation(directed_lon, natal_lon)
+                    delta_lambda = normalize_degrees(directed_lon - natal_lon)
+                    for angle in aspect_angles:
+                        offset = separation - angle
+                        orb_abs = abs(offset)
+                        if orb_abs <= orb_deg + 1e-9:
+                            phase = _update_motion_state(
+                                motion_history,
+                                moving,
+                                target,
+                                angle,
+                                orb_abs,
+                                offset,
+                            )
+                            hits.append(
+                                AspectHit(
+                                    kind="solar_arc_natal_aspect",
+                                    when_iso=iso_when,
+                                    moving=moving,
+                                    target=target,
+                                    angle_deg=float(angle),
+                                    lon_moving=float(directed_lon),
+                                    lon_target=float(natal_lon),
+                                    delta_lambda_deg=float(delta_lambda),
+                                    offset_deg=float(offset),
+                                    orb_abs=float(orb_abs),
+                                    orb_allow=float(orb_deg),
+                                    is_partile=orb_abs <= _PARTILE_THRESHOLD_DEG,
+                                    applying_or_separating=phase,
+                                    family="directed-natal",
+                                    corridor_width_deg=None,
+                                    corridor_profile=None,
+                                    speed_deg_per_day=float(speed),
+                                    retrograde=retrograde,
+                                )
+                            )
+            current += step
+
+        hits.sort(key=lambda hit: (hit.when_iso, hit.moving, hit.target, hit.angle_deg))
+        return hits
+    except Exception as exc:
+        COMPUTE_ERRORS.labels(
+            component=f"aspect:{method_label}",
+            error=exc.__class__.__name__,
+        ).inc()
+        raise
+    finally:
+        duration = perf_counter() - start_time
+        ASPECT_COMPUTE_DURATION.labels(method=method_label).observe(duration)
 

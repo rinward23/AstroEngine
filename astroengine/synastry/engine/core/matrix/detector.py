@@ -123,7 +123,7 @@ def detect_hits(
         severity = np.where(mask, severity, 0.0)
 
         idx_i, idx_j = np.nonzero(mask)
-        for i, j in zip(idx_i.tolist(), idx_j.tolist()):
+        for i, j in zip(idx_i.tolist(), idx_j.tolist(), strict=False):
             orb_eff = float(effective[i, j])
             eps = float(epsilon[i, j])
             sev = float(max(0.0, min(1.0, severity[i, j])))

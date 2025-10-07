@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Mapping
+from typing import Dict
 
 
 @dataclass(frozen=True)
@@ -14,7 +15,7 @@ class ChartSample:
     positions: Mapping[str, float]
 
 
-SAMPLES: Dict[str, ChartSample] = {
+SAMPLES: dict[str, ChartSample] = {
     "NYC 1990-02-16": ChartSample(
         label="New York City — 1990-02-16 14:30 (regression dataset)",
         positions={

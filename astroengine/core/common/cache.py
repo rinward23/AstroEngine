@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Callable, Hashable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Generic, Hashable, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 K = TypeVar("K", bound=Hashable)
 V = TypeVar("V")
 
 
-@dataclass
+@dataclass(slots=True)
 class _Entry(Generic[V]):
     value: V
     expires_at: float
@@ -19,9 +20,9 @@ class TTLCache(Generic[K, V]):
     def __init__(self, maxsize: int = 2048):
         self.maxsize = maxsize
         self._lock = threading.Lock()
-        self._data: Dict[K, _Entry[V]] = {}
+        self._data: dict[K, _Entry[V]] = {}
 
-    def get(self, key: K) -> Optional[V]:
+    def get(self, key: K) -> V | None:
         now = time.time()
         with self._lock:
             ent = self._data.get(key)
@@ -45,7 +46,7 @@ class TTLCache(Generic[K, V]):
             self._data.clear()
 
 
-def ttl_cache(ttl_seconds: float, key_fn: Optional[Callable[..., Hashable]] = None, maxsize: int = 2048):
+def ttl_cache(ttl_seconds: float, key_fn: Callable[..., Hashable] | None = None, maxsize: int = 2048):
     """Decorator for simple function result caching with TTL.
     key_fn maps args/kwargs → hashable key. If None, uses (args, frozenset(kwargs.items())).
     """

@@ -1,8 +1,8 @@
 """Theme management for AstroEngine visualisations."""
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, MutableMapping
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, Mapping, MutableMapping, Optional
 
 
 @dataclass(frozen=True)
@@ -17,19 +17,19 @@ class VizTheme:
     strokes: Mapping[str, float] = field(default_factory=dict)
     extras: Mapping[str, object] = field(default_factory=dict)
 
-    def color(self, role: str, default: Optional[str] = None) -> Optional[str]:
+    def color(self, role: str, default: str | None = None) -> str | None:
         return self.colors.get(role, default)
 
-    def font(self, role: str, default: Optional[str] = None) -> Optional[str]:
+    def font(self, role: str, default: str | None = None) -> str | None:
         return self.fonts.get(role, default)
 
-    def size(self, token: str, default: Optional[float] = None) -> Optional[float]:
+    def size(self, token: str, default: float | None = None) -> float | None:
         return self.sizes.get(token, default)
 
-    def stroke(self, token: str, default: Optional[float] = None) -> Optional[float]:
+    def stroke(self, token: str, default: float | None = None) -> float | None:
         return self.strokes.get(token, default)
 
-    def to_payload(self) -> Dict[str, object]:
+    def to_payload(self) -> dict[str, object]:
         return {
             "identifier": self.identifier,
             "name": self.name,
@@ -44,7 +44,7 @@ class VizTheme:
 class ThemeManager:
     """Registry and loader for :class:`VizTheme` instances."""
 
-    def __init__(self, themes: Optional[Iterable[VizTheme]] = None) -> None:
+    def __init__(self, themes: Iterable[VizTheme] | None = None) -> None:
         self._themes: MutableMapping[str, VizTheme] = {}
         if themes:
             for theme in themes:
@@ -89,7 +89,7 @@ class ThemeManager:
         return dict(self._themes)
 
 
-def _as_mapping(source: object) -> Dict[str, object]:
+def _as_mapping(source: object) -> dict[str, object]:
     if source is None:
         return {}
     if isinstance(source, Mapping):

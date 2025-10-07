@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import Dict, Iterable, List, Optional
+
+from collections.abc import Iterable
 
 from core.viz_plus.wheel_svg import build_aspect_hits
 
@@ -13,10 +14,10 @@ ASPECT_SYMBOLS = {
 }
 
 
-def render_aspect_grid(hits: List[Dict]) -> Dict[str, Dict[str, str]]:
+def render_aspect_grid(hits: list[dict]) -> dict[str, dict[str, str]]:
     """Return an aspect grid keyed by object with mirrored pairs."""
 
-    grid: Dict[str, Dict[str, str]] = {}
+    grid: dict[str, dict[str, str]] = {}
     for hit in hits:
         a = hit["a"]
         b = hit["b"]
@@ -27,11 +28,11 @@ def render_aspect_grid(hits: List[Dict]) -> Dict[str, Dict[str, str]]:
 
 
 def aspect_grid_symbols(
-    positions: Optional[Dict[str, float]] = None,
-    aspects: Optional[Iterable[str]] = None,
-    policy: Optional[Dict] = None,
-    hits: Optional[List[Dict]] = None,
-) -> Dict[str, Dict[str, str]]:
+    positions: dict[str, float] | None = None,
+    aspects: Iterable[str] | None = None,
+    policy: dict | None = None,
+    hits: list[dict] | None = None,
+) -> dict[str, dict[str, str]]:
     """Return a mirrored aspect grid populated with glyphs.
 
     When ``hits`` are provided they take precedence, ensuring that symbol grids
@@ -43,7 +44,7 @@ def aspect_grid_symbols(
             raise ValueError("positions, aspects, and policy are required when hits are not provided")
         hits = build_aspect_hits(positions, aspects, policy)
 
-    grid: Dict[str, Dict[str, str]] = {}
+    grid: dict[str, dict[str, str]] = {}
     for hit in hits:
         a, b, asp = hit["a"], hit["b"], hit["aspect"]
         symbol = ASPECT_SYMBOLS.get(asp, asp)

@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Final, Iterable, Mapping
-
-import swisseph as swe
+from typing import Final
 
 from ...ephemeris.sidereal import normalize_ayanamsha_name
-from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
+from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter, get_swisseph
 
 __all__ = [
     "AyanamsaInfo",
@@ -47,48 +46,75 @@ class AyanamsaInfo:
     label: str
 
 
-SIDEREAL_PRESETS: Final[Mapping[AyanamsaPreset, AyanamsaInfo]] = {
-    AyanamsaPreset.LAHIRI: AyanamsaInfo(
-        preset=AyanamsaPreset.LAHIRI,
-        swe_mode=int(swe.SIDM_LAHIRI),
-        label="Lahiri",
-    ),
-    AyanamsaPreset.KRISHNAMURTI: AyanamsaInfo(
-        preset=AyanamsaPreset.KRISHNAMURTI,
-        swe_mode=int(swe.SIDM_KRISHNAMURTI),
-        label="Krishnamurti",
-    ),
-    AyanamsaPreset.RAMAN: AyanamsaInfo(
-        preset=AyanamsaPreset.RAMAN,
-        swe_mode=int(swe.SIDM_RAMAN),
-        label="B. V. Raman",
-    ),
-    AyanamsaPreset.FAGAN_BRADLEY: AyanamsaInfo(
-        preset=AyanamsaPreset.FAGAN_BRADLEY,
-        swe_mode=int(swe.SIDM_FAGAN_BRADLEY),
-        label="Fagan/Bradley",
-    ),
-    AyanamsaPreset.YUKTESHWAR: AyanamsaInfo(
-        preset=AyanamsaPreset.YUKTESHWAR,
-        swe_mode=int(swe.SIDM_YUKTESHWAR),
-        label="Sri Yukteshwar",
-    ),
-    AyanamsaPreset.GALACTIC_CENTER_0_SAG: AyanamsaInfo(
-        preset=AyanamsaPreset.GALACTIC_CENTER_0_SAG,
-        swe_mode=int(swe.SIDM_GALCENT_0SAG),
-        label="Galactic Center 0° Sag",
-    ),
-    AyanamsaPreset.SASSANIAN: AyanamsaInfo(
-        preset=AyanamsaPreset.SASSANIAN,
-        swe_mode=int(swe.SIDM_SASSANIAN),
-        label="Sassanian",
-    ),
-    AyanamsaPreset.DELUCE: AyanamsaInfo(
-        preset=AyanamsaPreset.DELUCE,
-        swe_mode=int(swe.SIDM_DELUCE),
-        label="De Luce",
-    ),
-}
+class _LazySiderealPresets(Mapping[AyanamsaPreset, AyanamsaInfo]):
+    """Lazy Swiss-backed ayanamsa metadata mapping."""
+
+    _cache: Mapping[AyanamsaPreset, AyanamsaInfo] | None = None
+
+    def _ensure(self) -> Mapping[AyanamsaPreset, AyanamsaInfo]:
+        if self._cache is None:
+            try:
+                swe = get_swisseph()
+            except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
+                raise RuntimeError(
+                    "Swiss Ephemeris (pyswisseph) is required for sidereal ayanamsa support."
+                ) from exc
+            mapping: dict[AyanamsaPreset, AyanamsaInfo] = {
+                AyanamsaPreset.LAHIRI: AyanamsaInfo(
+                    preset=AyanamsaPreset.LAHIRI,
+                    swe_mode=int(swe().SIDM_LAHIRI),
+                    label="Lahiri",
+                ),
+                AyanamsaPreset.KRISHNAMURTI: AyanamsaInfo(
+                    preset=AyanamsaPreset.KRISHNAMURTI,
+                    swe_mode=int(swe().SIDM_KRISHNAMURTI),
+                    label="Krishnamurti",
+                ),
+                AyanamsaPreset.RAMAN: AyanamsaInfo(
+                    preset=AyanamsaPreset.RAMAN,
+                    swe_mode=int(swe().SIDM_RAMAN),
+                    label="B. V. Raman",
+                ),
+                AyanamsaPreset.FAGAN_BRADLEY: AyanamsaInfo(
+                    preset=AyanamsaPreset.FAGAN_BRADLEY,
+                    swe_mode=int(swe().SIDM_FAGAN_BRADLEY),
+                    label="Fagan/Bradley",
+                ),
+                AyanamsaPreset.YUKTESHWAR: AyanamsaInfo(
+                    preset=AyanamsaPreset.YUKTESHWAR,
+                    swe_mode=int(swe().SIDM_YUKTESHWAR),
+                    label="Sri Yukteshwar",
+                ),
+                AyanamsaPreset.GALACTIC_CENTER_0_SAG: AyanamsaInfo(
+                    preset=AyanamsaPreset.GALACTIC_CENTER_0_SAG,
+                    swe_mode=int(swe().SIDM_GALCENT_0SAG),
+                    label="Galactic Center 0° Sag",
+                ),
+                AyanamsaPreset.SASSANIAN: AyanamsaInfo(
+                    preset=AyanamsaPreset.SASSANIAN,
+                    swe_mode=int(swe().SIDM_SASSANIAN),
+                    label="Sassanian",
+                ),
+                AyanamsaPreset.DELUCE: AyanamsaInfo(
+                    preset=AyanamsaPreset.DELUCE,
+                    swe_mode=int(swe().SIDM_DELUCE),
+                    label="De Luce",
+                ),
+            }
+            self._cache = mapping
+        return self._cache
+
+    def __getitem__(self, key: AyanamsaPreset) -> AyanamsaInfo:
+        return self._ensure()[key]
+
+    def __iter__(self) -> Iterator[AyanamsaPreset]:
+        return iter(self._ensure())
+
+    def __len__(self) -> int:
+        return len(self._ensure())
+
+
+SIDEREAL_PRESETS: Final[Mapping[AyanamsaPreset, AyanamsaInfo]] = _LazySiderealPresets()
 
 
 PRIMARY_AYANAMSAS: Final[tuple[AyanamsaPreset, ...]] = (
@@ -132,7 +158,8 @@ def ayanamsa_value(
 
     info = SIDEREAL_PRESETS[normalize_ayanamsa(preset)]
     jd_ut = _julian_day(moment)
-    _ret, value = swe.get_ayanamsa_ex_ut(jd_ut, info.swe_mode)
+    swe = get_swisseph()
+    _ret, value = swe().get_ayanamsa_ex_ut(jd_ut, info.swe_mode)
     return value % 360.0
 
 

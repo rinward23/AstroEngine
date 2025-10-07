@@ -46,16 +46,31 @@ def get_paths() -> AstroPaths:
 
     here = Path(__file__).resolve()
     package_root = here.parents[1]
-    project_root = here.parents[2]
+    repo_root_candidate = package_root.parent
+
+    repo_project_root = repo_root_candidate if (repo_root_candidate / "pyproject.toml").exists() else None
+    project_root = repo_project_root or package_root
+
+    def _resolve(name: str) -> Path:
+        repo_path = project_root / name
+        if repo_project_root and repo_path.exists():
+            return repo_path
+        pkg_path = package_root / name
+        return pkg_path if pkg_path.exists() else repo_path
+
+    datasets_root = _resolve("datasets")
+    if not datasets_root.exists():
+        datasets_root = package_root / "datasets"
+
     return AstroPaths(
         package_root=package_root,
         project_root=project_root,
-        datasets=project_root / "datasets",
-        generated=project_root / "generated",
-        profiles=project_root / "profiles",
-        registry=project_root / "registry",
-        rulesets=project_root / "rulesets",
-        schemas=project_root / "schemas",
+        datasets=datasets_root,
+        generated=_resolve("generated"),
+        profiles=_resolve("profiles"),
+        registry=_resolve("registry"),
+        rulesets=_resolve("rulesets"),
+        schemas=_resolve("schemas"),
     )
 
 

@@ -4,10 +4,11 @@ import importlib
 import importlib.util
 import math
 import weakref
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from ..chart.config import ChartConfig
 from ..chart.natal import DEFAULT_BODIES, ChartLocation
@@ -300,7 +301,7 @@ def _position_mapping(chart: Any) -> Mapping[str, Any] | None:
 def _extract_longitude(value: Any) -> float | None:
     if hasattr(value, "longitude"):
         try:
-            return float(getattr(value, "longitude")) % 360.0
+            return float(value.longitude) % 360.0
         except Exception:  # pragma: no cover - defensive
             return None
     if isinstance(value, Mapping):
@@ -405,8 +406,8 @@ def blend(weights: Sequence[DomainW], alphas: Sequence[float] | None = None) -> 
     if total_factor <= 0:
         factors = [1.0 for _ in filtered]
         total_factor = float(len(filtered))
-    mind = sum(w.Mind * f for w, f in zip(filtered, factors))
-    body = sum(w.Body * f for w, f in zip(filtered, factors))
-    spirit = sum(w.Spirit * f for w, f in zip(filtered, factors))
+    mind = sum(w.Mind * f for w, f in zip(filtered, factors, strict=False))
+    body = sum(w.Body * f for w, f in zip(filtered, factors, strict=False))
+    spirit = sum(w.Spirit * f for w, f in zip(filtered, factors, strict=False))
     blended = DomainW(mind / total_factor, body / total_factor, spirit / total_factor)
     return blended.normalized()

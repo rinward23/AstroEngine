@@ -15,14 +15,13 @@ only use values provided by the configured Swiss ephemeris adapter.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Sequence
-
-import swisseph as swe
 
 from ...chart import NatalChart
 from ...detectors.ingresses import ZODIAC_SIGNS, sign_index
 from ...ephemeris import BodyPosition, SwissEphemerisAdapter
+from ...ephemeris.swisseph_adapter import get_swisseph
 from .chart import VedicChartContext
 from .varga import navamsa_sign
 
@@ -260,7 +259,7 @@ def compute_chara_karakas(chart: NatalChart) -> tuple[CharaKaraka, ...]:
     )
 
     karakas: list[CharaKaraka] = []
-    for role, payload in zip(_CHARA_KARAKA_ROLES, ranked):
+    for role, payload in zip(_CHARA_KARAKA_ROLES, ranked, strict=False):
         name, position, deg_in_sign, sign_idx = payload
         karakas.append(
             CharaKaraka(
@@ -380,6 +379,12 @@ def _node_positions(
     nodes_variant: str,
 ) -> tuple[BodyPosition, BodyPosition]:
     node_name = "true_node" if nodes_variant == "true" else "mean_node"
+    try:
+        swe = get_swisseph()
+    except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency guard
+        raise RuntimeError(
+            "Swiss Ephemeris is required for karmic node calculations. Install astroengine[ephem]."
+        ) from exc
     rahu = adapter.body_position(
         julian_day,
         int(getattr(swe, "TRUE_NODE" if nodes_variant == "true" else "MEAN_NODE")),

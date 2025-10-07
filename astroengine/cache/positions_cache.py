@@ -1,15 +1,41 @@
 # >>> AUTO-GEN BEGIN: positions-cache v1.0
 from __future__ import annotations
 
+import logging
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from datetime import UTC, datetime
+from time import perf_counter
 
+import numpy as np
+
+from ..canonical import canonical_round, normalize_longitude, normalize_speed_per_day
+from ..core.time import julian_day
 from ..ephemeris import SwissEphemerisAdapter
+from ..ephemeris.swe import swe
 from ..infrastructure.home import ae_home
+from ..infrastructure.storage.sqlite import apply_default_pragmas
 
 CACHE_DIR = ae_home() / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 DB = CACHE_DIR / "positions.sqlite"
+
+_LOGGER = logging.getLogger(__name__)
+
+_BODY_CODES = {
+    "sun": "SUN",
+    "moon": "MOON",
+    "mercury": "MERCURY",
+    "venus": "VENUS",
+    "mars": "MARS",
+    "jupiter": "JUPITER",
+    "saturn": "SATURN",
+    "uranus": "URANUS",
+    "neptune": "NEPTUNE",
+    "pluto": "PLUTO",
+}
+
+_SUPPORTED_BODIES = set(_BODY_CODES)
 
 _SQL = {
     "init": """
@@ -21,8 +47,11 @@ CREATE TABLE IF NOT EXISTS positions_daily (
   speed REAL,
   PRIMARY KEY (day_jd, body)
 );
+CREATE INDEX IF NOT EXISTS ix_positions_daily_day_body
+  ON positions_daily(day_jd, body);
 """,
     "get": "SELECT lon FROM positions_daily WHERE day_jd=? AND body=?",
+    "get_full": "SELECT lon, lat, speed FROM positions_daily WHERE day_jd=? AND body=?",
     "upsert": (
         "INSERT OR REPLACE INTO positions_daily(day_jd, body, lon, lat, speed)"
         " VALUES (?,?,?,?,?)"
@@ -32,7 +61,9 @@ CREATE TABLE IF NOT EXISTS positions_daily (
 
 def _connect():
     con = sqlite3.connect(str(DB))
-    con.execute(_SQL["init"])
+    apply_default_pragmas(con)
+    con.executescript(_SQL["init"])
+    con.commit()
     return con
 
 
@@ -46,46 +77,62 @@ def _ensure_swiss_available() -> bool:
     return detectors_common._ensure_swiss()
 
 
-def get_lon_daily(jd_ut: float, body: str) -> float:
+def supported_body(body: str) -> bool:
+    return body.lower() in _SUPPORTED_BODIES
+
+
+def get_daily_entry(
+    jd_ut: float, body: str
+) -> tuple[float, float | None, float | None]:
+    normalized = body.lower()
     con = _connect()
     try:
-        cur = con.execute(_SQL["get"], (_day_jd(jd_ut), body.lower()))
+        cur = con.execute(_SQL["get_full"], (_day_jd(jd_ut), normalized))
         row = cur.fetchone()
         if row is not None:
-            return float(row[0])
+            lon, lat, speed = row
+            lon_f = normalize_longitude(float(lon))
+            lat_f = None if lat is None else canonical_round(float(lat))
+            speed_f = (
+                None
+                if speed is None
+                else normalize_speed_per_day(float(speed))
+            )
+            return lon_f, lat_f, speed_f
     finally:
         con.close()
-    # miss → compute and store
+
     if not _ensure_swiss_available():
         raise RuntimeError("Swiss ephemeris unavailable for cache compute")
-    import swisseph as swe  # type: ignore
-
-    code = {
-        "sun": swe.SUN,
-        "moon": swe.MOON,
-        "mercury": swe.MERCURY,
-        "venus": swe.VENUS,
-        "mars": swe.MARS,
-        "jupiter": swe.JUPITER,
-        "saturn": swe.SATURN,
-        "uranus": swe.URANUS,
-        "neptune": swe.NEPTUNE,
-        "pluto": swe.PLUTO,
-    }[body.lower()]
+    try:
+        code = int(getattr(swe, _BODY_CODES[normalized]))
+    except (KeyError, AttributeError) as exc:
+        raise ValueError(f"Unsupported body '{body}' for daily cache") from exc
     adapter = SwissEphemerisAdapter.get_default_adapter()
     sample = adapter.body_position(float(_day_jd(jd_ut)), code, body_name=body.title())
-    lon = float(sample.longitude)
-    lat = float(sample.latitude)
-    speed = float(sample.speed_longitude)
+    lon = normalize_longitude(float(sample.longitude))
+    lat = canonical_round(float(sample.latitude))
+    speed = normalize_speed_per_day(float(sample.speed_longitude))
     con = _connect()
     try:
         con.execute(
             _SQL["upsert"],
-            (_day_jd(jd_ut), body.lower(), float(lon), float(lat), float(speed)),
+            (
+                _day_jd(jd_ut),
+                normalized,
+                lon,
+                lat,
+                speed,
+            ),
         )
         con.commit()
     finally:
         con.close()
+    return lon, lat, speed
+
+
+def get_lon_daily(jd_ut: float, body: str) -> float:
+    lon, _, _ = get_daily_entry(jd_ut, body)
     return float(lon)
 
 
@@ -93,12 +140,75 @@ def warm_daily(bodies: Iterable[str], start_jd: float, end_jd: float) -> int:
     count = 0
     jd = int(start_jd)
     end = int(end_jd)
-    while jd <= end:
-        for b in bodies:
-            _ = get_lon_daily(jd, b)
+    if end < jd:
+        return 0
+
+    days = np.arange(jd, end + 1, dtype=np.int64)
+    cached_bodies = tuple(body.lower() for body in bodies)
+    for day in days:
+        day_jd = float(day)
+        for body in cached_bodies:
+            get_daily_entry(day_jd, body)
             count += 1
-        jd += 1
     return count
+
+
+_BOOTSTRAP_BODIES: tuple[str, ...] = ("sun", "moon", "mercury")
+_BOOTSTRAP_DAY_OFFSETS: tuple[int, ...] = (0, 1)
+
+
+def warm_startup_grid(
+    *,
+    max_duration_ms: float = 150.0,
+    bodies: Sequence[str] | None = None,
+    day_offsets: Sequence[int] | None = None,
+) -> int:
+    """Warm a small JD/body grid for cold starts within ``max_duration_ms``.
+
+    The helper focuses on the most frequently accessed luminaries so
+    subsequent requests can rely on cached Swiss Ephemeris results.  The
+    warm-up stops immediately when ``max_duration_ms`` is exceeded to
+    ensure startup remains bounded.
+    """
+
+    if max_duration_ms <= 0:
+        return 0
+
+    selected_bodies = tuple(
+        body.lower()
+        for body in (bodies or _BOOTSTRAP_BODIES)
+        if supported_body(body)
+    )
+    if not selected_bodies:
+        return 0
+
+    offsets = tuple(int(offset) for offset in (day_offsets or _BOOTSTRAP_DAY_OFFSETS))
+    if not offsets:
+        return 0
+
+    start = perf_counter()
+    warmed = 0
+
+    base_day = int(julian_day(datetime.now(tz=UTC)))
+
+    for offset in offsets:
+        for body in selected_bodies:
+            elapsed_ms = (perf_counter() - start) * 1000.0
+            if elapsed_ms >= max_duration_ms:
+                return warmed
+            day_jd = float(base_day + offset)
+            try:
+                get_daily_entry(day_jd, body)
+            except RuntimeError:
+                _LOGGER.debug("Startup warm skipped; Swiss ephemeris unavailable.")
+                return warmed
+            except Exception as exc:  # pragma: no cover - defensive guard
+                _LOGGER.warning(
+                    "Startup warm failed for %s @ JD %s: %s", body, day_jd, exc
+                )
+                return warmed
+            warmed += 1
+    return warmed
 
 
 # >>> AUTO-GEN END: positions-cache v1.0

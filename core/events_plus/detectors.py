@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Iterable, List, Sequence
+from typing import Any
 
-PositionProvider = Callable[[datetime], Dict[str, float]]
+PositionProvider = Callable[[datetime], dict[str, float]]
 
 
 @dataclass(slots=True)
@@ -15,7 +15,7 @@ class EventInterval:
     kind: str
     start: datetime
     end: datetime
-    meta: Dict[str, Any]
+    meta: dict[str, Any]
 
 
 @dataclass(slots=True)
@@ -27,7 +27,7 @@ class CombustCfg:
     under_beams_deg: float = 15.0
 
 
-_ASPECT_ANGLES: Dict[str, float] = {
+_ASPECT_ANGLES: dict[str, float] = {
     "conjunction": 0.0,
     "opposition": 180.0,
     "square": 90.0,
@@ -128,7 +128,7 @@ def _sample_range(window_start: datetime, window_end: datetime, step_minutes: in
     if step_minutes <= 0:
         raise ValueError("step_minutes must be positive")
     delta = timedelta(minutes=step_minutes)
-    samples: List[datetime] = [window_start]
+    samples: list[datetime] = [window_start]
     cursor = window_start
     while cursor < window_end:
         next_cursor = cursor + delta
@@ -203,11 +203,11 @@ def detect_voc_moon(
     window: Any,
     provider: PositionProvider,
     aspects: Iterable[str],
-    policy: Dict[str, Any] | None = None,
+    policy: dict[str, Any] | None = None,
     other_objects: Iterable[str] = (),
     *,
     step_minutes: int = 60,
-) -> List[EventInterval]:
+) -> list[EventInterval]:
     """Detect intervals where the Moon forms no aspects to the selected objects."""
 
     start = window.start
@@ -244,7 +244,7 @@ def detect_voc_moon(
 
     states = [_is_void(ts) for ts in samples]
 
-    intervals: List[EventInterval] = []
+    intervals: list[EventInterval] = []
     current_start: datetime | None = None
     current_ingress: datetime | None = None
     for idx, ts in enumerate(samples):
@@ -289,7 +289,7 @@ def detect_combust_cazimi(
     planet: str,
     cfg: CombustCfg | None = None,
     step_minutes: int = 10,
-) -> List[EventInterval]:
+) -> list[EventInterval]:
     """Detect cazimi / combust / under-beams intervals for a planet relative to the Sun."""
 
     if cfg is None:
@@ -316,7 +316,7 @@ def detect_combust_cazimi(
 
     states = [_state(ts) for ts in samples]
 
-    intervals: List[EventInterval] = []
+    intervals: list[EventInterval] = []
     current_kind: str | None = None
     current_start: datetime | None = None
 
@@ -357,21 +357,21 @@ def detect_returns(
     target_lon: float,
     step_minutes: int = 720,
     tol_seconds: float = 60.0,
-) -> List[EventInterval]:
+) -> list[EventInterval]:
     """Detect point events when a body returns to ``target_lon`` within ``window``."""
 
     start = window.start
     end = window.end
     samples = _sample_range(start, end, step_minutes)
 
-    events: List[EventInterval] = []
+    events: list[EventInterval] = []
     prev_ts: datetime | None = None
     prev_diff: float | None = None
 
     def _record_event(moment: datetime, *, include_orb: bool) -> None:
         if events and abs((moment - events[-1].start).total_seconds()) <= tol_seconds:
             return
-        meta: Dict[str, Any] = {"body": body, "target_lon": float(target_lon)}
+        meta: dict[str, Any] = {"body": body, "target_lon": float(target_lon)}
         if include_orb:
             meta["orb"] = 0.0
         events.append(

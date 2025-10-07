@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
 
 from .engine import Event
 
@@ -28,9 +28,9 @@ _ASPECT_SYMBOLS: dict[int, str] = {
 
 def _format_dt(moment: datetime) -> str:
     if moment.tzinfo is None:
-        value = moment.replace(tzinfo=timezone.utc)
+        value = moment.replace(tzinfo=UTC)
     else:
-        value = moment.astimezone(timezone.utc)
+        value = moment.astimezone(UTC)
     return value.strftime("%Y%m%dT%H%M%SZ")
 
 
@@ -51,7 +51,7 @@ def _event_summary(event: Event, chart_type: str) -> str:
 
 
 def _event_description(event: Event) -> str:
-    exact = event.exact_utc.astimezone(timezone.utc).isoformat().replace(
+    exact = event.exact_utc.astimezone(UTC).isoformat().replace(
         "+00:00", "Z"
     )
     fields = [

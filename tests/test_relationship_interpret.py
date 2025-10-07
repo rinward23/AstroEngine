@@ -1,6 +1,5 @@
 from core.interpret_plus.engine import interpret
 
-
 PACK = {
     "rulepack": "test-pack",
     "version": "1",

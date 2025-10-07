@@ -1,11 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+import pytest
+
+pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `pip install -e .[ephem,providers]`.",
+)
+
+from astroengine.core.time import to_tt
 from astroengine.engine.returns import AttachOptions, GeoLoc, NatalCtx, ScanOptions, scan_returns
 from astroengine.engine.returns._codes import resolve_body_code
 from astroengine.ephemeris import EphemerisAdapter
-from astroengine.core.time import to_tt
 
 
 def _wrap(delta: float) -> float:
@@ -14,7 +21,7 @@ def _wrap(delta: float) -> float:
 
 def test_lunar_return_scan_counts() -> None:
     adapter = EphemerisAdapter()
-    natal_dt = datetime(1995, 3, 20, 8, 15, tzinfo=timezone.utc)
+    natal_dt = datetime(1995, 3, 20, 8, 15, tzinfo=UTC)
     moon_code = resolve_body_code("Moon").code
     natal_conv = to_tt(natal_dt)
     natal_moon = adapter.sample(moon_code, natal_conv).longitude % 360.0
@@ -26,8 +33,8 @@ def test_lunar_return_scan_counts() -> None:
         location=location,
     )
 
-    start = datetime(2024, 1, 1, tzinfo=timezone.utc)
-    end = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    start = datetime(2024, 1, 1, tzinfo=UTC)
+    end = datetime(2025, 1, 1, tzinfo=UTC)
 
     options = ScanOptions(location=location, attach=AttachOptions(transiting_aspects=False))
     hits = scan_returns(adapter, ["Moon"], start, end, natal_ctx, options)

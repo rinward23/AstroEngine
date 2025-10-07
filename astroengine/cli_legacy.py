@@ -15,6 +15,21 @@ from typing import Any
 
 from . import engine as engine_module
 from .app_api import canonicalize_events, run_scan_or_raise
+from .cli.channels.transit.common import (
+    DEFAULT_MOVING_BODIES,
+    canonical_events_to_dicts,
+    format_event_table,
+    normalize_detectors,
+    resolve_targets_cli,
+    serialize_events_to_json,
+    set_engine_detector_flags,
+)
+from .cli.channels.transit.exports import (
+    add_canonical_export_args,
+    export_canonical_datasets,
+    write_parquet_canonical,
+    write_sqlite_canonical,
+)
 from .astro.declination import available_antiscia_axes
 from .cache.positions_cache import warm_daily
 from .chart import ChartLocation, NatalChart, compute_natal_chart
@@ -23,7 +38,6 @@ from .chart.config import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     HOUSE_SYSTEM_CHOICES,
     SUPPORTED_AYANAMSHAS,
-    VALID_HOUSE_SYSTEMS,
     VALID_LILITH_VARIANTS,
     VALID_NODE_VARIANTS,
     VALID_ZODIAC_SYSTEMS,
@@ -43,7 +57,7 @@ from .detectors.directed_aspects import solar_arc_natal_aspects
 from .detectors.progressed_aspects import progressed_natal_aspects
 from .detectors.common import enable_cache, iso_to_jd
 from .detectors.ingress import find_ingresses
-from .engine import TargetFrameResolver, events_to_dicts, scan_contacts
+from .engine import TargetFrameResolver, scan_contacts
 from .ephemeris import (
     EphemerisConfig,
     ObserverLocation,
@@ -60,6 +74,7 @@ from .exporters_ics import (
     write_ics_calendar,
     write_ics_canonical,
 )
+from .infrastructure.storage.sqlite import apply_default_pragmas
 from .infrastructure.storage.sqlite.query import top_events_by_score
 from .mundane import compute_solar_ingress_chart, compute_solar_quartet
 from .narrative import compose_narrative, summarize_top_events
@@ -69,7 +84,7 @@ from .pipeline.provision import (
     is_provisioned,
     provision_ephemeris,
 )
-from .plugins import ExportContext, get_plugin_manager
+from .plugins import get_plugin_manager
 from .providers import list_providers
 from .timelords import TimelordCalculator, active_timelords
 from .timelords.context import build_context
@@ -84,11 +99,8 @@ from .userdata.vault import (
 )
 from .utils import (
     DEFAULT_TARGET_FRAMES,
-    DEFAULT_TARGET_SELECTION,
     DETECTOR_NAMES,
-    ENGINE_FLAG_MAP,
     available_frames,
-    expand_targets,
 )
 from .ux.maps import astrocartography_lines, local_space_vectors
 from .ux.plugins import setup_cli as setup_plugins
@@ -281,6 +293,7 @@ def cmd_cache_info(_: argparse.Namespace) -> int:
         size = POSITIONS_DB.stat().st_size
         row_count = 0
         con = sqlite3.connect(str(POSITIONS_DB))
+        apply_default_pragmas(con)
         try:
             cur = con.execute("SELECT COUNT(*) FROM positions_daily")
             row = cur.fetchone()
@@ -825,33 +838,11 @@ def _handle_mundane(args: argparse.Namespace):
 def _cli_export(args: argparse.Namespace, events: Sequence[Any]) -> dict[str, int]:
     """Standardized export helper accepting canonical or legacy events."""
 
-    written: dict[str, int] = {}
-    if getattr(args, "sqlite", None):
-        written["sqlite"] = _write_sqlite_canonical(args.sqlite, events)
-    if getattr(args, "parquet", None):
-        written["parquet"] = _write_parquet_canonical(args.parquet, events)
-    runtime = get_plugin_manager()
-    runtime.post_export(
-        ExportContext(
-            destinations=dict(written),
-            events=tuple(events),
-            arguments=dict(vars(args)),
-        )
-    )
-
-    return written
+    return export_canonical_datasets(args, events)
 
 
-def _write_sqlite_canonical(path: str, events: Sequence[Any]) -> int:
-    from .exporters import write_sqlite_canonical as _impl
-
-    return _impl(path, events)
-
-
-def _write_parquet_canonical(path: str, events: Sequence[Any]) -> int:
-    from .exporters import write_parquet_canonical as _impl
-
-    return _impl(path, events)
+_write_sqlite_canonical = write_sqlite_canonical
+_write_parquet_canonical = write_parquet_canonical
 
 
 _ASPECT_NAME_BY_DEG = {
@@ -979,7 +970,7 @@ def _hits_to_canonical_events(
     events: list[dict[str, Any]] = []
     natal_copy = dict(natal_meta) if natal_meta else None
     for hit in hits:
-        aspect_name = _canonical_aspect_name(float(getattr(hit, "angle_deg")))
+        aspect_name = _canonical_aspect_name(float(hit.angle_deg))
         state = getattr(hit, "applying_or_separating", "")
         applying = state == "applying"
         meta: dict[str, Any] = {
@@ -1004,9 +995,9 @@ def _hits_to_canonical_events(
             meta["natal"] = natal_copy
         events.append(
             {
-                "ts": getattr(hit, "when_iso"),
-                "moving": f"{prefix}_{getattr(hit, 'moving')}",
-                "target": f"natal_{getattr(hit, 'target')}",
+                "ts": hit.when_iso,
+                "moving": f"{prefix}_{hit.moving}",
+                "target": f"natal_{hit.target}",
                 "aspect": aspect_name,
                 "orb": float(getattr(hit, "offset_deg", 0.0)),
                 "applying": applying,
@@ -1242,143 +1233,11 @@ def _augment_parser_with_features(p: argparse.ArgumentParser) -> None:
 # >>> AUTO-GEN END: cli-new-detector-flags v1.0
 
 
-DEFAULT_MOVING_BODIES = ["Sun", "Mars", "Jupiter"]
-
-
-def _normalize_detectors(values: Iterable[str] | None) -> list[str]:
-    if not values:
-        return []
-    selected: set[str] = set()
-    for item in values:
-        if not item:
-            continue
-        raw = str(item)
-        for token in raw.replace(",", " ").split():
-            key = token.strip().lower()
-            if not key:
-                continue
-            if key == "all":
-                return sorted(DETECTOR_NAMES)
-            if key in DETECTOR_NAMES:
-                selected.add(key)
-    return sorted(selected)
-
-
-def _set_engine_detector_flags(detectors: Iterable[str]) -> None:
-    active = {name.lower() for name in detectors}
-    for name, attr in ENGINE_FLAG_MAP.items():
-        setattr(engine_module, attr, name in active)
-
-
-def _event_summary(event: Any) -> dict[str, Any]:
-    if isinstance(event, dict):
-        data = event
-    elif is_dataclass(event):
-        data = asdict(event)
-    elif hasattr(event, "model_dump"):
-        try:
-            dumped = event.model_dump()
-        except Exception:  # pragma: no cover - defensive
-            dumped = None
-        data = dumped if isinstance(dumped, dict) else {}
-    elif hasattr(event, "__dict__"):
-        data = dict(vars(event))
-    else:
-        data = {}
-    ts = data.get("ts") or data.get("timestamp") or data.get("when_iso")
-    moving = data.get("moving") or data.get("body")
-    aspect = data.get("aspect") or data.get("kind")
-    target = data.get("target") or data.get("natal")
-    orb = data.get("orb")
-    if orb is None:
-        orb = data.get("orb_abs")
-    score = data.get("score") or data.get("severity")
-    return {
-        "ts": ts,
-        "moving": moving,
-        "aspect": aspect,
-        "target": target,
-        "orb": orb,
-        "score": score,
-    }
-
-
-def _format_event_table(events: Iterable[Any]) -> str:
-    rows = []
-    for event in events:
-        summary = _event_summary(event)
-        if not summary.get("ts"):
-            continue
-        rows.append(summary)
-    rows.sort(key=lambda item: str(item.get("ts")))
-    if not rows:
-        return ""
-    headers = ["Timestamp", "Moving", "Aspect", "Target", "Orb", "Score"]
-    table_rows: list[list[str]] = []
-    for row in rows:
-        orb = row.get("orb")
-        score = row.get("score")
-        table_rows.append(
-            [
-                str(row.get("ts", "")),
-                str(row.get("moving", "")),
-                str(row.get("aspect", "")),
-                str(row.get("target", "")),
-                "" if orb is None else f"{float(orb):+0.2f}",
-                "" if score is None else f"{float(score):0.2f}",
-            ]
-        )
-    widths = [len(h) for h in headers]
-    for row in table_rows:
-        for idx, value in enumerate(row):
-            widths[idx] = max(widths[idx], len(value))
-    header_line = " | ".join(h.ljust(widths[idx]) for idx, h in enumerate(headers))
-    divider = "-+-".join("-" * widths[idx] for idx in range(len(headers)))
-    body_lines = [
-        " | ".join(value.ljust(widths[idx]) for idx, value in enumerate(row))
-        for row in table_rows
-    ]
-    return "\n".join([header_line, divider, *body_lines])
-
-
-def _canonical_events_to_dicts(events: Iterable[Any]) -> list[dict[str, Any]]:
-    payload: list[dict[str, Any]] = []
-    for event in events:
-        if isinstance(event, dict):
-            payload.append(dict(event))
-            continue
-        if is_dataclass(event):
-            payload.append(asdict(event))
-            continue
-        if hasattr(event, "model_dump"):
-            try:
-                dumped = event.model_dump()
-            except Exception:  # pragma: no cover - defensive
-                dumped = None
-            if isinstance(dumped, dict):
-                payload.append(dumped)
-                continue
-        if hasattr(event, "__dict__"):
-            payload.append(dict(vars(event)))
-            continue
-        payload.append({"value": repr(event)})
-    return payload
-
-
-def _resolve_targets_cli(
-    raw_targets: Iterable[str] | None,
-    frames: Iterable[str] | None,
-) -> list[str]:
-    cleaned = [token.strip() for token in (raw_targets or []) if token]
-    if not cleaned:
-        return expand_targets(frames or DEFAULT_TARGET_FRAMES, DEFAULT_TARGET_SELECTION)
-    return expand_targets(frames or DEFAULT_TARGET_FRAMES, cleaned)
-
-
-def serialize_events_to_json(events: Iterable) -> str:
-    """Serialize events into a pretty-printed JSON string."""
-
-    return json.dumps(events_to_dicts(events), indent=2)
+_normalize_detectors = normalize_detectors
+_set_engine_detector_flags = set_engine_detector_flags
+_canonical_events_to_dicts = canonical_events_to_dicts
+_format_event_table = format_event_table
+_resolve_targets_cli = resolve_targets_cli
 
 
 def cmd_experimental(args: argparse.Namespace) -> int:
@@ -1528,7 +1387,7 @@ def cmd_transits(args: argparse.Namespace) -> int:
                 "target_longitude": args.target_longitude,
                 "target_frame": args.target_frame,
             },
-            "events": events_to_dicts(events),
+            "events": _canonical_events_to_dicts(events),
         }
         if narrative_bundle is not None:
             payload["narrative"] = narrative_bundle.to_dict()

@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Iterable, List, Sequence, Tuple
 
 
 @dataclass
@@ -37,8 +37,8 @@ class LogisticRegressionResult:
     intercept: float
 
 
-def align_samples(notes: Sequence[NoteSample], events: Sequence[EventSample], window: timedelta) -> List[Tuple[NoteSample, EventSample]]:
-    pairs: List[Tuple[NoteSample, EventSample]] = []
+def align_samples(notes: Sequence[NoteSample], events: Sequence[EventSample], window: timedelta) -> list[tuple[NoteSample, EventSample]]:
+    pairs: list[tuple[NoteSample, EventSample]] = []
     for note in notes:
         for event in events:
             if abs((event.timestamp - note.timestamp).total_seconds()) <= window.total_seconds():
@@ -46,11 +46,11 @@ def align_samples(notes: Sequence[NoteSample], events: Sequence[EventSample], wi
     return pairs
 
 
-def point_biserial(pairs: Sequence[Tuple[NoteSample, EventSample]]) -> List[CorrelationSummary]:
-    buckets: dict[str, List[Tuple[float, float]]] = {}
+def point_biserial(pairs: Sequence[tuple[NoteSample, EventSample]]) -> list[CorrelationSummary]:
+    buckets: dict[str, list[tuple[float, float]]] = {}
     for note, event in pairs:
         buckets.setdefault(event.family, []).append((note.sentiment, event.feature))
-    summaries: List[CorrelationSummary] = []
+    summaries: list[CorrelationSummary] = []
     for family, samples in buckets.items():
         sentiments = [sentiment for sentiment, _ in samples]
         features = [feature for _, feature in samples]
@@ -59,7 +59,7 @@ def point_biserial(pairs: Sequence[Tuple[NoteSample, EventSample]]) -> List[Corr
     return summaries
 
 
-def logistic_regression(pairs: Sequence[Tuple[NoteSample, EventSample]], lr: float = 0.1, epochs: int = 120) -> List[LogisticRegressionResult]:
+def logistic_regression(pairs: Sequence[tuple[NoteSample, EventSample]], lr: float = 0.1, epochs: int = 120) -> list[LogisticRegressionResult]:
     weights: dict[str, float] = {}
     intercept = 0.0
     for _ in range(epochs):
@@ -81,7 +81,7 @@ def _pearson(xs: Sequence[float], ys: Sequence[float]) -> float:
         return 0.0
     mean_x = sum(xs) / len(xs)
     mean_y = sum(ys) / len(ys)
-    num = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys))
+    num = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys, strict=False))
     den_x = math.sqrt(sum((x - mean_x) ** 2 for x in xs))
     den_y = math.sqrt(sum((y - mean_y) ** 2 for y in ys))
     if den_x == 0 or den_y == 0:

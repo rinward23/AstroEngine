@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from astroengine.core.aspects_plus.scan import TimeWindow, scan_pair_time_range
 from tests.fixtures_ephemeris import (
@@ -15,7 +15,7 @@ POLICY = {
 
 
 def test_wraparound_sextile_detection():
-    t0 = datetime(2025, 1, 1, 23, 50, tzinfo=timezone.utc)
+    t0 = datetime(2025, 1, 1, 23, 50, tzinfo=UTC)
     eph = LinearEphemeris(
         t0,
         base={"Mars": 350.0, "Venus": 290.0},
@@ -27,7 +27,7 @@ def test_wraparound_sextile_detection():
 
 
 def test_retrograde_loop_trine_detection():
-    t0 = datetime(2025, 2, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 2, 1, tzinfo=UTC)
     t_mid = t0 + timedelta(days=10)
     eph = LoopRetrogradeEphemeris(
         t0=t0,
@@ -50,7 +50,7 @@ def test_retrograde_loop_trine_detection():
 
 
 def test_converging_conjunction_near_cazimi_window():
-    t0 = datetime(2025, 3, 1, tzinfo=timezone.utc)
+    t0 = datetime(2025, 3, 1, tzinfo=UTC)
     eph = ConvergingConjunctionEphemeris(
         t0=t0,
         sun_lon=0.0,

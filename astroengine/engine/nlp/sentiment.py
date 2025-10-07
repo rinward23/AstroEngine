@@ -1,8 +1,8 @@
 """Lightweight sentiment and topic classification wrappers."""
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Callable, Iterable, Optional
 
 POSITIVE_TOKENS = {
     "love",
@@ -42,7 +42,7 @@ class SentimentBackend:
 class RuleBasedSentimentBackend(SentimentBackend):
     """Very small keyword based sentiment classifier."""
 
-    def __init__(self, positive_tokens: Optional[Iterable[str]] = None, negative_tokens: Optional[Iterable[str]] = None) -> None:
+    def __init__(self, positive_tokens: Iterable[str] | None = None, negative_tokens: Iterable[str] | None = None) -> None:
         self.positive_tokens = set(token.lower() for token in (positive_tokens or POSITIVE_TOKENS))
         self.negative_tokens = set(token.lower() for token in (negative_tokens or NEGATIVE_TOKENS))
 
@@ -64,7 +64,7 @@ class RuleBasedSentimentBackend(SentimentBackend):
 class TransformerSentimentBackend(SentimentBackend):
     """Proxy backend that allows swapping in a transformer model later."""
 
-    def __init__(self, fallback: Optional[SentimentBackend] = None, calibrate: Optional[Callable[[float], float]] = None) -> None:
+    def __init__(self, fallback: SentimentBackend | None = None, calibrate: Callable[[float], float] | None = None) -> None:
         self.fallback = fallback or RuleBasedSentimentBackend()
         self.calibrate = calibrate or (lambda score: min(max(score, 0.0), 1.0))
 
@@ -74,6 +74,6 @@ class TransformerSentimentBackend(SentimentBackend):
         return SentimentResult(label=result.label, confidence=adjusted, backend="transformer")
 
 
-def classify_sentiment(text: str, backend: Optional[SentimentBackend] = None) -> SentimentResult:
+def classify_sentiment(text: str, backend: SentimentBackend | None = None) -> SentimentResult:
     backend = backend or RuleBasedSentimentBackend()
     return backend.classify(text)

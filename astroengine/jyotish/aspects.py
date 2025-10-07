@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
-from collections.abc import Mapping
-
-from ..ephemeris import BodyPosition, HousePositions
 from ..detectors.ingresses import sign_index, sign_name
+from ..ephemeris import BodyPosition, HousePositions
 from .data import (
     PLANETARY_WAR_BRIGHTNESS,
     PLANETARY_WAR_PARTICIPANTS,

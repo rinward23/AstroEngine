@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 
 
 def _install_hypothesis_patch() -> None:
@@ -42,7 +43,7 @@ def _install_hypothesis_patch() -> None:
     except Exception:  # pragma: no cover - internal layout may change
         pass
     else:
-        setattr(_dt_mod, "datetimes", _patched_datetimes)
+        _dt_mod.datetimes = _patched_datetimes
     _st._astroengine_datetimes_patched = True
 
 

@@ -4,6 +4,8 @@ AstroEngine Diagnostics ("doctor"):
 - Verifies Python version, core imports, optional deps, timezone libs
 - Checks Swiss Ephemeris (pyswisseph) presence and SE_EPHE_PATH contents (if set)
 - Confirms public API types import cleanly
+- Pings the configured database and validates Alembic migration state
+- Reports cache footprint, disk free capacity, and Swiss ephemeris path sanity
 - Optional smoketest against Swiss Ephemeris (Sun..Saturn) if available
 - Outputs human text or JSON; returns non-zero exit on FAIL (and WARN if --strict)
 
@@ -21,13 +23,27 @@ import json
 import os
 import pathlib
 import platform
+import shutil
 import sys
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import UTC
 from typing import Any
 
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.pool import NullPool
+
 from astroengine.ephemeris import EphemerisAdapter
 from astroengine.ephemeris.swisseph_adapter import swe_calc
+from astroengine.ephemeris.utils import DEFAULT_ENV_KEYS, get_se_ephe_path
+from astroengine.infrastructure.home import ae_home
+from astroengine.infrastructure.paths import project_root
+from astroengine.utils.dependencies import DependencySpec, inspect_dependencies
 
 
 @dataclass
@@ -122,32 +138,98 @@ def check_core_imports() -> list[Check]:
     return out
 
 
+_DEPENDENCY_SPECS: tuple[DependencySpec, ...] = (
+    DependencySpec("numpy>=1.26", min_version="1.26"),
+    DependencySpec("pandas>=2.2", min_version="2.2"),
+    DependencySpec(
+        "pyarrow>=16",
+        min_version="16",
+        required=False,
+        note="Arrow exports and Parquet ingestion",
+    ),
+    DependencySpec("duckdb>=0.10", min_version="0.10"),
+    DependencySpec("SQLAlchemy>=2.0", import_name="sqlalchemy", min_version="2.0"),
+    DependencySpec("alembic>=1.13", min_version="1.13"),
+    DependencySpec("orjson>=3.10", min_version="3.10"),
+    DependencySpec("fastapi>=0.117", min_version="0.117"),
+    DependencySpec("httpx>=0.28", min_version="0.28"),
+    DependencySpec("jinja2>=3.1", min_version="3.1"),
+    DependencySpec("pydantic>=2.7", min_version="2.7"),
+    DependencySpec(
+        "PyYAML>=6.0",
+        import_name="yaml",
+        min_version="6.0",
+        required=False,
+        note="YAML profiles & rule ingestion",
+    ),
+    DependencySpec(
+        "astropy>=5.0",
+        min_version="5.0",
+        required=False,
+        note="Solar Fire catalogue crosswalks",
+    ),
+    DependencySpec(
+        "numba>=0.58",
+        min_version="0.58",
+        required=False,
+        note="Accelerates ephemeris transforms",
+    ),
+    DependencySpec(
+        "skyfield>=1.49",
+        min_version="1.49",
+        required=False,
+        note="Satellite & mundane overlays",
+    ),
+    DependencySpec(
+        "swisseph",
+        import_name="swisseph",
+        required=False,
+        note="Swiss ephemeris extension (see dedicated checks for ephe path)",
+    ),
+)
+
+
 def check_optional_deps() -> list[Check]:
-    names = ["numpy", "pandas", "pyarrow"]
+    statuses = inspect_dependencies(_DEPENDENCY_SPECS)
     out: list[Check] = []
-    for n in names:
-        ok, m, err = _try_import(n)
+    for status in statuses:
+        name = f"Dependency {status.spec.distribution()}"
         out.append(
             Check(
-                name=f"Optional {n}",
-                status="PASS" if ok else "WARN",
-                detail=f"{'found' if ok else 'not installed'}",
-                data={
-                    "version": getattr(m, "__version__", None),
-                    "error": None if ok else err,
-                },
+                name=name,
+                status=status.status,
+                detail=status.detail,
+                data=status.data(),
             )
         )
     # sqlite3 is stdlib, but verify load
     try:
         import sqlite3  # noqa: F401
 
-        out.append(Check(name="sqlite3", status="PASS", detail="available (stdlib)"))
+        out.append(Check(name="Dependency sqlite3", status="PASS", detail="available (stdlib)"))
     except Exception as e:  # pragma: no cover - defensive surface only
         out.append(
-            Check(name="sqlite3", status="FAIL", detail=f"sqlite3 unavailable: {e}")
+            Check(
+                name="Dependency sqlite3",
+                status="FAIL",
+                detail=f"sqlite3 unavailable: {e}",
+            )
         )
     return out
+
+
+def _format_bytes(num_bytes: int) -> str:
+    if num_bytes <= 0:
+        return "0 B"
+    units: tuple[str, ...] = ("B", "KB", "MB", "GB", "TB", "PB")
+    value = float(num_bytes)
+    for unit in units:
+        if value < 1024 or unit == units[-1]:
+            if unit == "B":
+                return f"{int(value)} {unit}"
+            return f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{value:.1f} PB"
 
 
 def check_timezone_libs() -> list[Check]:
@@ -241,6 +323,50 @@ def check_swisseph() -> list[Check]:
     return out
 
 
+def check_ephemeris_path_sanity() -> Check:
+    env_bindings = {
+        key: os.environ.get(key)
+        for key in DEFAULT_ENV_KEYS
+        if os.environ.get(key)
+    }
+    resolved = get_se_ephe_path()
+    data: dict[str, Any] = {"env": env_bindings, "resolved": resolved}
+    if not resolved:
+        return Check(
+            name="Ephemeris path",
+            status="WARN",
+            detail="no Swiss ephemeris path resolved; using built-in fallbacks",
+            data=data,
+        )
+
+    path = pathlib.Path(resolved)
+    data["path"] = str(path)
+    if not path.exists():
+        return Check(
+            name="Ephemeris path",
+            status="FAIL",
+            detail=f"resolved path missing: {path}",
+            data=data,
+        )
+
+    swiss_files = list(path.glob("*.se*"))
+    data["files"] = len(swiss_files)
+    if swiss_files:
+        data["examples"] = [f.name for f in swiss_files[:5]]
+        return Check(
+            name="Ephemeris path",
+            status="PASS",
+            detail=f"{path} ({len(swiss_files)} Swiss ephemeris file(s))",
+            data=data,
+        )
+    return Check(
+        name="Ephemeris path",
+        status="WARN",
+        detail=f"{path} present but no Swiss ephemeris files detected",
+        data=data,
+    )
+
+
 def check_ephemeris_config() -> Check:
     try:
         adapter = EphemerisAdapter()
@@ -262,6 +388,220 @@ def check_ephemeris_config() -> Check:
         status="PASS",
         detail=detail,
         data=summary,
+    )
+
+
+def _resolve_database_url(explicit: str | None = None) -> str:
+    if explicit:
+        return explicit
+    return os.environ.get("DATABASE_URL", "sqlite:///./dev.db")
+
+
+def _mask_database_url(url: str) -> str:
+    try:
+        return make_url(url).render_as_string(hide_password=True)
+    except Exception:  # pragma: no cover - defensive for unparsable URLs
+        return url
+
+
+def check_database_ping(url: str | None = None) -> Check:
+    database_url = _resolve_database_url(url)
+    safe_url = _mask_database_url(database_url)
+    try:
+        engine = create_engine(database_url, future=True, poolclass=NullPool)
+    except Exception as exc:  # pragma: no cover - configuration surface only
+        return Check(
+            name="Database ping",
+            status="FAIL",
+            detail=f"engine creation failed: {exc}",
+            data={"url": safe_url},
+        )
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return Check(
+            name="Database ping",
+            status="PASS",
+            detail=f"connected to {safe_url}",
+            data={"url": safe_url},
+        )
+    except SQLAlchemyError as exc:
+        return Check(
+            name="Database ping",
+            status="FAIL",
+            detail=f"connection failed: {exc}",
+            data={"url": safe_url},
+        )
+    finally:
+        engine.dispose()
+
+
+def _alembic_config(database_url: str) -> Config | None:
+    ini_path = project_root() / "alembic.ini"
+    if not ini_path.exists():
+        return None
+    cfg = Config(str(ini_path))
+    cfg.set_main_option("sqlalchemy.url", database_url)
+    return cfg
+
+
+def check_migrations_current(url: str | None = None) -> Check:
+    database_url = _resolve_database_url(url)
+    safe_url = _mask_database_url(database_url)
+    cfg = _alembic_config(database_url)
+    if cfg is None:
+        return Check(
+            name="Migrations",
+            status="WARN",
+            detail="alembic.ini not found; cannot verify migration state",
+            data={"url": safe_url},
+        )
+
+    script = ScriptDirectory.from_config(cfg)
+    heads = list(script.get_heads())
+    head = script.get_current_head()
+    try:
+        engine = create_engine(database_url, future=True, poolclass=NullPool)
+    except Exception as exc:  # pragma: no cover - configuration surface only
+        return Check(
+            name="Migrations",
+            status="FAIL",
+            detail=f"engine creation failed: {exc}",
+            data={"url": safe_url, "heads": heads},
+        )
+
+    try:
+        with engine.connect() as conn:
+            context = MigrationContext.configure(conn)
+            current = context.get_current_revision()
+    except Exception as exc:
+        return Check(
+            name="Migrations",
+            status="FAIL",
+            detail=f"unable to inspect revision: {exc}",
+            data={"url": safe_url, "heads": heads},
+        )
+    finally:
+        engine.dispose()
+
+    data = {"url": safe_url, "current": current, "head": head, "heads": heads}
+    if not heads:
+        return Check(
+            name="Migrations",
+            status="WARN",
+            detail="no Alembic heads found in migrations directory",
+            data=data,
+        )
+    if current is None:
+        return Check(
+            name="Migrations",
+            status="WARN",
+            detail=f"database not stamped; latest head {head}",
+            data=data,
+        )
+    if current not in heads:
+        return Check(
+            name="Migrations",
+            status="FAIL",
+            detail=f"database at {current}; expected {head}",
+            data=data,
+        )
+    return Check(
+        name="Migrations",
+        status="PASS",
+        detail=f"database revision {current} matches head {head}",
+        data=data,
+    )
+
+
+def _cache_directory() -> pathlib.Path:
+    return ae_home() / "cache"
+
+
+def check_cache_sizes() -> Check:
+    cache_dir = _cache_directory()
+    if not cache_dir.exists():
+        return Check(
+            name="Cache usage",
+            status="PASS",
+            detail="cache directory not initialised",
+            data={"path": str(cache_dir), "files": 0, "total_bytes": 0},
+        )
+
+    total = 0
+    file_entries: list[tuple[str, int]] = []
+    for path in cache_dir.rglob("*"):
+        if path.is_file():
+            size = path.stat().st_size
+            total += size
+            file_entries.append((str(path.relative_to(cache_dir)), size))
+
+    file_entries.sort(key=lambda item: item[1], reverse=True)
+    top_entries = file_entries[:5]
+    detail = (
+        f"{_format_bytes(total)} across {len(file_entries)} file(s) under {cache_dir}"
+    )
+    data = {
+        "path": str(cache_dir),
+        "files": len(file_entries),
+        "total_bytes": total,
+        "top": top_entries,
+    }
+    return Check(name="Cache usage", status="PASS", detail=detail, data=data)
+
+
+def check_disk_free(path: pathlib.Path | None = None) -> Check:
+    target = path or ae_home()
+    target.mkdir(parents=True, exist_ok=True)
+    usage = shutil.disk_usage(target)
+    free = usage.free
+    used_pct = (usage.used / usage.total * 100) if usage.total else 0.0
+    threshold = 512 * 1024 * 1024  # 512 MiB
+    status = "PASS" if free >= threshold else "WARN"
+    detail = (
+        f"{_format_bytes(free)} free ({used_pct:.1f}% used) on volume hosting {target}"
+    )
+    data = {
+        "path": str(target),
+        "total_bytes": usage.total,
+        "used_bytes": usage.used,
+        "free_bytes": free,
+        "threshold_bytes": threshold,
+    }
+    return Check(name="Disk space", status=status, detail=detail, data=data)
+
+
+def _trim_probe_rows(rows: Iterable[dict[str, Any]], limit: int = 5) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for idx, row in enumerate(rows):
+        if idx >= limit:
+            break
+        out.append(row)
+    return out
+
+
+def check_swiss_probes(iso_utc: str = "2025-01-01T00:00:00Z") -> Check:
+    rows = smoketest_positions(iso_utc)
+    sample = _trim_probe_rows(rows)
+    errors = [r for r in rows if r.get("body") == "ERROR"]
+    successes = [r for r in rows if "lon_deg" in r]
+    infos = [r for r in rows if r.get("body") == "INFO"]
+    data = {"timestamp": iso_utc, "sample": sample}
+    if errors:
+        detail = errors[0].get("detail", "Swiss probe failed")
+        return Check(name="Swiss probes", status="FAIL", detail=detail, data=data)
+    if successes:
+        detail = f"computed {len(successes)} Swiss ephemeris position(s)"
+        return Check(name="Swiss probes", status="PASS", detail=detail, data=data)
+    if infos:
+        detail = infos[0].get("detail", "Swiss ephemeris unavailable")
+        return Check(name="Swiss probes", status="WARN", detail=detail, data=data)
+    return Check(
+        name="Swiss probes",
+        status="WARN",
+        detail="no Swiss ephemeris data returned",
+        data=data,
     )
 
 
@@ -299,7 +639,13 @@ def collect_diagnostics(strict: bool = False) -> dict[str, Any]:
     checks.extend(check_optional_deps())
     checks.extend(check_timezone_libs())
     checks.extend(check_swisseph())
+    checks.append(check_ephemeris_path_sanity())
     checks.append(check_ephemeris_config())
+    checks.append(check_database_ping())
+    checks.append(check_migrations_current())
+    checks.append(check_cache_sizes())
+    checks.append(check_disk_free())
+    checks.append(check_swiss_probes())
     checks.append(check_profiles_presence())
     # summarize
     worst = max((c.status for c in checks), key=_status_order, default="PASS")
@@ -354,17 +700,17 @@ def smoketest_positions(iso_utc: str = "2025-01-01T00:00:00Z") -> list[dict[str,
     try:
         ephe = os.environ.get("SE_EPHE_PATH", "")
         if ephe:
-            swe.set_ephe_path(ephe)
+            swe().set_ephe_path(ephe)
         y, m, d, ut = _parse_iso_utc(iso_utc)
-        jd = swe.julday(y, m, d, ut)  # UT
+        jd = swe().julday(y, m, d, ut)  # UT
         ids = [
-            ("Sun", swe.SUN),
-            ("Moon", swe.MOON),
-            ("Mercury", swe.MERCURY),
-            ("Venus", swe.VENUS),
-            ("Mars", swe.MARS),
-            ("Jupiter", swe.JUPITER),
-            ("Saturn", swe.SATURN),
+            ("Sun", swe().SUN),
+            ("Moon", swe().MOON),
+            ("Mercury", swe().MERCURY),
+            ("Venus", swe().VENUS),
+            ("Mars", swe().MARS),
+            ("Jupiter", swe().JUPITER),
+            ("Saturn", swe().SATURN),
         ]
         out: list[dict[str, Any]] = []
         for name, pid in ids:

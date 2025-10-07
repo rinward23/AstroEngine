@@ -2,23 +2,29 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
-from typing import Tuple
 
-try:  # pragma: no cover - optional dependency in some environments
-    import swisseph as swe
-except Exception:  # pragma: no cover
-    swe = None
+logger = logging.getLogger(__name__)
+
+from astroengine.ephemeris.swe import has_swe, swe
+
+if not has_swe():  # pragma: no cover - optional dependency in some environments
+    logger.info(
+        "pyswisseph not installed",
+        extra={"err_code": "SWISSEPH_IMPORT"},
+        exc_info=True,
+    )
 
 from ..core.bodies import canonical_name
-from ..ephemeris.swisseph_adapter import swe_calc
+from ..ephemeris.cache import calc_ut_cached
 
-SE_SUN = getattr(swe, "SUN", 0) if swe else 0
-SE_MOON = getattr(swe, "MOON", 1) if swe else 1
-SE_MEAN_NODE = getattr(swe, "MEAN_NODE", 10) if swe else 10
-SE_TRUE_NODE = getattr(swe, "TRUE_NODE", 11) if swe else 11
-SE_MEAN_APOG = getattr(swe, "MEAN_APOG", 12) if swe else 12
-SE_OSCU_APOG = getattr(swe, "OSCU_APOG", 13) if swe else 13
+SE_SUN = int(getattr(swe(), "SUN", 0)) if has_swe() else 0
+SE_MOON = int(getattr(swe(), "MOON", 1)) if has_swe() else 1
+SE_MEAN_NODE = int(getattr(swe(), "MEAN_NODE", 10)) if has_swe() else 10
+SE_TRUE_NODE = int(getattr(swe(), "TRUE_NODE", 11)) if has_swe() else 11
+SE_MEAN_APOG = int(getattr(swe(), "MEAN_APOG", 12)) if has_swe() else 12
+SE_OSCU_APOG = int(getattr(swe(), "OSCU_APOG", 13)) if has_swe() else 13
 
 
 @dataclass(frozen=True)
@@ -27,7 +33,7 @@ class VariantConfig:
     lilith_variant: str = "mean"
 
 
-def se_body_id_for(name: str, vc: VariantConfig) -> Tuple[int, bool]:
+def se_body_id_for(name: str, vc: VariantConfig) -> tuple[int, bool]:
     """Return ``(id, derived)`` for ``name`` respecting variant config."""
 
     canonical = canonical_name(name)
@@ -48,10 +54,10 @@ def se_body_id_for(name: str, vc: VariantConfig) -> Tuple[int, bool]:
 def position_vec(body_id: int, jd_ut: float, *, flags: int = 0):
     if swe is None:
         raise RuntimeError("pyswisseph not available")
-    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=body_id, flag=flags)
-    if serr:
-        raise RuntimeError(serr)
-    return xx
+    values, ret_flag = calc_ut_cached(jd_ut, body_id, flags)
+    if ret_flag < 0:
+        raise RuntimeError(f"Swiss ephemeris returned error code {ret_flag}")
+    return tuple(values)
 
 
 def position_with_variants(name: str, jd_ut: float, vc: VariantConfig, *, flags: int = 0):

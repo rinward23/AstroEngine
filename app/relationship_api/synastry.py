@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 
 import numpy as np
 
@@ -12,8 +12,8 @@ from .models import (
     ChartPositions,
     GridCell,
     Hit,
-    Overlay,
     OrbPolicy,
+    Overlay,
     Scores,
     SynastryRequest,
     SynastryResponse,

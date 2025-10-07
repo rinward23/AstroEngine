@@ -100,6 +100,18 @@ astroengine plugins --entrypoints --detectors --score-extensions
 The command prints loaded entry points, detector names, score extension
 namespaces, and UI panels. ``--json`` produces a machine-readable summary.
 
+## User plugin sandboxing
+
+AstroEngine loads user-supplied aspect and lot definitions from the
+``ASTROENGINE_PLUGIN_DIR`` directory (``~/.astroengine/plugins`` by default).
+Each ``.py`` file is parsed before execution to enforce a conservative
+import allow list: standard-library modules and the public ``astroengine``
+package hierarchy are permitted, while third-party imports are rejected.
+Disallowed imports or runtime errors are recorded and exposed through
+``astroengine.plugins.registry.get_user_plugin_errors()`` so callers and the
+Streamlit settings panel can surface a warning banner. Plugins that fail to
+load are skipped and remain inactive until their issues are corrected.
+
 ## Scan entrypoints
 
 Graphical clients such as ``apps/streamlit_transit_scanner.py`` discover

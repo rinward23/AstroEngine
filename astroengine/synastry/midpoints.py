@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from math import cos, pi
-from typing import Iterable, Mapping, Sequence
 
 from astroengine.core.rel_plus.composite import ChartPositions, circular_midpoint
 from astroengine.synastry.policy import MidpointPolicy, family_for_body
@@ -143,9 +143,9 @@ def _normalize_positions(positions: ChartPositions) -> Mapping[str, float]:
     for key, pos in positions.items():
         name = str(key)
         if hasattr(pos, "lon"):
-            lon = float(getattr(pos, "lon"))
+            lon = float(pos.lon)
         elif hasattr(pos, "longitude"):
-            lon = float(getattr(pos, "longitude"))
+            lon = float(pos.longitude)
         else:
             raise AttributeError(f"Unsupported position payload for {name!r}")
         normalized[name] = lon % 360.0

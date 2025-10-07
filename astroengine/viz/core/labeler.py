@@ -1,10 +1,10 @@
 """Collision-aware polar label placement."""
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any
 from math import cos, degrees, radians, sin
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -17,7 +17,7 @@ class LabelRequest:
     width: float
     height: float
     priority: int = 0
-    metadata: Tuple[Tuple[str, object], ...] = field(default_factory=tuple)
+    metadata: tuple[tuple[str, object], ...] = field(default_factory=tuple)
 
     def normalised_angle(self) -> float:
         return self.angle % 360.0
@@ -44,10 +44,10 @@ class LabelPlacement:
     y: float
     request: LabelRequest = field(repr=False, compare=False)
     leader: bool
-    leader_start: Optional[Tuple[float, float]] = None
-    leader_end: Optional[Tuple[float, float]] = None
+    leader_start: tuple[float, float] | None = None
+    leader_end: tuple[float, float] | None = None
 
-    def bounds(self) -> "PolarBounds":
+    def bounds(self) -> PolarBounds:
         return PolarBounds.from_request(self.request, self.angle, self.radius)
 
 
@@ -59,7 +59,7 @@ class PolarBounds:
     radius_max: float
 
     @classmethod
-    def from_request(cls, request: LabelRequest, angle: float, radius: float) -> "PolarBounds":
+    def from_request(cls, request: LabelRequest, angle: float, radius: float) -> PolarBounds:
         # Convert width expressed along the tangent into an angular span.
         span = 360.0
         if radius > 0.0 and request.width > 0.0:
@@ -73,7 +73,7 @@ class PolarBounds:
         radius_max = radius + half_height
         return cls(angle_min, angle_max, radius_min, radius_max)
 
-    def overlaps(self, other: "PolarBounds", angle_tolerance: float = 0.01, radial_tolerance: float = 0.01) -> bool:
+    def overlaps(self, other: PolarBounds, angle_tolerance: float = 0.01, radial_tolerance: float = 0.01) -> bool:
         if not _radial_overlap(self.radius_min, self.radius_max, other.radius_min, other.radius_max, radial_tolerance):
             return False
         return _angular_overlap(self.angle_min, self.angle_max, other.angle_min, other.angle_max, angle_tolerance)
@@ -97,7 +97,7 @@ def _angular_overlap(a_min: float, a_max: float, b_min: float, b_max: float, tol
     return False
 
 
-def _split_range(start: float, end: float) -> List[Tuple[float, float]]:
+def _split_range(start: float, end: float) -> list[tuple[float, float]]:
     if start <= end:
         return [(start, end)]
     return [(start, 360.0), (0.0, end)]
@@ -111,7 +111,7 @@ class Labeler:
         band_radius: float,
         band_height: float,
         *,
-        outer_radius: Optional[float] = None,
+        outer_radius: float | None = None,
         radial_step: float = 6.0,
         max_iterations: int = 5,
     ) -> None:
@@ -121,10 +121,10 @@ class Labeler:
         self.radial_step = radial_step
         self.max_iterations = max_iterations
 
-    def place(self, labels: Sequence[LabelRequest]) -> List[LabelPlacement]:
+    def place(self, labels: Sequence[LabelRequest]) -> list[LabelPlacement]:
         ordered = sorted(labels, key=lambda item: (item.priority, item.identifier))
-        placements: List[LabelPlacement] = []
-        occupied: List[PolarBounds] = []
+        placements: list[LabelPlacement] = []
+        occupied: list[PolarBounds] = []
         for request in ordered:
             angle = request.normalised_angle()
             base_radius = request.radius or self.band_radius
@@ -182,6 +182,6 @@ class Labeler:
             yield -delta
 
 
-def _polar_to_cartesian(angle: float, radius: float) -> Tuple[float, float]:
+def _polar_to_cartesian(angle: float, radius: float) -> tuple[float, float]:
     theta = radians(angle)
     return radius * cos(theta), radius * sin(theta)

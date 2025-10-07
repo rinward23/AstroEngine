@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from ..traditional.dignities import bounds_ruler, sign_dignities
 from ..traditional.models import AlcocodenResult, ChartCtx, HylegResult, LifeProfile

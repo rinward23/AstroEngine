@@ -22,6 +22,8 @@ Thumbs.db
 # Local artifacts
 diagnostics.json
 dev.db
+generated/reports/*.pdf
+.astroengine/
 # Node / frontend
 node_modules/
 apps/**/.next/
@@ -36,3 +38,8 @@ __pycache__/
 inspection/
 triage-report/
 # >>> AUTO-GEN END: perf artifacts ignore v1.0
+astroengine/_version.py
+
+# Nightly benchmark outputs
+observability/trends/nightly-metrics.json
+

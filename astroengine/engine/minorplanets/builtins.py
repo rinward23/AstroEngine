@@ -6,10 +6,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Final
 
-import swisseph as swe
-
 from astroengine.core.time import ensure_utc, julian_day
-from astroengine.ephemeris.swisseph_adapter import swe_calc
+from astroengine.ephemeris.cache import calc_ut_cached
+from astroengine.ephemeris.swisseph_adapter import get_swisseph
 
 __all__ = [
     "CuratedMinorPlanet",
@@ -29,22 +28,24 @@ def _ensure_swisseph_path() -> None:
     global _SWE_INITIALISED
     if _SWE_INITIALISED:
         return
+    swe = get_swisseph()
     from pathlib import Path
 
     ephe_dir = Path(__file__).resolve().parents[3] / "datasets" / "swisseph_stub"
-    swe.set_ephe_path(str(ephe_dir))
+    swe().set_ephe_path(str(ephe_dir))
     _SWE_INITIALISED = True
 
 
 def _calc_apogee_longitude(moment: datetime, body: int) -> float:
     """Return the ecliptic longitude for the requested apogee variant."""
 
+    swe = get_swisseph()
     _ensure_swisseph_path()
     utc_moment = ensure_utc(moment)
     jd_ut = julian_day(utc_moment)
-    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=body, flag=0)
-    if serr:
-        raise RuntimeError(serr)
+    xx, ret_flag = calc_ut_cached(jd_ut, int(body), 0)
+    if ret_flag < 0:
+        raise RuntimeError(f"Swiss ephemeris returned error code {ret_flag}")
     longitude = xx[0] % 360.0
     if longitude < 0.0:
         longitude += 360.0
@@ -54,13 +55,15 @@ def _calc_apogee_longitude(moment: datetime, body: int) -> float:
 def lilith_mean(moment: datetime) -> float:
     """Return the mean Black Moon Lilith longitude in degrees."""
 
-    return _calc_apogee_longitude(moment, swe.MEAN_APOG)
+    swe = get_swisseph()
+    return _calc_apogee_longitude(moment, swe().MEAN_APOG)
 
 
 def lilith_true(moment: datetime) -> float:
     """Return the oscillating Black Moon Lilith longitude in degrees."""
 
-    return _calc_apogee_longitude(moment, swe.OSCU_APOG)
+    swe = get_swisseph()
+    return _calc_apogee_longitude(moment, swe().OSCU_APOG)
 
 
 @dataclass(frozen=True, slots=True)

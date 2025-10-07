@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from collections.abc import Iterable, Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -37,7 +38,7 @@ FALLBACK_LOTS = {
 }
 
 
-def _ensure_custom_state() -> List[Dict[str, Any]]:
+def _ensure_custom_state() -> list[dict[str, Any]]:
     if CUSTOM_LOTS_KEY not in st.session_state:
         st.session_state[CUSTOM_LOTS_KEY] = [
             {
@@ -51,7 +52,7 @@ def _ensure_custom_state() -> List[Dict[str, Any]]:
     return st.session_state[CUSTOM_LOTS_KEY]
 
 
-def _normalize_longitude(value: Any) -> Optional[float]:
+def _normalize_longitude(value: Any) -> float | None:
     if value is None:
         return None
     try:
@@ -60,8 +61,8 @@ def _normalize_longitude(value: Any) -> Optional[float]:
         return None
 
 
-def _extract_symbols(expr: str) -> Set[str]:
-    symbols: Set[str] = set()
+def _extract_symbols(expr: str) -> set[str]:
+    symbols: set[str] = set()
     for raw in expr.replace("+", " ").replace("-", " ").split():
         token = raw.strip()
         if not token:
@@ -75,10 +76,10 @@ def _extract_symbols(expr: str) -> Set[str]:
 
 
 def _sanitize_custom_lots(
-    custom_lots: Sequence[Dict[str, Any]],
-) -> Tuple[List[Dict[str, Any]], List[str]]:
-    valid: List[Dict[str, Any]] = []
-    issues: List[str] = []
+    custom_lots: Sequence[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    valid: list[dict[str, Any]] = []
+    issues: list[str] = []
     for idx, lot in enumerate(custom_lots):
         name = str(lot.get("name", "")).strip()
         day_expr = str(lot.get("day", "")).strip()
@@ -104,11 +105,11 @@ def _sanitize_custom_lots(
     return valid, issues
 
 
-def _coerce_lot_values(response: Dict[str, Any]) -> Dict[str, Any]:
+def _coerce_lot_values(response: dict[str, Any]) -> dict[str, Any]:
     """Normalize arbitrary API payloads into a name→longitude mapping."""
 
-    def from_sequence(rows: Sequence[Any]) -> Dict[str, Any]:
-        normalized: Dict[str, Any] = {}
+    def from_sequence(rows: Sequence[Any]) -> dict[str, Any]:
+        normalized: dict[str, Any] = {}
         for entry in rows:
             if not isinstance(entry, dict):
                 continue
@@ -139,11 +140,11 @@ def _coerce_lot_values(response: Dict[str, Any]) -> Dict[str, Any]:
 def _collect_required_symbols(
     lot_names: Iterable[str],
     sect: str,
-    catalog_map: Dict[str, Dict[str, Any]],
-) -> Set[str]:
+    catalog_map: dict[str, dict[str, Any]],
+) -> set[str]:
     expr_field = "day" if sect == "day" else "night"
-    required: Set[str] = set()
-    visiting: Set[str] = set()
+    required: set[str] = set()
+    visiting: set[str] = set()
 
     def visit(name: str) -> None:
         if name in visiting:
@@ -165,8 +166,8 @@ def _collect_required_symbols(
     return required
 
 
-def _render_results(result_state: Dict[str, Any]) -> None:
-    values: Dict[str, Optional[float]] = result_state.get("values", {})
+def _render_results(result_state: dict[str, Any]) -> None:
+    values: dict[str, float | None] = result_state.get("values", {})
     if not values:
         st.info(
             "No output — check that required symbols exist in Positions JSON (e.g., Asc, Sun, Moon)."
@@ -182,7 +183,7 @@ def _render_results(result_state: Dict[str, Any]) -> None:
     df = df.dropna(subset=["longitude"]).sort_values("lot").reset_index(drop=True)
 
     st.subheader("Results")
-    computed_at: Optional[str] = result_state.get("computed_at")
+    computed_at: str | None = result_state.get("computed_at")
     if computed_at:
         st.caption(f"Computed at {computed_at}")
 
@@ -232,7 +233,7 @@ def _render_results(result_state: Dict[str, Any]) -> None:
 # Load catalog
 # ---------------------------------------------------------------------------
 @st.cache_data(ttl=60)
-def _load_catalog() -> List[Dict[str, Any]]:
+def _load_catalog() -> list[dict[str, Any]]:
     try:
         data = api.lots_catalog()
         return data.get("lots", [])
@@ -242,7 +243,7 @@ def _load_catalog() -> List[Dict[str, Any]]:
 
 custom_state = _ensure_custom_state()
 catalog = _load_catalog()
-catalog_map: Dict[str, Dict[str, Any]] = {item["name"]: item for item in catalog}
+catalog_map: dict[str, dict[str, Any]] = {item["name"]: item for item in catalog}
 for name, meta in FALLBACK_LOTS.items():
     catalog_map.setdefault(name, meta)
 
@@ -257,7 +258,7 @@ if msg := st.session_state.pop(CATALOG_MESSAGE_KEY, None):
 with st.sidebar:
     st.header("Catalog")
     st.caption("Built-in & registered Lots")
-    sidebar_table: List[Dict[str, Any]] = catalog if catalog else list(FALLBACK_LOTS.values())
+    sidebar_table: list[dict[str, Any]] = catalog if catalog else list(FALLBACK_LOTS.values())
     if sidebar_table:
         st.dataframe(
             pd.DataFrame(sidebar_table),
@@ -317,7 +318,7 @@ lots_selected = st.multiselect(
     default=default_selection,
 )
 
-required_symbols: Set[str] = set()
+required_symbols: set[str] = set()
 if lots_selected:
     required_symbols = _collect_required_symbols(
         lots_selected, sect, effective_catalog_map
@@ -337,8 +338,8 @@ lots_ready = bool(lots_selected)
 # ---------------------------------------------------------------------------
 st.subheader("Custom Lots (inline)")
 with st.expander("Add/Edit Custom Lots", expanded=False):
-    edited: List[Dict[str, Any]] = []
-    removal_requested: Set[int] = set()
+    edited: list[dict[str, Any]] = []
+    removal_requested: set[int] = set()
     for i, row in enumerate(custom_state):
         st.markdown(f"**Custom {i + 1}**")
         c1, c2, c3, c4, c5 = st.columns([1, 2, 2, 1, 1])
@@ -391,7 +392,7 @@ with colA:
 with colB:
     st.caption("Tip: Asc, Sun, Moon are commonly needed for Fortune/Spirit")
 
-result_state: Optional[Dict[str, Any]] = st.session_state.get(RESULTS_STATE_KEY)
+result_state: dict[str, Any] | None = st.session_state.get(RESULTS_STATE_KEY)
 
 if go_compute:
     if not positions_ready:
@@ -427,7 +428,7 @@ if go_compute:
             "values": normalized,
             "raw_response": resp,
             "payload": payload,
-            "computed_at": datetime.now(timezone.utc).isoformat(),
+            "computed_at": datetime.now(UTC).isoformat(),
         }
         st.session_state[RESULTS_STATE_KEY] = result_state
 

@@ -104,7 +104,9 @@ sources; synthetic values are prohibited.
 3. **Gap/Fold Handling** — `local_to_utc` detects non-existent times (DST
    spring-forward gaps) and ambiguous folds. Policies (`gap: raise|post|pre`,
    `fold: earliest|latest|flag`) are configurable per channel. Responses include
-   diagnostics describing which transitions triggered the policy.
+   diagnostics describing which transitions triggered the policy, the resolved
+   Olson zone identifier, and the UTC instant selected so downstream workflows
+   retain both the local and UTC representations.
 4. **UTC→Local Conversion** — `utc_to_local` returns `datetime` objects annotated
    with the PEP‑495 `fold` flag when ambiguous. Abbreviations and DST state are
    relayed for UI display and logging.

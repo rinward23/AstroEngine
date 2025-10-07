@@ -1,6 +1,11 @@
 # >>> AUTO-GEN BEGIN: Test Swiss Ephemeris Import v1.0
 
-import swisseph as swe
+import pytest
+
+swe = pytest.importorskip(
+    "swisseph",
+    reason="pyswisseph not installed; install extras with `.[providers]`",
+)
 
 
 def test_pyswisseph_imports():

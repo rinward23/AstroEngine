@@ -11,9 +11,9 @@ from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig
 def main() -> None:
     print(f"Python version: {platform.python_version()}")
     try:
-        import swisseph as swe
+        from astroengine.ephemeris.swe import swe
 
-        print(f"pyswisseph version: {swe.__version__}")
+        print(f"pyswisseph version: {swe().__version__}")
     except ModuleNotFoundError:
         print("pyswisseph not installed")
 

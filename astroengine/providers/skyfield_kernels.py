@@ -1,6 +1,7 @@
 # >>> AUTO-GEN BEGIN: skyfield-kernel-utils v1.0
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -10,6 +11,8 @@ _SEARCH_DIRS: Iterable[Path] = (
     Path.home() / ".skyfield",
     Path.home() / ".astroengine" / "kernels",
 )
+
+LOG = logging.getLogger(__name__)
 
 
 def find_kernel(preferred: str | None = None) -> Path | None:
@@ -37,7 +40,12 @@ def ensure_kernel(download: bool = False) -> Path | None:
         return None
     try:
         from skyfield.api import Loader  # type: ignore
-    except Exception:
+    except ImportError:
+        LOG.warning(
+            "skyfield loader unavailable",
+            extra={"err_code": "SKYFIELD_IMPORT"},
+            exc_info=True,
+        )
         return None
     target_dir = Path.home() / ".skyfield"
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -45,7 +53,12 @@ def ensure_kernel(download: bool = False) -> Path | None:
     try:
         eph = load("de440s.bsp")
         return Path(eph.filename)
-    except Exception:
+    except (OSError, ValueError, RuntimeError):
+        LOG.error(
+            "failed to obtain skyfield kernel",
+            extra={"err_code": "SKYFIELD_KERNEL_FETCH"},
+            exc_info=True,
+        )
         return None
 
 

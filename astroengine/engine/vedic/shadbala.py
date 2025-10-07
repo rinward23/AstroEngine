@@ -16,9 +16,9 @@ bounded by the canonical sixty-point maximum used in classical tables.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from math import isnan
-from typing import Iterable, Mapping
 
 from ...detectors.common import delta_deg, norm360
 from .chart import VedicChartContext

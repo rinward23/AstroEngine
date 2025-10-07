@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from dataclasses import replace
 from datetime import UTC, datetime
-import logging
-from typing import Dict, List
+
+LOG = logging.getLogger(__name__)
 
 from astroengine.canonical import BodyPosition
+from astroengine.core.bodies import canonical_name
 from astroengine.core.time import TimeConversion, to_tt
 from astroengine.ephemeris import (
     EphemerisAdapter,
@@ -14,15 +16,20 @@ from astroengine.ephemeris import (
     ObserverLocation,
     TimeScaleContext,
 )
-from astroengine.ephemeris.utils import get_se_ephe_path
 from astroengine.ephemeris.support import SupportIssue
-from astroengine.core.bodies import canonical_name
+from astroengine.ephemeris.swe import has_swe, swe
+from astroengine.ephemeris.utils import get_se_ephe_path
+
 from .swisseph_adapter import VariantConfig, se_body_id_for
 
-try:
-    import swisseph as swe  # pyswisseph imports the module name 'swisseph'
-except Exception:  # pragma: no cover
-    swe = None
+_HAS_SWE = has_swe()
+
+if not _HAS_SWE:
+    LOG.info(
+        "pyswisseph not installed",
+        extra={"err_code": "SWISS_IMPORT"},
+        exc_info=True,
+    )
 
 try:  # pragma: no cover - exercised via runtime fallback
     from pymeeus.Epoch import Epoch
@@ -38,7 +45,12 @@ try:  # pragma: no cover - exercised via runtime fallback
     from pymeeus.Venus import Venus as _Venus
 
     _PYMEEUS_AVAILABLE = True
-except Exception:  # pragma: no cover
+except ImportError:
+    LOG.info(
+        "pymeeus fallback unavailable",
+        extra={"err_code": "PYMEEUS_IMPORT"},
+        exc_info=True,
+    )
     Epoch = None  # type: ignore[assignment]
     (
         _Mercury,
@@ -58,10 +70,7 @@ except Exception:  # pragma: no cover
 
 from . import register_provider
 
-LOG = logging.getLogger(__name__)
-
-
-_BODY_IDS: Dict[str, int] = {
+_BODY_IDS: dict[str, int] = {
     "sun": 0,
     "moon": 1,
     "mercury": 2,
@@ -74,7 +83,8 @@ _BODY_IDS: Dict[str, int] = {
     "pluto": 9,
 }
 
-if swe is not None:  # pragma: no cover - depends on installed ephemeris
+if _HAS_SWE:  # pragma: no cover - depends on installed ephemeris
+    swe_module = swe()
     for attr, name in (
         ("CERES", "ceres"),
         ("PALLAS", "pallas"),
@@ -91,23 +101,23 @@ if swe is not None:  # pragma: no cover - depends on installed ephemeris
         ("ORCUS", "orcus"),
         ("IXION", "ixion"),
     ):
-        code = getattr(swe, attr, None)
+        code = getattr(swe_module, attr, None)
         if code is not None:
             _BODY_IDS[name] = int(code)
 
 
 class SwissProvider:
     def __init__(self) -> None:
-        if swe is None:
+        if not _HAS_SWE:
             raise ImportError("pyswisseph is not installed")
         eph = get_se_ephe_path()
         if eph:
-            swe.set_ephe_path(eph)
+            swe().set_ephe_path(eph)
         self._config = EphemerisConfig(ephemeris_path=str(eph) if eph else None)
         self._adapter = EphemerisAdapter(self._config)
         self._body_ids = dict(_BODY_IDS)
         self._variant_config = VariantConfig()
-        self._last_support_issues: List[SupportIssue] = []
+        self._last_support_issues: list[SupportIssue] = []
 
     def configure(
         self,
@@ -205,7 +215,7 @@ class SwissProvider:
 
         conversion = self._time_conversion(iso_utc)
         out: dict[str, dict[str, float]] = {}
-        issues: List[SupportIssue] = []
+        issues: list[SupportIssue] = []
         for name in bodies:
             try:
                 pos = self._resolve_position(name, conversion)
@@ -321,7 +331,17 @@ class SwissFallbackProvider:
                 speed = self._lon_speed(name, epoch)
             except KeyError:
                 continue
-            out[name] = {"lon": lon_deg % 360.0, "decl": lat_deg, "speed_lon": speed}
+            position = BodyPosition(
+                lon=lon_deg,
+                lat=lat_deg,
+                dec=lat_deg,
+                speed_lon=speed,
+            )
+            out[name] = {
+                "lon": position.lon,
+                "decl": position.dec,
+                "speed_lon": position.speed_lon,
+            }
         return out
 
     def position(self, body: str, ts_utc: str) -> BodyPosition:
@@ -338,7 +358,7 @@ class SwissFallbackProvider:
 
 
 def _register() -> None:
-    if swe is not None:
+    if _HAS_SWE:
         register_provider("swiss", SwissProvider())
     elif _PYMEEUS_AVAILABLE:
         register_provider("swiss", SwissFallbackProvider())

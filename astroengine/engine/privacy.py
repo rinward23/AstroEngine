@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import secrets
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from .notes.store import NotesCipher, NotesStore
 
@@ -14,7 +13,7 @@ class AuditLogEntry:
     timestamp: datetime
     actor: str
     action: str
-    details: Dict[str, object]
+    details: dict[str, object]
 
 
 @dataclass
@@ -31,7 +30,7 @@ class PrivacyController:
         self.cipher = cipher
         self.store = store
         self.local_only = False
-        self.audit_log: List[AuditLogEntry] = []
+        self.audit_log: list[AuditLogEntry] = []
         self.keys = WorkspaceKeys(current_key_id=self._new_key_id(), secret=cipher.key)
 
     def _new_key_id(self) -> str:
@@ -54,11 +53,11 @@ class PrivacyController:
         self._log(actor, "erase", {"count": count})
         return count
 
-    def rotate_key(self, actor: str, new_secret: Optional[bytes] = None) -> None:
+    def rotate_key(self, actor: str, new_secret: bytes | None = None) -> None:
         self.keys = WorkspaceKeys(current_key_id=self._new_key_id(), secret=new_secret or secrets.token_bytes(32))
         self._log(actor, "rotate_key", {"key_id": self.keys.current_key_id})
 
-    def _log(self, actor: str, action: str, details: Dict[str, object]) -> None:
+    def _log(self, actor: str, action: str, details: dict[str, object]) -> None:
         self.audit_log.append(
-            AuditLogEntry(timestamp=datetime.now(timezone.utc), actor=actor, action=action, details=details)
+            AuditLogEntry(timestamp=datetime.now(UTC), actor=actor, action=action, details=details)
         )

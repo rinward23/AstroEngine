@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -13,7 +12,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from ...chart.natal import DEFAULT_BODIES
 from ...core.aspects_plus.harmonics import BASE_ASPECTS
 from ...synastry.orchestrator import SynHit, compute_synastry
-
+from .._time import UtcDateTime, ensure_utc_datetime
 
 router = APIRouter()
 
@@ -27,30 +26,29 @@ class NatalPayload(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    ts: datetime = Field(validation_alias=AliasChoices("ts", "datetime"))
-    lat: float
-    lon: float
+    ts: UtcDateTime = Field(validation_alias=AliasChoices("ts", "datetime"))
+    lat: float = Field(..., ge=-90.0, le=90.0)
+    lon: float = Field(..., ge=-180.0, le=180.0)
 
     @field_validator("ts", mode="before")
     def _coerce_timestamp(cls, value: Any) -> datetime:
 
-        if isinstance(value, datetime):
-            return value.astimezone(UTC)
-        if isinstance(value, str):
-            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
         if isinstance(value, dict):
-            ts = value.get("ts") or value.get("utc")
-            if ts:
-                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
-                return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
-        raise TypeError("expected ISO-8601 timestamp")
+            candidate = value.get("ts") or value.get("utc") or value.get("datetime")
+            if candidate is not None:
+                return ensure_utc_datetime(candidate)
+        return ensure_utc_datetime(value)
 
     @field_validator("lat", "lon", mode="before")
     def _coerce_float(cls, value: Any) -> float:
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             return float(value)
-        return float(str(value))
+        if isinstance(value, str):
+            candidate = value.strip()
+            if not candidate:
+                raise ValueError("coordinate must not be empty")
+            return float(candidate)
+        raise TypeError("coordinate must be numeric or numeric string")
 
     def as_payload(self) -> dict[str, Any]:
         return {"ts": _to_iso(self.ts), "lat": float(self.lat), "lon": float(self.lon)}
@@ -65,7 +63,7 @@ class SynastryRequest(BaseModel):
 
     bodies: Sequence[str] | None = None
     aspects: Sequence[Any] | None = None
-    orb: float = Field(default=2.0, ge=0.0)
+    orb: float = Field(default=2.0, ge=0.0, le=15.0)
 
 
     def resolved_aspects(self) -> list[int]:

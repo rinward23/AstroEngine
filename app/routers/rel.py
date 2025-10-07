@@ -1,50 +1,44 @@
 from __future__ import annotations
+
 import logging
 import os
 import time
-from typing import Any, Callable, Dict, Tuple
-
+from collections.abc import Callable
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from prometheus_client import Histogram
 
-from astroengine.utils import json as json_utils
-
-
 from app.schemas.rel import (
+    CompositeDavisonRequest,
+    CompositeMidpointRequest,
+    CompositeResponse,
+    SynastryGrid,
+    SynastryHit,
     SynastryRequest,
     SynastryResponse,
-    SynastryHit,
-    SynastryGrid,
-    CompositeMidpointRequest,
-    CompositeDavisonRequest,
-    CompositeResponse,
 )
-from core.rel_plus.synastry import synastry_interaspects, synastry_grid
+from astroengine.cache.relationship import (
+    build_default_relationship_cache,
+    canonicalize_composite_payload,
+    canonicalize_davison_payload,
+    canonicalize_synastry_payload,
+)
+from astroengine.cache.relationship.layer import CacheEntry
+from astroengine.utils import json as json_utils
 from core.rel_plus import (
-    BirthEvent,
-    DavisonResult,
-    composite_houses,
     composite_midpoint_positions,
-    davison_houses,
     davison_positions,
     geodesic_midpoint,
     midpoint_time,
 )
-from astroengine.cache.relationship import (
-    canonicalize_composite_payload,
-    canonicalize_davison_payload,
-    canonicalize_synastry_payload,
-    build_default_relationship_cache,
-)
-from astroengine.cache.relationship.layer import CacheEntry
-
+from core.rel_plus.synastry import synastry_grid, synastry_interaspects
 
 try:  # pragma: no cover - optional dependency path
 
-    from app.repo.orb_policies import OrbPolicyRepo  # type: ignore
     from app.db.session import session_scope  # type: ignore
+    from app.repo.orb_policies import OrbPolicyRepo  # type: ignore
 except Exception:  # pragma: no cover - fall back to inline policies only
     OrbPolicyRepo = None  # type: ignore
     session_scope = None  # type: ignore
@@ -143,7 +137,7 @@ def _serve_cached_response(
     response: Response,
     endpoint: str,
     latency_metric: Histogram,
-    compute_fn: Callable[[], Tuple[Any, int, Dict[str, str]]],
+    compute_fn: Callable[[], tuple[Any, int, dict[str, str]]],
 ):
     start = time.perf_counter()
     outcome = cache.get(key)
@@ -189,7 +183,7 @@ def _serve_cached_response(
         cache_status=outcome.source,
     )
 
-DEFAULT_POLICY: Dict[str, Any] = {
+DEFAULT_POLICY: dict[str, Any] = {
     "per_object": {},
     "per_aspect": {
         "conjunction": 8.0,
@@ -211,7 +205,7 @@ DEFAULT_POLICY: Dict[str, Any] = {
 }
 
 
-def _resolve_orb_policy(req: SynastryRequest) -> Dict[str, Any]:
+def _resolve_orb_policy(req: SynastryRequest) -> dict[str, Any]:
     if req.orb_policy_inline is not None:
         return req.orb_policy_inline.model_dump()
     if req.orb_policy_id is not None:
@@ -249,7 +243,7 @@ def synastry_compute(req: SynastryRequest, request: Request, response: Response)
         policy,
     )
 
-    def _compute() -> Tuple[Any, int, Dict[str, str]]:
+    def _compute() -> tuple[Any, int, dict[str, str]]:
         hits_list = synastry_interaspects(
             req.pos_a,
             req.pos_b,
@@ -282,7 +276,7 @@ def synastry_compute(req: SynastryRequest, request: Request, response: Response)
 def composites_midpoint(req: CompositeMidpointRequest, request: Request, response: Response):
     canonical = canonicalize_composite_payload(req.pos_a, req.pos_b, req.objects)
 
-    def _compute() -> Tuple[Any, int, Dict[str, str]]:
+    def _compute() -> tuple[Any, int, dict[str, str]]:
         pos = composite_midpoint_positions(req.pos_a, req.pos_b, req.objects)
         payload = CompositeResponse(positions=pos, meta={"method": "midpoint"}).model_dump(
             mode="json"
@@ -323,7 +317,7 @@ def composites_davison(req: CompositeDavisonRequest, request: Request, response:
     )
 
 
-    def _compute() -> Tuple[Any, int, Dict[str, str]]:
+    def _compute() -> tuple[Any, int, dict[str, str]]:
         provider = aspects_module._get_provider()
         pos = davison_positions(
             req.objects,

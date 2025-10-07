@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-@dataclass
+@dataclass(slots=True)
 class AstroSubchannel:
     """Leaf node representing a concrete dataset or rule collection."""
 
@@ -40,7 +40,7 @@ class AstroSubchannel:
         return data
 
 
-@dataclass
+@dataclass(slots=True)
 class AstroChannel:
     """Group of closely related subchannels (e.g., core/extended aspects)."""
 
@@ -75,7 +75,7 @@ class AstroChannel:
         return self.subchannels.values()
 
 
-@dataclass
+@dataclass(slots=True)
 class AstroSubmodule:
     """Intermediate node used to segment modules into logical domains."""
 
@@ -105,7 +105,7 @@ class AstroSubmodule:
         return self.channels.values()
 
 
-@dataclass
+@dataclass(slots=True)
 class AstroModule:
     """Top-level container representing a major AstroEngine capability."""
 
@@ -161,6 +161,33 @@ class AstroRegistry:
 
     def iter_modules(self) -> Iterable[AstroModule]:
         return self._modules.values()
+
+    def resolve(
+        self,
+        module: str,
+        *,
+        submodule: str | None = None,
+        channel: str | None = None,
+        subchannel: str | None = None,
+    ) -> AstroModule | AstroSubmodule | AstroChannel | AstroSubchannel:
+        """Return the registry node for the requested hierarchy path.
+
+        The method mirrors the module → submodule → channel → subchannel
+        layout mandated by Solar Fire aligned datasets.  Each lookup layer
+        reuses the existing ``get_*`` helpers so the registry raises the same
+        ``KeyError`` diagnostics when a path is incomplete.  This keeps
+        call-sites concise while ensuring no nodes are lost during upgrades.
+        """
+
+        current: AstroModule | AstroSubmodule | AstroChannel | AstroSubchannel
+        current = self.get_module(module)
+        if submodule is not None:
+            current = current.get_submodule(submodule)  # type: ignore[assignment]
+        if channel is not None:
+            current = current.get_channel(channel)  # type: ignore[assignment]
+        if subchannel is not None:
+            current = current.get_subchannel(subchannel)  # type: ignore[assignment]
+        return current
 
     def as_dict(self) -> dict[str, Mapping[str, object]]:
         """Return a serialisable snapshot of the registry hierarchy."""

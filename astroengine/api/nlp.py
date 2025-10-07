@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Iterable, List
 
 from astroengine.engine.nlp.correlate import (
     CorrelationSummary,
@@ -18,15 +17,15 @@ from astroengine.engine.nlp.correlate import (
 
 @dataclass
 class NLPRequest:
-    notes: List[NoteSample]
-    events: List[EventSample]
+    notes: list[NoteSample]
+    events: list[EventSample]
     window_hours: float = 36.0
 
 
 @dataclass
 class NLPResponse:
-    correlations: List[CorrelationSummary]
-    regression: List[LogisticRegressionResult]
+    correlations: list[CorrelationSummary]
+    regression: list[LogisticRegressionResult]
 
 
 class NLPAPI:

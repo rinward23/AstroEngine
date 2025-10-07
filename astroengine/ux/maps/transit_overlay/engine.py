@@ -1,15 +1,12 @@
 """Position engine powering the transit ↔ natal overlay."""
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import lru_cache
-from typing import Dict, Mapping, Sequence
 
-try:  # pragma: no cover - optional dependency during docs builds
-    import swisseph as swe  # type: ignore
-except ModuleNotFoundError:  # pragma: no cover - handled at runtime
-    swe = None
+from astroengine.ephemeris.swe import has_swe, swe
 
 from ....chart.config import ChartConfig
 from ....chart.natal import ChartLocation
@@ -18,6 +15,8 @@ from ....core.time import ensure_utc
 from ....ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from ....providers.swisseph_adapter import (
     VariantConfig as ProviderVariantConfig,
+)
+from ....providers.swisseph_adapter import (
     position_vec,
     position_with_variants,
 )
@@ -56,14 +55,14 @@ class OverlayOptions:
             object.__setattr__(self, "orb_conjunction", float(self.orb_conjunction))
         if self.orb_opposition is not None:
             object.__setattr__(self, "orb_opposition", float(self.orb_opposition))
-        overrides: Dict[str, float] = {}
+        overrides: dict[str, float] = {}
         for key, value in dict(self.orb_overrides or {}).items():
             canonical = canonical_name(str(key))
             overrides[canonical] = float(value)
         object.__setattr__(self, "orb_overrides", overrides)
 
     @classmethod
-    def from_mapping(cls, payload: Mapping[str, object] | None) -> "OverlayOptions":
+    def from_mapping(cls, payload: Mapping[str, object] | None) -> OverlayOptions:
         if payload is None:
             return cls()
         if isinstance(payload, OverlayOptions):
@@ -214,7 +213,8 @@ def compute_overlay_frames(
 # ---------------------------------------------------------------------------
 
 _PLANET_CODES: dict[str, int] = {}
-if swe is not None:  # pragma: no branch - evaluated once at import time
+if has_swe():  # pragma: no branch - evaluated once at import time
+    swe_module = swe()
     for name in (
         "sun",
         "moon",
@@ -229,10 +229,10 @@ if swe is not None:  # pragma: no branch - evaluated once at import time
         "pluto",
     ):
         attr = name.upper()
-        code = getattr(swe, attr, None)
+        code = getattr(swe_module, attr, None)
         if code is not None:
             _PLANET_CODES[name] = int(code)
-    chiron = getattr(swe, "CHIRON", None)
+    chiron = getattr(swe_module, "CHIRON", None)
     if chiron is not None:
         _PLANET_CODES["chiron"] = int(chiron)
 

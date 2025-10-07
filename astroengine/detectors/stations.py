@@ -5,42 +5,44 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Sequence
 
-try:  # pragma: no cover - exercised via runtime availability checks
-    import swisseph as swe  # type: ignore
-except Exception:  # pragma: no cover
-    swe = None  # type: ignore
+from astroengine.ephemeris.swe import has_swe, swe
 
+from ..ephemeris.cache import calc_ut_cached
 from ..events import ShadowPeriod, StationEvent
-from ..ephemeris.swisseph_adapter import swe_calc
 from .common import delta_deg, jd_to_iso, solve_zero_crossing
 
 __all__ = ["find_stations", "find_shadow_periods"]
 
+_HAS_SWE = has_swe()
+
 _BODY_CODES = {
-    "mercury": swe.MERCURY if swe is not None else None,
-    "venus": swe.VENUS if swe is not None else None,
-    "mars": swe.MARS if swe is not None else None,
-    "jupiter": swe.JUPITER if swe is not None else None,
-    "saturn": swe.SATURN if swe is not None else None,
-    "uranus": swe.URANUS if swe is not None else None,
-    "neptune": swe.NEPTUNE if swe is not None else None,
-    "pluto": swe.PLUTO if swe is not None else None,
+    "mercury": swe().MERCURY if _HAS_SWE else None,
+    "venus": swe().VENUS if _HAS_SWE else None,
+    "mars": swe().MARS if _HAS_SWE else None,
+    "jupiter": swe().JUPITER if _HAS_SWE else None,
+    "saturn": swe().SATURN if _HAS_SWE else None,
+    "uranus": swe().URANUS if _HAS_SWE else None,
+    "neptune": swe().NEPTUNE if _HAS_SWE else None,
+    "pluto": swe().PLUTO if _HAS_SWE else None,
 }
 
 
+def _vector(jd_ut: float, code: int, flag: int) -> tuple[float, ...]:
+    values, ret_flag = calc_ut_cached(jd_ut, code, flag)
+    if ret_flag < 0:
+        raise RuntimeError(f"Swiss ephemeris returned error code {ret_flag}")
+    return tuple(values)
+
+
 def _speed(jd_ut: float, code: int) -> float:
-    flag = swe.FLG_SWIEPH | swe.FLG_SPEED
-    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=code, flag=flag)
-    if serr:
-        raise RuntimeError(serr)
+    flag = swe().FLG_SWIEPH | swe().FLG_SPEED
+    xx = _vector(jd_ut, code, flag)
     return float(xx[3])
 
 
 def _longitude(jd_ut: float, code: int) -> float:
-    flag = swe.FLG_SWIEPH | swe.FLG_SPEED
-    xx, _, serr = swe_calc(jd_ut=jd_ut, planet_index=code, flag=flag)
-    if serr:
-        raise RuntimeError(serr)
+    flag = swe().FLG_SWIEPH | swe().FLG_SPEED
+    xx = _vector(jd_ut, code, flag)
     return float(xx[0]) % 360.0
 
 
@@ -55,7 +57,7 @@ def find_stations(
 
     if end_jd <= start_jd:
         return []
-    if swe is None:
+    if not _HAS_SWE:
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
 
     body_names = [

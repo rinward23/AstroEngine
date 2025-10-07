@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from datetime import datetime, timezone
-from pathlib import Path
 import tempfile
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -35,7 +35,7 @@ BODIES = ("Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn")
 ISO_TIMESTAMPS = st.datetimes(
     min_value=datetime(1950, 1, 1),
     max_value=datetime(2050, 12, 31),
-).map(lambda dt: dt.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"))
+).map(lambda dt: dt.replace(tzinfo=UTC).isoformat().replace("+00:00", "Z"))
 
 META_VALUES = st.one_of(
     st.none(),

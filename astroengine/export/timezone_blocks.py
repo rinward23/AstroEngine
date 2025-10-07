@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Sequence
 from zoneinfo import ZoneInfo
 
 if False:  # pragma: no cover - typing helper
@@ -25,7 +25,7 @@ class _Transition:
         return "DAYLIGHT" if self.offset_to > self.offset_from else "STANDARD"
 
 
-def build_vtimezone(tzid: str, events: Sequence["CalendarEvent"]) -> list[str]:
+def build_vtimezone(tzid: str, events: Sequence[CalendarEvent]) -> list[str]:
     """Return a list of ICS lines describing ``tzid`` for the event window."""
 
     if not events:
@@ -70,7 +70,7 @@ def build_vtimezone(tzid: str, events: Sequence["CalendarEvent"]) -> list[str]:
     return lines
 
 
-def _window(events: Sequence["CalendarEvent"]) -> tuple[datetime, datetime]:
+def _window(events: Sequence[CalendarEvent]) -> tuple[datetime, datetime]:
     earliest = datetime.max.replace(tzinfo=UTC)
     latest = datetime.min.replace(tzinfo=UTC)
     for event in events:
