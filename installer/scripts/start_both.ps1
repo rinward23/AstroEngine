@@ -1,4 +1,4 @@
-# installer\scripts\start_both.ps1
+# PS 5.1-compatible launcher
 $ErrorActionPreference = 'Stop'
 $AppRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $LogDir  = Join-Path $AppRoot 'logs'
@@ -7,23 +7,25 @@ New-Item -ItemType Directory -Force -Path $LogDir,$RunDir | Out-Null
 
 function Resolve-Python {
   $candidates = @(
-    (Join-Path $AppRoot 'env\Scripts\python.exe'),        # venv (preferred)
-    (Join-Path $AppRoot 'venv\Scripts\python.exe'),       # alt name
-    (Join-Path $AppRoot 'runtime\python.exe')             # private runtime
+    (Join-Path $AppRoot 'env\Scripts\python.exe'),
+    (Join-Path $AppRoot 'venv\Scripts\python.exe'),
+    (Join-Path $AppRoot 'runtime\python.exe')
   )
-  foreach ($p in $candidates) {
-    if (Test-Path $p) { return $p }
-  }
+  foreach ($p in $candidates) { if (Test-Path $p) { return $p } }
 
-  # Try system Python 3.11 from PATH
-  $sys = (Get-Command python.exe -ErrorAction SilentlyContinue)?.Source
-  if ($sys) {
-    $ver = & $sys -c "import sys;print('.'.join(map(str,sys.version_info[:2])))"
-    if ($ver -eq '3.11') { return $sys }
+  $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
+  if ($cmd) {
+    $sys = $cmd.Source
+    try {
+      $ver = & $sys -c "import sys;print('{}.{}'.format(sys.version_info[0], sys.version_info[1]))"
+      if ($ver -eq '3.11') { return $sys }
+    } catch {}
   }
 
   Write-Host "No suitable Python found. Attempting repair..."
-  & "$PSScriptRoot\astroengine_post_install.ps1" -InstallRoot $AppRoot -Mode Online -Scope PerUser -InstallPython `
+  $scope = ( ($AppRoot -like "$($env:ProgramFiles)*") ? 'AllUsers' : 'PerUser' )
+  & (Join-Path $PSScriptRoot 'astroengine_post_install.ps1') `
+      -InstallRoot $AppRoot -Mode Online -Scope $scope -InstallPython `
       -ManifestPath (Join-Path $AppRoot 'installer\manifests\online_python.json') `
       -LogPath (Join-Path $LogDir 'post_install-autofix.log')
   $after = Join-Path $AppRoot 'env\Scripts\python.exe'
@@ -32,15 +34,13 @@ function Resolve-Python {
 }
 
 $py = Resolve-Python
-
 $env:DATABASE_URL = "sqlite+pysqlite:///$($AppRoot -replace '\\','/')/var/dev.db"
 
-# rotate log (keep 5)
+# rotate logs (keep 5)
 $log = Join-Path $LogDir 'start_both.log'
 if (Test-Path $log) {
   for ($i=4; $i -ge 1; $i--) {
-    $src = "$log.$i"
-    $dst = "$log." + ($i + 1)
+    $src = "$log.$i"; $dst = "$log." + ($i+1)
     if (Test-Path $src) { Move-Item $src $dst -Force }
   }
   Move-Item $log "$log.1" -Force
