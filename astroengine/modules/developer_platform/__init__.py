@@ -54,6 +54,36 @@ def register_developer_platform_module(registry: AstroRegistry) -> None:
         },
     )
 
+    agents = module.register_submodule(
+        "agents",
+        metadata={
+            "description": "Automation toolkit for embedding AstroEngine data inside agents.",
+            "docs": ["docs/module/developer_platform/agents.md"],
+            "status": "beta",
+        },
+    )
+    agent_toolkits = agents.register_channel(
+        "toolkits",
+        metadata={
+            "description": "SDK surfaces designed for orchestration agents and LLM pipelines.",
+        },
+    )
+    agent_toolkits.register_subchannel(
+        "python",
+        metadata={
+            "description": "Python helper exposing registry discovery and transit scanning for agents.",
+            "status": "available",
+        },
+        payload={
+            "module": "astroengine.agents.AgentSDK",
+            "datasets": [
+                "docs-site/docs/fixtures/timeline_events.json",
+                "qa/artifacts/solarfire/2025-10-02/cross_engine.json",
+            ],
+            "documentation": "docs/module/developer_platform/agents.md#python",
+        },
+    )
+
     cli = module.register_submodule(
         "cli",
         metadata={
