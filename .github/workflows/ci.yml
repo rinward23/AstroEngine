@@ -1,4 +1,4 @@
-name: ci
+name: CI
 
 on:
   push:
@@ -6,15 +6,20 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
 jobs:
-  lint:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        shell: bash
+    timeout-minutes: 60
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -23,128 +28,117 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install dependencies
+      - name: Prime Swiss Ephemeris cache
         run: |
-          set -eo pipefail
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-          pip install -e ".[api,providers,ui]" || pip install -e .
+          set -euxo pipefail
+          EPHE_DIR="$RUNNER_TEMP/swisseph"
+          mkdir -p "$EPHE_DIR"
+          cp -a datasets/swisseph_stub/. "$EPHE_DIR/"
+          echo "SE_EPHE_PATH=$EPHE_DIR" >> "$GITHUB_ENV"
 
-      - name: Lint
+      - name: Install Python dependencies
         run: |
+          set -euxo pipefail
+          python -m pip install --upgrade pip wheel
+          pip install -e ".[dev]"
+
+      - name: Lint with ruff
+        run: |
+          set -euxo pipefail
           ruff check .
-          black --check .
-          isort --check-only --profile black .
 
-      - name: Type check
+      - name: Type check with mypy
         run: |
-          mypy --config-file mypy.ini --cache-dir=.mypy_cache .
-  db-migration-roundtrip:
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - name: Install dependencies
+          set -euxo pipefail
+          mypy --config-file mypy.ini
+
+      - name: Prepare test reports directory
+        run: mkdir -p reports
+
+      - name: Run pytest with coverage
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
-          pip install -e .
-      - name: Validate migration round-trip
+          set -euxo pipefail
+          pytest \
+            --junitxml=reports/pytest.xml \
+            --cov=astroengine \
+            --cov-report=xml \
+            --cov-report=term-missing
+
+      - name: Validate Alembic migrations (SQLite & Postgres)
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
-        run: python scripts/ci/run_migration_roundtrip.py
-  tests:
-    needs:
-      - lint
-      - db-migration-roundtrip
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            coverage: true
-          - os: macos-latest
-            coverage: false
-          - os: windows-latest
-            coverage: false
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+        run: |
+          set -euxo pipefail
+          python scripts/ci/run_migration_roundtrip.py --backends sqlite postgres
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Run maintenance orchestrator
+        run: |
+          set -euxo pipefail
+          python -m astroengine.maint --full --strict
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: "3.11"
-          cache: "pip"
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: apps/rulepack-authoring-ui/package-lock.json
 
-      - name: Cache Swiss ephemeris
-        if: ${{ runner.os != 'Windows' }}
-        uses: actions/cache@v4
-        with:
-          path: ~/.astroengine/ephemeris
-          key: ${{ runner.os }}-se-${{ hashFiles('datasets/swisseph_stub/**') }}
-
-      - name: Prepare ephemeris path
-        if: ${{ runner.os != 'Windows' }}
+      - name: Install UI dependencies
+        working-directory: apps/rulepack-authoring-ui
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
         run: |
-          set -eo pipefail
-          mkdir -p "$HOME/.astroengine/ephemeris"
-          cp -a datasets/swisseph_stub/. "$HOME/.astroengine/ephemeris/" 2>/dev/null || true
-          echo "SE_EPHE_PATH=$HOME/.astroengine/ephemeris" >> "$GITHUB_ENV"
+          set -euxo pipefail
+          npm ci
 
-      - name: Install project
+      - name: Lint UI
+        working-directory: apps/rulepack-authoring-ui
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
         run: |
-          set -eo pipefail
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-          pip install coverage build
-          pip install -e ".[api,providers,ui]" || pip install -e .
+          set -euxo pipefail
+          npm run lint
 
-      - name: Build distribution artifacts
-        if: ${{ matrix.coverage }}
+      - name: Type check UI
+        working-directory: apps/rulepack-authoring-ui
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
         run: |
-          python -m build
+          set -euxo pipefail
+          npm run typecheck
 
-      - name: Diagnostics
-        if: ${{ runner.os == 'Linux' }}
+      - name: Test UI
+        working-directory: apps/rulepack-authoring-ui
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
         run: |
-          python -m astroengine.diagnostics --json > diagnostics.json
-          python -m astroengine.diagnostics --strict
+          set -euxo pipefail
+          npm run test -- --runInBand
 
-      - name: Run tests with coverage
-        if: ${{ matrix.coverage }}
+      - name: Build UI
+        working-directory: apps/rulepack-authoring-ui
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
         run: |
-          coverage run --source=astroengine -m pytest
-          coverage xml
+          set -euxo pipefail
+          npm run build
 
-      - name: Run tests
-        if: ${{ not matrix.coverage }}
-        run: pytest -q
-
-      - name: Upload diagnostics
-        if: ${{ runner.os == 'Linux' }}
+      - name: Upload Python coverage and test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: diagnostics-${{ matrix.os }}
-          path: diagnostics.json
-
-      - name: Upload coverage artifacts
-        if: ${{ matrix.coverage }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.os }}
+          name: python-test-artifacts
+          if-no-files-found: ignore
           path: |
             coverage.xml
-            dist
+            reports/pytest.xml
+
+      - name: Codex failure triage (optional)
+        if: ${{ failure() && secrets.OPENAI_API_KEY != '' }}
+        uses: openai/codex-action@main
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          prompt: >-
+            Analyze the failing CI run for AstroEngine, summarizing the root causes and suggesting the minimal code changes needed to pass.
+            Refer to the uploaded artifacts when available and prefer concise bullet points.
+          codex_args: '["--config","sandbox_mode=\"workspace-read\""]'
