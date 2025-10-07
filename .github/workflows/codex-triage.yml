@@ -1,0 +1,166 @@
+name: codex-triage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    env:
+      MODEL: gpt-5-codex
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel
+          pip install -r requirements-dev.txt
+          pip install -e ".[api,providers,ui]" || pip install -e .
+          pip install black bandit pip-audit openai
+
+      - name: Prepare Swiss Ephemeris stub
+        run: |
+          mkdir -p "$HOME/.astroengine/ephemeris"
+          cp -a datasets/swisseph_stub/. "$HOME/.astroengine/ephemeris/" 2>/dev/null || true
+          echo "SE_EPHE_PATH=$HOME/.astroengine/ephemeris" >> "$GITHUB_ENV"
+
+      - name: Prepare artifact staging
+        run: mkdir -p ci_artifacts/logs
+
+      - name: Ruff lint
+        id: ruff
+        continue-on-error: true
+        run: |
+          set +e
+          ruff check . | tee ci_artifacts/logs/ruff.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Black formatting check
+        id: black
+        continue-on-error: true
+        run: |
+          set +e
+          black --check . | tee ci_artifacts/logs/black.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Isort import order
+        id: isort
+        continue-on-error: true
+        run: |
+          set +e
+          isort --check-only --profile black . | tee ci_artifacts/logs/isort.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Mypy type check
+        id: mypy
+        continue-on-error: true
+        run: |
+          set +e
+          mypy --config-file mypy.ini --cache-dir=.mypy_cache . | tee ci_artifacts/logs/mypy.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Bandit security scan
+        id: bandit
+        continue-on-error: true
+        run: |
+          set +e
+          bandit -r astroengine -ll -q --format json | tee ci_artifacts/logs/bandit.json
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: pip-audit vulnerability scan
+        id: pipaudit
+        continue-on-error: true
+        run: |
+          set +e
+          pip-audit -r requirements.txt -r requirements-dev.txt --format json | tee ci_artifacts/logs/pip-audit.json
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Pytest with coverage
+        id: pytest
+        continue-on-error: true
+        run: |
+          set +e
+          pytest --maxfail=1 --disable-warnings --cov=astroengine --cov-report=xml:ci_artifacts/coverage.xml --cov-report=term --junitxml=ci_artifacts/pytest-junit.xml | tee ci_artifacts/logs/pytest.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Collect auxiliary artifacts
+        if: always()
+        run: |
+          cp -f .coverage ci_artifacts/.coverage 2>/dev/null || true
+          cp -f coverage.xml ci_artifacts/coverage.xml 2>/dev/null || true
+          find . -maxdepth 2 -name "junit*.xml" -not -path "ci_artifacts/*" -exec cp {} ci_artifacts/ \; || true
+
+      - name: Bundle artifacts
+        if: always()
+        run: tar -czf codex-artifacts.tar.gz ci_artifacts
+
+      - name: Run Codex triage
+        if: env.OPENAI_API_KEY != ''
+        run: |
+          python scripts/ci/run_codex_triage.py --artifacts codex-artifacts.tar.gz --output codex/triage.md --model "$MODEL"
+
+      - name: Skip Codex triage (missing API key)
+        if: env.OPENAI_API_KEY == ''
+        run: echo "OPENAI_API_KEY not configured; skipping Codex triage step." >&2
+
+      - name: Upload triage report
+        if: env.OPENAI_API_KEY != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-triage
+          path: codex/triage.md
+
+      - name: Upload CI artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-ci-artifacts
+          path: ci_artifacts
+
+      - name: Enforce gates
+        if: always()
+        run: |
+          failed=0
+          report=""
+          check() {
+            local name="$1"
+            local code="$2"
+            if [ -n "$code" ] && [ "$code" != "0" ]; then
+              failed=1
+              report="${report}\n- ${name} failed (exit ${code})"
+            fi
+          }
+          check "ruff" "${{ steps.ruff.outputs.exit_code }}"
+          check "black" "${{ steps.black.outputs.exit_code }}"
+          check "isort" "${{ steps.isort.outputs.exit_code }}"
+          check "mypy" "${{ steps.mypy.outputs.exit_code }}"
+          check "bandit" "${{ steps.bandit.outputs.exit_code }}"
+          check "pip-audit" "${{ steps.pipaudit.outputs.exit_code }}"
+          check "pytest" "${{ steps.pytest.outputs.exit_code }}"
+          if [ "$failed" -ne 0 ]; then
+            echo "Codex triage workflow detected failures:${report}" >&2
+            exit 1
+          fi
