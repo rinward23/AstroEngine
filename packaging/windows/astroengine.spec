@@ -18,6 +18,8 @@ hidden += collect_submodules("pkg_resources")  # quiets altgraph/pkg_resources w
 hidden += collect_submodules("pywebview")
 hidden += collect_submodules("pystray")
 hidden += collect_submodules("PIL")
+hidden += collect_submodules("app.desktop")
+hidden += collect_submodules("app")
 
 # Data files from our own package
 astro_data = collect_data_files(
