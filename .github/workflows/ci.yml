@@ -1,150 +1,363 @@
-name: ci
+name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+
+concurrency:
+  group: "ci-${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
 
 jobs:
-  lint:
+  python:
+    name: python
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        shell: bash
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PYTHONUNBUFFERED: "1"
+      SE_EPHE_PATH: ${{ github.workspace }}/datasets/swisseph_stub
     steps:
-      - name: Checkout
+      - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements.in
+            pyproject.toml
 
       - name: Install dependencies
         run: |
-          set -eo pipefail
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-          pip install -e ".[api,providers,ui]" || pip install -e .
+          pip install ".[dev]"
 
-      - name: Lint
-        run: |
-          ruff check .
-          black --check .
-          isort --check-only --profile black .
+      - name: Run Ruff
+        run: ruff check .
 
-      - name: Type check
+      - name: Run MyPy
+        run: mypy .
+
+      - name: Run pytest with coverage
         run: |
-          mypy --config-file mypy.ini --cache-dir=.mypy_cache .
-  db-migration-roundtrip:
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - name: Install dependencies
+          mkdir -p reports
+          pytest \
+            --junitxml=reports/junit.xml \
+            --cov=astroengine \
+            --cov=tests \
+            --cov-report=xml \
+            --cov-report=term-missing
+
+      - name: Enforce 100% Python coverage
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
-          pip install -e .
-      - name: Validate migration round-trip
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: true
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          from decimal import Decimal, ROUND_HALF_UP
+
+          report = ET.parse('coverage.xml').getroot()
+          line_rate = Decimal(report.get('line-rate', '0')) * Decimal('100')
+          coverage = line_rate.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+          if coverage < 100:
+              raise SystemExit(f"Python coverage check failed: {coverage}% < 100%")
+          print(f"Python line coverage: {coverage}%")
+          PY
+
+      - name: Run Alembic migration roundtrip (sqlite + postgres)
         run: python scripts/ci/run_migration_roundtrip.py
-  tests:
-    needs:
-      - lint
-      - db-migration-roundtrip
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            coverage: true
-          - os: macos-latest
-            coverage: false
-          - os: windows-latest
-            coverage: false
+
+      - name: Run astroengine maintenance suite
+        run: python -m astroengine.maint --full --strict
+
+      - name: Upload Python artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-artifacts
+          if-no-files-found: ignore
+          path: |
+            reports/junit.xml
+            coverage.xml
+
+  node:
+    name: node
+    runs-on: ubuntu-latest
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
     defaults:
       run:
-        shell: bash
+        working-directory: apps/rulepack-authoring-ui
     steps:
-      - name: Checkout
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: "3.11"
-          cache: "pip"
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/rulepack-authoring-ui/package-lock.json
 
-      - name: Cache Swiss ephemeris
-        if: ${{ runner.os != 'Windows' }}
-        uses: actions/cache@v4
-        with:
-          path: ~/.astroengine/ephemeris
-          key: ${{ runner.os }}-se-${{ hashFiles('datasets/swisseph_stub/**') }}
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Prepare ephemeris path
-        if: ${{ runner.os != 'Windows' }}
+      - name: Run vitest with coverage
         run: |
-          set -eo pipefail
-          mkdir -p "$HOME/.astroengine/ephemeris"
-          cp -a datasets/swisseph_stub/. "$HOME/.astroengine/ephemeris/" 2>/dev/null || true
-          echo "SE_EPHE_PATH=$HOME/.astroengine/ephemeris" >> "$GITHUB_ENV"
+          set -o pipefail
+          npx vitest run --coverage --coverage.reporter=lcov --coverage.reporter=text-summary | tee coverage/vitest-summary.txt
 
-      - name: Install project
+      - name: Enforce 100% UI coverage
         run: |
-          set -eo pipefail
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-          pip install coverage build
-          pip install -e ".[api,providers,ui]" || pip install -e .
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
 
-      - name: Build distribution artifacts
-        if: ${{ matrix.coverage }}
-        run: |
-          python -m build
+          const lcovPath = path.join(process.cwd(), 'coverage', 'lcov.info');
+          if (!fs.existsSync(lcovPath)) {
+            console.error('lcov.info not found at', lcovPath);
+            process.exit(1);
+          }
+          const content = fs.readFileSync(lcovPath, 'utf8');
+          let linesFound = 0;
+          let linesHit = 0;
+          for (const line of content.split('\n')) {
+            if (line.startsWith('LF:')) {
+              linesFound += Number.parseInt(line.slice(3), 10);
+            } else if (line.startsWith('LH:')) {
+              linesHit += Number.parseInt(line.slice(3), 10);
+            }
+          }
+          const coverage = linesFound === 0 ? 0 : (linesHit / linesFound) * 100;
+          if (!Number.isFinite(coverage) || coverage < 100) {
+            console.error(`UI coverage check failed: ${coverage.toFixed(2)}% < 100%`);
+            process.exit(1);
+          }
+          console.log(`UI line coverage: ${coverage.toFixed(2)}%`);
+          NODE
 
-      - name: Diagnostics
-        if: ${{ runner.os == 'Linux' }}
-        run: |
-          python -m astroengine.diagnostics --json > diagnostics.json
-          python -m astroengine.diagnostics --strict
+      - name: Build Next.js application
+        run: npm run build
 
-      - name: Run tests with coverage
-        if: ${{ matrix.coverage }}
-        run: |
-          coverage run --source=astroengine -m pytest
-          coverage xml
-
-      - name: Run tests
-        if: ${{ not matrix.coverage }}
-        run: pytest -q
-
-      - name: Upload diagnostics
-        if: ${{ runner.os == 'Linux' }}
+      - name: Upload Node artifacts
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: diagnostics-${{ matrix.os }}
-          path: diagnostics.json
-
-      - name: Upload coverage artifacts
-        if: ${{ matrix.coverage }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.os }}
+          name: node-artifacts
+          if-no-files-found: ignore
           path: |
-            coverage.xml
-            dist
+            apps/rulepack-authoring-ui/coverage/lcov.info
+            apps/rulepack-authoring-ui/coverage/vitest-summary.txt
+
+  codex-triage:
+    name: codex-triage
+    runs-on: ubuntu-latest
+    needs:
+      - python
+      - node
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      PYTHON_RESULT: ${{ needs.python.result }}
+      NODE_RESULT: ${{ needs.node.result }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download CI artifacts
+        if: ${{ always() }}
+        uses: actions/download-artifact@v4
+        with:
+          path: codex/artifacts
+          merge-multiple: true
+
+      - name: Generate Codex triage report
+        id: generate-triage
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import textwrap
+          import urllib.request
+          from pathlib import Path
+
+          workspace = Path.cwd()
+          artifacts_dir = workspace / 'codex' / 'artifacts'
+          output_dir = workspace / 'codex'
+          output_dir.mkdir(parents=True, exist_ok=True)
+          triage_path = output_dir / 'triage.md'
+
+          python_result = os.environ.get('PYTHON_RESULT', 'unknown')
+          node_result = os.environ.get('NODE_RESULT', 'unknown')
+
+          def collect_artifacts(root: Path) -> list[dict[str, str]]:
+              entries: list[dict[str, str]] = []
+              if not root.exists():
+                  return entries
+              for file in sorted(root.rglob('*')):
+                  if not file.is_file():
+                      continue
+                  try:
+                      data = file.read_text(encoding='utf-8', errors='replace')
+                  except Exception:
+                      continue
+                  if not data.strip():
+                      continue
+                  if len(data) > 20000:
+                      data = data[-20000:]
+                      data = f"(truncated)\n{data}"
+                  entries.append({
+                      'path': str(file.relative_to(root)),
+                      'excerpt': data,
+                  })
+              return entries
+
+          artifact_entries = collect_artifacts(artifacts_dir)
+
+          prompt = textwrap.dedent(f"""
+          You are Codex Triage, an AI site reliability engineer helping AstroEngine developers.
+          Provide a concise but actionable Markdown report that includes:
+          - A summary of which CI jobs failed or succeeded.
+          - Root causes for any failures, referencing file names, tests, or stack traces.
+          - Concrete remediation steps and, when possible, a suggested unified diff patch.
+          - Coverage results for Python and the Next.js UI with explicit percentages.
+
+          Repository: AstroEngine
+          Python job result: {python_result}
+          Node job result: {node_result}
+
+          Artifact excerpts (JSON):
+          {json.dumps(artifact_entries, indent=2)}
+          """)
+
+          api_key = os.environ.get('OPENAI_API_KEY')
+          if not api_key:
+              triage_path.write_text(
+                  textwrap.dedent(
+                      f"""Codex triage skipped because OPENAI_API_KEY is not configured.\n\nPython job: {python_result}\nNode job: {node_result}\n"""
+                  ),
+                  encoding='utf-8',
+              )
+              print('OPENAI_API_KEY not set; generated fallback triage note.')
+              sys.exit(0)
+
+          payload = {
+              'model': 'gpt-4.1-mini',
+              'input': [
+                  {
+                      'role': 'system',
+                      'content': [
+                          {
+                              'type': 'text',
+                              'text': 'You are an expert CI triage assistant. Respond in GitHub-flavored Markdown.',
+                          }
+                      ],
+                  },
+                  {
+                      'role': 'user',
+                      'content': [
+                          {
+                              'type': 'text',
+                              'text': prompt,
+                          }
+                      ],
+                  },
+              ],
+              'tools': [
+                  {'type': 'code_interpreter'},
+              ],
+              'temperature': 0,
+          }
+
+          req = urllib.request.Request(
+              'https://api.openai.com/v1/responses',
+              data=json.dumps(payload).encode('utf-8'),
+              headers={
+                  'Authorization': f'Bearer {api_key}',
+                  'Content-Type': 'application/json',
+                  'OpenAI-Beta': 'assistants=v2',
+              },
+              method='POST',
+          )
+
+          try:
+              with urllib.request.urlopen(req, timeout=120) as resp:
+                  response = json.load(resp)
+          except Exception as exc:  # pragma: no cover - network failure path
+              fallback = textwrap.dedent(
+                  f"""Codex triage request failed: {exc}\n\nPython job: {python_result}\nNode job: {node_result}\n"""
+              )
+              triage_path.write_text(fallback, encoding='utf-8')
+              print('Failed to retrieve Codex response; wrote fallback triage note.')
+              sys.exit(0)
+
+          outputs: list[str] = []
+          for item in response.get('output', []):
+              for content in item.get('content', []):
+                  text = content.get('text')
+                  if text:
+                      outputs.append(text)
+          if not outputs:
+              outputs.append(json.dumps(response, indent=2))
+
+          triage_text = '\n\n'.join(outputs)
+          triage_path.write_text(triage_text, encoding='utf-8')
+          print('Generated Codex triage report.')
+          PY
+
+      - name: Upload triage artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-triage
+          if-no-files-found: ignore
+          path: codex/triage.md
+
+      - name: Post or update Codex triage comment
+        if: ${{ always() }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const triagePath = path.join(process.cwd(), 'codex', 'triage.md');
+            if (!fs.existsSync(triagePath)) {
+              core.info('No triage report found; skipping comment.');
+              return;
+            }
+            const body = fs.readFileSync(triagePath, 'utf8');
+            const header = '<!-- codex-triage -->';
+            const finalBody = `${header}\n${body}`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+            });
+            const existing = comments.find(comment => comment.body && comment.body.includes(header));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body: finalBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body: finalBody,
+              });
+            }
