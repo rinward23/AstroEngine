@@ -45,7 +45,11 @@ class ServiceSettings(BaseModel):
         gzip_min_size = int(os.getenv("RELATIONSHIP_GZIP_MIN", "512"))
         request_max = int(os.getenv("RELATIONSHIP_REQUEST_MAX", "1000000"))
         enable_etag = os.getenv("RELATIONSHIP_DISABLE_ETAG") not in {"1", "true", "TRUE"}
-        env_name = (os.getenv("ENV") or "dev").lower()
+        env_name = (
+            os.getenv("ENV")
+            or os.getenv("ASTROENGINE_ENV")
+            or "production"
+        ).strip().lower()
         settings = cls(
             cors_allow_origins=os.getenv("CORS_ALLOW_ORIGINS"),
             rate_limit_per_minute=max(1, rate_limit),
@@ -54,7 +58,7 @@ class ServiceSettings(BaseModel):
             request_max_bytes=max(32_768, request_max),
             enable_etag=enable_etag,
         )
-        if env_name == "dev" and not settings.cors_allow_origins:
+        if env_name in {"dev", "development"} and not settings.cors_allow_origins:
             settings.cors_allow_origins = ["*"]
         return settings
 
