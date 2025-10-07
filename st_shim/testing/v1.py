@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 from typing import Any
 
@@ -62,8 +63,7 @@ class AppTest:
             "__name__": "__main__",
             "__file__": str(self._path),
         }
-        code = self._path.read_text(encoding="utf-8")
-        exec(compile(code, str(self._path), "exec"), module_globals)
+        runpy.run_path(str(self._path), run_name="__main__", init_globals=module_globals)
         return self
 
     @property

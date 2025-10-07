@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import logging
 import os
 import re
 from collections.abc import Iterable, Mapping, Sequence
@@ -11,9 +12,12 @@ from dataclasses import asdict, is_dataclass
 from typing import Any
 
 # Canonical adapters; tolerate absence if CP not yet applied
+LOG = logging.getLogger(__name__)
+
 try:
     from .canonical import events_from_any
-except Exception:  # pragma: no cover
+except Exception as exc:  # pragma: no cover
+    LOG.debug("Falling back to passthrough events_from_any: %s", exc)
 
     def events_from_any(seq: Iterable[Any]) -> list[Any]:
         return list(seq)
@@ -25,7 +29,8 @@ ScanSpec = ScanCandidate | str
 try:  # pragma: no cover - optional OpenTelemetry dependency
     from opentelemetry import trace as _scan_trace
     from opentelemetry.trace import Status, StatusCode
-except Exception:  # pragma: no cover - otel not installed
+except Exception as exc:  # pragma: no cover - otel not installed
+    LOG.debug("OpenTelemetry tracer unavailable: %s", exc)
     _scan_trace = None
     Status = None  # type: ignore[assignment]
     StatusCode = None  # type: ignore[assignment]
@@ -59,8 +64,8 @@ def _record_span_error(span: Any, exc: Exception) -> None:
     if Status is not None and StatusCode is not None:
         try:
             span.set_status(Status(StatusCode.ERROR, str(exc)))
-        except Exception:  # pragma: no cover - defensive guard
-            pass
+        except Exception as span_exc:  # pragma: no cover - defensive guard
+            LOG.debug("Unable to tag tracing span with error: %s", span_exc)
 
 
 def _parse_entrypoint_spec(spec: str) -> ScanCandidate | None:

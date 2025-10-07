@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import io
+import logging
 import shutil
 import tempfile
 from collections.abc import Iterable
 from pathlib import Path
 
 from astroengine.exporters.reports.base import ReportMeta
+
+
+LOG = logging.getLogger(__name__)
 
 
 class DocxUnavailable(RuntimeError):
@@ -25,8 +29,8 @@ def convert_markdown_to_docx(markdown: str, meta: ReportMeta) -> bytes:
     try:
         if has_pandoc():
             return _convert_with_pandoc(markdown, meta)
-    except Exception:  # pragma: no cover - integration guard
-        pass
+    except Exception as exc:  # pragma: no cover - integration guard
+        LOG.warning("Pandoc conversion failed, falling back to python-docx: %s", exc)
     return _convert_with_python_docx(markdown, meta)
 
 
@@ -47,8 +51,8 @@ def _convert_with_pandoc(markdown: str, meta: ReportMeta) -> bytes:
     finally:
         try:
             output_path.unlink(missing_ok=True)
-        except OSError:  # pragma: no cover - cleanup fallback
-            pass
+        except OSError as exc:  # pragma: no cover - cleanup fallback
+            LOG.debug("Unable to remove temporary DOCX %s: %s", output_path, exc)
     return data
 
 

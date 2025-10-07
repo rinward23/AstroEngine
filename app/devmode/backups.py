@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import time
 import zipfile
@@ -13,6 +14,8 @@ from astroengine.infrastructure import retention
 from astroengine.infrastructure.home import ae_home
 from astroengine.scheduler.db import now as queue_now
 from astroengine.scheduler.queue import cancel, enqueue, get
+
+LOG = logging.getLogger(__name__)
 
 BACKUP_GLOB_TARGETS: Sequence[Path] = (
     Path("profiles"),
@@ -157,8 +160,8 @@ def cancel_backup_schedule() -> dict[str, object]:
     if job_id:
         try:
             cancel(str(job_id))
-        except Exception:
-            pass
+        except Exception as exc:  # pragma: no cover - defensive cleanup
+            LOG.warning("Unable to cancel scheduled backup %s: %s", job_id, exc)
     path = _schedule_path()
     if path.exists():
         path.unlink()
@@ -179,8 +182,8 @@ def schedule_backups(
     if "job_id" in schedule:
         try:
             cancel(str(schedule["job_id"]))
-        except Exception:
-            pass
+        except Exception as exc:  # pragma: no cover - defensive cleanup
+            LOG.warning("Unable to cancel existing backup %s: %s", schedule["job_id"], exc)
 
     project_root = Path(root).resolve()
     current = now_ts if now_ts is not None else queue_now()

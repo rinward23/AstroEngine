@@ -169,8 +169,8 @@ class StreamlitController:
         if self._log_handle is not None:
             try:
                 self._log_handle.close()
-            except Exception:  # pragma: no cover - defensive cleanup
-                pass
+            except Exception as exc:  # pragma: no cover - defensive cleanup
+                LOG.debug("Failed to close desktop log file %s: %s", self._log_path, exc)
             self._log_handle = None
 
     def restart(self) -> None:
@@ -310,8 +310,8 @@ class AstroEngineDesktopApp:
         if self._tray_icon is not None:
             try:
                 self._tray_icon.stop()
-            except Exception:  # pragma: no cover
-                pass
+            except Exception as exc:  # pragma: no cover
+                LOG.debug("Tray icon shutdown reported an error: %s", exc)
         self.ui_controller.stop()
         self.api_controller.stop()
 
@@ -435,7 +435,8 @@ class AstroEngineDesktopApp:
     def _build_menu(self, webview: Any) -> Any:
         try:
             from webview import menu as menu_module
-        except Exception:
+        except Exception as exc:
+            LOG.debug("Webview menu module unavailable: %s", exc)
             return None
 
         def item(title: str, callback: Any) -> Any:
@@ -522,6 +523,7 @@ class AstroEngineDesktopApp:
                 response.raise_for_status()
             return True
         except Exception:
+            LOG.debug("API health probe failed", exc_info=True)
             return False
 
     def _open_settings(self) -> None:
@@ -529,16 +531,16 @@ class AstroEngineDesktopApp:
             self._settings_window.show()
             try:
                 self._settings_window.focus()
-            except Exception:  # pragma: no cover - GUI dependent
-                pass
+            except Exception as exc:  # pragma: no cover - GUI dependent
+                LOG.debug("Unable to focus settings window: %s", exc)
 
     def _open_chat(self) -> None:
         if self._chat_window is not None:
             self._chat_window.show()
             try:
                 self._chat_window.focus()
-            except Exception:  # pragma: no cover - GUI dependent
-                pass
+            except Exception as exc:  # pragma: no cover - GUI dependent
+                LOG.debug("Unable to focus chat window: %s", exc)
 
     def _wait_forever(self) -> None:
         try:
