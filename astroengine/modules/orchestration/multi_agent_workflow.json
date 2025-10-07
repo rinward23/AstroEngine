@@ -1,0 +1,157 @@
+{
+  "id": "solar_fire_tracking_v1",
+  "version": "2025.02",
+  "description": "Multi-agent workflow orchestrating Solar Fire ingest, Swiss Ephemeris verification, and daily transit reporting.",
+  "data_contracts": [
+    {
+      "path": "datasets/solarfire/README.md",
+      "description": "Mount point for verified Solar Fire exports described in docs/module/interop.md.",
+      "integrity_reference": "docs/governance/data_revision_policy.md"
+    },
+    {
+      "path": "datasets/swisseph_stub/README.md",
+      "description": "Swiss Ephemeris stub shipped with the repository for deterministic tests.",
+      "integrity_reference": "docs/SWISS_EPHEMERIS.md"
+    },
+    {
+      "path": "rulesets/transit/scan.ruleset.md",
+      "description": "Transit scan rule definitions consumed by the reporting agent.",
+      "integrity_reference": "rulesets/transit/stations.ruleset.md"
+    }
+  ],
+  "agents": [
+    {
+      "name": "ingest_coordinator",
+      "title": "Solar Fire ingest coordinator",
+      "responsibilities": [
+        "Validate checksums for mounted Solar Fire exports and produce an ingest manifest.",
+        "Index natal charts and transit tables required by downstream agents.",
+        "Ensure no datasets are removed when manifests are regenerated."
+      ],
+      "inputs": [
+        {
+          "type": "filesystem",
+          "path": "datasets/solarfire/README.md",
+          "description": "Confirms Solar Fire exports are mounted for ingestion."
+        },
+        {
+          "type": "documentation",
+          "path": "docs/module/interop.md",
+          "description": "Defines the export schema and checksum policy for Solar Fire assets."
+        }
+      ],
+      "outputs": [
+        {
+          "type": "manifest",
+          "path": "docs/governance/data_revision_policy.md",
+          "description": "Appends the latest checksum entries for Solar Fire exports."
+        }
+      ],
+      "handoff_artifacts": [
+        {
+          "name": "ingest_manifest",
+          "path": "docs/governance/data_revision_policy.md",
+          "delivered_to": "ephemeris_verifier"
+        }
+      ]
+    },
+    {
+      "name": "ephemeris_verifier",
+      "title": "Swiss Ephemeris verification agent",
+      "responsibilities": [
+        "Probe Swiss Ephemeris availability and confirm the configured year range.",
+        "Record provisioning metadata for downstream reporting.",
+        "Expose cache warm-up tasks aligned with detectors."
+      ],
+      "inputs": [
+        {
+          "type": "filesystem",
+          "path": "datasets/swisseph_stub/README.md",
+          "description": "Documents the stub data used for deterministic Swiss Ephemeris checks."
+        },
+        {
+          "type": "python_module",
+          "path": "astroengine/pipeline/provision.py",
+          "description": "Implements the provisioning routine executed by this agent."
+        }
+      ],
+      "outputs": [
+        {
+          "type": "json",
+          "path": "observability/trends/README.md",
+          "description": "Records provisioning telemetry referenced by dashboards."
+        },
+        {
+          "type": "script",
+          "path": "astroengine/pipeline/cache_warm.py",
+          "description": "Provides the cache warm-up entry point triggered after provisioning."
+        }
+      ],
+      "handoff_artifacts": [
+        {
+          "name": "ephemeris_status",
+          "path": "astroengine/pipeline/provision.py",
+          "delivered_to": "transit_reporter"
+        }
+      ]
+    },
+    {
+      "name": "transit_reporter",
+      "title": "Daily transit reporter",
+      "responsibilities": [
+        "Run Solar Fire aligned transit scans using verified ephemeris data.",
+        "Publish CSV/JSON payloads documented in the daily planner recipe.",
+        "Push observability markers to the engine_scans dashboard."
+      ],
+      "inputs": [
+        {
+          "type": "ruleset",
+          "path": "rulesets/transit/scan.ruleset.md",
+          "description": "Defines the deterministic transit scan configuration."
+        },
+        {
+          "type": "recipe",
+          "path": "docs/recipes/daily_planner.md",
+          "description": "Specifies the output contract for the daily planner report."
+        },
+        {
+          "type": "application",
+          "path": "apps/streamlit_transit_scanner.py",
+          "description": "Interactive surface sharing the same scan workflow."
+        }
+      ],
+      "outputs": [
+        {
+          "type": "dashboard",
+          "path": "observability/dashboards/engine_scans.json",
+          "description": "Telemetry configuration capturing scan throughput and success rates."
+        },
+        {
+          "type": "report_spec",
+          "path": "docs/recipes/daily_planner.md",
+          "description": "Published report matching the documented planner schema."
+        }
+      ],
+      "handoff_artifacts": []
+    }
+  ],
+  "handoffs": [
+    {
+      "from": "ingest_coordinator",
+      "to": "ephemeris_verifier",
+      "artifact": "ingest_manifest",
+      "path": "docs/governance/data_revision_policy.md"
+    },
+    {
+      "from": "ephemeris_verifier",
+      "to": "transit_reporter",
+      "artifact": "ephemeris_status",
+      "path": "astroengine/pipeline/provision.py"
+    }
+  ],
+  "observability": {
+    "metrics_dashboard": "observability/dashboards/engine_scans.json",
+    "telemetry_reference": "observability/trends/README.md",
+    "notes": "Workflow metrics must originate from real scan executions backed by Solar Fire exports and Swiss Ephemeris checks."
+  }
+}

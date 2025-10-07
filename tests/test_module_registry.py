@@ -1,4 +1,5 @@
 from astroengine import DEFAULT_REGISTRY, serialize_vca_ruleset
+from astroengine.modules.orchestration import load_multi_agent_plan
 from astroengine.modules.reference.catalog import (
     CHART_TYPES,
     FRAMEWORKS,
@@ -67,3 +68,16 @@ def test_reference_module_exposes_catalogued_entries():
     systems = frameworks.get_channel("systems")
     for key, entry in FRAMEWORKS.items():
         assert systems.get_subchannel(key).metadata["term"] == entry.term
+
+
+def test_orchestration_module_registers_multi_agent_workflow():
+    module = DEFAULT_REGISTRY.get_module("orchestration")
+    submodule = module.get_submodule("multi_agent")
+    workflows = submodule.get_channel("workflows")
+    node = workflows.get_subchannel("solar_fire_tracking_v1").describe()
+    plan = load_multi_agent_plan()
+
+    assert node["version"] == plan["version"]
+    assert node["payload"]["observability"]["metrics_dashboard"] == "observability/dashboards/engine_scans.json"
+    assert [agent["name"] for agent in plan["agents"]]
+    assert node["payload"]["agents"][0]["name"] == plan["agents"][0]["name"]
