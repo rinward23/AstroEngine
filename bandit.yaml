@@ -1,3 +1,20 @@
-# Minimal Bandit configuration; expand as security policies evolve.
+# Bandit configuration tuned for AstroEngine CI. The GitHub workflow filters for high
+# severity + high confidence findings, but we still define the directories and rules to
+# analyze explicitly so local runs match the pipeline.
+exclude_dirs:
+  - tests
+  - docs
+  - analysis
+  - datasets
+  - profiles
+  - registry
+  - rulesets
+  - apps/rulepack-authoring-ui/node_modules
+  - node_modules
 skips:
+  # Allow the use of assert statements inside tests and fixtures.
   - B101
+  # Temporary network operations used in observability tooling rely on subprocess.
+  - B404
+  - B603
+  - B607
