@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -11,6 +12,8 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
+
+LOG = logging.getLogger(__name__)
 
 try:  # pragma: no cover - Streamlit import guarded for test environments
     import streamlit as st
@@ -49,30 +52,33 @@ def _event_to_record(event: Any) -> dict[str, Any]:
     if hasattr(event, "model_dump"):
         try:
             dumped = event.model_dump()
-        except Exception:  # pragma: no cover - defensive
+        except Exception as exc:  # pragma: no cover - defensive
+            LOG.debug("Unable to dump model for %r: %s", event, exc)
             dumped = None
         if isinstance(dumped, Mapping):
             return dict(dumped)
     if hasattr(event, "_asdict"):
         try:
             dumped = event._asdict()
-        except Exception:  # pragma: no cover - defensive
+        except Exception as exc:  # pragma: no cover - defensive
+            LOG.debug("Unable to convert namedtuple %r: %s", event, exc)
             dumped = None
         if isinstance(dumped, Mapping):
             return dict(dumped)
     if is_dataclass(event):
         try:
             return asdict(event)
-        except Exception:  # pragma: no cover - defensive
-            pass
+        except Exception as exc:  # pragma: no cover - defensive
+            LOG.debug("Unable to convert dataclass %r: %s", event, exc)
     if hasattr(event, "__dict__"):
         try:
             return dict(vars(event))
-        except Exception:  # pragma: no cover - defensive
-            pass
+        except Exception as exc:  # pragma: no cover - defensive
+            LOG.debug("Unable to read __dict__ for %r: %s", event, exc)
     try:
         return dict(event)
-    except Exception:  # pragma: no cover - defensive
+    except Exception as exc:  # pragma: no cover - defensive
+        LOG.debug("Unable to coerce %r into dict: %s", event, exc)
         return {"value": repr(event)}
 
 
@@ -85,11 +91,13 @@ def _records_to_df(records: list[dict[str, Any]]):
         return None
     try:  # pragma: no cover - pandas optional dependency
         import pandas as pd
-    except Exception:  # pragma: no cover - gracefully degrade
+    except Exception as exc:  # pragma: no cover - gracefully degrade
+        LOG.warning("pandas unavailable for transit scanner: %s", exc)
         return None
     try:
         return pd.DataFrame(records)
-    except Exception:  # pragma: no cover - defensive
+    except Exception as exc:  # pragma: no cover - defensive
+        LOG.debug("Unable to build dataframe from %d records: %s", len(records), exc)
         return None
 
 

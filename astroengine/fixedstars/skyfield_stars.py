@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 import csv
+import logging
 
 from ..infrastructure.paths import datasets_dir
 
+LOG = logging.getLogger(__name__)
+
 try:
     from skyfield.api import Star, load
-except Exception:  # pragma: no cover
+except Exception as exc:  # pragma: no cover
+    LOG.warning("Skyfield unavailable, fixed star computations disabled: %s", exc)
     Star = None
     load = None
 
@@ -18,8 +22,8 @@ def _load_kernel():
     for name in ("de440s.bsp", "de421.bsp", "de430t.bsp"):
         try:
             return load(name)
-        except Exception:
-            pass
+        except Exception as exc:  # pragma: no cover - kernel search guard
+            LOG.debug("Unable to load kernel %s: %s", name, exc)
     raise FileNotFoundError("No local JPL kernel found (e.g., de440s.bsp)")
 
 

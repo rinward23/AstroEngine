@@ -17,12 +17,15 @@ values) to aid parity checks and diagnose edge cases.
 
 from __future__ import annotations
 
+import logging
 import math
 from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from astroengine.ephemeris.swe import has_swe, swe
+
+LOG = logging.getLogger(__name__)
 
 _HAS_SWE = has_swe()
 if not _HAS_SWE:
@@ -360,8 +363,10 @@ def composite_houses(
                     fallback_reason=f"forced_whole_sign:{last_error}" if last_error else "forced_whole_sign",
                     metadata=meta,
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                LOG.warning(
+                    "Angle midpoint house computation failed for %s: %s", requested, exc
+                )
 
         reason = f"forced_whole_sign:{last_error}" if last_error else "forced_whole_sign"
         meta.update({"fallback_method": "default_whole_sign", "method": "forced_whole_sign", "fallback_chain": f"{requested}->W"})

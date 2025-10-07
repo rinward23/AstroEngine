@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import logging
 from typing import Any
+
+LOG = logging.getLogger(__name__)
 
 _PRAGMA_STATEMENTS: tuple[str, ...] = (
     "PRAGMA journal_mode=WAL;",
@@ -21,13 +24,13 @@ def _consume_cursor(cursor: Any) -> None:
         return
     try:
         cursor.fetchall()
-    except Exception:
-        pass
+    except Exception as exc:  # pragma: no cover - cursor implementations vary
+        LOG.debug("Unable to consume pragma cursor: %s", exc)
     finally:
         try:
             cursor.close()
-        except Exception:
-            pass
+        except Exception as exc:  # pragma: no cover - cursor implementations vary
+            LOG.debug("Unable to close pragma cursor: %s", exc)
 
 
 def apply_default_pragmas(dbapi_connection: Any) -> None:

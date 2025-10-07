@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -9,6 +10,8 @@ from itertools import combinations
 from typing import (
     Any,
 )
+
+LOG = logging.getLogger(__name__)
 
 from astroengine.analysis.antiscia import (
     antiscia,
@@ -411,8 +414,9 @@ def _scan_mirror_target(
                         positions = provider(hit_time)
                         lon_a = float(positions[body_a])
                         lon_b = float(positions[body_b])
-                    except Exception:
-                        pass
+                    except Exception as exc:  # pragma: no cover - ephemeris guard
+                        LOG.warning("Position provider failed during antiscia scan: %s", exc)
+                        continue
                     else:
                         classification = aspect_to_antiscia(
                             lon_a,

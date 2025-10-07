@@ -26,8 +26,8 @@ def _render_error_id(container: Any, error_id: str) -> None:
             caption("Error ID (click to copy):")
         if callable(code):
             code(error_id, language=None)
-    except Exception:  # pragma: no cover - UI rendering best-effort
-        pass
+    except Exception as exc:  # pragma: no cover - UI rendering best-effort
+        _LOG.debug("Unable to render error identifier %s: %s", error_id, exc)
 
 
 def _normalize_exc_info(exc_info: Any) -> Any:
@@ -74,8 +74,8 @@ def _install_error_wrapper() -> None:
 
         try:  # pragma: no cover - attribute may not exist on shim
             result.error_id = error_id
-        except Exception:
-            pass
+        except Exception as exc:
+            _LOG.debug("Unable to attach error_id attribute to Streamlit widget: %s", exc)
 
         return result
 

@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import sqlalchemy as sa
 from alembic import op
+import logging
+
 from sqlalchemy.engine.reflection import Inspector
+
+LOG = logging.getLogger(__name__)
 
 
 def _create_unique(table: str, name: str, columns: list[str]) -> None:
@@ -54,8 +58,8 @@ def _drop_unique(table: str, name: str, columns: list[str]) -> None:
         try:
             op.drop_constraint(name, table_name=table, type_="unique")
             return
-        except Exception:  # pragma: no cover - backend-specific fallback
-            pass
+        except Exception as exc:  # pragma: no cover - backend-specific fallback
+            LOG.warning("Constraint drop fallback for %s failed: %s", name, exc)
 
     if index_name is not None:
         op.drop_index(index_name, table_name=table)

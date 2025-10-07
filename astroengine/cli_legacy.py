@@ -6,12 +6,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+LOG = logging.getLogger(__name__)
 
 from . import engine as engine_module
 from .app_api import canonicalize_events, run_scan_or_raise
@@ -709,8 +712,8 @@ def _resolver_for_target_frame(args: argparse.Namespace) -> TargetFrameResolver 
     if target_name and getattr(args, "target_longitude", None) is not None:
         try:
             static_positions[target_name.lower()] = float(args.target_longitude) % 360.0
-        except Exception:
-            pass
+        except Exception as exc:
+            LOG.warning("Invalid static position override for %s: %s", target_name, exc)
 
     primary = _primary_chart(args)
 

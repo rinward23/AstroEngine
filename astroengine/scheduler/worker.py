@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 import traceback
 from collections.abc import Callable
@@ -14,6 +15,8 @@ from ..detectors.directed_aspects import solar_arc_natal_aspects
 from ..detectors.progressed_aspects import progressed_natal_aspects
 from .queue import claim_one, done, fail, heartbeat
 
+LOG = logging.getLogger(__name__)
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "scan:progressions": lambda payload: progressed_natal_aspects(**payload),
     "scan:directions": lambda payload: solar_arc_natal_aspects(**payload),
@@ -25,8 +28,8 @@ def _summarize_result(result: Any) -> dict[str, Any]:
     if hasattr(result, "__len__"):
         try:
             return {"count": len(result)}  # type: ignore[arg-type]
-        except Exception:  # pragma: no cover - very defensive
-            pass
+        except Exception as exc:  # pragma: no cover - very defensive
+            LOG.debug("Unable to summarize result length: %s", exc)
     return {"ok": True}
 
 

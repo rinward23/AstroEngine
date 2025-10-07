@@ -2,17 +2,21 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 from ..infrastructure.paths import datasets_dir
+
+LOG = logging.getLogger(__name__)
 
 CACHE_DIR = datasets_dir() / "sbdb_cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 try:
     from astroquery.jplsbdb import SBDB
-except Exception:  # pragma: no cover
+except Exception as exc:  # pragma: no cover
+    LOG.warning("astroquery.jplsbdb unavailable: %s", exc)
     SBDB = None  # type: ignore
 
 
@@ -36,8 +40,8 @@ def fetch_sbdb(designation: str, use_cache: bool = True) -> SBDBObject:
                 if use_cache:
                     fpath.write_text(json.dumps(res, indent=2))
                 return SBDBObject(designation=designation, data=res)
-        except Exception:
-            pass  # fall back to cache
+        except Exception as exc:  # pragma: no cover - network/cache fallback
+            LOG.warning("SBDB query failed for %s, falling back to cache: %s", designation, exc)
 
     if use_cache and fpath.exists():
         return SBDBObject(designation=designation, data=json.loads(fpath.read_text()))

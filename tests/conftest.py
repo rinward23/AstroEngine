@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import logging
 import os
 import sys
 import types
@@ -29,6 +30,8 @@ def _flag_enabled(name: str) -> bool:
 Idempotent and safe to keep during the deprecation window.
 """
 
+LOG = logging.getLogger(__name__)
+
 if "generated" not in sys.modules:
     warnings.warn(
         "Tests importing 'generated' are deprecated; using 'astroengine' instead.",
@@ -43,9 +46,9 @@ try:
     import astroengine as _ae  # noqa: F401
 
     sys.modules.setdefault("generated.astroengine", _ae)
-except Exception:
+except Exception as exc:
     # If astroengine is not importable here, let pytest show the normal error later.
-    pass
+    LOG.debug("Deferred astroengine import during test shim setup: %s", exc)
 
 # Provide compatibility alias for the legacy ``streamlit`` shim used in tests.
 _disable_shim = os.getenv("ASTROENGINE_DISABLE_STREAMLIT_SHIM", "").strip().lower() in {

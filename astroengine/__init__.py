@@ -5,11 +5,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone, UTC
+import logging
 
 try:
     from importlib.metadata import PackageNotFoundError, version as _get_version
 except ImportError:  # pragma: no cover - fallback for Python <3.8 environments
     from importlib_metadata import PackageNotFoundError, version as _get_version
+
+LOG = logging.getLogger(__name__)
 
 try:
     from ._version import version as __version__
@@ -480,6 +483,6 @@ try:  # pragma: no cover - optional dependency in some environments
         )
 
     _hyp_strategies.datetimes = _datetimes_utc_friendly  # type: ignore[assignment]
-except Exception:  # pragma: no cover
-    pass
+except Exception as exc:  # pragma: no cover
+    LOG.debug("Hypothesis timezone shim unavailable: %s", exc)
 

@@ -7,13 +7,17 @@ This avoids a hard move of files while consolidating runtime onto `astroengine`.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
+
+LOG = logging.getLogger(__name__)
 
 try:
     # Python ≥3.9 importlib.resources.files API
     from importlib.resources import files as _files  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc:  # pragma: no cover
+    LOG.debug("importlib.resources.files unavailable: %s", exc)
     _files = None  # type: ignore
 
 from ..infrastructure.paths import registry_dir
@@ -26,8 +30,8 @@ def _candidate_dirs() -> list[Path]:
         try:
             pkg_root = Path(_files(__package__))
             roots.append(pkg_root)
-        except Exception:
-            pass
+        except Exception as exc:
+            LOG.debug("Unable to locate packaged registry via importlib: %s", exc)
     # 2) project root `registry/` (dev installs, editable mode)
     repo_registry = registry_dir()
     if repo_registry.exists():

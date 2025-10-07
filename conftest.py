@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import logging
 from datetime import datetime
 from typing import Any
+
+LOG = logging.getLogger(__name__)
 
 
 def _install_hypothesis_patch() -> None:
     try:
         import hypothesis.strategies as _st
-    except Exception:  # pragma: no cover - hypothesis optional
+    except Exception as exc:  # pragma: no cover - hypothesis optional
+        LOG.debug("Hypothesis not available; timezone patch skipped: %s", exc)
         return
 
     if getattr(_st, "_astroengine_datetimes_patched", False):  # pragma: no cover - idempotent
@@ -40,8 +44,8 @@ def _install_hypothesis_patch() -> None:
     _st.datetimes = _patched_datetimes
     try:
         from hypothesis.strategies._internal import datetime as _dt_mod  # type: ignore
-    except Exception:  # pragma: no cover - internal layout may change
-        pass
+    except Exception as exc:  # pragma: no cover - internal layout may change
+        LOG.debug("Hypothesis internal layout changed; datetime patch limited: %s", exc)
     else:
         _dt_mod.datetimes = _patched_datetimes
     _st._astroengine_datetimes_patched = True
