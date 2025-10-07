@@ -9,6 +9,7 @@ The developer platform module guarantees that external integrations are driven b
 ## Registry mapping
 
 - `developer_platform.sdks.languages.{typescript,python}`
+- `developer_platform.agents.toolkits.python`
 - `developer_platform.cli.workflows.transit_scan`
 - `developer_platform.devportal.surfaces.{docs,playground,collections}`
 - `developer_platform.webhooks.contracts.{jobs,verification}`
@@ -28,6 +29,7 @@ The remainder of this document routes readers to the submodule specifications an
 | Submodule | Channel | Description |
 |-----------|---------|-------------|
 | `sdks` | `typescript`, `python` | Typed SDKs generated from OpenAPI with ergonomic wrappers, retries, pagination, streaming, and typed errors. |
+| `agents` | `python` | Agent automation toolkit exposing registry discovery, scan orchestration, and dataset-backed context summaries. |
 | `cli` | `workflows` | Python-based CLI commands aligned with runtime modules (`scan`, `events`, `election`, `progressions`, `returns`, `export`). |
 | `devportal` | `docs`, `playground`, `collections` | Developer portal assets (Docusaurus site, runnable playground, Postman/Insomnia collections). |
 | `webhooks` | `jobs`, `verification` | Optional webhook delivery contracts and signature verification helpers. |

@@ -42,6 +42,7 @@ from .atlas.tz import (  # noqa: F401
     tzid_for,
 )
 
+from .agents import AgentSDK  # ENSURE-LINE
 from .astro import declination  # ENSURE-LINE
 from .canonical import BodyPosition  # ENSURE-LINE
 from .catalogs import sbdb  # ENSURE-LINE
@@ -338,6 +339,7 @@ __all__ = [
     "AstroSubmodule",
     "AstroChannel",
     "AstroSubchannel",
+    "AgentSDK",
     "compute_score",
     "ScoreInputs",
     "ScoreResult",
