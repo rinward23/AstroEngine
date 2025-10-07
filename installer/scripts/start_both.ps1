@@ -1,9 +1,15 @@
 # PS 5.1-compatible launcher
 $ErrorActionPreference = 'Stop'
 $AppRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$LogDir  = Join-Path $AppRoot 'logs'
+
+# Use ProgramData for data/logs when installed under Program Files
+$WritableRoot = if ($AppRoot -like "$($env:ProgramFiles)*") { Join-Path $env:ProgramData 'AstroEngine' } else { $AppRoot }
+$LogDir  = Join-Path $WritableRoot 'logs'
+$DataDir = Join-Path $WritableRoot 'var'
+New-Item -ItemType Directory -Force -Path $LogDir,$DataDir | Out-Null
+
 $RunDir  = Join-Path $AppRoot 'run'
-New-Item -ItemType Directory -Force -Path $LogDir,$RunDir | Out-Null
+New-Item -ItemType Directory -Force -Path $RunDir | Out-Null
 
 function Resolve-Python {
   $candidates = @(
@@ -34,7 +40,10 @@ function Resolve-Python {
 }
 
 $py = Resolve-Python
-$env:DATABASE_URL = "sqlite+pysqlite:///$($AppRoot -replace '\\','/')/var/dev.db"
+
+# Point the app at the writable DB location and ensure imports resolve
+$env:DATABASE_URL = "sqlite+pysqlite:///$($DataDir -replace '\\','/')/dev.db"
+$env:PYTHONPATH   = $AppRoot
 
 # rotate logs (keep 5)
 $log = Join-Path $LogDir 'start_both.log'

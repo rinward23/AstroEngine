@@ -13,11 +13,15 @@ $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path (Split-Path $LogPath -Parent) | Out-Null
 Start-Transcript -Path $LogPath -Append | Out-Null
 
-$RuntimeDir = Join-Path $InstallRoot $PythonTargetRel
+$RuntimeDir = Join-Path $InstallRoot 'runtime'
 $PyExe      = Join-Path $RuntimeDir 'python.exe'
 $VenvDir    = Join-Path $InstallRoot 'env'
-$DataDir    = Join-Path $InstallRoot 'var'
-New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
+
+# Choose writable root for data/logs (ProgramData for all-users)
+$WritableRoot = if ($InstallRoot -like "$($env:ProgramFiles)*") { Join-Path $env:ProgramData 'AstroEngine' } else { $InstallRoot }
+$DataDir = Join-Path $WritableRoot 'var'
+$LogDir  = Join-Path $WritableRoot 'logs'
+New-Item -ItemType Directory -Force -Path $DataDir,$LogDir | Out-Null
 
 function Ensure-Python {
   param([string]$Version,[string]$TargetDir,[string]$Mode,[string]$InstallRoot)
@@ -53,6 +57,7 @@ if ($Mode -eq 'Offline') {
   & $venvPy -m pip install -r $req
 }
 
+$env:PYTHONPATH = $InstallRoot
 $env:DATABASE_URL = "sqlite+pysqlite:///$($DataDir -replace '\\','/')/dev.db"
 Push-Location $InstallRoot
 try {
