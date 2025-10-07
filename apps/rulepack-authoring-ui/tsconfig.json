@@ -20,7 +20,8 @@
     "incremental": true,
     "types": [
       "node",
-      "vite/client"
+      "vite/client",
+      "@playwright/test"
     ],
     "plugins": [
       {
