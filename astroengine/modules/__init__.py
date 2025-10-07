@@ -21,6 +21,7 @@ from .registry import (
     AstroSubmodule,
 )
 from .providers import register_providers_module
+from .orchestration import register_orchestration_module
 from .ritual import register_ritual_module
 from .ux import register_ux_module
 from .vca import register_vca_module
@@ -57,6 +58,7 @@ def bootstrap_default_registry() -> AstroRegistry:
     register_providers_module(registry)
     register_interop_module(registry)
     register_developer_platform_module(registry)
+    register_orchestration_module(registry)
     return registry
 
 
