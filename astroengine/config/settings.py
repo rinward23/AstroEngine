@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from copy import deepcopy
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Dict, List, Literal, Optional
 
 import yaml
@@ -326,6 +326,17 @@ class ArabicPartsCfg(BaseModel):
         default_factory=lambda: {"Fortune": True, "Spirit": True}
     )
     custom: List[ArabicPartCustomCfg] = Field(default_factory=list)
+
+    @field_validator("presets", mode="before")
+    @classmethod
+    def _coerce_presets(
+        cls, value: Dict[str, bool] | List[str] | None
+    ) -> Dict[str, bool] | List[str] | None:
+        """Allow legacy list-based preset definitions."""
+
+        if isinstance(value, list):
+            return {name: True for name in value}
+        return value
 
 
 class DeclinationAspectsCfg(BaseModel):
@@ -726,13 +737,33 @@ def list_narrative_profiles() -> dict[str, list[str]]:
     return {"built_in": built_in, "user": sorted(user)}
 
 
+def _validated_narrative_profile_name(name: str) -> str:
+    """Return a safe narrative profile name or raise ``ValueError``."""
+
+    normalized = name.strip()
+    if not normalized:
+        raise ValueError("Narrative profile name must not be empty.")
+    candidate = PurePath(normalized)
+    if candidate.anchor or len(candidate.parts) != 1:
+        raise ValueError("Narrative profile name must not contain path separators.")
+    if candidate.name in {".", ".."}:
+        raise ValueError("Narrative profile name must not use traversal components.")
+    return candidate.name
+
+
+def _narrative_profile_path(name: str) -> Path:
+    """Return the on-disk path for the provided profile name."""
+
+    return narrative_profiles_home() / f"{_validated_narrative_profile_name(name)}.yaml"
+
+
 def load_narrative_profile_overlay(name: str) -> dict:
     """Load a narrative profile overlay by name."""
 
     built_in = built_in_narrative_profiles()
     if name in built_in:
         return deepcopy(built_in[name])
-    profile_path = narrative_profiles_home() / f"{name}.yaml"
+    profile_path = _narrative_profile_path(name)
     if not profile_path.exists():
         raise FileNotFoundError(name)
     return yaml.safe_load(profile_path.read_text(encoding="utf-8")) or {}
@@ -762,7 +793,7 @@ def save_user_narrative_profile(name: str, narrative: NarrativeCfg) -> Path:
 
     directory = narrative_profiles_home()
     directory.mkdir(parents=True, exist_ok=True)
-    profile_path = directory / f"{name}.yaml"
+    profile_path = _narrative_profile_path(name)
     data = {"narrative": narrative.model_dump()}
     profile_path.write_text(
         yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
@@ -774,7 +805,7 @@ def save_user_narrative_profile(name: str, narrative: NarrativeCfg) -> Path:
 def delete_user_narrative_profile(name: str) -> bool:
     """Delete a user-defined narrative profile if it exists."""
 
-    profile_path = narrative_profiles_home() / f"{name}.yaml"
+    profile_path = _narrative_profile_path(name)
     if profile_path.exists():
         profile_path.unlink()
         return True
