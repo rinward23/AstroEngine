@@ -1,0 +1,33 @@
+# Code ownership for AstroEngine core directories
+# Default owner
+* @astroengine/maintainers
+
+# Runtime core and foundational modules
+/astroengine/ @astroengine/runtime-core
+/core/ @astroengine/runtime-core
+
+# Application surfaces and UI packages
+/apps/ @astroengine/app-platform
+/ui/ @astroengine/ui-ux
+
+# Plugin ecosystem and registries
+/plugins/ @astroengine/extensibility
+/registry/ @astroengine/extensibility
+
+# Documentation and specs
+/docs/ @astroengine/docs
+/docs-site/ @astroengine/docs
+
+# Quality engineering and automation
+/tests/ @astroengine/qa
+/qa/ @astroengine/qa
+
+# Operational tooling and infrastructure
+/.github/ @astroengine/release-ops
+/ops/ @astroengine/release-ops
+/scripts/ @astroengine/devex
+
+# Data assets and migrations
+/data/ @astroengine/data-team
+/datasets/ @astroengine/data-team
+/migrations/ @astroengine/data-team

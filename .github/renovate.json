@@ -1,0 +1,39 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    ":separateMultipleMajorReleases",
+    ":dependencyDashboard"
+  ],
+  "timezone": "UTC",
+  "schedule": [
+    "after 2am and before 6am on monday"
+  ],
+  "rebaseWhen": "behind-base-branch",
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 10,
+  "ignorePaths": [
+    "datasets/**",
+    "qa/artifacts/**",
+    "docs-site/docs/api/examples/**"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["pip_requirements", "poetry"],
+      "groupName": "Python dependencies",
+      "rangeStrategy": "widen",
+      "schedule": ["after 2am and before 6am on monday"],
+      "stabilityDays": 3
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "extends": ["schedule:weekly"]
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "groupName": "Docker images",
+      "pinDigests": true
+    }
+  ]
+}
