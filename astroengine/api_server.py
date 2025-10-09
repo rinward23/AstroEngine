@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from .boot.logging import configure_logging
+
+configure_logging()
+
 try:  # pragma: no cover - optional dependency
     from fastapi import FastAPI
     from fastapi.responses import ORJSONResponse

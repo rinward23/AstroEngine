@@ -6,6 +6,7 @@ import argparse
 import sys
 from collections.abc import Sequence
 
+from ..boot.logging import configure_logging
 from . import codex, diagnose, export, scan
 from ._compat import cli_legacy_missing_reason, try_import_cli_legacy
 
@@ -64,6 +65,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    configure_logging()
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
     return args.func(args)
