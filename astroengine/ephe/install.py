@@ -148,6 +148,35 @@ def _resolve_destination(args: argparse.Namespace) -> tuple[Path, Path]:
     return target_dir, file_path
 
 
+def install_archive(
+    url: str,
+    *,
+    agree_license: bool,
+    target: Path | str = DEFAULT_INSTALL_ROOT,
+    filename: str | None = None,
+    force: bool = False,
+    skip_extract: bool = False,
+    timeout: int = TIMEOUT,
+) -> Path:
+    """Download (and optionally extract) a Swiss Ephemeris archive."""
+
+    if not agree_license:
+        raise DownloadError("Swiss Ephemeris downloads require license acceptance.")
+
+    target_dir = Path(target).expanduser().resolve()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    archive_path = target_dir / (filename or _default_filename(url))
+    if archive_path.exists() and not force:
+        raise DownloadError(
+            f"Destination {archive_path} already exists. Use force=True to overwrite or choose a different filename."
+        )
+
+    _download(url, archive_path, timeout=timeout)
+    if not skip_extract:
+        _extract_if_needed(archive_path, target_dir, force=force)
+    return archive_path
+
+
 def main(argv: Iterable[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
@@ -160,10 +189,15 @@ def main(argv: Iterable[str] | None = None) -> int:
         parser.error("Swiss Ephemeris downloads require --agree-license acknowledgement.")
 
     try:
-        target_dir, archive_path = _resolve_destination(args)
-        _download(args.install, archive_path, timeout=args.timeout)
-        if not args.skip_extract:
-            _extract_if_needed(archive_path, target_dir, force=args.force)
+        archive_path = install_archive(
+            args.install,
+            agree_license=args.agree_license,
+            target=args.target,
+            filename=args.filename,
+            force=args.force,
+            skip_extract=args.skip_extract,
+            timeout=args.timeout,
+        )
     except DownloadError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
@@ -172,7 +206,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         return 1
 
     print("Swiss Ephemeris package installed.")
-    print(f"Files located under: {target_dir}")
+    print(f"Files located under: {archive_path.parent}")
     return 0
 
 
