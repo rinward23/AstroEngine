@@ -57,4 +57,27 @@ pyswisseph>=2.10.3; python_version < "3.12"
 timezonefinder>=8.1
 tzdata==2024.1
 
+# [tools]
+pymeeus>=0.5.12
+skyfield>=1.49
+jplephem>=2.21
+astroquery>=0.4
+pyarrow>=16
+ics>=0.7
+jinja2>=3.1
+numba>=0.58
+click>=8.1
+rich>=13.7
+pluggy>=1.5
+streamlit>=1.35
+plotly>=5.20
+fastapi[all]>=0.117,<0.118
+uvicorn[standard]>=0.37,<0.38
+pydantic>=2.11,<3
+icalendar>=6
+httpx>=0.28,<0.29
+pyswisseph>=2.10.3; python_version < "3.12"
+timezonefinder>=8.1
+tzdata==2024.1
+
 # >>> AUTO-GEN END: optional-reqs v1.0
