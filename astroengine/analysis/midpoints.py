@@ -9,7 +9,7 @@ from functools import lru_cache
 from astroengine.config import (
     MidpointsCfg,
     default_settings,
-    load_settings,
+    settings as runtime_settings,
 )
 from astroengine.utils.angles import delta_angle, norm360
 
@@ -33,7 +33,7 @@ def _cached_midpoint_settings() -> MidpointsCfg:
     """Load midpoint settings from disk with caching."""
 
     try:
-        settings = load_settings()
+        settings = runtime_settings.persisted()
     except Exception:  # pragma: no cover - defensive fallback when settings missing
         settings = default_settings()
     cfg = getattr(settings, "midpoints", None)

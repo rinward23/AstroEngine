@@ -4,24 +4,9 @@ from __future__ import annotations
 
 import json as _json
 
+from .app import app
+from ._compat import build_parser, console_main, main
+
 json = _json
 
-
-# Lazy import to avoid pulling heavy deps at module import time
-def build_parser():
-    from .__main__ import build_parser as _build
-    return _build()
-
-
-def main(argv=None):
-    from .__main__ import main as _main
-    return _main(argv)
-
-
-def console_main() -> None:
-    """Invoke :func:`main` and terminate with its return code."""
-
-    raise SystemExit(main())
-
-
-__all__ = ["main", "build_parser", "console_main", "json"]
+__all__ = ["app", "main", "build_parser", "console_main", "json"]

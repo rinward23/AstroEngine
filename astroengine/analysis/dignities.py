@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from ..chart.natal import NatalChart
-from ..config import load_settings
+from ..config import settings as runtime_settings
 from ..config.settings import DignitiesCfg
 from ..detectors.ingresses import sign_index, sign_name
 from ..engine.traditional.sect import sect_info
@@ -61,7 +61,7 @@ def _load_dataset() -> Mapping[str, Any]:
 @lru_cache(maxsize=1)
 def _dignities_config() -> _DignitiesSettings:
     try:
-        settings = load_settings()
+        settings = runtime_settings.persisted()
         cfg: DignitiesCfg = getattr(settings, "dignities", DignitiesCfg())
     except Exception:  # pragma: no cover - settings fallback
         cfg = DignitiesCfg()

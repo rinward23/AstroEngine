@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pandas as pd
 import streamlit as st
 
-from astroengine.config import default_settings, load_settings
+from astroengine.config import default_settings, settings as runtime_settings
 from astroengine.export.ics import to_ics
 from ui.streamlit.api import APIClient
 
@@ -15,7 +15,7 @@ st.set_page_config(page_title="Timeline Finder", page_icon="🗓️", layout="wi
 st.title("Timeline Finder 🗓️")
 
 try:
-    SETTINGS = load_settings()
+    SETTINGS = runtime_settings.persisted()
 except Exception:  # pragma: no cover - streamlit runtime fallback
     SETTINGS = default_settings()
 

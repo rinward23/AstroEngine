@@ -48,6 +48,7 @@ dependencies = [
   "jinja2>=3.1",
   "numba>=0.58",
   "click>=8.1",
+  "typer>=0.12",
   "rich>=13.7",
   "pypdf>=4.2",
   "weasyprint>=62",
@@ -90,6 +91,7 @@ perf = [
 ]
 cli = [
   "click>=8.1",
+  "typer>=0.12",
   "rich>=13.7",
   "pluggy>=1.5",
 ]
@@ -141,6 +143,7 @@ tools = [
   "jinja2>=3.1",
   "numba>=0.58",
   "click>=8.1",
+  "typer>=0.12",
   "rich>=13.7",
   "pluggy>=1.5",
   "streamlit>=1.35",
@@ -236,10 +239,10 @@ all = [
 Homepage = "https://github.com/rinward23/AstroEngine"
 
 [project.scripts]
-astroengine = "astroengine.cli.__main__:main"
-astroengine-api = "astroengine.api.app:run"  # guarded import; only works with [api]
-astroengine-streamlit = "astroengine.ux.streamlit.cli:main"
-astroengine-ephe = "astroengine.ephe.install:main"
+astroengine = "astroengine.cli:app"
+astroengine-api = "astroengine.cli._compat:serve_api_entrypoint"
+astroengine-streamlit = "astroengine.cli._compat:serve_ui_entrypoint"
+astroengine-ephe = "astroengine.cli._compat:ephe_entrypoint"
 
 [tool.setuptools.package-data]
 astroengine = [

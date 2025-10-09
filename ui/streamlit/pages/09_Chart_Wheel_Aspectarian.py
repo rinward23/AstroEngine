@@ -8,7 +8,7 @@ import streamlit as st
 
 from astroengine.analysis import DeclinationAspect, declination_aspects, get_declinations
 from astroengine.chart.natal import expansions_from_groups
-from astroengine.config import load_settings
+from astroengine.config import settings as runtime_settings
 from core.aspects_plus.harmonics import BASE_ASPECTS
 from core.viz_plus.aspect_grid import aspect_grid_symbols, render_aspect_grid
 from core.viz_plus.wheel_svg import WheelOptions, build_aspect_hits, render_chart_wheel
@@ -43,7 +43,7 @@ DEFAULT_POLICY = {
 }
 DEFAULT_ASPECTS = ["conjunction", "opposition", "square", "trine", "sextile"]
 AVAILABLE_ASPECTS = sorted(BASE_ASPECTS.keys())
-_APP_SETTINGS = load_settings()
+_APP_SETTINGS = runtime_settings.persisted()
 _DECL_DEFAULT_ENABLED = bool(getattr(_APP_SETTINGS.declinations, "enabled", True))
 _DECL_DEFAULT_ORB = float(getattr(_APP_SETTINGS.declinations, "orb_deg", 0.5))
 _BODY_GROUP_DEFAULTS = getattr(getattr(_APP_SETTINGS, "bodies", None), "groups", {})

@@ -4,7 +4,7 @@ import math
 
 import streamlit as st
 
-from astroengine.config import config_path, load_settings, save_settings
+from astroengine.config import config_path, save_settings, settings as runtime_settings
 
 st.set_page_config(
     page_title="AstroEngine – Advanced Config (All Options)", layout="wide"
@@ -49,7 +49,7 @@ def slider_number(
     return st.session_state[key]
 
 
-cur = load_settings()
+cur = runtime_settings.persisted()
 
 # ---------- Aspects ----------------------------------------------------------
 st.header("Aspects & Orbs")
@@ -546,6 +546,7 @@ with button_col_save:
         cur.swiss_caps.min_year = min_year
         cur.swiss_caps.max_year = max_year
         save_settings(cur)
+        runtime_settings.cache_persisted(cur)
         st.success(f"Saved to {config_path()}")
 with button_col_reset:
     if st.button("Reset to Defaults"):
@@ -554,4 +555,5 @@ with button_col_reset:
         defaults = default_settings()
         defaults.ephemeris.path = cur.ephemeris.path
         save_settings(defaults)
+        runtime_settings.cache_persisted(defaults)
         st.success("Defaults restored.")

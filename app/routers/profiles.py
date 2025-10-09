@@ -11,9 +11,9 @@ from astroengine.config import (
     delete_user_profile,
     list_profiles,
     load_profile_overlay,
-    load_settings,
     save_settings,
     save_user_profile,
+    settings as runtime_settings,
 )
 
 router = APIRouter(prefix="/v1/profiles", tags=["profiles"])
@@ -41,7 +41,7 @@ async def get_profile(name: str) -> Settings:
         overlay = load_profile_overlay(name)
     except FileNotFoundError as exc:  # pragma: no cover - defensive mapping
         raise HTTPException(status_code=404, detail="profile not found") from exc
-    base = load_settings()
+    base = runtime_settings.persisted()
     return apply_profile_overlay(base, overlay)
 
 
@@ -53,9 +53,10 @@ async def apply_profile(name: str) -> Settings:
         overlay = load_profile_overlay(name)
     except FileNotFoundError as exc:  # pragma: no cover - defensive mapping
         raise HTTPException(status_code=404, detail="profile not found") from exc
-    current = load_settings()
+    current = runtime_settings.persisted()
     merged = apply_profile_overlay(current, overlay)
     save_settings(merged)
+    runtime_settings.cache_persisted(merged)
     return merged
 
 
