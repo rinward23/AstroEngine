@@ -43,4 +43,3 @@ def get_pagination(
 
 
 __all__ = ["MAX_PAGE_SIZE", "Pagination", "get_pagination"]
-

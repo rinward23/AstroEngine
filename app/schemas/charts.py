@@ -29,4 +29,3 @@ class ChartTagsUpdate(BaseModel):
 
 
 __all__ = ["ChartSummary", "ChartTagsUpdate"]
-

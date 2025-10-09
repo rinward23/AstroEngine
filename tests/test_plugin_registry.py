@@ -76,4 +76,3 @@ def test_lot_registry_register_apply_and_disable() -> None:
     finally:
         catalog.REGISTRY.clear()
         catalog.REGISTRY.update(original)
-

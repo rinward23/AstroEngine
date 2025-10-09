@@ -7,4 +7,3 @@
 # module with the same basename. By making the ``tests`` directory a proper
 # package we guarantee fully qualified names such as ``tests.analysis.test_returns``
 # and ``tests.test_returns`` coexist without shadowing each other.
-

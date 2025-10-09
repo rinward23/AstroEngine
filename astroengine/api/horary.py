@@ -118,4 +118,3 @@ def create_case(request: HoraryCaseRequest) -> dict[str, Any]:
     return result
 
 __all__ = ["router"]
-

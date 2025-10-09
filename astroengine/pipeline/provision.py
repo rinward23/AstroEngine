@@ -7,10 +7,10 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ..config.settings import load_settings
 from ..detectors.common import _ensure_swiss
 from ..engine.ephe_runtime import init_ephe
 from ..ephemeris.swe import swe
-from ..config.settings import load_settings
 
 PROVISION_HOME = Path.home() / ".astroengine"
 PROVISION_META = PROVISION_HOME / "provision.json"

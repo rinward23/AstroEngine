@@ -25,4 +25,3 @@ async def put_settings(settings: Settings) -> Settings:
         return settings
     except Exception as exc:  # pragma: no cover - defensive guard
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-

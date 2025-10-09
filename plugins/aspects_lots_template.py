@@ -37,4 +37,3 @@ def lot_of_research() -> None:
     definition. Day and night formulas can reference other registered lots as
     needed.
     """
-

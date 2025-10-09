@@ -34,4 +34,3 @@ def test_custom_weights_affect_scores() -> None:
     assert score.overall == pytest.approx(expected)
     assert score.by_aspect_family["neutral"] == pytest.approx(expected)
     assert score.by_body_family["luminary"] == pytest.approx(expected * 2)
-

@@ -138,4 +138,3 @@ def paginate(
 
 
 __all__ = ["rank_hits", "day_bins", "paginate"]
-

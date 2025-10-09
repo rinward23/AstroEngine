@@ -61,4 +61,3 @@ def test_node_axis_uses_shorter_offset() -> None:
     assert math.isclose(node_hit["offset"], 0.0, abs_tol=1e-9)
     assert math.isclose(node_hit["severity"], 1.0, abs_tol=1e-9)
     assert node_hit["score"] > 0.0
-

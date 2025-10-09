@@ -763,4 +763,3 @@ def _update_calendar(storage: dict[str, float], event: Event) -> None:
             hours / total_hours
         )
         cursor = segment_end
-

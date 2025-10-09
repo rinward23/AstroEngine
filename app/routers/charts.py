@@ -576,4 +576,3 @@ def chart_pdf(chart_id: int) -> Response:
 
 
 __all__ = ["router"]
-

@@ -404,4 +404,3 @@ class APIClient:
         if not isinstance(data, dict):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /relationship/davison")
         return data
-

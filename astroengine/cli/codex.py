@@ -10,9 +10,9 @@ from collections.abc import Iterable, Mapping, Sequence
 from ..codex import (
     UnknownCodexPath,
     codex_mcp_server,
+    common_mcp_servers,
     describe_path,
     get_registry,
-    common_mcp_servers,
     registry_snapshot,
     resolved_files,
 )

@@ -259,4 +259,3 @@ if st.button("🔎 Run search", type="primary"):
     evaluations = pd.DataFrame(detail.get("evaluations", []))
     st.subheader("Constraint evaluations")
     st.dataframe(evaluations, use_container_width=True)
-

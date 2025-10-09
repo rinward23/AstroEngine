@@ -17,7 +17,6 @@ from typing import Any
 from urllib.error import URLError
 from urllib.request import urlopen
 
-
 DEFAULT_API_HOST = "127.0.0.1"
 DEFAULT_API_PORT = 8000
 DEFAULT_UI_PORT = 8501

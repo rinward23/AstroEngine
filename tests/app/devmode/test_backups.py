@@ -131,4 +131,3 @@ def test_retention_module_purge(tmp_path, monkeypatch):
     assert result["deleted"] == 1
     assert not old_file.exists()
     assert new_file.exists()
-

@@ -26,4 +26,3 @@ __all__ = [
     "to_utc_with_timezone",
     "tzid_for",
 ]
-

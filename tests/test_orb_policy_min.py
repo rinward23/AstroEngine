@@ -15,4 +15,3 @@ def test_orb_major_vs_minor():
 
     assert calc.orb_for('Sun', 'Mars', 180) >= 4.0
     assert calc.orb_for('Sun', 'Mars', 150) <= 2.0
-

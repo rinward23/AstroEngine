@@ -154,4 +154,3 @@ class ScoreSeriesResponse(BaseModel):
             }
         }
     )
-

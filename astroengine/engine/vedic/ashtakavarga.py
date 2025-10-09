@@ -203,4 +203,3 @@ def compute_sarvashtakavarga(
         for idx, value in enumerate(entry.bindus):
             totals[idx] += value
     return totals
-

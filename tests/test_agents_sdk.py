@@ -7,7 +7,6 @@ import pytest
 
 from astroengine.agents import AgentSDK, AgentSDKError
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TIMELINE_FIXTURE = PROJECT_ROOT / "docs-site" / "docs" / "fixtures" / "timeline_events.json"
 
@@ -101,4 +100,3 @@ def test_scan_transits_rejects_incomplete_event() -> None:
             moving=["Mars"],
             targets=["Saturn"],
         )
-

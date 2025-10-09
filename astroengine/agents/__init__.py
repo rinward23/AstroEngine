@@ -16,13 +16,14 @@ origin of events through the ``datasets`` metadata captured during
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import asdict, dataclass, is_dataclass
-from typing import Any, Callable, Iterable, Mapping, MutableMapping, Sequence
+from typing import Any
 
+from ..app_api import run_scan_or_raise
 from ..codex import describe_path as _codex_describe_path
 from ..codex import resolved_files as _codex_resolved_files
-from ..modules import AstroRegistry, DEFAULT_REGISTRY
-from ..app_api import run_scan_or_raise
+from ..modules import DEFAULT_REGISTRY, AstroRegistry
 
 __all__ = ["AgentSDK", "AgentEvent", "AgentScanResult", "AgentSDKError"]
 
@@ -375,4 +376,3 @@ def events_to_agent_events(events: Iterable[Mapping[str, Any]]) -> list[AgentEve
 
     sdk = AgentSDK()
     return [sdk._coerce_agent_event(event) for event in events]
-

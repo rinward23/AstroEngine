@@ -63,4 +63,3 @@ def test_upsert_persists_configuration_and_returns_snapshot(client: TestClient, 
     assert snapshot["houses"]["system"] == "whole_sign"
     assert snapshot["zodiac"]["type"] == "sidereal"
     assert snapshot["zodiac"]["ayanamsa"] == "krishnamurti"
-

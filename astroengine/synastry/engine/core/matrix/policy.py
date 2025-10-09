@@ -186,4 +186,3 @@ DEFAULT_WEIGHTS = Weights(
     },
     conjunction_sign=1.0,
 )
-

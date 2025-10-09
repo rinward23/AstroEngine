@@ -310,4 +310,3 @@ def translate(key: str, *, locale: str | None = None, default: str | None = None
         except Exception:
             return template
     return template
-

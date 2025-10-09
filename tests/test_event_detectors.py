@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from core.aspects_plus.scan import TimeWindow
+
 from core.events_plus.detectors import detect_combust_cazimi, detect_voc_moon, next_sign_ingress
 
 

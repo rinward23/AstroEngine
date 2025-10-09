@@ -15,7 +15,7 @@ if TYPE_CHECKING:  # pragma: no cover - runtime side effects avoided during typi
 _APP_INSTANCE: FastAPI | None = None
 
 
-def _load_transit_engine() -> tuple[type["TransitEngine"], type["TransitEngineConfig"]]:
+def _load_transit_engine() -> tuple[type[TransitEngine], type[TransitEngineConfig]]:
     """Import transit engine helpers lazily to avoid heavy dependencies."""
 
     from astroengine.core.transit_engine import TransitEngine, TransitEngineConfig
@@ -23,7 +23,7 @@ def _load_transit_engine() -> tuple[type["TransitEngine"], type["TransitEngineCo
     return TransitEngine, TransitEngineConfig
 
 
-def _load_transit_api() -> tuple[type["TransitEvent"], type["TransitScanConfig"]]:
+def _load_transit_api() -> tuple[type[TransitEvent], type[TransitScanConfig]]:
     """Import public dataclasses exposed for backwards compatibility."""
 
     from astroengine.core.api import TransitEvent, TransitScanConfig
@@ -139,5 +139,4 @@ __all__ = [
     "TransitEvent",
     "TransitScanConfig",
 ]
-
 

@@ -119,4 +119,3 @@ def test_synastry_etag_and_cache_headers():
     third = client.post("/synastry/compute", json=payload)
     assert third.status_code == 200
     assert third.headers.get("X-Cache-Status") in {"lru", "redis"}
-

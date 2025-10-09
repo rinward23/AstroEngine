@@ -187,4 +187,3 @@ __all__ = [
     "clear_position_provider",
     "get_adapter",
 ]
-

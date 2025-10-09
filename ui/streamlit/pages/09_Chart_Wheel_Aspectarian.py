@@ -5,11 +5,11 @@ from collections.abc import Sequence
 
 import pandas as pd
 import streamlit as st
+from core.aspects_plus.harmonics import BASE_ASPECTS
 
 from astroengine.analysis import DeclinationAspect, declination_aspects, get_declinations
 from astroengine.chart.natal import expansions_from_groups
 from astroengine.config import load_settings
-from core.aspects_plus.harmonics import BASE_ASPECTS
 from core.viz_plus.aspect_grid import aspect_grid_symbols, render_aspect_grid
 from core.viz_plus.wheel_svg import WheelOptions, build_aspect_hits, render_chart_wheel
 from ui.streamlit.api import APIClient

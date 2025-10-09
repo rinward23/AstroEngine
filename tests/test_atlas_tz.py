@@ -179,4 +179,3 @@ def test_dst_birth_ambiguous_windows(coords, local_time, earliest_expected, late
     assert latest.utc == latest_expected
     assert (latest.utc - earliest.utc).total_seconds() == 3600
 
-

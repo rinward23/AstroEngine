@@ -407,4 +407,3 @@ def render_synastry_wheel_svg(
 
 
 __all__ = ["SynastryWheelOptions", "render_synastry_wheel_svg"]
-

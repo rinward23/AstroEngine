@@ -72,4 +72,3 @@ def test_register_custom_lot_persists_for_catalog():
     assert response_catalog.status_code == 200
     names = [item["name"] for item in response_catalog.json()["lots"]]
     assert "LotOfPersist" in names
-

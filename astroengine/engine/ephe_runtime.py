@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from astroengine.ephemeris.swe import swe
 from astroengine.ephemeris.utils import get_se_ephe_path
@@ -72,14 +72,14 @@ def init_ephe(
     mode = "moshier"
     if prefer_moshier:
         swe_module.set_ephe_path(None)
-        flags = int(getattr(swe_module, "FLG_MOSEPH"))
+        flags = int(swe_module.FLG_MOSEPH)
     elif resolved and has_ephemeris_files(resolved):
         swe_module.set_ephe_path(resolved)
-        flags = int(getattr(swe_module, "FLG_SWIEPH"))
+        flags = int(swe_module.FLG_SWIEPH)
         mode = "swiss"
     else:
         swe_module.set_ephe_path(None)
-        flags = int(getattr(swe_module, "FLG_MOSEPH"))
+        flags = int(swe_module.FLG_MOSEPH)
     if prefer_moshier and resolved:
         LOG.debug(
             "Swiss ephemeris path '%s' supplied but Moshier fallback requested", resolved

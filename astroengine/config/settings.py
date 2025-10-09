@@ -1249,4 +1249,3 @@ def delete_user_narrative_profile(name: str) -> bool:
         profile_path.unlink()
         return True
     return False
-

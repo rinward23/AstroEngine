@@ -100,4 +100,3 @@ def test_prohibition_detected_before_perfection() -> None:
     profile = get_profile("Lilly")
     prohibition = find_prohibition(chart, "Venus", "Mars", profile, window_days=10.0)
     assert prohibition is None
-

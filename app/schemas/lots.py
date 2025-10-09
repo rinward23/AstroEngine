@@ -66,4 +66,3 @@ class LotDefOut(BaseModel):
 class LotsCatalogResponse(BaseModel):
     lots: list[LotDefOut]
     meta: dict[str, Any] = Field(default_factory=dict)
-

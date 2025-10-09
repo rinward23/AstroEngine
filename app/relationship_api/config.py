@@ -87,7 +87,7 @@ class ServiceSettings(BaseModel):
         """Construct settings using the process environment."""
 
     @classmethod
-    def from_env(cls) -> "ServiceSettings":
+    def from_env(cls) -> ServiceSettings:
         redis_url = os.getenv("RELATIONSHIP_REDIS_URL") or os.getenv("REDIS_URL")
         rate_limit = max(1, int(os.getenv("RELATIONSHIP_RATE_LIMIT", "60")))
         gzip_min_size = max(128, int(os.getenv("RELATIONSHIP_GZIP_MIN", "512")))

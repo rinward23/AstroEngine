@@ -331,4 +331,3 @@ def scan_midpoints(
         hotspots=hotspots,
         overlay_markers=markers,
     )
-

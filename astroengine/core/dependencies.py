@@ -61,4 +61,3 @@ def require_dependency(
             message += f" Install with `pip install -e .[{joined}]`."
 
     raise ModuleNotFoundError(message)
-

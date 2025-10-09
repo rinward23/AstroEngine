@@ -7,12 +7,12 @@ from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, replace
 from io import BytesIO
 
-from PIL import Image, ImageDraw, ImageFont
-
-from astroengine.config.settings import MultiWheelCfg, Settings, SynastryCfg
 from core.aspects_plus.harmonics import BASE_ASPECTS
 from core.aspects_plus.matcher import angular_sep_deg
 from core.aspects_plus.orb_policy import orb_limit
+from PIL import Image, ImageDraw, ImageFont
+
+from astroengine.config.settings import MultiWheelCfg, Settings, SynastryCfg
 
 # ---------------------------------------------------------------------------
 # Dataclasses describing composition inputs and computed geometry

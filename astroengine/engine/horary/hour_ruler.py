@@ -22,8 +22,9 @@ if _SwissAdapter is not None:
 else:  # pragma: no cover - ensures attribute exists for typing tools
     SwissEphemerisAdapter = None  # type: ignore[assignment]
 
-from ...core.time import julian_day
 from astroengine.engine.ephe_runtime import init_ephe
+
+from ...core.time import julian_day
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from ...ritual.timing import PLANETARY_HOUR_TABLE
 from .models import GeoLocation, PlanetaryHourResult
@@ -298,4 +299,3 @@ def moonrise_moonset(
         adapter.from_julian_day(moonset_jd).astimezone(UTC),
         adapter.from_julian_day(next_moonrise_jd).astimezone(UTC),
     )
-

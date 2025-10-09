@@ -309,4 +309,3 @@ def _stamp_metadata(settings_path: Path, metadata: dict[str, object]) -> None:
 
 
 __all__ = ["run_first_run_wizard", "should_run_wizard"]
-

@@ -111,4 +111,3 @@ __all__ = [
     "parse_formula",
     "validate_formula",
 ]
-

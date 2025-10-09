@@ -87,4 +87,3 @@ async def delete_profile_api(name: str) -> dict[str, str]:
 
 
 __all__ = ["router"]
-

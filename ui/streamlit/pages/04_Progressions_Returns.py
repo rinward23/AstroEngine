@@ -9,13 +9,13 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-
 from core.charts_plus.progressions import (
     secondary_progressed_datetime,
     secondary_progressed_positions,
     solar_arc_positions,
 )
 from core.charts_plus.returns import ReturnWindow, find_next_return, find_returns_in_window
+
 from ui.streamlit.api import APIClient
 
 

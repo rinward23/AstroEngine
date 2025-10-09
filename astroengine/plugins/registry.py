@@ -543,4 +543,3 @@ __all__ = [
     "register_lot",
     "get_user_plugin_errors",
 ]
-

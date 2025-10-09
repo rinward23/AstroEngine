@@ -127,4 +127,3 @@ class ChartRepo(BaseRepo[Chart]):
 
 
 __all__ = ["ChartRepo"]
-

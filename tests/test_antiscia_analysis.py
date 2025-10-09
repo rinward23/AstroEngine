@@ -33,4 +33,3 @@ def test_aspect_to_antiscia_none_when_outside_orb():
     assert aspect_to_antiscia(10.0, 200.0, 1.0) is None
     assert aspect_to_antiscia(50.0, 100.0, None) is None
 
-

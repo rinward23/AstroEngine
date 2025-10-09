@@ -152,4 +152,3 @@ def test_create_chart_stores_timezone_metadata_for_nonexistent_local() -> None:
     assert metadata["nonexistent"] is True
     assert metadata["gap_seconds"] == 3600
     assert metadata["utc"] == resolution.utc.isoformat().replace("+00:00", "Z")
-

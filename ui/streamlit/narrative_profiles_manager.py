@@ -185,4 +185,3 @@ st.caption(
     "Narrative user profiles live under: ~/.astroengine/profiles/narrative"
     " (or %LOCALAPPDATA%/AstroEngine/profiles/narrative on Windows)."
 )
-

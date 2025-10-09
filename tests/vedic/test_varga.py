@@ -63,4 +63,3 @@ def test_shashtiamsa_precision_even_sign():
     assert mars["sign"] == "Sagittarius"
     assert mars["shashtiamsa"] == 3
     assert mars["segment_arc_degrees"] == pytest.approx(0.5)
-

@@ -40,4 +40,3 @@ def test_topocentric_matches_swiss_ephemeris() -> None:
     assert abs(topo_equ.declination_deg - swe_sample.declination) < 0.005
     assert abs(topo_equ.distance_au - swe_sample.distance) < 5e-6
 
-

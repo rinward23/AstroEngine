@@ -69,4 +69,3 @@ def test_varga_endpoint_returns_extended_vargas():
     assert all(code in data["charts"] for code in ("D3", "D7", "D9", "D10", "D60"))
     d60 = data["charts"]["D60"]
     assert any(payload.get("rule") for payload in d60.values())
-

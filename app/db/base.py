@@ -27,4 +27,3 @@ class Base(DeclarativeBase):
 
 
 __all__ = ["Base", "NAMING"]
-

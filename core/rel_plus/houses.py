@@ -409,4 +409,3 @@ __all__ = [
     "composite_houses",
     "davison_houses",
 ]
-

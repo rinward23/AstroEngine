@@ -76,4 +76,3 @@ class ConvergingConjunctionEphemeris:
             + self.planet_rate_minus_sun * dt_days
         ) % 360.0
         return {"Sun": sun, "Mercury": planet}
-

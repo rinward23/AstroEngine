@@ -62,4 +62,3 @@ def compute_scores(hits: Iterable[Hit], weights: Weights) -> Scores:
         overall=float(overall),
         rawTotal=float(raw_total),
     )
-

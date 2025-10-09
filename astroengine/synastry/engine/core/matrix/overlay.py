@@ -29,4 +29,3 @@ def make_overlay(
         for hit in hits
     ]
     return Overlay(wheelA=wheel_a, wheelB=wheel_b, lines=lines)
-

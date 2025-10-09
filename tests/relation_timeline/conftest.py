@@ -52,4 +52,3 @@ def linear_ephemeris(timeline_epoch: dt.datetime) -> LinearEphemeris:
     base = {1: 0.0, 2: 10.0, 3: 20.0, 4: 40.0}
     rates = {1: 1.0, 2: 0.8, 3: 0.5, 4: 0.2}
     return LinearEphemeris(epoch=timeline_epoch, base_longitudes=base, rates_deg_per_day=rates)
-

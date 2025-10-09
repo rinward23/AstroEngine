@@ -227,4 +227,3 @@ def numerology_mapper(
             locale=locale,
         ),
     }
-

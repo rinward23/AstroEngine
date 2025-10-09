@@ -84,4 +84,3 @@ def test_early_ascendant_and_saturn_warning() -> None:
     assert "asc_early" in codes
     assert "saturn_in_7th" in codes
     assert "south_node_asc" in codes
-

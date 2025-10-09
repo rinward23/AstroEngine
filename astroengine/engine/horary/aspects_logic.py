@@ -248,4 +248,3 @@ def find_prohibition(
                     contact=contact,
                 )
     return None
-

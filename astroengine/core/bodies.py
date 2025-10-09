@@ -156,4 +156,3 @@ def step_multiplier(name: str) -> float:
     """Return the cadence multiplier for ``name`` based on its tier."""
 
     return _TIER_STEP_MULT.get(body_priority(name), 2.5)
-

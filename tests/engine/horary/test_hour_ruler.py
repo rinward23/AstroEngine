@@ -47,4 +47,3 @@ def test_moonrise_moonset_sequence() -> None:
     assert next_moonrise.tzinfo is UTC
     assert moonrise < moonset < next_moonrise
     assert moonrise <= moment <= next_moonrise
-

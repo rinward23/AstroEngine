@@ -44,4 +44,3 @@ def test_multiple_aspects_preserved() -> None:
     assert {hit.aspect for hit in hits} == {30}
     hit = hits[0]
     assert hit.delta == pytest.approx(0.5, abs=1e-6)
-

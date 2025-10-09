@@ -1230,4 +1230,3 @@ def swe_calc(
         _update_swe_cache_hit_ratio()
 
     return result
-

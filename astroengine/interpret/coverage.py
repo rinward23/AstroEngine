@@ -233,4 +233,3 @@ __all__ = [
     "luminary_aspect_block",
     "build_interpretation_blocks",
 ]
-

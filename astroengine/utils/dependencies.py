@@ -184,4 +184,3 @@ def inspect_dependencies(specs: Sequence[DependencySpec] | Iterable[DependencySp
     """Evaluate all provided dependency specs."""
 
     return [_inspect_dependency(spec) for spec in specs]
-

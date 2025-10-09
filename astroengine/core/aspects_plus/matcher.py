@@ -122,4 +122,3 @@ def match_all(
     # sort by smallest orb then by time-order left to higher layers
     out.sort(key=lambda x: (x["orb"], x["a"], x["b"]))
     return out
-

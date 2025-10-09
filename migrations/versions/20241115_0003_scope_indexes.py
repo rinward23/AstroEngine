@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import sqlalchemy as sa
-from alembic import op
 import logging
 
+import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.engine.reflection import Inspector
 
 LOG = logging.getLogger(__name__)

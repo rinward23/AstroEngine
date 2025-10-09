@@ -39,4 +39,3 @@ def batch_cosine_taper(offsets: Iterable[float], orbs: Iterable[float], gamma: f
     """Return severity values for corresponding ``offsets`` and ``orbs``."""
 
     return [cosine_taper(offset, orb, gamma=gamma) for offset, orb in zip(offsets, orbs, strict=False)]
-

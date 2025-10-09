@@ -86,4 +86,3 @@ def test_relationship_response_cache_singleflight(monkeypatch):
     assert second.entry.body["value"] == 1
     assert second.source == "lru"
 
-

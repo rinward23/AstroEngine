@@ -3,6 +3,12 @@ from __future__ import annotations
 from datetime import UTC
 from typing import Any
 
+from core.electional_plus.engine import (
+    AspectRule,
+    ElectionalRules,
+    ForbiddenRule,
+    search_best_windows,
+)
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.schemas.aspects import TimeWindow
@@ -15,12 +21,6 @@ from app.schemas.electional import (
     WindowOut,
 )
 from astroengine.api.rate_limit import heavy_endpoint_rate_limiter
-from core.electional_plus.engine import (
-    AspectRule,
-    ElectionalRules,
-    ForbiddenRule,
-    search_best_windows,
-)
 
 # Optional DB orb policy
 try:

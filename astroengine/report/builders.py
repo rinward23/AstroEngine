@@ -184,4 +184,3 @@ def build_chart_report_context(
         narrative=narrative,
         disclaimers=disclaimer_lines,
     )
-

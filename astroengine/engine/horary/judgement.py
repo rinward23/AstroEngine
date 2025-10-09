@@ -274,4 +274,3 @@ def score_testimonies(
         classification=classification,
         contributions=tuple(contributions),
     )
-

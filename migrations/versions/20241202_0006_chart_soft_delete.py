@@ -33,4 +33,3 @@ def downgrade() -> None:
     if any(col["name"] == "deleted_at" for col in inspector.get_columns("charts")):
         with op.batch_alter_table("charts") as batch:
             batch.drop_column("deleted_at")
-

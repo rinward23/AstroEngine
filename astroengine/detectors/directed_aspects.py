@@ -253,4 +253,3 @@ def solar_arc_natal_aspects(
     finally:
         duration = perf_counter() - start_time
         ASPECT_COMPUTE_DURATION.labels(method=method_label).observe(duration)
-

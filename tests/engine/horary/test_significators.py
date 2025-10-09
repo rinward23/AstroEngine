@@ -44,4 +44,3 @@ def test_significators_match_house_rulers() -> None:
     assert sigset.moon.body == "Moon"
     assert isinstance(sigset.querent.dignities.score, float)
     assert isinstance(sigset.quesited.dignities.score, float)
-

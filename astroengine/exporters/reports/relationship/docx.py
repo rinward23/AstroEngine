@@ -11,7 +11,6 @@ from pathlib import Path
 
 from astroengine.exporters.reports.base import ReportMeta
 
-
 LOG = logging.getLogger(__name__)
 
 

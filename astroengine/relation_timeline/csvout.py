@@ -53,4 +53,3 @@ def events_to_csv(
             ]
         )
     return buffer.getvalue()
-

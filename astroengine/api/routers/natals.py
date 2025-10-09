@@ -339,4 +339,3 @@ __all__ = [
     "NatalPayload",
     "NatalRecord",
 ]
-

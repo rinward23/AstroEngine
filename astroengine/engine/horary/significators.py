@@ -169,4 +169,3 @@ def choose_significators(
         co_significators=tuple(co_significators),
         is_day_chart=is_day_chart,
     )
-

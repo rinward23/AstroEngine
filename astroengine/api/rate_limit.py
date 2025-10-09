@@ -148,4 +148,3 @@ __all__ = [
     "SimpleRateLimiter",
     "heavy_endpoint_rate_limiter",
 ]
-

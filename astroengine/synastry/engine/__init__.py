@@ -49,4 +49,3 @@ __all__ = [
     "make_overlay",
     "compute_scores",
 ]
-

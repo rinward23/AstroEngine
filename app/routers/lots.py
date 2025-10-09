@@ -115,4 +115,3 @@ def lots_compute(req: LotsComputeRequest):
             REGISTRY.pop(name, None)
 
     return LotsComputeResponse(positions=vals, meta={"sect": req.sect, "count": len(vals)})
-

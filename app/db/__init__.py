@@ -7,4 +7,3 @@ from .base import Base, NAMING
 from . import models as models
 
 __all__ = ["Base", "models", "NAMING"]
-

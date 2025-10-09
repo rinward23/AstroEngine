@@ -170,4 +170,3 @@ def _normalize(text: str) -> str:
     cleaned = unicodedata.normalize("NFKD", text)
     cleaned = "".join(ch for ch in cleaned if ch.isalnum() or ch.isspace())
     return " ".join(cleaned.lower().split())
-
