@@ -7,6 +7,7 @@ import pytest
 
 from astroengine.detectors.common import iso_to_jd
 from astroengine.detectors.stations import find_shadow_periods, find_stations
+from astroengine.engine.ephe_runtime import init_ephe
 
 swe = pytest.importorskip(
     "swisseph", reason="Install with `.[providers]` or set SE_EPHE_PATH"
@@ -37,17 +38,19 @@ def test_station_refines_speed():
     assert events
 
     mercury = _find_station(events, "2025-03-15T06:46:11Z", "mercury")
-    values, _ = swe().calc_ut(mercury.jd, swe().MERCURY, swe().FLG_SWIEPH | swe().FLG_SPEED)
+    base_flag = init_ephe()
+    speed_flag = base_flag | swe().FLG_SPEED
+    values, _ = swe().calc_ut(mercury.jd, swe().MERCURY, speed_flag)
     assert abs(values[3]) < 5e-6
 
     offsets = (0.5 / 24.0, 1.0 / 24.0, 2.0 / 24.0)
     expected_station = None
     for delta in offsets:
         before_values, _ = swe().calc_ut(
-            mercury.jd - delta, swe().MERCURY, swe().FLG_SWIEPH | swe().FLG_SPEED
+            mercury.jd - delta, swe().MERCURY, speed_flag
         )
         after_values, _ = swe().calc_ut(
-            mercury.jd + delta, swe().MERCURY, swe().FLG_SWIEPH | swe().FLG_SPEED
+            mercury.jd + delta, swe().MERCURY, speed_flag
         )
         before = before_values[3]
         after = after_values[3]

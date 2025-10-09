@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING, ClassVar, Final
 
 logger = logging.getLogger(__name__)
 
+from astroengine.engine.ephe_runtime import init_ephe
+
 from .cache import calc_ut_cached
 from .swe import swe as _swe
 
@@ -435,14 +437,9 @@ class SwissEphemerisAdapter:
         )
         self._last_house_metadata: dict[str, object] | None = None
 
-        swe = _swe()
-        self._calc_flags = swe().FLG_SWIEPH | swe().FLG_SPEED
-        self._fallback_flags = swe().FLG_MOSEPH | swe().FLG_SPEED
-        if self._is_sidereal:
-            self._calc_flags |= swe().FLG_SIDEREAL
-            self._fallback_flags |= swe().FLG_SIDEREAL
-
-        self.ephemeris_path = self._configure_ephemeris_path(ephemeris_path)
+        self.ephemeris_path, base_flag = self._configure_ephemeris_path(ephemeris_path)
+        self._base_flag = base_flag
+        self._refresh_flags()
         if self._is_sidereal:
             self._apply_sidereal_mode()
 
@@ -577,24 +574,36 @@ class SwissEphemerisAdapter:
 
     def _configure_ephemeris_path(
         self, ephemeris_path: str | os.PathLike[str] | None
-    ) -> str | None:
-        swe = _swe()
+    ) -> tuple[str | None, int]:
+        candidate: Path | None = None
         if ephemeris_path is not None:
-            swe().set_ephe_path(str(ephemeris_path))
-            return str(ephemeris_path)
+            candidate = Path(ephemeris_path).expanduser()
+            if not candidate.exists():
+                raise FileNotFoundError(
+                    f"Swiss Ephemeris path '{candidate}' does not exist."
+                )
+        else:
+            env_path = get_se_ephe_path()
+            if env_path:
+                candidate = Path(env_path)
+            if candidate is None:
+                for path in self._DEFAULT_PATHS:
+                    if path.exists():
+                        candidate = path
+                        break
 
-        env_path = get_se_ephe_path()
-        if env_path:
-            candidate = Path(env_path)
-            if candidate.exists():
-                swe().set_ephe_path(str(candidate))
-                return str(candidate)
+        candidate_str = str(candidate) if candidate else None
+        flags = init_ephe(candidate_str, force=True)
+        return candidate_str, flags
 
-        for candidate in self._DEFAULT_PATHS:
-            if candidate.exists():
-                swe().set_ephe_path(str(candidate))
-                return str(candidate)
-        return None
+    def _refresh_flags(self) -> None:
+        swe = _swe()
+        base = int(self._base_flag)
+        self._calc_flags = base | int(swe().FLG_SPEED)
+        self._fallback_flags = int(swe().FLG_MOSEPH | swe().FLG_SPEED)
+        if self._is_sidereal:
+            self._calc_flags |= int(swe().FLG_SIDEREAL)
+            self._fallback_flags |= int(swe().FLG_SIDEREAL)
 
     def _resolve_sidereal_mode(self, ayanamsha: str | None) -> int:
         if not ayanamsha:
@@ -623,9 +632,11 @@ class SwissEphemerisAdapter:
     def set_ephemeris_path(self, ephemeris_path: str | os.PathLike[str]) -> str:
         """Explicitly set the ephemeris search path."""
 
-        swe = _swe()
-        swe().set_ephe_path(str(ephemeris_path))
-        self.ephemeris_path = str(ephemeris_path)
+        self.ephemeris_path, base_flag = self._configure_ephemeris_path(ephemeris_path)
+        self._base_flag = base_flag
+        self._refresh_flags()
+        if self._is_sidereal:
+            self._apply_sidereal_mode()
         return self.ephemeris_path
 
     # ------------------------------------------------------------------
@@ -646,6 +657,7 @@ class SwissEphemerisAdapter:
             + moment_utc.second / 3600.0
             + moment_utc.microsecond / 3.6e9
         )
+        init_ephe()
         swe = _swe()
         return swe().julday(moment_utc.year, moment_utc.month, moment_utc.day, hour)
 

@@ -23,6 +23,7 @@ else:  # pragma: no cover - ensures attribute exists for typing tools
     SwissEphemerisAdapter = None  # type: ignore[assignment]
 
 from ...core.time import julian_day
+from astroengine.engine.ephe_runtime import init_ephe
 from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
 from ...ritual.timing import PLANETARY_HOUR_TABLE
 from .models import GeoLocation, PlanetaryHourResult
@@ -31,12 +32,16 @@ __all__ = ["planetary_hour", "sunrise_sunset", "moonrise_moonset"]
 
 
 
-_RISE_FLAGS = (
-    (swe().BIT_DISC_CENTER | swe().BIT_NO_REFRACTION | swe().FLG_SWIEPH)
-    if _HAS_SWE
-    else 0
-)
-_MOON_FLAGS = _RISE_FLAGS
+def _rise_flags() -> int:
+    if not _HAS_SWE:
+        return 0
+    swe_module = swe()
+    base = init_ephe()
+    return int(base | swe_module.BIT_DISC_CENTER | swe_module.BIT_NO_REFRACTION)
+
+
+def _moon_flags() -> int:
+    return _rise_flags()
 
 
 
@@ -76,7 +81,7 @@ def _next_event(
         elevation=location.altitude,
         event=event,
 
-        flags=_RISE_FLAGS,
+        flags=_rise_flags(),
 
         body_name=body_name,
 
@@ -146,7 +151,7 @@ def moonrise_moonset(
         location,
         body_code=swe().MOON,
         body_name="Moon",
-        flags=_MOON_FLAGS,
+        flags=_moon_flags(),
     )
     set_jd = _next_event(
         resolved_adapter,
@@ -155,7 +160,7 @@ def moonrise_moonset(
         location,
         body_code=swe().MOON,
         body_name="Moon",
-        flags=_MOON_FLAGS,
+        flags=_moon_flags(),
     )
     next_rise = _next_event(
         resolved_adapter,

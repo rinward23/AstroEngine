@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import lru_cache
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris.swe import has_swe, swe
 
 from ....chart.config import ChartConfig
@@ -372,16 +373,18 @@ def _position_for_body(
     *,
     helio: bool,
 ) -> tuple[float, float, float, float, float, float] | None:
-    if swe is None:
+    if not has_swe():
         return None
     canonical = canonical_name(name)
     if not canonical:
         return None
     if helio and canonical not in _PLANET_CODES:
         return None
-    flags = int(getattr(swe, "FLG_SWIEPH", 256) | getattr(swe, "FLG_SPEED", 256))
+    base_flags = init_ephe()
+    swe_module = swe()
+    flags = int(base_flags | getattr(swe_module, "FLG_SPEED", 0))
     if helio:
-        flags |= int(getattr(swe, "FLG_HELCTR", 0))
+        flags |= int(getattr(swe_module, "FLG_HELCTR", 0))
     if canonical in _PLANET_CODES:
         return _cached_planet_position(_PLANET_CODES[canonical], jd_ut, flags)
     return _cached_variant_position(

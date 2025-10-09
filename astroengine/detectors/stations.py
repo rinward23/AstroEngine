@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Sequence
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris.swe import has_swe, swe
 
 from ..ephemeris.cache import calc_ut_cached
@@ -35,13 +36,13 @@ def _vector(jd_ut: float, code: int, flag: int) -> tuple[float, ...]:
 
 
 def _speed(jd_ut: float, code: int) -> float:
-    flag = swe().FLG_SWIEPH | swe().FLG_SPEED
+    flag = init_ephe() | swe().FLG_SPEED
     xx = _vector(jd_ut, code, flag)
     return float(xx[3])
 
 
 def _longitude(jd_ut: float, code: int) -> float:
-    flag = swe().FLG_SWIEPH | swe().FLG_SPEED
+    flag = init_ephe() | swe().FLG_SPEED
     xx = _vector(jd_ut, code, flag)
     return float(xx[0]) % 360.0
 

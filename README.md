@@ -67,8 +67,11 @@ reduced-precision providers. Separate terminals running `make run-api` and
 
 ### Docker Compose workflow
 
-The repository now ships a compose bundle that launches the API on `:8000` and
-the Streamlit UI on `:8501` while sharing the host `./data` directory.
+The repository now ships a compose bundle that launches the API on `:8000`, the
+Streamlit UI on `:8501`, and mounts `./data/ephe` into `/opt/ephe` so Swiss
+Ephemeris files are shared across services. Containers default to
+`LOG_LEVEL=INFO`; override it (for example, `LOG_LEVEL=DEBUG`) to increase
+verbosity when diagnosing issues.
 
 1. Prepare the shared volume and (optionally) download licensed Swiss data:
    ```bash
@@ -87,8 +90,14 @@ the Streamlit UI on `:8501` while sharing the host `./data` directory.
    docker compose up --build ui
    ```
 
-The containers mount `./data` at `/app/data`, so database migrations and
-ephemeris files persist between restarts and remain available to both services.
+4. (Optional) Launch a tooling container to run CLI commands inside the same
+   environment:
+   ```bash
+   docker compose run --rm tools astroengine --help
+   ```
+
+The bind mount keeps ephemeris data at `/opt/ephe` so both services reuse the
+same Swiss Ephemeris cache without copying files into the container image.
 # >>> AUTO-GEN END: README Quick Start v1.1
 
 ### Windows desktop shell

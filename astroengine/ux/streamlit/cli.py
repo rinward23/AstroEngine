@@ -6,6 +6,8 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from astroengine.boot.logging import configure_logging
+
 DEFAULT_APP_PATH = (
     Path(__file__).resolve().parents[3]
     / "ui"
@@ -36,6 +38,8 @@ def _resolve_app_path(override: str | None) -> Path:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Invoke the bundled Streamlit UI via ``astroengine-streamlit``."""
+
+    configure_logging()
 
     args = list(argv if argv is not None else sys.argv[1:])
     app_override: str | None = None

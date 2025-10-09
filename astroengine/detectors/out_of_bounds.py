@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris.swe import has_swe, swe
 
 from ..ephemeris.cache import calc_ut_cached
@@ -35,7 +36,7 @@ def _vector(jd_ut: float, code: int, flag: int) -> tuple[float, ...]:
 
 
 def _declination(jd_ut: float, code: int) -> tuple[float, float]:
-    flag = swe().FLG_SWIEPH | swe().FLG_SPEED | swe().FLG_EQUATORIAL
+    flag = init_ephe() | swe().FLG_SPEED | swe().FLG_EQUATORIAL
     xx = _vector(jd_ut, code, flag)
     dec = float(xx[1])
     speed_dec = float(xx[4]) if len(xx) > 4 else float("nan")

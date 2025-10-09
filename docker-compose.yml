@@ -1,30 +1,46 @@
-version: "3.10"
 services:
   api:
-    build: .
+    build:
+      context: .
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
-      PYTHONUNBUFFERED: "1"
-      DATABASE_URL: ${DATABASE_URL:-sqlite:///./dev.db}
-      OTEL_SERVICE_NAME: astroengine-api
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
-    ports: ["8000:8000"]
-    depends_on: ["otel-collector"]
-    volumes:
-      - .:/app
-      - ./data/ephe:/opt/ephe
-
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.136.0
-    command: ["--config=/etc/otel-collector-config.yaml"]
-    volumes:
-      - ./ops/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATABASE_URL: ${DATABASE_URL:-sqlite+pysqlite:////workspace/data/dev.db}
+      SE_EPHE_PATH: /opt/ephe
     ports:
-      - "4317:4317"
-      - "4318:4318"
-
-  prometheus:
-    image: prom/prometheus:latest
+      - "8000:8000"
     volumes:
-      - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports: ["9090:9090"]
+      - .:/workspace
+      - ./data/ephe:/opt/ephe
+    working_dir: /workspace
+
+  ui:
+    build:
+      context: .
+    command: streamlit run ui/streamlit/altaz_app.py --server.address 0.0.0.0 --server.port 8501
+    depends_on:
+      - api
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      API_BASE_URL: ${API_BASE_URL:-http://api:8000}
+      SE_EPHE_PATH: /opt/ephe
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/workspace
+      - ./data/ephe:/opt/ephe
+    working_dir: /workspace
+
+  tools:
+    profiles:
+      - tools
+    build:
+      context: .
+    command: sleep infinity
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SE_EPHE_PATH: /opt/ephe
+    volumes:
+      - .:/workspace
+      - ./data/ephe:/opt/ephe
+    working_dir: /workspace

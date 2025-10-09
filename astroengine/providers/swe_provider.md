@@ -9,12 +9,12 @@ LICENSE & DISTRIBUTION
 INITIALIZATION STEPS
   1. Validate dependency availability (`pyswisseph`, `numpy`). If missing, raise `ProviderError` (`error_code=missing_dependency`, `retriable=False`).
   2. Require explicit `swe_ephemeris_path` config (profile flag or env var). Disallow silent downloads.
-  3. Load Swiss Ephemeris data via `swe.set_ephe_path`; compute checksum of ephemeris directory and store in `CacheInfo`.
+  3. Load Swiss Ephemeris data via `astroengine.engine.ephe_runtime.init_ephe()`; compute checksum of ephemeris directory and store in `CacheInfo`.
   4. Configure delta-T model (default `swe.DELTAT_DEFAULT`); allow override via profile `providers.swe.delta_t`.
 
 QUERY IMPLEMENTATION
   - `prime_cache`: verify ephemeris files exist for requested range; call `swe.set_topo` when geographic context required (for house calculations) but keep transit queries geocentric by default.
-  - `query`: convert timestamps to Julian day (`swe.julday`), call `swe.calc_ut` for body IDs mapped from AstroEngine canonical names; gather longitude, latitude, distance, speed. Enable `FLG_SWIEPH | FLG_SPEED | FLG_EQUATORIAL`. Convert equatorial coords to RA/Dec.
+  - `query`: convert timestamps to Julian day (`swe.julday`), call `swe.calc_ut` for body IDs mapped from AstroEngine canonical names; gather longitude, latitude, distance, speed. Combine the `init_ephe()` base flag with `FLG_SPEED | FLG_EQUATORIAL`. Convert equatorial coords to RA/Dec.
   - `query_window`: iterate across cadence; maintain deterministic ordering; store `data_provenance` referencing Swiss ephemeris file names and versions.
   - Ensure floating-point outputs rounded to 1e-9 precision to maintain parity with Skyfield determinism tests.
 

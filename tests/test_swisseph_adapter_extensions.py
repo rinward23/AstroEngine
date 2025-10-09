@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris import SwissEphemerisAdapter
 
 swe = pytest.importorskip("swisseph")
@@ -20,6 +21,7 @@ def test_julian_day_roundtrip_precision() -> None:
 
 def test_rise_transit_alignment_with_swisseph() -> None:
     adapter = SwissEphemerisAdapter()
+    init_ephe()
     jd = swe().julday(2024, 6, 1, 0.0)
     latitude = 40.7128
     longitude = -74.0060
@@ -48,6 +50,7 @@ def test_rise_transit_alignment_with_swisseph() -> None:
 
 def test_fixed_star_matches_native_computation() -> None:
     adapter = SwissEphemerisAdapter()
+    init_ephe()
     jd = swe().julday(2024, 1, 1, 0.0)
     star = adapter.fixed_star("Aldebaran", jd, flags=adapter._calc_flags)
     values, name, retflags = swe().fixstar_ut("Aldebaran", jd, adapter._calc_flags)
@@ -59,6 +62,7 @@ def test_fixed_star_matches_native_computation() -> None:
 
 def test_compute_bodies_many_matches_single_calls() -> None:
     adapter = SwissEphemerisAdapter()
+    init_ephe()
     jd = swe().julday(2024, 2, 1, 0.0)
     bodies = {
         "Sun": int(swe().SUN),
@@ -86,6 +90,7 @@ def test_compute_bodies_many_matches_single_calls() -> None:
 
 def test_ayanamsa_variants() -> None:
     adapter = SwissEphemerisAdapter(zodiac="sidereal", ayanamsa="lahiri")
+    init_ephe()
     jd = swe().julday(2024, 5, 10, 0.0)
     ut_value = adapter.ayanamsa(jd)
     expected_ut = swe().get_ayanamsa_ut(jd)

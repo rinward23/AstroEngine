@@ -4,7 +4,7 @@ from __future__ import annotations
 import datetime as dt
 from dataclasses import dataclass
 
-from ._cache import calc_ut_lon, set_ephe_from_env  # ENSURE-LINE
+from ._cache import calc_ut_lon, ensure_ephe_initialized  # ENSURE-LINE
 
 try:
     from astroengine.ephemeris.swe import swe
@@ -18,7 +18,10 @@ def _jd_from_utc(ts: dt.datetime) -> float:
         ts = ts.astimezone(dt.UTC).replace(tzinfo=None)
     y, m, d = ts.year, ts.month, ts.day
     h = ts.hour + ts.minute / 60 + (ts.second + ts.microsecond / 1e6) / 3600
-    return swe().julday(y, m, d, h) if swe else 0.0
+    if swe is None:
+        return 0.0
+    ensure_ephe_initialized()
+    return swe().julday(y, m, d, h)
 
 
 def _angnorm(a: float) -> float:
@@ -47,7 +50,7 @@ def _bracket_zero(
     jd0: float, jd1: float, cfg: ScanConfig
 ) -> tuple[float, float] | None:
     """Return (jda, jdb) if signed delta crosses zero in [jd0,jd1]."""
-    set_ephe_from_env()
+    ensure_ephe_initialized()
     a0 = calc_ut_lon(jd0, cfg.body, cfg.flags)
     a1 = calc_ut_lon(jd1, cfg.body, cfg.flags)
     target = _angnorm(cfg.natal_lon_deg + cfg.aspect_angle_deg)
@@ -64,7 +67,7 @@ def _bracket_zero(
 
 def _bisection(jda: float, jdb: float, cfg: ScanConfig) -> float:
     """Bisection to solve signed_delta=0."""
-    set_ephe_from_env()
+    ensure_ephe_initialized()
     target = _angnorm(cfg.natal_lon_deg + cfg.aspect_angle_deg)
 
     def delta(jd: float) -> float:
@@ -96,7 +99,7 @@ def fast_scan(
     """
     if swe is None:
         raise RuntimeError("Swiss not available; ensure py311 + pyswisseph installed.")
-    set_ephe_from_env()
+    ensure_ephe_initialized()
     tick_minutes = max(1, int(cfg.tick_minutes))
     step_days = tick_minutes / (60 * 24)
     jd = _jd_from_utc(start_utc)

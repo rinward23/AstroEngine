@@ -23,6 +23,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris.swe import has_swe, swe
 
 LOG = logging.getLogger(__name__)
@@ -96,6 +97,7 @@ def _julian_day(dt: datetime) -> float:
         + ts.second / 3600.0
         + ts.microsecond / 3_600_000_000.0
     )
+    init_ephe()
     return swe().julday(ts.year, ts.month, ts.day, frac)
 
 
@@ -178,7 +180,8 @@ def _obliquity_deg(jd_ut: float) -> float:
         eps, _ = swe().obl_ecl(jd_ut)  # type: ignore[call-arg]
         return float(eps)
     # Fallback for Swiss Ephemeris variants without ``obl_ecl`` helper
-    values, _ = swe().calc_ut(jd_ut, swe().ECL_NUT, swe().FLG_SWIEPH)
+    base_flag = init_ephe()
+    values, _ = swe().calc_ut(jd_ut, swe().ECL_NUT, base_flag)
     return float(values[0])
 
 

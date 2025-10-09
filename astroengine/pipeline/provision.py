@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..detectors.common import _ensure_swiss
+from ..engine.ephe_runtime import init_ephe
 from ..ephemeris.swe import swe
 from ..config.settings import load_settings
 
@@ -29,6 +30,7 @@ def get_ephemeris_meta() -> dict[str, Any]:
     try:
         _ensure_swiss()
         _ = swe()  # lazy import
+        base_flag = init_ephe()
         installed = True
         s = load_settings()
         # Try to detect current ephemeris path if set
@@ -41,7 +43,7 @@ def get_ephemeris_meta() -> dict[str, Any]:
         def _can(year: int) -> bool:
             try:
                 jd = swe().julday(year, 1, 1, 12.0)
-                pos = swe().calc_ut(jd, swe().SUN)[0]  # (lon, lat, dist, lon_speed, lat_speed, dist_speed)
+                pos = swe().calc_ut(jd, swe().SUN, base_flag)[0]
                 return all(not math.isnan(x) for x in pos)
             except Exception:
                 return False
