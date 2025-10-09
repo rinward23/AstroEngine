@@ -12,6 +12,7 @@ services:
     depends_on: ["otel-collector"]
     volumes:
       - .:/app
+      - ./data/ephe:/opt/ephe
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.136.0

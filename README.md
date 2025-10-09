@@ -8,6 +8,20 @@ Conda-specific tooling and now organises assets using a
 **module → submodule → channel → subchannel** hierarchy so SolarFire data
 can be indexed safely without losing any modules during future edits.
 
+## Licensing & ephemeris defaults
+
+AstroEngine is distributed under the **GNU Affero General Public License
+v3.0 only (AGPL-3.0-only)**. Every runtime and documentation contribution in
+this repository inherits that copyleft. Commercial deployments must publish
+source changes and network-accessible modifications consistent with the
+AGPL’s network use clause.
+
+The runtime ships with open-source ephemerides and defaults to the bundled
+Moshier model when no proprietary data is configured. High-precision Swiss
+Ephemeris files remain optional and are gated by their own licence terms; you
+may fetch them with the `astroengine-ephe` helper once you have reviewed and
+agreed to the upstream terms via the `--agree-license` flag.
+
 ---
 
 ## Quick start
@@ -56,12 +70,12 @@ reduced-precision providers. Separate terminals running `make run-api` and
 The repository now ships a compose bundle that launches the API on `:8000` and
 the Streamlit UI on `:8501` while sharing the host `./data` directory.
 
-1. Populate `./data` with any required assets:
+1. Prepare the shared volume and (optionally) download licensed Swiss data:
    ```bash
    mkdir -p data/ephe
-   cp /path/to/dev.db data/dev.db            # optional, created automatically if missing
-   cp /path/to/sweph/* data/ephe/            # optional Swiss Ephemeris files
+   docker compose run --rm api astroengine-ephe --agree-license --dest /opt/ephe
    ```
+   The download step is optional; omit it to keep the default Moshier ephemeris.
 
 2. Build and start the API:
    ```bash
