@@ -6,6 +6,7 @@ __all__ = [
     "analysis",
     "doctor",
     "plus",
+    "health",
     "electional",
     "scan",
     "synastry",

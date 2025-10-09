@@ -237,7 +237,7 @@ Homepage = "https://github.com/rinward23/AstroEngine"
 
 [project.scripts]
 astroengine = "astroengine.cli.__main__:main"
-astroengine-api = "astroengine.api_server:run"  # guarded import; only works with [api]
+astroengine-api = "astroengine.api.app:run"  # guarded import; only works with [api]
 astroengine-streamlit = "astroengine.ux.streamlit.cli:main"
 astroengine-ephe = "astroengine.ephe.install:main"
 
