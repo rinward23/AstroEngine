@@ -271,27 +271,6 @@ include-package-data = true
 license-files = ["LICENSE", "NOTICE*", "COPYING*"]
 # >>> AUTO-GEN END: packaging-and-extras v1.0
 
-# >>> AUTO-GEN BEGIN: ruff target py311 v1.1
-[tool.ruff]
-line-length = 100
-select = ["E","F","I","UP","B"]
-target-version = "py311"
-extend-exclude = [
-    "apps",
-    "datasets",
-    "db",
-    "generated",
-    "profiles",
-    "registry",
-    "rulesets",
-    "scripts",
-    ".github",
-    "astroengine/modules",
-    "astroengine/mundane",
-    "astroengine/narrative",
-]
-# >>> AUTO-GEN END: ruff target py311 v1.1
-
 [tool.isort]
 profile = "black"
 line_length = 88
