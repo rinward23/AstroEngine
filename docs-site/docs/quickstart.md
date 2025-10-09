@@ -9,7 +9,7 @@
    ```bash
    git clone https://github.com/example/astroengine.git
    cd astroengine
-   uv pip install -r requirements.txt
+   uv pip install -r requirements/dev.txt
    uv pip install -r docs-site/requirements.txt
    ```
 

@@ -49,7 +49,7 @@ if (-not (Test-Path $VenvDir)) { & $PyExe -m venv $VenvDir }
 $venvPy = Join-Path $VenvDir 'Scripts\python.exe'
 & $venvPy -m pip install --upgrade pip wheel
 
-$req = Join-Path $InstallRoot 'requirements.txt'
+$req = Join-Path $InstallRoot 'requirements\base.txt'
 if ($Mode -eq 'Offline') {
   $wheels = Join-Path $InstallRoot 'installer\offline\wheels'
   & $venvPy -m pip install --no-index --find-links $wheels -r $req

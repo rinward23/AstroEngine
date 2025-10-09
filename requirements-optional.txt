@@ -28,6 +28,9 @@ click>=8.1
 rich>=13.7
 pluggy>=1.5
 
+# [tools-lite]
+requests>=2.31
+
 # [reports]
 pypdf>=4.2
 weasyprint>=62
@@ -45,17 +48,15 @@ plotly>=5.20
 streamlit>=1.35
 plotly>=5.20
 
-# [api]
-fastapi[all]>=0.117,<0.118
-uvicorn[standard]>=0.37,<0.38
-pydantic>=2.11,<3
-icalendar>=6
-httpx>=0.28,<0.29
+# [fallback-ephemeris]
+pymeeus>=0.5.12
+skyfield>=1.49
+jplephem>=2.21
 
-# [providers]
-pyswisseph>=2.10.3; python_version < "3.12"
-timezonefinder>=8.1
-tzdata==2024.1
+# [desktop]
+pywebview>=4.4
+pystray>=0.19
+openai>=1.0
 
 # [tools]
 pymeeus>=0.5.12
@@ -76,6 +77,25 @@ uvicorn[standard]>=0.37,<0.38
 pydantic>=2.11,<3
 icalendar>=6
 httpx>=0.28,<0.29
+pyswisseph>=2.10.3; python_version < "3.12"
+timezonefinder>=8.1
+tzdata==2024.1
+
+# [obs]
+opentelemetry-sdk>=1.26
+opentelemetry-exporter-otlp>=1.26
+opentelemetry-instrumentation-fastapi>=0.48b0
+opentelemetry-instrumentation-requests>=0.48b0
+opentelemetry-instrumentation-sqlalchemy>=0.48b0
+
+# [api]
+fastapi[all]>=0.117,<0.118
+uvicorn[standard]>=0.37,<0.38
+pydantic>=2.11,<3
+icalendar>=6
+httpx>=0.28,<0.29
+
+# [providers]
 pyswisseph>=2.10.3; python_version < "3.12"
 timezonefinder>=8.1
 tzdata==2024.1

@@ -1,0 +1,33 @@
+# >>> AUTO-GEN BEGIN: AstroEngine dev.in v2.0
+# Generated via scripts/generate_requirements.py; do not edit by hand.
+-r base.in
+
+typing_extensions  # ENSURE-LINE
+pip-tools  # ENSURE-LINE
+pipdeptree  # ENSURE-LINE
+pyswisseph; python_version <= "3.11"  # ENSURE-LINE
+
+# pyproject.toml [project.optional-dependencies.dev]
+pytest
+hypothesis
+ruff
+mypy
+pytest-benchmark
+opentelemetry-sdk
+opentelemetry-exporter-otlp
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-requests
+opentelemetry-instrumentation-sqlalchemy
+
+pytest-cov  # ENSURE-LINE
+isort  # ENSURE-LINE
+black  # ENSURE-LINE
+pre-commit  # ENSURE-LINE
+mkdocs-material  # ENSURE-LINE
+mkdocs-gen-files  # ENSURE-LINE
+
+genbadge[coverage]  # ENSURE-LINE
+psycopg[binary]
+testcontainers[postgres]
+
+# >>> AUTO-GEN END: AstroEngine dev.in v2.0

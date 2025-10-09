@@ -3,7 +3,7 @@
 - **Author:** ChatGPT (OpenAI Assistant)
 - **Date:** 2024-05-15
 - **Scope:** Developer Platform → Installers → Windows
-- **Source Inputs:** `requirements.txt`, `alembic` migrations, `datasets/` optional Swiss Ephemeris payloads, Windows packaging standards (WiX/Inno, MSIX, Squirrel), Microsoft documentation for per-user installs, Streamlit and Uvicorn launch contracts.
+- **Source Inputs:** `requirements/base.txt`, `requirements/dev.txt`, `alembic` migrations, `datasets/` optional Swiss Ephemeris payloads, Windows packaging standards (WiX/Inno, MSIX, Squirrel), Microsoft documentation for per-user installs, Streamlit and Uvicorn launch contracts.
 - **Related Profiles/Rulesets:** `profiles/development.yaml` (env defaults), `rulesets` runtime invariants, API health contract in `docs/OBSERVABILITY_SPEC.md`.
 
 ## 1. Objectives

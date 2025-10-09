@@ -19,7 +19,7 @@ This runs:
 python -m astroengine.maint --full --strict --auto-install all --yes
 ```
 
-* Reads `requirements-dev.txt` and installs any missing packages.
+* Reads `requirements/dev.txt` and installs any missing packages.
 * Never installs anything unless `--auto-install` is provided (and `--yes` to skip prompts).
 
 **Cleanup:**

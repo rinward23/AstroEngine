@@ -35,8 +35,8 @@ recommended manual fallback was executed:
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -U pip
-pip install -r requirements.txt 2>/dev/null || true
-pip install -r requirements-dev.txt 2>/dev/null || true
+pip install -r requirements/base.txt 2>/dev/null || true
+pip install -r requirements/dev.txt 2>/dev/null || true
 pip install -e ".[api,providers,ui]" || pip install -e .
 ```
 

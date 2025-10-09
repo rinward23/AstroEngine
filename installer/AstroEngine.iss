@@ -48,7 +48,7 @@ Source: "..\rulesets\*"; DestDir: "{app}\rulesets"; Flags: ignoreversion recurse
 Source: "..\schemas\*"; DestDir: "{app}\schemas"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\ui\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\requirements.lock\*"; DestDir: "{app}\requirements.lock"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\requirements\base.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\alembic.ini"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\pyproject.toml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\installer\windows_portal_entry.py"; DestDir: "{app}\installer"; Flags: ignoreversion

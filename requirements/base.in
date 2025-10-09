@@ -1,0 +1,47 @@
+# >>> AUTO-GEN BEGIN: AstroEngine base.in v2.0
+# Generated via scripts/generate_requirements.py; do not edit by hand.
+# Core runtime dependencies (unpinned)
+
+alembic
+astroquery
+cachetools
+click
+duckdb
+fastapi[all]
+httpx
+icalendar
+ics
+jinja2
+jplephem
+jsonschema
+mdit-py-plugins
+numba
+numpy
+orjson
+pandas
+Pillow
+playwright
+plotly
+pluggy
+prometheus-client
+pyarrow
+pydantic
+pypandoc
+pypdf
+pytest-benchmark
+python-dateutil
+python-docx
+python-multipart
+PyYAML
+redis
+requests
+rich
+skyfield
+SQLAlchemy
+streamlit
+timezonefinder
+tzdata
+weasyprint
+zstandard
+
+# >>> AUTO-GEN END: AstroEngine base.in v2.0

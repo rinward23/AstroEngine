@@ -24,10 +24,11 @@ help:
 	@echo "  make test            # run pytest suite"
 
 setup:
-	$(PYTHON) -m pip install --upgrade pip
-	@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-	@if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e ".[api,providers,ui]" || pip install -e .; fi
-	$(PYTHON) -m astroengine.diagnostics --strict || true
+        $(PYTHON) -m pip install --upgrade pip
+        @if [ -f requirements/base.txt ]; then pip install -r requirements/base.txt; fi
+        @if [ -f requirements/dev.txt ]; then pip install -r requirements/dev.txt; fi
+        @if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e ".[api,providers,ui]" || pip install -e .; fi
+        $(PYTHON) -m astroengine.diagnostics --strict || true
 
 install-optional:
 	$(PYTHON) scripts/install_optional_dependencies.py

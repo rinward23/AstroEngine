@@ -3,7 +3,8 @@
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 python -m pip install -U pip
-pip install -r requirements.txt -r dev-requirements.txt
+pip install -r requirements/base.txt
+pip install -r requirements/dev.txt
 # Optional features:
 pip install -r requirements-optional.txt
 
