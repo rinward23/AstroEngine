@@ -1,7 +1,11 @@
 # >>> AUTO-GEN BEGIN: Swiss Ephemeris Setup v1.0
 # Swiss Ephemeris — Setup
 
-AstroEngine ships with `pyswisseph==2.10.3.2` (Swiss Ephemeris). Without data files, it will fall back to the built-in Moshier model (lower precision but fine for CI/dev).
+AstroEngine is AGPL-3.0-only; all runtime and documentation updates inherit that
+licence. The project ships with `pyswisseph==2.10.3.2` (Swiss Ephemeris), but the
+proprietary data packs remain optional. Without licensed data files, the engine
+automatically falls back to the bundled open-source Moshier model (lower
+precision but deterministic for CI/dev).
 
 Every wheel now bundles an empty `astroengine/datasets/swisseph_stub/` directory so
 `SE_EPHE_PATH` can always point somewhere deterministic even outside the source tree.
@@ -14,6 +18,21 @@ The core package already declares the dependency, so a standard
 automatically. Reinstall manually only when testing alternative builds.
 
 ## Data files (optional, for high precision)
+
+Swiss Ephemeris data is distributed under separate terms. Only download it after
+reviewing and accepting the upstream licence.
+
+### CLI-assisted download (opt-in)
+
+```bash
+astroengine-ephe --agree-license --dest /opt/ephe
+```
+
+Use this helper to pull the vendor pack into a mounted directory (e.g.,
+`/opt/ephe` inside Docker). The `--agree-license` flag records that you have
+explicitly accepted the Swiss terms.
+
+### Manual provisioning
 
 1. Obtain the Swiss Ephemeris data package from the official distributor.
 2. Unpack into a local folder, e.g. `~/ephe/se/`.

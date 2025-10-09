@@ -9,6 +9,14 @@
 astroengine --provision-ephemeris
 ```
 
+AstroEngine itself is AGPL-3.0-only. Swiss Ephemeris assets are licensed
+separately and must be pulled explicitly. Accept the upstream terms before
+fetching them:
+
+```bash
+astroengine-ephe --agree-license --dest ~/.astroengine/ephe
+```
+
 Writes `~/.astroengine/provision.json` with Swiss version and path. Enable strict gating:
 
 ```bash
