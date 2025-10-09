@@ -10,12 +10,12 @@ description = "AstroEngine — modular transit engine and astrology toolkit"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "AstroEngine Maintainers" }]
-license = "LicenseRef-Proprietary"
+license = { file = "LICENSE" }
 keywords = ["astrology", "ephemeris", "transits", "astronomy"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
-  "License :: Other/Proprietary License",
+  "License :: OSI Approved :: GNU Affero General Public License v3",
 ]
 
 # Core runtime deps kept lean while ensuring Swiss Ephemeris support ships by default.
