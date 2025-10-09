@@ -11,11 +11,11 @@ from astroengine.config import (
     apply_profile_overlay,
     list_profiles,
     load_profile_overlay,
-    load_settings,
     profile_description,
     profile_label,
     profiles_home,
     save_user_profile,
+    settings as runtime_settings,
 )
 
 st.set_page_config(page_title="AstroEngine — Profiles", layout="wide")
@@ -137,7 +137,7 @@ with left:
     st.subheader("Save current settings as a profile")
     new_profile_name = st.text_input("Profile name", placeholder="my_team_preset")
     if st.button("Save current settings", type="primary", disabled=not new_profile_name):
-        settings = load_settings()
+        settings = runtime_settings.persisted()
         save_user_profile(new_profile_name, settings)
         st.success("Profile saved.")
         st.rerun()
@@ -149,7 +149,7 @@ with left:
     if uploaded_file and st.button("Import profile", disabled=not import_name):
         try:
             overlay = yaml.safe_load(uploaded_file.getvalue()) or {}
-            current = load_settings()
+            current = runtime_settings.persisted()
             merged = apply_profile_overlay(current, overlay)
             save_user_profile(import_name, merged)
         except yaml.YAMLError as exc:
@@ -175,7 +175,7 @@ with right:
     if target_name:
         try:
             overlay = load_profile_overlay(target_name)
-            base = load_settings()
+            base = runtime_settings.persisted()
             merged = apply_profile_overlay(base, overlay)
         except FileNotFoundError:
             st.error("Profile not found on disk.")

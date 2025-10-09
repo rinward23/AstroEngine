@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..config import Settings as RuntimeSettings
+from ..config import settings as runtime_settings
 from ..core.config import load_profile_json, profile_into_ctx
 from .features import (
     EXPERIMENTAL_MODALITIES,
@@ -84,9 +86,13 @@ from .settings import (
     save_user_narrative_profile,
 )
 
+settings = runtime_settings
+
 __all__ = [
     "load_profile_json",
     "profile_into_ctx",
+    "RuntimeSettings",
+    "settings",
     "IMPLEMENTED_MODALITIES",
     "EXPERIMENTAL_MODALITIES",
     "available_modalities",

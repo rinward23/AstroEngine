@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 
+from astroengine.config import settings as runtime_settings
+
 _LOGGER = logging.getLogger("astroengine.telemetry")
 
 
@@ -25,12 +27,8 @@ def resolve_observability_config(app: FastAPI) -> ObservabilityCfg | None:
     cfg = getattr(settings, "observability", None) if settings else None
     if cfg is not None:
         return cfg
-    try:  # pragma: no cover - optional disk read
-        from astroengine.config import load_settings
-    except Exception:
-        return None
     try:
-        return load_settings().observability
+        return runtime_settings.persisted().observability
     except Exception as exc:  # pragma: no cover - defensive guard
         _LOGGER.debug(
             "telemetry.settings_load_failed",

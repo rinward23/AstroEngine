@@ -8,7 +8,7 @@ import streamlit as st
 from astroengine.config import (
     NarrativeCfg,
     list_narrative_profiles,
-    load_settings,
+    settings as runtime_settings,
 )
 
 st.set_page_config(page_title="AstroEngine — Narrative Profiles", layout="wide")
@@ -43,7 +43,7 @@ with left_column:
 
     st.divider()
     st.subheader("Create / Update User Profile")
-    current_settings = load_settings()
+    current_settings = runtime_settings.persisted()
     current_narrative: NarrativeCfg = current_settings.narrative
     new_name = st.text_input("Profile name", placeholder="my_narrative")
     with st.expander("Edit narrative fields", expanded=False):
@@ -179,7 +179,7 @@ with right_column:
 
     st.divider()
     st.subheader("Preview current narrative config")
-    st.json(load_settings().narrative.model_dump())
+    st.json(runtime_settings.persisted().narrative.model_dump())
 
 st.caption(
     "Narrative user profiles live under: ~/.astroengine/profiles/narrative"

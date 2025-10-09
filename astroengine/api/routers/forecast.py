@@ -10,7 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 from ...chart import ChartLocation, compute_natal_chart
-from ...config.settings import Settings, load_settings
+from ...config import settings as runtime_settings
+from ...config.settings import Settings
 from ...forecast import ForecastChart, ForecastWindow, build_forecast_stack
 from ...userdata.vault import load_natal
 from ..errors import ErrorEnvelope
@@ -49,7 +50,7 @@ class ForecastResponse(BaseModel):
 
 
 def _load_settings() -> Settings:
-    return load_settings()
+    return runtime_settings.persisted()
 
 
 def _csv_response(events: Iterable[dict[str, Any]]) -> Response:

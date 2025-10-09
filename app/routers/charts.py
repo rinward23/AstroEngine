@@ -22,7 +22,7 @@ from astroengine.config import (
     Settings,
     apply_profile_overlay,
     load_profile_overlay,
-    load_settings,
+    settings as runtime_settings,
 )
 from astroengine.report import render_chart_pdf
 from astroengine.report.builders import build_chart_report_context
@@ -221,7 +221,7 @@ def _ensure_list(value: Any) -> list[Any]:
 
 @router.post("", response_model=ChartResponse, status_code=201)
 def create_chart(payload: ChartCreate) -> ChartResponse:
-    base_settings = load_settings()
+    base_settings = runtime_settings.persisted()
     settings, profile_key = _apply_profile(base_settings, payload.profile)
     resolution: LocalTimeResolution | None = None
     if payload.dt_local is not None:
@@ -388,7 +388,7 @@ def derive_chart(chart_id: int, payload: ChartDerive) -> ChartResponse:
         try:
             base_settings = Settings.model_validate(base_chart.settings_snapshot or {})
         except ValidationError:
-            base_settings = load_settings()
+            base_settings = runtime_settings.persisted()
         settings = base_settings
         profile_key = base_chart.profile_key
         if payload.profile:
@@ -537,7 +537,7 @@ def import_chart(payload: ChartImport) -> ChartResponse:
 
 @router.get("/{chart_id}/pdf")
 def chart_pdf(chart_id: int) -> Response:
-    settings = load_settings()
+    settings = runtime_settings.persisted()
     if not settings.reports.pdf_enabled:
         raise HTTPException(status_code=403, detail="PDF reports are disabled")
 

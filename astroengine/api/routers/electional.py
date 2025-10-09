@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from ...chart.config import ChartConfig
-from ...config import load_settings
+from ...config import settings as runtime_settings
 from ...electional import (
     ElectionalCandidate,
     ElectionalConstraintEvaluation,
@@ -93,7 +93,7 @@ def _convert_candidate(candidate: ElectionalCandidate) -> CandidateModel:
 
 @router.post("/search", response_model=ElectionalSearchResponse)
 def electional_search(request: ElectionalSearchRequest) -> ElectionalSearchResponse:
-    settings = load_settings()
+    settings = runtime_settings.persisted()
     electional_cfg = getattr(settings, "electional", None)
     if electional_cfg is not None and not getattr(electional_cfg, "enabled", True):
         raise HTTPException(status_code=403, detail="Electional search disabled in settings")

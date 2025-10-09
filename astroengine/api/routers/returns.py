@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from ...analysis import aries_ingress_year, lunar_return_datetimes, solar_return_datetime
 from ...analysis.returns import ReturnComputationError
-from ...config import load_settings
+from ...config import settings as runtime_settings
 from ...userdata.vault import Natal, load_natal
 
 router = APIRouter(prefix="/v1", tags=["returns"])
@@ -122,7 +122,7 @@ def get_returns(
     except FileNotFoundError as exc:  # pragma: no cover - filesystem dependent
         raise HTTPException(status_code=404, detail=f"Natal '{natal_id}' not found") from exc
 
-    settings = load_settings()
+    settings = runtime_settings.persisted()
     cfg = settings.returns_ingress
     enabled = {
         "solar": cfg.solar_return,

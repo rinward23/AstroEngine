@@ -9,7 +9,7 @@ import pydeck as pdk
 import streamlit as st
 
 from astroengine.analysis import compute_astrocartography_lines
-from astroengine.config import load_settings
+from astroengine.config import settings as runtime_settings
 from astroengine.ephemeris import SwissEphemerisAdapter
 from astroengine.ephemeris.swe import has_swe
 from astroengine.userdata.vault import list_natals, load_natal
@@ -21,7 +21,7 @@ else:
 
 st.set_page_config(page_title="Astrocartography Explorer", layout="wide")
 
-settings = load_settings()
+settings = runtime_settings.persisted()
 cfg = settings.astrocartography
 
 st.title("Astrocartography Explorer")
