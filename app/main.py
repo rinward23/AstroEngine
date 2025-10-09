@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
@@ -17,7 +16,7 @@ from app.db.session import engine
 from app.observability import configure_observability
 from app.telemetry import resolve_observability_config, setup_tracing
 from astroengine.cache.positions_cache import warm_startup_grid
-from astroengine.config import load_settings
+from astroengine.config import settings
 from astroengine.web.middleware import configure_compression
 
 LOGGER = logging.getLogger(__name__)
@@ -54,9 +53,6 @@ except ImportError:  # pragma: no cover - exercised in environments without orjs
 else:
     DEFAULT_RESPONSE_CLASS = ORJSONResponse
 
-SAFE_MODE = os.getenv("SAFE_MODE") == "1"
-DEV_MODE_ENABLED = os.getenv("DEV_MODE")
-
 app = FastAPI(
     title="AstroEngine Plus API", default_response_class=DEFAULT_RESPONSE_CLASS
 )
@@ -87,18 +83,17 @@ app.include_router(data_router)
 app.include_router(charts_router)
 app.include_router(profiles_router)
 app.include_router(narrative_profiles_router)
-if DEV_MODE_ENABLED:
+if settings.dev_mode:
     from app.devmode import router as devmode_router
 
     app.include_router(devmode_router)
 
 
-def _log_ephemeris_path(state: Any) -> None:
+def _log_ephemeris_path(state: Any, ephemeris_path: Path | None) -> None:
     """Record Swiss ephemeris path configuration and surface startup warnings."""
 
-    ephe_raw = os.getenv("SE_EPHE_PATH")
-    state.se_ephe_path = ephe_raw
-    if not ephe_raw:
+    state.se_ephe_path = str(ephemeris_path) if ephemeris_path else None
+    if ephemeris_path is None:
         state.se_ephe_path_resolved = None
         state.se_ephe_path_exists = False
         LOGGER.warning(
@@ -106,7 +101,7 @@ def _log_ephemeris_path(state: Any) -> None:
         )
         return
 
-    candidate = Path(ephe_raw).expanduser()
+    candidate = ephemeris_path.expanduser()
     state.se_ephe_path_resolved = str(candidate)
     exists = candidate.exists()
     state.se_ephe_path_exists = exists
@@ -123,11 +118,11 @@ def _log_ephemeris_path(state: Any) -> None:
 def _init_singletons() -> None:
     """Initialize application-wide state on startup."""
 
-    app.state.trust_proxy = os.getenv("TRUST_PROXY", "0").lower() in {"1", "true", "yes"}
-    app.state.settings = load_settings()
-    _log_ephemeris_path(app.state)
-    app.state.safe_mode = SAFE_MODE
-    if SAFE_MODE:
+    app.state.trust_proxy = settings.trust_proxy
+    app.state.settings = settings.persisted()
+    _log_ephemeris_path(app.state, settings.ephemeris_path)
+    app.state.safe_mode = settings.safe_mode
+    if settings.safe_mode:
         app.state.plugin_registry = None
         app.state.loaded_plugins = []
         app.state.loaded_providers = []
@@ -152,7 +147,7 @@ def _init_singletons() -> None:
                 app.state.plugin_registry_error = str(exc)
                 app.state.loaded_plugins = []
                 app.state.loaded_providers = []
-    app.state.dev_mode_enabled = bool(DEV_MODE_ENABLED)
+    app.state.dev_mode_enabled = settings.dev_mode
 
     try:
         warmed_entries = warm_startup_grid()

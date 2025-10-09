@@ -7,9 +7,9 @@ import streamlit as st
 
 
 def build_system_prompt() -> str:
-    from astroengine.config import compose_narrative_from_mix, load_settings
+    from astroengine.config import compose_narrative_from_mix, settings as runtime_settings
 
-    settings = load_settings()
+    settings = runtime_settings.persisted()
     try:
         effective = compose_narrative_from_mix(settings, settings.narrative_mix)
     except Exception:

@@ -8,7 +8,7 @@ import sys
 from collections.abc import Iterable
 from pathlib import Path
 
-from astroengine.config import load_settings
+from astroengine.config import settings as runtime_settings
 from astroengine.visual import (
     MultiWheelComposition,
     MultiWheelLayer,
@@ -126,7 +126,7 @@ def _run_multiwheel_export(args: argparse.Namespace) -> int:
     except Exception as exc:  # pragma: no cover - reported to user
         print(f"failed to parse multi-wheel spec: {exc}", file=sys.stderr)
         return 1
-    settings = load_settings()
+    settings = runtime_settings.persisted()
     try:
         payload = export_multiwheel(
             composition,

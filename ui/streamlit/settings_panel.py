@@ -9,8 +9,8 @@ import streamlit as st
 from astroengine.config import (
     Settings,
     config_path,
-    load_settings,
     save_settings,
+    settings as runtime_settings,
 )
 from astroengine.plugins.registry import (
     PLUGIN_DIRECTORY,
@@ -26,7 +26,7 @@ st.title("⚙️ AstroEngine Settings")
 st.page_link("ui/streamlit/profiles_manager.py", label="Open Profiles & Presets →")
 st.page_link("ui/streamlit/narrative_profiles_manager.py", label="Narrative Profiles →")
 
-current_settings = load_settings()
+current_settings = runtime_settings.persisted()
 st.sidebar.success(f"Profile: {config_path()}")
 
 ensure_user_plugins_loaded()
@@ -404,6 +404,7 @@ if st.button("💾 Save Settings", type="primary"):
         },
     )
     save_settings(updated)
+    runtime_settings.cache_persisted(updated)
     st.success("Settings saved. Some changes may require restarting the API.")
 
 st.caption(f"Tip: The settings are stored in {config_path()}")

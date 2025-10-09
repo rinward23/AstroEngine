@@ -18,7 +18,7 @@ from ...analysis import (
     find_stations,
     void_of_course_moon,
 )
-from ...config import default_settings, load_settings
+from ...config import default_settings, settings as runtime_settings
 from ...events import EclipseEvent, LunationEvent, StationEvent
 from .._time import ensure_utc_datetime
 
@@ -61,7 +61,7 @@ class TimelineResponse(BaseModel):
 @lru_cache(maxsize=1)
 def _get_settings():
     try:
-        return load_settings()
+        return runtime_settings.persisted()
     except Exception:
         return default_settings()
 

@@ -11,7 +11,7 @@ from pathlib import Path
 from shutil import disk_usage
 from typing import TYPE_CHECKING, Any, Literal
 
-from astroengine.config import Settings, get_config_home, load_settings
+from astroengine.config import Settings, get_config_home, settings as runtime_settings
 from astroengine.ephemeris.utils import get_se_ephe_path
 
 if TYPE_CHECKING:  # pragma: no cover - imported for typing only
@@ -435,7 +435,7 @@ def _check_disk_free(settings: Settings) -> DoctorCheck:
 def run_system_doctor(settings: Settings | None = None) -> dict[str, Any]:
     """Execute all doctor checks and return a serialisable payload."""
 
-    effective_settings = settings or load_settings()
+    effective_settings = settings or runtime_settings.persisted()
     checks = [
         _check_swisseph(effective_settings),
         _check_database(),

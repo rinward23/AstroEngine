@@ -12,9 +12,9 @@ from astroengine.config import (
     delete_user_narrative_profile,
     list_narrative_profiles,
     load_narrative_profile_overlay,
-    load_settings,
     save_settings,
     save_user_narrative_profile,
+    settings as runtime_settings,
 )
 
 router = APIRouter(prefix="/v1/narrative-profiles", tags=["narrative-profiles"])
@@ -42,7 +42,7 @@ async def get_profile(name: str) -> NarrativeCfg:
         overlay = load_narrative_profile_overlay(name)
     except FileNotFoundError as exc:  # pragma: no cover - FastAPI handles mapping
         raise HTTPException(status_code=404, detail="profile not found") from exc
-    current = load_settings()
+    current = runtime_settings.persisted()
     updated = apply_narrative_profile_overlay(current, overlay)
     return updated.narrative
 
@@ -55,9 +55,10 @@ async def apply_profile(name: str) -> Settings:
         overlay = load_narrative_profile_overlay(name)
     except FileNotFoundError as exc:  # pragma: no cover - FastAPI handles mapping
         raise HTTPException(status_code=404, detail="profile not found") from exc
-    current = load_settings()
+    current = runtime_settings.persisted()
     updated = apply_narrative_profile_overlay(current, overlay)
     save_settings(updated)
+    runtime_settings.cache_persisted(updated)
     return updated
 
 

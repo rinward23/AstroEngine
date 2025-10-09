@@ -18,6 +18,7 @@ from astroengine.config import (
     default_settings,
     load_settings,
     save_settings,
+    settings as runtime_settings,
 )
 
 PromptFn = Callable[[str], str]
@@ -114,7 +115,9 @@ def run_first_run_wizard(
         atlas_meta=atlas_meta,
         profile_name=profile_name,
     )
-    return load_settings(settings_path)
+    final_settings = load_settings(settings_path)
+    runtime_settings.cache_persisted(final_settings)
+    return final_settings
 
 
 def _prompt_path(

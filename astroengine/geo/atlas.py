@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TypedDict
 
 from astroengine.atlas.tz import tzid_for
-from astroengine.config import Settings, load_settings
+from astroengine.config import Settings, settings as runtime_settings
 from astroengine.infrastructure.storage.sqlite import apply_default_pragmas
 
 
@@ -63,7 +63,7 @@ def geocode(query: str, *, settings: Settings | None = None) -> GeocodeResult:
     if not trimmed:
         raise ValueError("Geocode query must not be empty.")
 
-    cfg = _extract_config(settings or load_settings())
+    cfg = _extract_config(settings or runtime_settings.persisted())
     offline_failure: Exception | None = None
 
     if cfg.offline_enabled and cfg.data_path is not None:

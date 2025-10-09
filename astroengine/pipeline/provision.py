@@ -7,10 +7,10 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ..config import settings as runtime_settings
 from ..detectors.common import _ensure_swiss
 from ..engine.ephe_runtime import init_ephe
 from ..ephemeris.swe import swe
-from ..config.settings import load_settings
 
 PROVISION_HOME = Path.home() / ".astroengine"
 PROVISION_META = PROVISION_HOME / "provision.json"
@@ -32,7 +32,7 @@ def get_ephemeris_meta() -> dict[str, Any]:
         _ = swe()  # lazy import
         base_flag = init_ephe()
         installed = True
-        s = load_settings()
+        s = runtime_settings.persisted()
         # Try to detect current ephemeris path if set
         try:
             # If your utils expose a getter, use it; else rely on swe.get_library_path()

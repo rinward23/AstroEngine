@@ -15,7 +15,7 @@ from sqlalchemy import select
 from app.db.models import Chart
 from app.db.session import session_scope
 from app.repo.charts import ChartRepo
-from astroengine.config import Settings, load_settings, save_settings
+from astroengine.config import Settings, save_settings, settings as runtime_settings
 
 router = APIRouter(prefix="/v1", tags=["data"])
 
@@ -153,7 +153,7 @@ def export_data(scope: str = "charts,settings") -> StreamingResponse:
 
     settings_payload: dict[str, object] | None = None
     if "settings" in requested:
-        settings_payload = load_settings().model_dump()
+        settings_payload = runtime_settings.persisted().model_dump()
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -190,6 +190,7 @@ async def import_data(bundle: UploadFile = File(...)) -> dict[str, object]:
         settings_data = json.loads(settings_raw)
         settings_model = Settings.model_validate(settings_data)
         save_settings(settings_model)
+        runtime_settings.cache_persisted(settings_model)
         settings_applied = True
 
     if "charts.json" in archive.namelist():
