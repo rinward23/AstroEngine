@@ -12,6 +12,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Final, cast
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris.swe import has_swe, swe
 
 from ..core.angles import AspectMotion, DeltaLambdaTracker, classify_relative_motion
@@ -151,6 +152,7 @@ class EphemerisAdapter:
         self._use_tt = False
         self._sidereal_mode_code: int | None = None
         self._sidereal_mode_key: str | None = None
+        self._base_calc_flags: int = 0
         self.reconfigure(initial_config)
 
     # ------------------------------------------------------------------
@@ -262,7 +264,10 @@ class EphemerisAdapter:
         if not _HAS_SWE:
             return 0
         swe_module = swe()
-        base = cast(int, swe_module.FLG_SWIEPH | swe_module.FLG_SPEED)
+        base = self._base_calc_flags or init_ephe(
+            prefer_moshier=bool(self._config.prefer_moshier)
+        )
+        base |= cast(int, swe_module.FLG_SPEED)
         if self._config.topocentric:
             base |= cast(int, swe_module.FLG_TOPOCTR)
         if self._config.sidereal:
@@ -284,7 +289,7 @@ class EphemerisAdapter:
         self._config = config
         self._cache_capacity = self._resolve_cache_capacity(config.cache_size)
         self._use_tt = self._config.time_scale.ephemeris_scale == "TT"
-        self._probe_path()
+        self._configure_runtime()
         self._configure_observer()
         self._configure_sidereal()
 
@@ -307,29 +312,35 @@ class EphemerisAdapter:
         self._cache = OrderedDict()
         self._apply_config(config)
 
-    def _probe_path(self) -> None:
-        if not _HAS_SWE or self._config.prefer_moshier:
+    def _configure_runtime(self) -> None:
+        if not _HAS_SWE:
+            self._base_calc_flags = 0
             return
 
-        candidate = None
+        prefer_moshier = bool(self._config.prefer_moshier)
+        candidate: Path | None = None
+
         if self._config.ephemeris_path:
-            candidate = Path(self._config.ephemeris_path)
+            candidate = Path(self._config.ephemeris_path).expanduser()
         else:
             for env_var in ("SE_EPHE_PATH", "ASTROENGINE_EPHEMERIS_PATH"):
                 value = os.environ.get(env_var)
                 if value:
-                    candidate = Path(value)
+                    candidate = Path(value).expanduser()
                     break
 
-        if candidate and candidate.exists():
-            swe().set_ephe_path(str(candidate))
-            LOG.debug("Swiss Ephemeris path configured: %s", candidate)
-        else:
-            if candidate:
-                raise FileNotFoundError(
-                    f"Swiss Ephemeris path '{candidate}' does not exist. "
-                    "Set SE_EPHE_PATH or provide a valid EphemerisConfig.ephemeris_path."
-                )
+        if candidate and not candidate.exists():
+            raise FileNotFoundError(
+                f"Swiss Ephemeris path '{candidate}' does not exist. "
+                "Set SE_EPHE_PATH or provide a valid EphemerisConfig.ephemeris_path."
+            )
+
+        candidate_str = str(candidate) if candidate else None
+        self._base_calc_flags = init_ephe(
+            candidate_str, force=True, prefer_moshier=prefer_moshier
+        )
+        if candidate_str:
+            LOG.debug("Swiss ephemeris runtime configured with path: %s", candidate_str)
 
     def _configure_observer(self) -> None:
         if not _HAS_SWE:

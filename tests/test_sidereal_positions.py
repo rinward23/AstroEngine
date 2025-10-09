@@ -10,12 +10,17 @@ swe = pytest.importorskip(
 )
 
 from astroengine.chart.config import ChartConfig
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris import SwissEphemerisAdapter
 
 
 def _expected_sidereal_longitude(jd_ut: float, mode: int) -> float:
-    swe().set_sid_mode(mode, 0, 0)
-    values, _ = swe().calc_ut(jd_ut, swe().SUN, swe().FLG_SWIEPH | swe().FLG_SIDEREAL)
+    swe_module = swe()
+    base_flag = init_ephe()
+    swe_module.set_sid_mode(mode, 0, 0)
+    values, _ = swe_module.calc_ut(
+        jd_ut, swe_module.SUN, base_flag | swe_module.FLG_SIDEREAL
+    )
     return float(values[0]) % 360.0
 
 
@@ -25,7 +30,7 @@ def test_sun_lahiri_sidereal_zero() -> None:
         chart_config=ChartConfig(zodiac="sidereal", ayanamsha="lahiri")
     )
     if adapter.ephemeris_path:
-        swe().set_ephe_path(adapter.ephemeris_path)
+        init_ephe(adapter.ephemeris_path, force=True)
     jd_ut = adapter.julian_day(moment)
     position = adapter.body_position(jd_ut, swe().SUN, body_name="Sun")
     expected = _expected_sidereal_longitude(jd_ut, swe().SIDM_LAHIRI)
@@ -38,7 +43,7 @@ def test_sun_fagan_bradley_sidereal_zero() -> None:
         chart_config=ChartConfig(zodiac="sidereal", ayanamsha="fagan_bradley")
     )
     if adapter.ephemeris_path:
-        swe().set_ephe_path(adapter.ephemeris_path)
+        init_ephe(adapter.ephemeris_path, force=True)
     jd_ut = adapter.julian_day(moment)
     position = adapter.body_position(jd_ut, swe().SUN, body_name="Sun")
     expected = _expected_sidereal_longitude(jd_ut, swe().SIDM_FAGAN_BRADLEY)

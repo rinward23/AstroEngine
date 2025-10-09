@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris.cache import calc_ut_cached
 
 TAU = 360.0
@@ -328,9 +329,8 @@ class SwissEphemerisAdapter:
 
         swe_module = swe()
         self._swe = swe_module
-        if ephemeris_path:
-            swe_module.set_ephe_path(ephemeris_path)
-        self._flags = swe_module.SEFLG_SWIEPH | swe_module.SEFLG_SPEED
+        base_flag = init_ephe(ephemeris_path, force=bool(ephemeris_path))
+        self._flags = int(base_flag | swe_module.SEFLG_SPEED)
         self._body_codes = {
             "sun": swe_module.SUN,
             "moon": swe_module.MOON,

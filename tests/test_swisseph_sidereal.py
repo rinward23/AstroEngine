@@ -8,10 +8,12 @@ swe = pytest.importorskip(
 )
 
 from astroengine.chart.config import ChartConfig
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris import SwissEphemerisAdapter
 
 
 def test_sidereal_adapter_sets_lahiri_mode() -> None:
+    init_ephe()
     jd = swe().julday(2024, 3, 20, 0.0)
     swe().set_sid_mode(swe().SIDM_FAGAN_BRADLEY)
     expected = None

@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from astroengine.engine.ephe_runtime import init_ephe
 from core.rel_plus import (
     BirthEvent,
     DavisonResult,
@@ -25,13 +26,15 @@ def _julian_day(dt: datetime) -> float:
         + ts.second / 3600.0
         + ts.microsecond / 3_600_000_000.0
     )
+    init_ephe()
     return swe().julday(ts.year, ts.month, ts.day, frac)
 
 
 def _obliquity(jd_ut: float) -> float:
     if hasattr(swe, "obl_ecl"):
         return swe().obl_ecl(jd_ut)[0]  # type: ignore[call-arg]
-    values, _ = swe().calc_ut(jd_ut, swe().ECL_NUT, swe().FLG_SWIEPH)
+    base_flag = init_ephe()
+    values, _ = swe().calc_ut(jd_ut, swe().ECL_NUT, base_flag)
     return values[0]
 
 

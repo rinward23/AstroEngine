@@ -1,10 +1,9 @@
 # >>> AUTO-GEN BEGIN: swiss cache utils v1.0
 from __future__ import annotations
 
-import os
 from functools import lru_cache
 
-_SE_SET = False
+from astroengine.engine.ephe_runtime import init_ephe
 
 
 def _lazy_import_swe():
@@ -18,15 +17,10 @@ def _lazy_import_swe():
         ) from e
 
 
-def set_ephe_from_env() -> None:
-    """Set ephemeris path from SE_EPHE_PATH once (idempotent)."""
-    global _SE_SET
-    if _SE_SET:
-        return
-    p = os.getenv("SE_EPHE_PATH")
-    if p:
-        _lazy_import_swe().set_ephe_path(p)
-    _SE_SET = True
+def ensure_ephe_initialized() -> int:
+    """Initialise Swiss ephemeris runtime and return default flags."""
+
+    return init_ephe()
 
 
 @lru_cache(maxsize=200_000)
@@ -36,7 +30,8 @@ def calc_ut_lon(jd: float, body: int, flag: int = 0) -> float:
     Cache key uses exact jd—upstream should quantize ticks if desired.
     """
     swe = _lazy_import_swe()
-    lon = swe().calc_ut(jd, body, flag)[0][0]
+    flags = flag | ensure_ephe_initialized()
+    lon = swe().calc_ut(jd, body, flags)[0][0]
     return lon % 360.0
 
 
