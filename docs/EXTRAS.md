@@ -17,6 +17,7 @@ Extras:
 * `narrative` — Jinja2 rendering
 * `perf` — Numba acceleration
 * `cli` — Click/Rich/Pluggy polish
+* `tools` — Installer utilities (`requests` helpers)
 * `ui` — Streamlit dashboards and Plotly visualizations
 
 # >>> AUTO-GEN END: docs-extras v1.0
