@@ -1,0 +1,5 @@
+AstroEngine incorporates and provides optional integration with the Swiss Ephemeris.
+
+Swiss Ephemeris is copyright (c) 1997-2024 Astrodienst AG. All rights reserved. The Swiss Ephemeris is distributed under the Swiss Ephemeris Public License. Source code and data are available from Astrodienst at https://www.astro.com/swisseph/.
+
+AstroEngine does not redistribute the proprietary Swiss Ephemeris data files. Users may opt in to download the official ephemeris data directly from Astrodienst or supply their own licensed copy as described in docs/SWISS_EPHEMERIS.md.
