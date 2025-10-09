@@ -8,6 +8,7 @@ swe = pytest.importorskip(
 
 from astroengine.core.angles import DeltaLambdaTracker
 from astroengine.core.time import to_tt
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
 
 
@@ -53,6 +54,9 @@ def test_sidereal_mode_configures_swiss_backend() -> None:
     sample = adapter.sample(swe().SUN, moment)
     conv = to_tt(moment)
     swe().set_sid_mode(swe().SIDM_LAHIRI, 0.0, 0.0)
-    values, _ = swe().calc_ut(conv.jd_utc, swe().SUN, swe().FLG_SWIEPH | swe().FLG_SIDEREAL)
+    base_flag = init_ephe()
+    values, _ = swe().calc_ut(
+        conv.jd_utc, swe().SUN, base_flag | swe().FLG_SIDEREAL
+    )
     expected = float(values[0]) % 360.0
     assert abs(sample.longitude - expected) < 1e-6

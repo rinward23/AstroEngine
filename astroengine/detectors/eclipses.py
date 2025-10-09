@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris.swe import has_swe, swe
 
 from ..ephemeris.cache import calc_ut_cached
@@ -21,7 +22,7 @@ def _moon_latitude(jd_ut: float) -> float:
 
     if not has_swe():
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
-    flag = swe().FLG_SWIEPH | swe().FLG_SPEED
+    flag = init_ephe() | swe().FLG_SPEED
     xx, ret_flag = calc_ut_cached(jd_ut, int(swe().MOON), flag)
     if ret_flag < 0:
         raise RuntimeError(f"Swiss ephemeris returned error code {ret_flag}")
@@ -51,7 +52,7 @@ def _visible_at_location(
 
     lon, lat, alt = location
     geopos = (lon, lat, alt)
-    flags = swe().FLG_SWIEPH
+    flags = init_ephe()
     start = jd_ut - 0.5
 
     try:
@@ -79,7 +80,7 @@ def _solar_eclipses(
 ) -> list[EclipseEvent]:
     events: list[EclipseEvent] = []
     jd = start_jd
-    flags = swe().FLG_SWIEPH
+    flags = init_ephe()
 
     while True:
         retflag, tret = swe().sol_eclipse_when_glob(jd, flags)
@@ -118,7 +119,7 @@ def _lunar_eclipses(
 ) -> list[EclipseEvent]:
     events: list[EclipseEvent] = []
     jd = start_jd
-    flags = swe().FLG_SWIEPH
+    flags = init_ephe()
 
     while True:
         retflag, tret = swe().lun_eclipse_when(jd, flags)

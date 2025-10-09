@@ -38,6 +38,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import NullPool
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris import EphemerisAdapter
 from astroengine.ephemeris.swisseph_adapter import swe_calc
 from astroengine.ephemeris.utils import DEFAULT_ENV_KEYS, get_se_ephe_path
@@ -699,8 +700,7 @@ def smoketest_positions(iso_utc: str = "2025-01-01T00:00:00Z") -> list[dict[str,
         return [{"body": "INFO", "detail": f"pyswisseph not installed: {err}"}]
     try:
         ephe = os.environ.get("SE_EPHE_PATH", "")
-        if ephe:
-            swe().set_ephe_path(ephe)
+        base_flag = init_ephe(ephe or None)
         y, m, d, ut = _parse_iso_utc(iso_utc)
         jd = swe().julday(y, m, d, ut)  # UT
         ids = [
@@ -714,7 +714,7 @@ def smoketest_positions(iso_utc: str = "2025-01-01T00:00:00Z") -> list[dict[str,
         ]
         out: list[dict[str, Any]] = []
         for name, pid in ids:
-            xx, _, serr = swe_calc(jd_ut=jd, planet_index=pid, flag=0)
+            xx, _, serr = swe_calc(jd_ut=jd, planet_index=pid, flag=base_flag)
             if serr:
                 raise RuntimeError(serr)
             lon = float(xx[0])

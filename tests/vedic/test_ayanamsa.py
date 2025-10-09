@@ -7,6 +7,7 @@ swe = pytest.importorskip(
     reason="pyswisseph not installed; install extras with `.[providers]`",
 )
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.engine.vedic import (
     PRIMARY_AYANAMSAS,
     SIDEREAL_PRESETS,
@@ -17,7 +18,10 @@ from astroengine.engine.vedic import (
 
 
 def _jd(moment: datetime) -> float:
-    return swe().julday(moment.year, moment.month, moment.day, moment.hour + moment.minute / 60.0)
+    init_ephe()
+    return swe().julday(
+        moment.year, moment.month, moment.day, moment.hour + moment.minute / 60.0
+    )
 
 
 def test_ayanamsa_matches_swisseph():
