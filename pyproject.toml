@@ -94,6 +94,10 @@ cli = [
   "pluggy>=1.5",
 ]
 
+tools = [
+  "requests>=2.31",
+]
+
 reports = [
   "pypdf>=4.2",
   "weasyprint>=62",
@@ -210,6 +214,7 @@ Homepage = "https://github.com/rinward23/AstroEngine"
 astroengine = "astroengine.cli.__main__:main"
 astroengine-api = "astroengine.api_server:run"  # guarded import; only works with [api]
 astroengine-streamlit = "astroengine.ux.streamlit.cli:main"
+astroengine-ephe = "astroengine.ephe.install:main"
 
 [tool.setuptools.package-data]
 astroengine = [

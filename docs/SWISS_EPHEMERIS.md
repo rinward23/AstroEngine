@@ -24,6 +24,19 @@ automatically. Reinstall manually only when testing alternative builds.
    # Windows (PowerShell): $Env:SE_EPHE_PATH = "C:\\ephe\\se"
    ```
 
+## Download helper (license acceptance required)
+
+Install the lightweight tooling extra to pull in `requests` and run the installer:
+
+```bash
+pip install -e .[tools]
+astroengine-ephe --install https://example.com/path/to/swiss-ephemeris.zip --target ~/ephe/se --agree-license
+```
+
+The `astroengine-ephe` CLI prints an error and exits unless `--agree-license` is provided,
+reinforcing that downloads are allowed only after you have reviewed and accepted the
+Swiss Ephemeris terms from Astrodienst.
+
 ## Verify
 
 ```bash
