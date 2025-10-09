@@ -11,7 +11,7 @@ pip install -e .
 if exist packaging\windows\requirements-win.txt (
   pip install -r packaging\windows\requirements-win.txt
 ) else (
-  pip install -r requirements.txt
+  pip install -r requirements\base.txt
   pip install pyinstaller==6.10.*
 )
 if exist requirements-optional.txt pip install -r requirements-optional.txt

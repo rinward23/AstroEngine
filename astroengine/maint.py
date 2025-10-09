@@ -23,7 +23,7 @@ Flags:
   --with-build      : build sdist/wheel if 'build' is available
                       (auto-install when allowed)
   --auto-install X  : X ∈ {none,dev,runtime,all}; installs missing
-                      entries from requirements-dev.txt when possible
+                      entries from requirements/dev.txt when possible
   --clean           : remove caches/artifacts and exit
   --yes             : non-interactive for install prompts
 
@@ -43,7 +43,7 @@ from pathlib import Path
 from .infrastructure.paths import project_root
 
 ROOT = project_root()
-REQ_DEV = ROOT / "requirements-dev.txt"
+REQ_DEV = ROOT / "requirements" / "dev.txt"
 
 
 # ---------- helpers ----------
@@ -138,7 +138,7 @@ def gate_auto_install(scope: str, non_interactive: bool) -> bool:
         return True
     pkgs = parse_requirements(REQ_DEV)
     if not pkgs:
-        print("ℹ️  no requirements-dev.txt found; nothing to auto-install")
+        print("ℹ️  no requirements/dev.txt found; nothing to auto-install")
         return True
     if not non_interactive:
         print(
@@ -201,7 +201,7 @@ def main(argv: list[str] | None = None) -> int:
         "--auto-install",
         default="none",
         choices=["none", "dev", "runtime", "all"],
-        help="auto-install missing deps from requirements-dev.txt",
+        help="auto-install missing deps from requirements/dev.txt",
     )
     ap.add_argument(
         "--clean", action="store_true", help="clean caches/artifacts and exit"

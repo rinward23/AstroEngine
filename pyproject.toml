@@ -96,9 +96,9 @@ cli = [
   "pluggy>=1.5",
 ]
 
-tools = [
+ tools-lite = [
   "requests>=2.31",
-]
+ ]
 
 reports = [
   "pypdf>=4.2",

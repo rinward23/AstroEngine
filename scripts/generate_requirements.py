@@ -10,33 +10,42 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = ROOT / "pyproject.toml"
-REQ_MAIN = ROOT / "requirements.txt"
-REQ_DEV = ROOT / "requirements-dev.txt"
+REQ_BASE_IN = ROOT / "requirements" / "base.in"
+REQ_DEV_IN = ROOT / "requirements" / "dev.in"
 REQ_OPTIONAL = ROOT / "requirements-optional.txt"
 
-HEADER_MAIN = "# >>> AUTO-GEN BEGIN: AstroEngine Requirements v1.0"
-FOOTER_MAIN = "# >>> AUTO-GEN END: AstroEngine Requirements v1.0"
+HEADER_BASE = "# >>> AUTO-GEN BEGIN: AstroEngine base.in v2.0"
+FOOTER_BASE = "# >>> AUTO-GEN END: AstroEngine base.in v2.0"
+HEADER_DEV = "# >>> AUTO-GEN BEGIN: AstroEngine dev.in v2.0"
+FOOTER_DEV = "# >>> AUTO-GEN END: AstroEngine dev.in v2.0"
 HEADER_OPTIONAL = "# >>> AUTO-GEN BEGIN: optional-reqs v1.0"
 FOOTER_OPTIONAL = "# >>> AUTO-GEN END: optional-reqs v1.0"
 
 DEV_ENSURE_LINES = [
-    "typing_extensions>=4.9.0  # ENSURE-LINE",
-    "pip-tools>=7.4.0  # ENSURE-LINE",
-    "pipdeptree>=2.20.0  # ENSURE-LINE",
-    "pyswisseph==2.10.3.2; python_version <= \"3.11\"  # ENSURE-LINE",
+    "typing_extensions  # ENSURE-LINE",
+    "pip-tools  # ENSURE-LINE",
+    "pipdeptree  # ENSURE-LINE",
+    "pyswisseph; python_version <= \"3.11\"  # ENSURE-LINE",
 ]
 
 DEV_EXTRA_OVERRIDES = {
-    "pytest": "pytest>=8.0.0  # ENSURE-LINE",
-    "hypothesis": "hypothesis>=6.92.0  # ENSURE-LINE",
-    "pytest-benchmark": "pytest-benchmark>=4.0  # ENSURE-LINE",
-    "pytest-cov": "pytest-cov>=4.1.0  # ENSURE-LINE",
-    "ruff": "ruff>=0.6.5",
-    "mypy": "mypy>=1.10",
+    "pytest": "pytest  # ENSURE-LINE",
+    "hypothesis": "hypothesis  # ENSURE-LINE",
+    "pytest-benchmark": "pytest-benchmark  # ENSURE-LINE",
+    "pytest-cov": "pytest-cov  # ENSURE-LINE",
+    "ruff": "ruff  # ENSURE-LINE",
+    "mypy": "mypy  # ENSURE-LINE",
+    "isort": "isort  # ENSURE-LINE",
+    "black": "black  # ENSURE-LINE",
+    "pre-commit": "pre-commit  # ENSURE-LINE",
+    "mkdocs-material": "mkdocs-material  # ENSURE-LINE",
+    "mkdocs-gen-files": "mkdocs-gen-files  # ENSURE-LINE",
 }
 
 ADDITIONAL_DEV_LINES = [
-    "genbadge[coverage]>=1.1.1  # ENSURE-LINE",
+    "genbadge[coverage]  # ENSURE-LINE",
+    "psycopg[binary]",
+    "testcontainers[postgres]",
 ]
 
 OPTIONAL_SKIP_EXTRAS = {"all", "dev"}
@@ -52,6 +61,33 @@ def canonical_name(spec: str) -> str:
     return spec.strip().lower().replace("-", "_")
 
 
+def unpin(spec: str) -> str:
+    raw = spec.rstrip()
+    if not raw or raw.startswith("#"):
+        return raw
+    comment = ""
+    if "#" in raw:
+        raw, comment = raw.split("#", 1)
+        comment = "#" + comment.strip()
+    marker = ""
+    if ";" in raw:
+        raw, marker = raw.split(";", 1)
+        marker = "; " + marker.strip()
+    tokens = ["==", "!=", ">=", "<=", "~=", ">", "<"]
+    cut = len(raw)
+    for token in tokens:
+        idx = raw.find(token)
+        if idx != -1 and idx < cut:
+            cut = idx
+    raw = raw[:cut].strip()
+    line = raw
+    if marker:
+        line = f"{line} {marker}" if line else marker
+    if comment:
+        line = f"{line}  {comment}" if line else comment
+    return line.strip()
+
+
 def dedupe_preserve(items: list[str]) -> list[str]:
     seen: OrderedDict[str, str] = OrderedDict()
     for raw in items:
@@ -65,13 +101,45 @@ def dedupe_preserve(items: list[str]) -> list[str]:
 
 
 def load_pyproject() -> tuple[list[str], dict[str, list[str]]]:
-    data = tomllib.loads(PYPROJECT.read_text())
+    raw_lines = PYPROJECT.read_text().splitlines()
+    extras_aliases: dict[str, str] = {}
+    extras_seen: set[str] = set()
+    sanitized: list[str] = []
+    in_optional = False
+    for line in raw_lines:
+        stripped = line.strip()
+        if stripped == "[project.optional-dependencies]":
+            in_optional = True
+            sanitized.append(line)
+            continue
+        if in_optional and stripped.startswith("[") and stripped.endswith("]"):
+            in_optional = False
+        if in_optional and "=" in line and stripped.endswith("["):
+            key = line.split("=", 1)[0].strip()
+            alias = key
+            if alias in extras_seen:
+                suffix = 1
+                candidate = f"{alias}__dup{suffix}"
+                while candidate in extras_seen:
+                    suffix += 1
+                    candidate = f"{alias}__dup{suffix}"
+                line = line.replace(key, candidate, 1)
+                extras_aliases[candidate] = alias
+                extras_seen.add(candidate)
+            else:
+                extras_aliases[alias] = alias
+                extras_seen.add(alias)
+        sanitized.append(line)
+    data = tomllib.loads("\n".join(sanitized))
     project = data.get("project", {})
     base = dedupe_preserve(list(project.get("dependencies", [])))
     extras_raw: dict[str, list[str]] = project.get("optional-dependencies", {})
     extras: dict[str, list[str]] = {}
     for name, values in extras_raw.items():
-        extras[name] = dedupe_preserve(list(values))
+        canonical = extras_aliases.get(name, name)
+        if canonical in extras:
+            continue
+        extras[canonical] = dedupe_preserve(list(values))
     return base, extras
 
 
@@ -84,9 +152,12 @@ def format_with_header(header: str, body: list[str], footer: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def generate_requirements_txt(base: list[str]) -> str:
-    ordered = sorted(base, key=canonical_name)
-    return format_with_header(HEADER_MAIN, ordered + [""], FOOTER_MAIN)
+def generate_base_in(base: list[str]) -> str:
+    unpinned = [unpin(spec) for spec in base]
+    ordered = sorted(dedupe_preserve(unpinned), key=canonical_name)
+    body = ["# Core runtime dependencies (unpinned)", ""]
+    body.extend(ordered)
+    return format_with_header(HEADER_BASE, body, FOOTER_BASE)
 
 
 def generate_optional_txt(extras: dict[str, list[str]]) -> str:
@@ -102,13 +173,11 @@ def generate_optional_txt(extras: dict[str, list[str]]) -> str:
     return format_with_header(HEADER_OPTIONAL, body, FOOTER_OPTIONAL)
 
 
-def generate_dev_txt(base: list[str], extras: dict[str, list[str]]) -> str:
-    body: list[str] = []
+def generate_dev_in(base: list[str], extras: dict[str, list[str]]) -> str:
+    body: list[str] = ["-r base.in", ""]
     body.extend(DEV_ENSURE_LINES)
     body.append("")
-    body.append("-r requirements.txt")
-    body.append("")
-    dev_extra = extras.get("dev", [])
+    dev_extra = [unpin(spec) for spec in extras.get("dev", [])]
     overrides = {canonical_name(k): v for k, v in DEV_EXTRA_OVERRIDES.items()}
     seen: set[str] = set()
     if dev_extra:
@@ -116,8 +185,7 @@ def generate_dev_txt(base: list[str], extras: dict[str, list[str]]) -> str:
         for spec in dev_extra:
             name = canonical_name(spec)
             seen.add(name)
-            override = overrides.get(name)
-            body.append(override or spec)
+            body.append(spec)
         body.append("")
     for name, override in overrides.items():
         if name not in seen:
@@ -125,7 +193,7 @@ def generate_dev_txt(base: list[str], extras: dict[str, list[str]]) -> str:
     if ADDITIONAL_DEV_LINES:
         body.append("")
         body.extend(ADDITIONAL_DEV_LINES)
-    return "\n".join(body).strip() + "\n"
+    return format_with_header(HEADER_DEV, body, FOOTER_DEV)
 
 
 def write_if_changed(path: Path, content: str) -> None:
@@ -136,26 +204,27 @@ def write_if_changed(path: Path, content: str) -> None:
 
 def main(check: bool = False) -> int:
     base, extras = load_pyproject()
-    main_txt = generate_requirements_txt(base)
+    base_in = generate_base_in(base)
     optional_txt = generate_optional_txt(extras)
-    dev_txt = generate_dev_txt(base, extras)
+    dev_in = generate_dev_in(base, extras)
 
     if check:
         mismatches: list[str] = []
-        if REQ_MAIN.read_text() != main_txt:
-            mismatches.append("requirements.txt")
+        if REQ_BASE_IN.read_text() != base_in:
+            mismatches.append("requirements/base.in")
         if REQ_OPTIONAL.read_text() != optional_txt:
             mismatches.append("requirements-optional.txt")
-        if REQ_DEV.read_text() != dev_txt:
-            mismatches.append("requirements-dev.txt")
+        if REQ_DEV_IN.read_text() != dev_in:
+            mismatches.append("requirements/dev.in")
         if mismatches:
             print("Out-of-date files: " + ", ".join(mismatches))
             return 1
         return 0
 
-    write_if_changed(REQ_MAIN, main_txt)
+    REQ_BASE_IN.parent.mkdir(parents=True, exist_ok=True)
+    write_if_changed(REQ_BASE_IN, base_in)
     write_if_changed(REQ_OPTIONAL, optional_txt)
-    write_if_changed(REQ_DEV, dev_txt)
+    write_if_changed(REQ_DEV_IN, dev_in)
     return 0
 
 

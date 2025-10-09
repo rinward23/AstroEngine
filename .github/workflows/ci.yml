@@ -58,9 +58,10 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: |
-            requirements.txt
-            requirements-dev.txt
-            requirements.in
+            requirements/base.txt
+            requirements/dev.txt
+            requirements/base.in
+            requirements/dev.in
             pyproject.toml
 
       - name: Prime Swiss Ephemeris cache

@@ -449,16 +449,22 @@ augmenting the runtime with additional registries.
 
 ### Updating dependency manifests
 
-`requirements.txt`, `requirements-dev.txt`, and `requirements-optional.txt`
-are generated from `pyproject.toml` so the dependency graph only has one
-source of truth. Regenerate them with:
+`requirements/base.in`, `requirements/dev.in`, and
+`requirements-optional.txt` are generated from `pyproject.toml` so the
+dependency graph only has one source of truth. Refresh the unpinned inputs with:
 
 ```bash
 python scripts/generate_requirements.py
 ```
 
 Pass `--check` to verify whether the tracked files already match the
-`pyproject` declarations.
+`pyproject` declarations. Pinned lockfiles live at `requirements/base.txt` and
+`requirements/dev.txt`; regenerate them with `pip-compile` (or `uv lock`):
+
+```bash
+pip-compile requirements/base.in --output-file requirements/base.txt
+pip-compile requirements/dev.in --output-file requirements/dev.txt
+```
 
 # >>> AUTO-GEN BEGIN: AE README Providers Addendum v1.2
 ### Optional providers & catalogs

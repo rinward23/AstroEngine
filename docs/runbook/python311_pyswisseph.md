@@ -17,7 +17,7 @@ python3.11 --version
 python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip wheel setuptools
-pip install -r requirements.txt
+pip install -r requirements/base.txt
 pip install -e .
 ```
 
@@ -83,8 +83,8 @@ Streamlit will report the local URL (typically `http://localhost:8501`).
 
 | Error | Cause | Fix |
 | --- | --- | --- |
-| `ModuleNotFoundError: alembic` | Alembic not installed | `pip install alembic` (present in `requirements.txt`) |
-| `ModuleNotFoundError: sqlalchemy` | SQLAlchemy not installed | `pip install SQLAlchemy` (present in `requirements.txt`) |
+| `ModuleNotFoundError: alembic` | Alembic not installed | `pip install alembic` (present in `requirements/base.txt`) |
+| `ModuleNotFoundError: sqlalchemy` | SQLAlchemy not installed | `pip install SQLAlchemy` (present in `requirements/base.txt`) |
 | `ModuleNotFoundError: swisseph` | `pyswisseph` missing or Python 3.12 used | Re-run under Python 3.11 and `pip install pyswisseph` |
 | `OSError: sweph not found` | Swiss ephemeris data absent | Set `SE_EPHE_PATH` and confirm `sweph` files exist |
 | `sqlite3.OperationalError: database is locked` | Multiple SQLite writers | Limit to a single writer or enable WAL/backoff; consider Postgres for concurrency |

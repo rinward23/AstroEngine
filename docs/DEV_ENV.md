@@ -6,7 +6,7 @@
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 python -m pip install --upgrade pip
-pip install -r requirements-dev.txt
+pip install -r requirements/dev.txt
 pip install -e .
 pre-commit install  # optional
 ```
@@ -16,7 +16,7 @@ pre-commit install  # optional
 ```bash
 conda create -n astroengine python=3.11 -y
 conda activate astroengine
-pip install -r requirements-dev.txt
+pip install -r requirements/dev.txt
 pip install -e .
 ```
 

@@ -5,5 +5,5 @@ dependencies:
   - python>=3.10,<3.13
   - pip
   - pip:
-      - -r requirements-dev.txt
+      - -r requirements/dev.txt
 # >>> AUTO-GEN END: Conda Env v1.0
