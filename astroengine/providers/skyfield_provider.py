@@ -119,12 +119,13 @@ class SkyfieldProvider:
         t = self._skyfield_time(iso_utc)
         out: dict[str, dict[str, float]] = {}
         earth = self.kernel["earth"]
+        earth_at_t = earth.at(t)
         for name in bodies:
             key = _PLANET_KEYS.get(name.lower())
             if not key:
                 continue
             body = self.kernel[key]
-            ecl = earth.at(t).observe(body).ecliptic_position()
+            ecl = earth_at_t.observe(body).ecliptic_position()
             lat, lon, distance = (
                 ecl.spherical_latlon()
             )  # skyfield returns (lat, lon, distance)
