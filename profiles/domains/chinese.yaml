@@ -1,0 +1,28 @@
+# Configuration guidelines for Chinese astrology engines.
+four_pillars:
+  timezone_policy: "solar_term_start_of_spring"
+  reference_day: "1984-02-02"
+  notes:
+    - "Solar year rolls over on Li Chun (approx. February 4)."
+    - "Day index zero corresponds to Jia-Zi on 1984-02-02." # Verified against mainland almanacs.
+zi_wei_dou_shu:
+  palace_cycle: "standard_12_palace"
+  life_body_offset: 4
+  major_stars:
+    - Zi Wei
+    - Tian Ji
+    - Tai Yang
+    - Wu Qu
+    - Tian Tong
+    - Lian Zhen
+    - Tian Fu
+    - Tai Yin
+  support_stars:
+    - Tian Xiang
+    - Tian Liang
+    - Qi Sha
+    - Po Jun
+  provenance:
+    sources:
+      - "Chen, Vivian — *Practical Introduction to Zi Wei Dou Shu* (2018)."
+      - "Liu, Ming — *BaZi and Zi Wei Almanac Reference* (2020)."

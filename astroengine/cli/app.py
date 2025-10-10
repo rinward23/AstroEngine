@@ -4,26 +4,24 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import json
+from datetime import datetime
 from types import SimpleNamespace
-from typing import Dict, List, Optional
+from typing import List, Optional
+from zoneinfo import ZoneInfo
 
 import typer
 
 from astroengine.boot import configure_logging
 from astroengine.ephe import DEFAULT_INSTALL_ROOT
-from astroengine.narrative import GPTNarrativeClient, LocalNarrativeClient
-from astroengine.narrative.journaling import (
-    journal_prompt_lines,
-    latest_entries,
-    log_entry,
-)
-from astroengine.ux import plugins as ux_plugins
+from astroengine.chinese import compute_four_pillars, compute_zi_wei_chart
 
 from . import diagnose
 from ._compat import cli_legacy_missing_reason, try_import_cli_legacy
 
 
 app = typer.Typer(help="AstroEngine command line interface.")
+chinese_app = typer.Typer(help="Chinese astrology chart calculators.")
 
 
 def _parse_local_options(values: List[str]) -> Dict[str, str]:
@@ -356,6 +354,121 @@ def ephe_install(
 
 
 app.add_typer(ephe_app, name="ephe")
+app.add_typer(chinese_app, name="chinese")
+
+
+def _resolve_datetime(moment: str, tz_name: Optional[str]) -> datetime:
+    try:
+        dt = datetime.fromisoformat(moment)
+    except ValueError as exc:  # pragma: no cover - input validation
+        raise typer.BadParameter("Use ISO-8601 formatted datetimes (YYYY-MM-DDTHH:MM)") from exc
+
+    if tz_name:
+        zone = ZoneInfo(tz_name)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=zone)
+        else:
+            dt = dt.astimezone(zone)
+    elif dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+    return dt
+
+
+def _format_star_list(stars) -> str:
+    names = ", ".join(star.name for star in stars)
+    return names or "-"
+
+
+@chinese_app.command("four-pillars")
+def cli_four_pillars(
+    moment: str = typer.Argument(..., metavar="ISO_LOCAL", help="Local datetime in ISO format."),
+    tz_name: Optional[str] = typer.Option(
+        None,
+        "--tz",
+        help="IANA timezone (defaults to Asia/Shanghai when the datetime is naive).",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit Four Pillars data as JSON."),
+) -> None:
+    """Compute the Four Pillars for the supplied moment."""
+
+    if tz_name is None and "+" not in moment and moment[-1:].upper() != "Z":
+        tz_name = "Asia/Shanghai"
+
+    dt = _resolve_datetime(moment, tz_name)
+    chart = compute_four_pillars(dt)
+    payload = {
+        name: {
+            "stem": pillar.stem.name,
+            "branch": pillar.branch.name,
+            "label": pillar.label(),
+        }
+        for name, pillar in chart.pillars.items()
+    }
+    payload["provenance"] = dict(chart.provenance)
+
+    if json_output:
+        typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+
+    for pillar_name in ("year", "month", "day", "hour"):
+        pillar = chart.pillars[pillar_name]
+        typer.echo(
+            f"{pillar_name.title():<5}: {pillar.stem.name}-{pillar.branch.name}"
+        )
+
+
+@chinese_app.command("zi-wei")
+def cli_zi_wei(
+    moment: str = typer.Argument(..., metavar="ISO_LOCAL", help="Local datetime in ISO format."),
+    tz_name: Optional[str] = typer.Option(
+        None,
+        "--tz",
+        help="IANA timezone (defaults to Asia/Shanghai when the datetime is naive).",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit Zi Wei palace data as JSON."),
+) -> None:
+    """Compute a Zi Wei Dou Shu palace map for the supplied moment."""
+
+    if tz_name is None and "+" not in moment and moment[-1:].upper() != "Z":
+        tz_name = "Asia/Shanghai"
+
+    dt = _resolve_datetime(moment, tz_name)
+    chart = compute_zi_wei_chart(dt)
+
+    payload = {
+        "life_palace": chart.life_palace_index,
+        "body_palace": chart.body_palace_index,
+        "palaces": [
+            {
+                "name": palace.name,
+                "branch": palace.branch.name,
+                "stars": [star.name for star in palace.stars],
+            }
+            for palace in chart.palaces
+        ],
+        "provenance": dict(chart.provenance),
+    }
+
+    if json_output:
+        typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+
+    life = chart.palaces[chart.life_palace_index]
+    body = chart.palaces[chart.body_palace_index]
+    typer.echo(
+        f"Life Palace: {life.name} ({life.branch.name}) | Stars: "
+        f"{_format_star_list(life.stars)}"
+    )
+    typer.echo(
+        f"Body Palace: {body.name} ({body.branch.name}) | Stars: "
+        f"{_format_star_list(body.stars)}"
+    )
+    typer.echo("")
+    for palace in chart.palaces:
+        typer.echo(
+            f"{palace.name:<10} ({palace.branch.name}): "
+            f"{_format_star_list(palace.stars)}"
+        )
 
 
 database_app = typer.Typer(help="Database migration utilities.")

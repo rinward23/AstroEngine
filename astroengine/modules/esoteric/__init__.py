@@ -45,6 +45,7 @@ def register_esoteric_module(registry: AstroRegistry) -> None:
                 "iching_king_wen",
                 "elder_futhark_runes",
                 "geomancy_figures_classical",
+                "chakras_bihar_lineage",
             ],
         },
     )
@@ -124,6 +125,27 @@ def register_esoteric_module(registry: AstroRegistry) -> None:
         "classical_sequence",
         metadata={"description": "Calcination through Coagulation."},
         payload={"stages": [stage.to_payload() for stage in ALCHEMY_STAGES]},
+    )
+
+    chakras = module.register_submodule(
+        "chakras",
+        metadata={
+            "description": "Tantric chakra correspondences with planetary rulers and VCA-aligned domains.",
+            "sources": [
+                "Swami Satyananda Saraswati — Kundalini Tantra (1984)",
+                "Anodea Judith — Wheels of Life (1987)",
+            ],
+        },
+    )
+    chakras.register_channel(
+        "planetary_lineage",
+        metadata={"count": len(chakra_correspondences())},
+    ).register_subchannel(
+        "bihar_school",
+        metadata={
+            "description": "Bihar School of Yoga chakra ↔ planetary ruler mapping with Mind/Body/Spirit weights.",
+        },
+        payload={"chakras": [chakra.to_payload() for chakra in chakra_correspondences()]},
     )
 
     rays = module.register_submodule(
