@@ -7,6 +7,7 @@ from .catalog import (
     CHART_TYPES,
     FRAMEWORKS,
     GLOSSARY,
+    INDICATORS,
     ReferenceEntry,
 )
 
@@ -40,6 +41,7 @@ def register_reference_module(registry: AstroRegistry) -> None:
             "documentation": "docs/reference/knowledge_base.md",
             "datasets": [
                 "docs/reference/knowledge_base.md",
+                "docs/reference/astrological_indicators.md",
                 "docs/module/core-transit-math.md",
                 "docs/module/esoteric_overlays.md",
             ],
@@ -96,3 +98,18 @@ def register_reference_module(registry: AstroRegistry) -> None:
         },
     )
     _register_entries(systems, dict(FRAMEWORKS))
+
+    indicators = module.register_submodule(
+        "indicators",
+        metadata={
+            "description": "Astrological indicator outline spanning celestial bodies, timing, and overlays.",
+            "datasets": ["docs/reference/astrological_indicators.md"],
+        },
+    )
+    catalog = indicators.register_channel(
+        "catalog",
+        metadata={
+            "description": "Indicator categories linked to source modules, datasets, and provenance notes.",
+        },
+    )
+    _register_entries(catalog, dict(INDICATORS))
