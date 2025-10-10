@@ -5,8 +5,9 @@ from __future__ import annotations
 import io
 import json
 import zipfile
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from datetime import datetime
+from typing import TextIO
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
@@ -134,6 +135,33 @@ def _normalize_chart_payload(record: Mapping[str, object]) -> dict[str, object |
     return payload
 
 
+def _write_indented(stream: TextIO, text: str, indent: str = "  ") -> None:
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        stream.write(f"{indent}{line}")
+        if index < len(lines) - 1:
+            stream.write("\n")
+
+
+def _stream_charts_export(stream: TextIO) -> None:
+    stream.write("[")
+    first = True
+    with session_scope() as db:
+        result = db.execute(select(Chart).execution_options(stream_results=True))
+        for chart in result.scalars().yield_per(200):
+            payload = _chart_to_payload(chart)
+            serialized = json.dumps(payload, indent=2, ensure_ascii=False)
+            if first:
+                stream.write("\n")
+            else:
+                stream.write(",\n")
+            _write_indented(stream, serialized)
+            first = False
+    if not first:
+        stream.write("\n")
+    stream.write("]")
+
+
 @router.get("/export")
 def export_data(scope: str = "charts,settings") -> StreamingResponse:
     """Return a ZIP archive containing the requested export scope."""
@@ -145,12 +173,6 @@ def export_data(scope: str = "charts,settings") -> StreamingResponse:
     if unknown:
         raise HTTPException(status_code=400, detail=f"Unsupported export scope: {', '.join(sorted(unknown))}")
 
-    charts_payload: Iterable[Mapping[str, object | None]] = []
-    if "charts" in requested:
-        with session_scope() as db:
-            records = db.execute(select(Chart)).scalars().all()
-            charts_payload = [_chart_to_payload(chart) for chart in records]
-
     settings_payload: dict[str, object] | None = None
     if "settings" in requested:
         settings_payload = runtime_settings.persisted().model_dump()
@@ -158,7 +180,9 @@ def export_data(scope: str = "charts,settings") -> StreamingResponse:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         if "charts" in requested:
-            archive.writestr("charts.json", json.dumps(list(charts_payload), indent=2, ensure_ascii=False))
+            with archive.open("charts.json", "w") as charts_entry:
+                with io.TextIOWrapper(charts_entry, encoding="utf-8", newline="") as text_stream:
+                    _stream_charts_export(text_stream)
         if "settings" in requested and settings_payload is not None:
             archive.writestr("settings.json", json.dumps(settings_payload, indent=2, ensure_ascii=False))
 
@@ -171,12 +195,23 @@ def export_data(scope: str = "charts,settings") -> StreamingResponse:
 async def import_data(bundle: UploadFile = File(...)) -> dict[str, object]:
     """Import charts and settings from a previously exported bundle."""
 
-    contents = await bundle.read()
-    if not contents:
-        raise HTTPException(status_code=400, detail="Uploaded file was empty")
+    file_obj = bundle.file
+    if file_obj is None:
+        raise HTTPException(status_code=400, detail="Uploaded file could not be processed")
 
     try:
-        archive = zipfile.ZipFile(io.BytesIO(contents))
+        file_obj.seek(0, io.SEEK_END)
+    except (AttributeError, OSError) as exc:
+        raise HTTPException(status_code=400, detail="Uploaded file could not be processed") from exc
+
+    size = file_obj.tell()
+    if size == 0:
+        raise HTTPException(status_code=400, detail="Uploaded file was empty")
+
+    file_obj.seek(0)
+
+    try:
+        archive = zipfile.ZipFile(file_obj)
     except zipfile.BadZipFile as exc:
         raise HTTPException(status_code=400, detail="Uploaded file is not a valid ZIP archive") from exc
 
@@ -185,62 +220,41 @@ async def import_data(bundle: UploadFile = File(...)) -> dict[str, object]:
     charts_updated = 0
     settings_applied = False
 
-    if "settings.json" in archive.namelist():
-        settings_raw = archive.read("settings.json").decode("utf-8")
-        settings_data = json.loads(settings_raw)
-        settings_model = Settings.model_validate(settings_data)
-        save_settings(settings_model)
-        runtime_settings.cache_persisted(settings_model)
-        settings_applied = True
+    with archive:
+        if "settings.json" in archive.namelist():
+            settings_raw = archive.read("settings.json").decode("utf-8")
+            settings_data = json.loads(settings_raw)
+            settings_model = Settings.model_validate(settings_data)
+            save_settings(settings_model)
+            runtime_settings.cache_persisted(settings_model)
+            settings_applied = True
 
-    if "charts.json" in archive.namelist():
-        charts_raw = archive.read("charts.json").decode("utf-8")
-        data = json.loads(charts_raw)
-        if not isinstance(data, list):
-            raise HTTPException(status_code=400, detail="charts.json must contain a list of charts")
-        payloads: list[dict[str, object | None]] = []
-        chart_keys: set[str] = set()
-        for item in data:
-            if not isinstance(item, Mapping):
-                continue
-            payload = _normalize_chart_payload(item)
-            chart_key = payload.get("chart_key")
-            if not chart_key:
-                continue
-            chart_key_str = str(chart_key)
-            payload["chart_key"] = chart_key_str
-            payloads.append(payload)
-            chart_keys.add(chart_key_str)
-
-        if payloads:
+        if "charts.json" in archive.namelist():
+            charts_raw = archive.read("charts.json").decode("utf-8")
+            data = json.loads(charts_raw)
+            if not isinstance(data, list):
+                raise HTTPException(status_code=400, detail="charts.json must contain a list of charts")
             with session_scope() as db:
                 repo = ChartRepo()
-                existing_records = (
-                    db.execute(select(Chart).where(Chart.chart_key.in_(chart_keys)))
-                    .scalars()
-                    .all()
-                )
-                existing_by_key = {record.chart_key: record for record in existing_records}
-
-                for payload in payloads:
+                for item in data:
+                    if not isinstance(item, Mapping):
+                        continue
+                    payload = _normalize_chart_payload(item)
                     chart_key = payload.get("chart_key")
                     if not chart_key:
                         continue
                     charts_processed += 1
-                    create_kwargs = {
-                        k: v for k, v in payload.items() if v is not None and k != "id"
-                    }
-                    existing = existing_by_key.get(chart_key)
+                    existing = db.execute(
+                        select(Chart).where(Chart.chart_key == str(chart_key))
+                    ).scalar_one_or_none()
+                    create_kwargs = {k: v for k, v in payload.items() if v is not None and k != "id"}
                     if existing is None:
-                        record = repo.create(db, **create_kwargs)
-                        existing_by_key[chart_key] = record
+                        repo.create(db, **create_kwargs)
                         charts_created += 1
                     else:
                         for key, value in create_kwargs.items():
                             setattr(existing, key, value)
                         charts_updated += 1
-
-    archive.close()
 
     return {
         "charts_processed": charts_processed,

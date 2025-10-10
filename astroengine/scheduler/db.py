@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import atexit
 import sqlite3
 import time
 from pathlib import Path
+from threading import Lock
 
 from astroengine.infrastructure.storage.sqlite import apply_default_pragmas
 
@@ -31,13 +33,34 @@ CREATE INDEX IF NOT EXISTS ix_jobs_dedupe ON jobs(dedupe_key);
 """
 
 
+_connection: sqlite3.Connection | None = None
+_connection_lock = Lock()
+
+
+def _close_connection() -> None:
+    global _connection
+    if _connection is not None:
+        _connection.close()
+        _connection = None
+
+
+def get_connection() -> sqlite3.Connection:
+    global _connection
+    if _connection is None:
+        with _connection_lock:
+            if _connection is None:
+                DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+                con = sqlite3.connect(DB_PATH)
+                con.row_factory = sqlite3.Row
+                apply_default_pragmas(con)
+                con.executescript(DDL)
+                atexit.register(_close_connection)
+                _connection = con
+    return _connection
+
+
 def connect() -> sqlite3.Connection:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    apply_default_pragmas(con)
-    con.executescript(DDL)
-    return con
+    return get_connection()
 
 
 def now() -> int:

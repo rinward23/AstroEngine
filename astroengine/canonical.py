@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Literal, Protocol
 
 _SQLITE_IMPORT_ERROR: ModuleNotFoundError | None = None
@@ -330,62 +331,89 @@ def event_from_legacy(
     )
 
 
+def iter_events_from_any(
+    seq: Iterable[Mapping[str, Any] | _HasAttrs | TransitEvent]
+) -> Iterator[TransitEvent]:
+    """Yield canonical :class:`TransitEvent` objects lazily from ``seq``."""
+
+    for item in seq:
+        yield event_from_legacy(item)
+
+
 def events_from_any(
     seq: Iterable[Mapping[str, Any] | _HasAttrs | TransitEvent],
 ) -> list[TransitEvent]:
     """Vector form of :func:`event_from_legacy` with strict conversion."""
 
-    return [event_from_legacy(x) for x in seq]
+    return list(iter_events_from_any(seq))
+
+
+_SQLITE_INSERT = """
+    INSERT INTO transits_events (
+        ts, moving, target, aspect, orb, orb_abs, applying, score,
+        profile_id, natal_id, event_year, meta_json
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+
+
+def _row_params(event: TransitEvent) -> tuple[Any, ...]:
+    payload = _event_row(event)
+    return (
+        payload["ts"],
+        payload["moving"],
+        payload["target"],
+        payload["aspect"],
+        payload["orb"],
+        payload["orb_abs"],
+        1 if payload["applying"] else 0,
+        payload["score"],
+        payload["profile_id"],
+        payload["natal_id"],
+        payload["event_year"],
+        payload["meta_json"],
+    )
 
 
 def sqlite_write_canonical(
-    db_path: str, events: Iterable[Mapping[str, Any] | _HasAttrs | TransitEvent]
+    db_path: str,
+    events: Iterable[Mapping[str, Any] | _HasAttrs | TransitEvent],
+    *,
+    batch_size: int = 512,
 ) -> int:
     """Append canonical events to SQLite (table: ``transits_events``)."""
 
     import sqlite3
 
-    evs = events_from_any(events)
-    if not evs:
+    if batch_size <= 0:
+        raise ValueError("batch_size must be a positive integer")
+
+    event_iter = iter_events_from_any(events)
+    try:
+        first_event = next(event_iter)
+    except StopIteration:
         return 0
 
-    rows = []
-    for e in evs:
-        payload = _event_row(e)
-        rows.append(
-            (
-                payload["ts"],
-                payload["moving"],
-                payload["target"],
-                payload["aspect"],
-                payload["orb"],
-                payload["orb_abs"],
-                1 if payload["applying"] else 0,
-                payload["score"],
-                payload["profile_id"],
-                payload["natal_id"],
-                payload["event_year"],
-                payload["meta_json"],
-            )
-        )
-
-    ensure_sqlite_schema(db_path)
-    con = sqlite3.connect(db_path)
+    normalized_path = str(Path(db_path).expanduser().resolve())
+    ensure_sqlite_schema(normalized_path)
+    con = sqlite3.connect(normalized_path)
     apply_default_pragmas(con)
     try:
         cur = con.cursor()
-        cur.executemany(
-            """
-            INSERT INTO transits_events (
-                ts, moving, target, aspect, orb, orb_abs, applying, score,
-                profile_id, natal_id, event_year, meta_json
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            rows,
-        )
-        con.commit()
-        return len(rows)
+        rows: list[tuple[Any, ...]] = [_row_params(first_event)]
+        total = 0
+        for event in event_iter:
+            rows.append(_row_params(event))
+            if len(rows) >= batch_size:
+                cur.executemany(_SQLITE_INSERT, rows)
+                con.commit()
+                total += len(rows)
+                rows.clear()
+        if rows:
+            cur.executemany(_SQLITE_INSERT, rows)
+            con.commit()
+            total += len(rows)
+        return total
     finally:
         con.close()
 
@@ -400,8 +428,9 @@ def sqlite_read_canonical(
 
     import sqlite3
 
-    ensure_sqlite_schema(db_path)
-    con = sqlite3.connect(db_path)
+    normalized_path = str(Path(db_path).expanduser().resolve())
+    ensure_sqlite_schema(normalized_path)
+    con = sqlite3.connect(normalized_path)
     con.row_factory = sqlite3.Row
     apply_default_pragmas(con)
     try:
@@ -465,35 +494,80 @@ def parquet_write_canonical(
             "pyarrow is required for Parquet export. Install 'pyarrow' to enable."
         ) from exc
 
-    evs = events_from_any(events)
-    if not evs:
+    def _string_or_none(value: Any) -> Any:
+        return None if value is None else str(value)
+
+    def _record_batch_from_rows(batch_rows: list[dict[str, Any]]) -> pa.RecordBatch:
+        ts: list[str] = []
+        moving: list[str] = []
+        target: list[str] = []
+        aspect: list[str] = []
+        orb: list[float] = []
+        orb_abs: list[float] = []
+        applying: list[bool] = []
+        score: list[float | None] = []
+        profile_id: list[str | None] = []
+        natal_id: list[str] = []
+        event_year: list[int] = []
+        meta_json: list[str] = []
+
+        for row in batch_rows:
+            ts.append(row["ts"])
+            moving.append(row["moving"])
+            target.append(row["target"])
+            aspect.append(row["aspect"])
+            orb.append(float(row["orb"]))
+            orb_abs.append(float(row["orb_abs"]))
+            applying.append(bool(row["applying"]))
+            score.append(None if row["score"] is None else float(row["score"]))
+            profile_id.append(_string_or_none(row["profile_id"]))
+            natal_id.append((row["natal_id"] or "unknown"))
+            event_year.append(int(row["event_year"]))
+            meta_json.append(row["meta_json"])
+
+        return pa.record_batch(
+            {
+                "ts": pa.array(ts, type=pa.string()),
+                "moving": pa.array(moving, type=pa.string()),
+                "target": pa.array(target, type=pa.string()),
+                "aspect": pa.array(aspect, type=pa.string()),
+                "orb": pa.array(orb, type=pa.float64()),
+                "orb_abs": pa.array(orb_abs, type=pa.float64()),
+                "applying": pa.array(applying, type=pa.bool_()),
+                "score": pa.array(score, type=pa.float64()),
+                "profile_id": pa.array(profile_id, type=pa.string()),
+                "natal_id": pa.array(natal_id, type=pa.string()),
+                "event_year": pa.array(event_year, type=pa.int64()),
+                "meta_json": pa.array(meta_json, type=pa.string()),
+            }
+        )
+
+    def _iter_record_batches() -> Iterable[pa.RecordBatch]:
+        batch: list[dict[str, Any]] = []
+        for obj in events:
+            event = event_from_legacy(obj)
+            batch.append(_event_row(event))
+            if len(batch) >= 2048:
+                yield _record_batch_from_rows(batch)
+                batch = []
+        if batch:
+            yield _record_batch_from_rows(batch)
+
+    batches = iter(_iter_record_batches())
+    try:
+        first_batch = next(batches)
+    except StopIteration:
         return 0
 
-    rows = [_event_row(e) for e in evs]
-
-    def _string_or_none(value: Any) -> Any:
-        if value is None:
-            return None
-        return str(value)
-
-    table = pa.table(
-        {
-            "ts": [row["ts"] for row in rows],
-            "moving": [row["moving"] for row in rows],
-            "target": [row["target"] for row in rows],
-            "aspect": [row["aspect"] for row in rows],
-            "orb": [row["orb"] for row in rows],
-            "orb_abs": [row["orb_abs"] for row in rows],
-            "applying": [row["applying"] for row in rows],
-            "score": [row["score"] for row in rows],
-            "profile_id": [_string_or_none(row["profile_id"]) for row in rows],
-            "natal_id": [row["natal_id"] or "unknown" for row in rows],
-            "event_year": [row["event_year"] for row in rows],
-            "meta_json": [row["meta_json"] for row in rows],
-        }
-    )
+    total_rows = first_batch.num_rows
     if path.endswith(".parquet"):
-        pq.write_table(table, path, compression=compression)
+        with pq.ParquetWriter(
+            path, first_batch.schema, compression=compression
+        ) as writer:
+            writer.write_batch(first_batch)
+            for batch in batches:
+                writer.write_batch(batch)
+                total_rows += batch.num_rows
     else:
         parquet_format = ds.ParquetFileFormat()
         file_options = parquet_format.make_write_options(compression=compression)
@@ -504,15 +578,25 @@ def parquet_write_canonical(
             ]
         )
         partitioning = ds.HivePartitioning(partition_schema)
+
+        def _counting_batches() -> Iterable[pa.RecordBatch]:
+            nonlocal total_rows
+            yield first_batch
+            for batch in batches:
+                total_rows += batch.num_rows
+                yield batch
+
         ds.write_dataset(
-            table,
+            _counting_batches(),
             path,
             format=parquet_format,
             partitioning=partitioning,
             existing_data_behavior="overwrite_or_ignore",
             file_options=file_options,
+            schema=first_batch.schema,
         )
-    return len(evs)
+
+    return total_rows
 
 
 # >>> AUTO-GEN END: Canonical Types & Adapters v1.0
@@ -526,6 +610,7 @@ __all__ = [
     "BodyPosition",
     "TransitEvent",
     "event_from_legacy",
+    "iter_events_from_any",
     "events_from_any",
     "sqlite_write_canonical",
     "sqlite_read_canonical",

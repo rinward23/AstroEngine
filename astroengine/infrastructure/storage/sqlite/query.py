@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from .engine import ensure_sqlite_schema
@@ -25,8 +26,9 @@ def top_events_by_score(
 
     import sqlite3
 
-    ensure_sqlite_schema(db_path)
-    con = sqlite3.connect(db_path)
+    normalized_path = str(Path(db_path).expanduser().resolve())
+    ensure_sqlite_schema(normalized_path)
+    con = sqlite3.connect(normalized_path)
     con.row_factory = sqlite3.Row
     apply_default_pragmas(con)
     try:
