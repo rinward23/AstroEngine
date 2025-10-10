@@ -68,6 +68,11 @@ _BODY_CLASS: dict[str, str] = {
     "antivertex": "point",
     "fortune": "point",
     "spirit": "point",
+    # Angles
+    "asc": "point",
+    "mc": "point",
+    "ic": "point",
+    "dsc": "point",
 }
 
 
@@ -99,6 +104,11 @@ _BODY_ALIASES: dict[str, str] = {
     "anti_vertex": "antivertex",
     "part_of_fortune": "fortune",
     "pof": "fortune",
+    "ascendant": "asc",
+    "midheaven": "mc",
+    "medium coeli": "mc",
+    "imum coeli": "ic",
+    "descendant": "dsc",
 }
 
 

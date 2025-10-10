@@ -22,18 +22,24 @@
     "luminary": 1.00,
     "personal": 0.95,
     "social": 0.90,
-    "outer": 0.85
+    "outer": 0.85,
+    "point": 0.85
   },
   "pair_matrix": {
     "luminary-personal": 1.00,
     "luminary-social": 0.95,
     "luminary-outer": 0.95,
+    "luminary-point": 0.95,
     "personal-personal": 1.00,
     "personal-social": 0.95,
     "personal-outer": 0.90,
+    "personal-point": 0.90,
     "social-social": 0.90,
     "social-outer": 0.90,
-    "outer-outer": 0.85
+    "social-point": 0.90,
+    "outer-outer": 0.85,
+    "outer-point": 0.85,
+    "point-point": 0.85
   },
   "condition_modifiers": {
     "retrograde": 0.92,
