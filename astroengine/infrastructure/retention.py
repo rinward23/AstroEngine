@@ -80,7 +80,7 @@ def purge_temporary_derivatives(
     cutoff = current_time - (float(retention_days) * 86400)
     result["cutoff"] = cutoff
 
-    for path in sorted(root.rglob("*")):
+    for path in root.rglob("*"):
         if path.is_dir():
             continue
         result["scanned"] += 1
