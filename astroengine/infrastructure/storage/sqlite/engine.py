@@ -5,14 +5,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
+from threading import RLock
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - imported for static type checking only.
     from alembic.config import Config
 
 
+_MIGRATED_DATABASES: set[Path] = set()
+_MIGRATION_LOCK = RLock()
+
+
+def _normalize_path(db_path: str | Path) -> Path:
+    return Path(db_path).expanduser().resolve()
+
+
 def _absolute_sqlite_url(db_path: str | Path) -> str:
-    path = Path(db_path).expanduser().resolve()
+    path = _normalize_path(db_path)
     return f"sqlite:///{path}"
 
 
@@ -74,7 +83,17 @@ class SQLiteMigrator:
 def ensure_sqlite_schema(db_path: str | Path) -> None:
     """Ensure the schema is migrated to the latest revision."""
 
-    SQLiteMigrator(db_path).upgrade("head")
+    normalized_path = _normalize_path(db_path)
+    with _MIGRATION_LOCK:
+        if normalized_path in _MIGRATED_DATABASES:
+            return
+        _MIGRATED_DATABASES.add(normalized_path)
+    try:
+        SQLiteMigrator(normalized_path).upgrade("head")
+    except Exception:
+        with _MIGRATION_LOCK:
+            _MIGRATED_DATABASES.discard(normalized_path)
+        raise
 
 
 def upgrade_sqlite(db_path: str | Path, revision: str = "head") -> None:
