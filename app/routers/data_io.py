@@ -16,7 +16,8 @@ from sqlalchemy import select
 from app.db.models import Chart
 from app.db.session import session_scope
 from app.repo.charts import ChartRepo
-from astroengine.config import Settings, save_settings, settings as runtime_settings
+from astroengine.config import Settings, save_settings
+from astroengine.runtime_config import runtime_settings
 
 router = APIRouter(prefix="/v1", tags=["data"])
 

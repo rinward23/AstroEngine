@@ -15,8 +15,8 @@ from astroengine.config import (
     profile_label,
     profiles_home,
     save_user_profile,
-    settings as runtime_settings,
 )
+from astroengine.runtime_config import runtime_settings
 
 st.set_page_config(page_title="AstroEngine — Profiles", layout="wide")
 st.title("📚 Profiles & Presets")

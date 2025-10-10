@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import TypedDict
 
 from astroengine.atlas.tz import tzid_for
-from astroengine.config import Settings, settings as runtime_settings
+from astroengine.config import Settings
+from astroengine.runtime_config import runtime_settings
 from astroengine.infrastructure.storage.sqlite import apply_default_pragmas
 
 

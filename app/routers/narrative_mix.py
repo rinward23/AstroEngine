@@ -12,8 +12,8 @@ from astroengine.config import (
     list_narrative_profiles,
     save_mix_as_user_narrative_profile,
     save_settings,
-    settings as runtime_settings,
 )
+from astroengine.runtime_config import runtime_settings
 
 router = APIRouter(prefix="/v1/narrative-mix", tags=["narrative-mix"])
 

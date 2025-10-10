@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from ..chart.natal import NatalChart
-from ..config import settings as runtime_settings
+from ..runtime_config import runtime_settings
 from ..config.settings import DignitiesCfg
 from ..detectors.ingresses import sign_index, sign_name
 from ..engine.traditional.sect import sect_info

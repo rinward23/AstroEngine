@@ -14,8 +14,8 @@ from astroengine.config import (
     load_narrative_profile_overlay,
     save_settings,
     save_user_narrative_profile,
-    settings as runtime_settings,
 )
+from astroengine.runtime_config import runtime_settings
 
 router = APIRouter(prefix="/v1/narrative-profiles", tags=["narrative-profiles"])
 

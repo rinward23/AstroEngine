@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from astroengine.config import Settings, save_settings, settings as runtime_settings
+from astroengine.config import Settings, save_settings
+from astroengine.runtime_config import runtime_settings
 
 router = APIRouter(prefix="/v1/settings", tags=["settings"])
 

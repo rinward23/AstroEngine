@@ -11,7 +11,8 @@ from pathlib import Path
 from shutil import disk_usage
 from typing import TYPE_CHECKING, Any, Literal
 
-from astroengine.config import Settings, get_config_home, settings as runtime_settings
+from astroengine.config import Settings, get_config_home
+from astroengine.runtime_config import runtime_settings
 from astroengine.ephemeris.utils import get_se_ephe_path
 
 if TYPE_CHECKING:  # pragma: no cover - imported for typing only

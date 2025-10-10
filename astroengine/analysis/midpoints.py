@@ -6,11 +6,8 @@ import math
 from collections.abc import Mapping
 from functools import lru_cache
 
-from astroengine.config import (
-    MidpointsCfg,
-    default_settings,
-    settings as runtime_settings,
-)
+from astroengine.config import MidpointsCfg, default_settings
+from astroengine.runtime_config import runtime_settings
 from astroengine.utils.angles import delta_angle, norm360
 
 __all__ = [

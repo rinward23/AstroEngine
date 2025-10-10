@@ -7,7 +7,8 @@ from datetime import UTC, datetime, timedelta
 import pandas as pd
 import streamlit as st
 
-from astroengine.config import default_settings, settings as runtime_settings
+from astroengine.config import default_settings
+from astroengine.runtime_config import runtime_settings
 from astroengine.export.ics import to_ics
 from ui.streamlit.api import APIClient
 

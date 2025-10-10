@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from ..config import settings as runtime_settings
+from ..runtime_config import runtime_settings
 from ..detectors.common import _ensure_swiss
 from ..engine.ephe_runtime import init_ephe
 from ..ephemeris.swe import swe

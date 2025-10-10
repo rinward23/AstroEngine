@@ -6,12 +6,8 @@ from pathlib import Path
 
 import streamlit as st
 
-from astroengine.config import (
-    Settings,
-    config_path,
-    save_settings,
-    settings as runtime_settings,
-)
+from astroengine.config import Settings, config_path, save_settings
+from astroengine.runtime_config import runtime_settings
 from astroengine.plugins.registry import (
     PLUGIN_DIRECTORY,
     ensure_user_plugins_loaded,

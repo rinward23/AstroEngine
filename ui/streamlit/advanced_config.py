@@ -4,7 +4,8 @@ import math
 
 import streamlit as st
 
-from astroengine.config import config_path, save_settings, settings as runtime_settings
+from astroengine.config import config_path, save_settings
+from astroengine.runtime_config import runtime_settings
 
 st.set_page_config(
     page_title="AstroEngine – Advanced Config (All Options)", layout="wide"
