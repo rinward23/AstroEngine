@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from astroengine.config import settings as runtime_settings
@@ -19,14 +19,29 @@ from astroengine.visual import (
 from ..exporters_batch import export_parquet_dataset
 
 
-def _load_events(path: str, fmt: str, key: str | None) -> list[dict]:
+def _iter_json_lines(stream: Iterable[str]) -> Iterator[dict[str, object]]:
+    for raw_line in stream:
+        line = raw_line.strip()
+        if not line:
+            continue
+        yield json.loads(line)
+
+
+def _load_events(path: str, fmt: str, key: str | None) -> Iterable[dict[str, object]]:
+    if fmt == "jsonl":
+        if path == "-":
+            return _iter_json_lines(sys.stdin)
+
+        def _from_path() -> Iterator[dict[str, object]]:
+            with Path(path).open("r", encoding="utf-8") as handle:
+                yield from _iter_json_lines(handle)
+
+        return _from_path()
+
     if path == "-":
         payload_text = sys.stdin.read()
     else:
         payload_text = Path(path).read_text(encoding="utf-8")
-
-    if fmt == "jsonl":
-        return [json.loads(line) for line in payload_text.splitlines() if line.strip()]
 
     document = json.loads(payload_text)
     if isinstance(document, list):
@@ -154,7 +169,7 @@ def run(args: argparse.Namespace) -> int:
         return 2
 
     try:
-        events: Iterable[dict] = _load_events(args.input, args.format, args.key)
+        events: Iterable[dict[str, object]] = _load_events(args.input, args.format, args.key)
     except Exception as exc:  # pragma: no cover - surface for CLI usage
         print(f"failed to load input events: {exc}", file=sys.stderr)
         return 1
