@@ -38,15 +38,41 @@ ASPECT_DEFAULTS: dict[str, float] = {
     "trine": 6.0,
     "sextile": 4.0,
     "quincunx": 3.0,
+    "semisextile": 2.0,
     "semisquare": 2.0,
     "sesquisquare": 2.0,
     "quintile": 2.0,
     "biquintile": 2.0,
+    "semiquintile": 2.0,
+    "novile": 1.0,
+    "binovile": 1.0,
+    "septile": 1.0,
+    "biseptile": 1.0,
+    "triseptile": 1.0,
+    "tredecile": 1.5,
+    "undecile": 1.0,
 }
 
 LUMINARIES = {"Sun", "Moon"}
 OUTERS = {"Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"}
-MINOR_ASPECTS = {"quincunx", "semisquare", "sesquisquare", "quintile", "biquintile"}
+MINOR_ASPECTS = {
+    "quincunx",
+    "semisextile",
+    "semisquare",
+    "sesquisquare",
+    "quintile",
+    "biquintile",
+    "semiquintile",
+}
+HARMONIC_ASPECTS = {
+    "novile",
+    "binovile",
+    "septile",
+    "biseptile",
+    "triseptile",
+    "tredecile",
+    "undecile",
+}
 
 
 def _base_orb(aspect_name: str, per_aspect: dict[str, float]) -> float:
@@ -66,14 +92,18 @@ def _adaptive_multiplier(object_a: str, object_b: str, aspect_name: str, rules: 
     lum_factor = float(rules.get("luminaries_factor", 1.0))
     out_factor = float(rules.get("outers_factor", 1.0))
     minor_factor = float(rules.get("minor_aspect_factor", 1.0))
+    harmonic_factor = float(rules.get("harmonic_aspect_factor", minor_factor))
 
     m = 1.0
     if object_a in LUMINARIES or object_b in LUMINARIES:
         m *= lum_factor
     if object_a in OUTERS or object_b in OUTERS:
         m *= out_factor
-    if aspect_name.lower() in MINOR_ASPECTS:
+    aspect_key = aspect_name.lower()
+    if aspect_key in MINOR_ASPECTS:
         m *= minor_factor
+    elif aspect_key in HARMONIC_ASPECTS:
+        m *= harmonic_factor
     return m
 
 

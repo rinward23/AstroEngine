@@ -31,6 +31,21 @@ def test_rank_hits_and_ordering():
     assert ranked_orb[0]["orb"] <= ranked_orb[1]["orb"]
 
 
+def test_rank_hits_infers_policy_angle_names():
+    t0 = datetime(2025, 2, 1, tzinfo=UTC)
+    hit = Hit(
+        a="Mercury",
+        b="Jupiter",
+        aspect_angle=36.0,
+        exact_time=t0,
+        orb=0.1,
+        orb_limit=2.0,
+    )
+    ranked = rank_hits([hit], PROFILE)
+    assert ranked[0]["aspect"] == "semiquintile"
+    assert ranked[0]["meta"]["angle"] == 36.0
+
+
 def test_day_bins_and_pagination():
     t0 = datetime(2025, 1, 1, 10, tzinfo=UTC)
     hits = [

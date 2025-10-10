@@ -1,6 +1,10 @@
 """Unit tests for harmonic angle utilities."""
 
+import json
+from pathlib import Path
+
 from astroengine.core.aspects_plus.harmonics import (
+    BASE_ASPECTS,
     base_aspect_angles,
     combined_angles,
     harmonic_angles,
@@ -16,6 +20,15 @@ def approx(a: float, b: float, eps: float = EPS) -> bool:
 def test_base_aspect_angles_classic():
     values = base_aspect_angles(["sextile", "square", "trine", "bogus"])
     assert values == [60.0, 90.0, 120.0]
+
+
+def test_base_aspects_cover_policy_catalogue():
+    policy_path = Path("profiles/aspects_policy.json")
+    policy = json.loads(policy_path.read_text())
+    for name, angle in policy.get("angles_deg", {}).items():
+        key = name.strip().lower()
+        assert key in BASE_ASPECTS
+        assert abs(float(BASE_ASPECTS[key]) - float(angle)) <= 1e-4
 
 
 def test_harmonic_5_and_7():
