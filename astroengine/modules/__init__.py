@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .chinese import register_chinese_module
 from .data_packs import register_data_packs_module
 from .developer_platform import register_developer_platform_module
 from .esoteric import register_esoteric_module
@@ -46,6 +47,7 @@ def bootstrap_default_registry() -> AstroRegistry:
     register_esoteric_module(registry)
 
     register_mundane_module(registry)
+    register_chinese_module(registry)
     register_jyotish_module(registry)
     register_narrative_module(registry)
 
