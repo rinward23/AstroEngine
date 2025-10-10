@@ -86,9 +86,9 @@ class SkyfieldProvider:
                 continue
             body = self.kernel[key]
             ecl = earth.at(t).observe(body).ecliptic_position()
-            lon, lat, distance = (
+            lat, lon, distance = (
                 ecl.spherical_latlon()
-            )  # skyfield returns lat, lon order
+            )  # skyfield returns (lat, lon, distance)
             out[name] = {"lon": float(lon.degrees % 360.0), "decl": float(lat.degrees)}
         return out
 
