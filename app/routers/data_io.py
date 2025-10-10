@@ -5,8 +5,9 @@ from __future__ import annotations
 import io
 import json
 import zipfile
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from datetime import datetime
+from typing import TextIO
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
@@ -134,6 +135,33 @@ def _normalize_chart_payload(record: Mapping[str, object]) -> dict[str, object |
     return payload
 
 
+def _write_indented(stream: TextIO, text: str, indent: str = "  ") -> None:
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        stream.write(f"{indent}{line}")
+        if index < len(lines) - 1:
+            stream.write("\n")
+
+
+def _stream_charts_export(stream: TextIO) -> None:
+    stream.write("[")
+    first = True
+    with session_scope() as db:
+        result = db.execute(select(Chart).execution_options(stream_results=True))
+        for chart in result.scalars().yield_per(200):
+            payload = _chart_to_payload(chart)
+            serialized = json.dumps(payload, indent=2, ensure_ascii=False)
+            if first:
+                stream.write("\n")
+            else:
+                stream.write(",\n")
+            _write_indented(stream, serialized)
+            first = False
+    if not first:
+        stream.write("\n")
+    stream.write("]")
+
+
 @router.get("/export")
 def export_data(scope: str = "charts,settings") -> StreamingResponse:
     """Return a ZIP archive containing the requested export scope."""
@@ -145,12 +173,6 @@ def export_data(scope: str = "charts,settings") -> StreamingResponse:
     if unknown:
         raise HTTPException(status_code=400, detail=f"Unsupported export scope: {', '.join(sorted(unknown))}")
 
-    charts_payload: Iterable[Mapping[str, object | None]] = []
-    if "charts" in requested:
-        with session_scope() as db:
-            records = db.execute(select(Chart)).scalars().all()
-            charts_payload = [_chart_to_payload(chart) for chart in records]
-
     settings_payload: dict[str, object] | None = None
     if "settings" in requested:
         settings_payload = runtime_settings.persisted().model_dump()
@@ -158,7 +180,9 @@ def export_data(scope: str = "charts,settings") -> StreamingResponse:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         if "charts" in requested:
-            archive.writestr("charts.json", json.dumps(list(charts_payload), indent=2, ensure_ascii=False))
+            with archive.open("charts.json", "w") as charts_entry:
+                with io.TextIOWrapper(charts_entry, encoding="utf-8", newline="") as text_stream:
+                    _stream_charts_export(text_stream)
         if "settings" in requested and settings_payload is not None:
             archive.writestr("settings.json", json.dumps(settings_payload, indent=2, ensure_ascii=False))
 
