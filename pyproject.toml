@@ -42,7 +42,6 @@ dependencies = [
   "jplephem>=2.21",
   "fastapi[all]>=0.117,<0.118",
   "httpx>=0.28,<0.29",
-  "ics>=0.7",
   "orjson>=3.10",
   "redis>=5.0",
   "pyarrow>=16",
