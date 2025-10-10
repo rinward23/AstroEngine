@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import zipfile
 from datetime import UTC, datetime
 
@@ -122,3 +123,53 @@ def test_import_bundle_upserts_charts(tmp_path, monkeypatch) -> None:
     settings = load_settings(tmp_path / "config.yaml")
     assert settings.reports.pdf_enabled is False
     assert settings.reports.disclaimers == ["Imported"]
+
+
+def test_import_large_bundle_streams_from_disk(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("ASTROENGINE_HOME", str(tmp_path))
+    _configure_settings_home(tmp_path)
+
+    bundle_path = tmp_path / "large_bundle.zip"
+    with zipfile.ZipFile(bundle_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "filler.bin",
+            os.urandom(2 * 1024 * 1024),
+            compress_type=zipfile.ZIP_STORED,
+        )
+        archive.writestr(
+            "charts.json",
+            json.dumps(
+                [
+                    {
+                        "chart_key": "large-import",
+                        "profile_key": "bulk",
+                        "kind": "natal",
+                        "dt_utc": "2021-01-01T00:00:00+00:00",
+                        "lat": 0,
+                        "lon": 0,
+                        "location_name": "Equator",
+                        "timezone": "UTC",
+                        "data": {"kind": "natal"},
+                    }
+                ]
+            ),
+        )
+
+    assert bundle_path.stat().st_size > 1_000_000
+
+    with bundle_path.open("rb") as bundle_file:
+        response = client.post(
+            "/v1/import",
+            files={"bundle": ("bundle.zip", bundle_file, "application/zip")},
+        )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["charts_processed"] == 1
+    assert payload["charts_created"] >= 1
+
+    with session_scope() as db:
+        chart = db.execute(
+            select(Chart).where(Chart.chart_key == "large-import")
+        ).scalar_one_or_none()
+        assert chart is not None
