@@ -198,27 +198,47 @@ async def import_data(bundle: UploadFile = File(...)) -> dict[str, object]:
         data = json.loads(charts_raw)
         if not isinstance(data, list):
             raise HTTPException(status_code=400, detail="charts.json must contain a list of charts")
-        with session_scope() as db:
-            repo = ChartRepo()
-            for item in data:
-                if not isinstance(item, Mapping):
-                    continue
-                payload = _normalize_chart_payload(item)
-                chart_key = payload.get("chart_key")
-                if not chart_key:
-                    continue
-                charts_processed += 1
-                existing = db.execute(
-                    select(Chart).where(Chart.chart_key == str(chart_key))
-                ).scalar_one_or_none()
-                create_kwargs = {k: v for k, v in payload.items() if v is not None and k != "id"}
-                if existing is None:
-                    repo.create(db, **create_kwargs)
-                    charts_created += 1
-                else:
-                    for key, value in create_kwargs.items():
-                        setattr(existing, key, value)
-                    charts_updated += 1
+        payloads: list[dict[str, object | None]] = []
+        chart_keys: set[str] = set()
+        for item in data:
+            if not isinstance(item, Mapping):
+                continue
+            payload = _normalize_chart_payload(item)
+            chart_key = payload.get("chart_key")
+            if not chart_key:
+                continue
+            chart_key_str = str(chart_key)
+            payload["chart_key"] = chart_key_str
+            payloads.append(payload)
+            chart_keys.add(chart_key_str)
+
+        if payloads:
+            with session_scope() as db:
+                repo = ChartRepo()
+                existing_records = (
+                    db.execute(select(Chart).where(Chart.chart_key.in_(chart_keys)))
+                    .scalars()
+                    .all()
+                )
+                existing_by_key = {record.chart_key: record for record in existing_records}
+
+                for payload in payloads:
+                    chart_key = payload.get("chart_key")
+                    if not chart_key:
+                        continue
+                    charts_processed += 1
+                    create_kwargs = {
+                        k: v for k, v in payload.items() if v is not None and k != "id"
+                    }
+                    existing = existing_by_key.get(chart_key)
+                    if existing is None:
+                        record = repo.create(db, **create_kwargs)
+                        existing_by_key[chart_key] = record
+                        charts_created += 1
+                    else:
+                        for key, value in create_kwargs.items():
+                            setattr(existing, key, value)
+                        charts_updated += 1
 
     archive.close()
 

@@ -73,6 +73,20 @@ def test_import_bundle_upserts_charts(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("ASTROENGINE_HOME", str(tmp_path))
     _configure_settings_home(tmp_path)
 
+    with session_scope() as db:
+        ChartRepo().create(
+            db,
+            chart_key="imported-chart",
+            profile_key="import",
+            kind="natal",
+            dt_utc=datetime(2019, 1, 1, 0, 0, tzinfo=UTC),
+            lat=0.0,
+            lon=0.0,
+            location_name="Initial",
+            timezone="UTC",
+            data={"kind": "natal"},
+        )
+
     bundle_buffer = io.BytesIO()
     with zipfile.ZipFile(bundle_buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(
@@ -98,8 +112,20 @@ def test_import_bundle_upserts_charts(tmp_path, monkeypatch) -> None:
                         "lon": -118.2437,
                         "location_name": "Los Angeles",
                         "timezone": "America/Los_Angeles",
+                        "name": "Updated Import",
                         "data": {"kind": "natal"},
-                    }
+                    },
+                    {
+                        "chart_key": "second-chart",
+                        "profile_key": "import",
+                        "kind": "event",
+                        "dt_utc": "2023-01-01T12:00:00+00:00",
+                        "lat": 40.7128,
+                        "lon": -74.006,
+                        "location_name": "New York",
+                        "timezone": "America/New_York",
+                        "data": {"kind": "event"},
+                    },
                 ],
                 indent=2,
             ),
@@ -112,12 +138,26 @@ def test_import_bundle_upserts_charts(tmp_path, monkeypatch) -> None:
     )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["charts_created"] >= 1
+    assert payload["charts_processed"] == 2
+    assert payload["charts_created"] == 1
+    assert payload["charts_updated"] == 1
     assert payload["settings_applied"] is True
 
     with session_scope() as db:
-        chart = db.execute(select(Chart).where(Chart.chart_key == "imported-chart")).scalar_one_or_none()
+        chart = (
+            db.execute(select(Chart).where(Chart.chart_key == "imported-chart"))
+            .scalar_one_or_none()
+        )
         assert chart is not None
+        assert chart.location_name == "Los Angeles"
+        assert chart.timezone == "America/Los_Angeles"
+        assert chart.name == "Updated Import"
+        second = (
+            db.execute(select(Chart).where(Chart.chart_key == "second-chart"))
+            .scalar_one_or_none()
+        )
+        assert second is not None
+        assert second.location_name == "New York"
 
     settings = load_settings(tmp_path / "config.yaml")
     assert settings.reports.pdf_enabled is False
