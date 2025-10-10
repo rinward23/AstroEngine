@@ -9,7 +9,7 @@ from typing import Any
 
 import yaml
 
-from .settings import NarrativeCfg, get_config_home
+from .settings import NARRATIVE_PROFILES_SUBDIR, NarrativeCfg, get_config_home
 
 __all__ = [
     "NARRATIVE_PROFILES_DIRNAME",
@@ -21,7 +21,7 @@ __all__ = [
 ]
 
 
-NARRATIVE_PROFILES_DIRNAME = "narrative_profiles"
+NARRATIVE_PROFILES_DIRNAME = NARRATIVE_PROFILES_SUBDIR
 
 
 def _default_esoteric() -> dict[str, Any]:

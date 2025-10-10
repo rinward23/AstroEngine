@@ -29,6 +29,7 @@ def build_summary_prompt(
     timelords: Any | None = None,
     context: Mapping[str, Any] | None = None,
     locale: str | None = None,
+    journal_lines: Sequence[str] | None = None,
 ) -> str:
     """Return a chat-friendly prompt describing the supplied events."""
 
@@ -50,6 +51,8 @@ def build_summary_prompt(
                     context_bits=context_bits,
                 )
             )
+    if journal_lines:
+        lines.extend(journal_lines)
     lines.append(translate("narrative.prompt.events_header", locale=locale))
     for index, event in enumerate(events, 1):
         payload = event_to_mapping(event)
@@ -99,10 +102,13 @@ def build_template_summary(
     title: str = "Top events",
     timelords: Any | None = None,
     locale: str | None = None,
+    journal_lines: Sequence[str] | None = None,
 ) -> str:
     """Fallback deterministic formatter when GPT access is unavailable."""
 
     lines = [translate("narrative.template.title", locale=locale, title=title)]
+    if journal_lines:
+        lines.extend(journal_lines)
     for event in events:
         payload = event_to_mapping(event)
         timestamp = payload.get("timestamp") or payload.get("ts")

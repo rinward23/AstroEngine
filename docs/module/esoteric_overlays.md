@@ -18,6 +18,9 @@ esoterica/
   decans/
     chaldean_order/
       golden_dawn_tarot
+  chakras/
+    planetary_lineage/
+      bihar_school
   tree_of_life/
     sephiroth/
       golden_dawn
@@ -84,6 +87,14 @@ fields:
 - `seven_rays/bailey_lineage/ray_profiles` records virtues, vices, colours, and
   planetary rulers for Alice A. Bailey's Seven Rays.
 
+### Chakras
+
+- `chakras/planetary_lineage/bihar_school` captures the Bihar School of Yoga
+  lineage described by Swami Satyananda Saraswati, aligning each chakra with its
+  planetary ruler. Mind/Body/Spirit domain weights follow Anodea Judith's
+  psychological framing so downstream VCA analytics can project chakra emphasis
+  from chart factors.
+
 ### Initiatory Orders
 
 - `initiatory_orders/golden_dawn/grade_ladder` maps the Neophyte → Ipsissimus grade
@@ -126,12 +137,14 @@ fields:
 - Richard Wilhelm — *The I Ching or Book of Changes* (1923)
 - Stephen Flowers — *Futhark: A Handbook of Rune Magic* (1984)
 - Diana L. Paxson — *Taking Up the Runes* (2005)
+- Swami Satyananda Saraswati — *Kundalini Tantra* (1984)
+- Anodea Judith — *Wheels of Life: A User's Guide to the Chakra System* (1987)
 
 ## Runtime helpers
 
 ```python
 from astroengine.chart.natal import ChartLocation, compute_natal_chart
-from astroengine.esoteric import assign_decans
+from astroengine.esoteric import assign_decans, chakra_emphasis_for_chart
 
 chart = compute_natal_chart(
     moment=...,  # timezone-aware datetime
@@ -139,6 +152,9 @@ chart = compute_natal_chart(
 )
 for assignment in assign_decans(chart.positions):
     print(assignment.body, assignment.decan.tarot_card, assignment.decan.tarot_title)
+
+# Estimate chakra emphasis directly from VCA house weighting
+print(chakra_emphasis_for_chart(chart))
 ```
 
 `assign_decans` consumes the same `BodyPosition` objects returned by the natal and

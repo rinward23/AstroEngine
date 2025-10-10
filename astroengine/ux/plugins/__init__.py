@@ -14,7 +14,14 @@ except Exception:  # pragma: no cover - graceful degradation
 LOG = logging.getLogger(__name__)
 _NAMESPACE = "astroengine"
 
-__all__ = ["setup_cli", "hookimpl", "hookspec"]
+__all__ = [
+    "setup_cli",
+    "hookimpl",
+    "hookspec",
+    "prepare_chat_prompt",
+    "handle_chat_response",
+    "get_plugin_manager",
+]
 
 if pluggy is not None:  # pragma: no branch
     hookspec = pluggy.HookspecMarker(_NAMESPACE)
@@ -26,6 +33,18 @@ if pluggy is not None:  # pragma: no branch
         @hookspec
         def setup_cli(self, parser: Any) -> None:
             """Augment :mod:`argparse` parsers with additional commands or options."""
+
+        @hookspec
+        def prepare_chat_prompt(
+            self, prompt: str, metadata: dict[str, Any]
+        ) -> tuple[str, dict[str, Any]] | None:
+            """Allow plugins to adjust chatbot prompts before dispatch."""
+
+        @hookspec
+        def handle_chat_response(
+            self, prompt: str, response: str, metadata: dict[str, Any]
+        ) -> None:
+            """Observe chatbot responses for logging or side-effects."""
 
     _MANAGER = pluggy.PluginManager(_NAMESPACE)
     _MANAGER.add_hookspecs(AstroEngineSpec)
@@ -76,13 +95,55 @@ if pluggy is not None:  # pragma: no branch
             _register_plugin(plugin, name=entry.name)
         _ENTRYPOINTS_LOADED = True
 
+    def _ensure_loaded() -> None:
+        _register_builtin_plugins()
+        _load_entrypoint_plugins()
+
     def setup_cli(parser: Any) -> pluggy.PluginManager | None:
         """Load plugins and dispatch CLI hooks."""
 
-        _register_builtin_plugins()
-        _load_entrypoint_plugins()
-        _MANAGER.hook.setup_cli(parser=parser)
+        _ensure_loaded()
+        if parser is not None:
+            _MANAGER.hook.setup_cli(parser=parser)
         return _MANAGER
+
+    def get_plugin_manager() -> pluggy.PluginManager | None:
+        """Return the shared plugin manager after loading plugins."""
+
+        _ensure_loaded()
+        return _MANAGER
+
+    def prepare_chat_prompt(
+        prompt: str, metadata: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
+        """Dispatch ``prepare_chat_prompt`` hooks sequentially."""
+
+        manager = get_plugin_manager()
+        if manager is None:
+            return prompt, metadata
+        updated_prompt = prompt
+        updated_meta = dict(metadata)
+        for result in manager.hook.prepare_chat_prompt(
+            prompt=updated_prompt, metadata=dict(updated_meta)
+        ):
+            if not result:
+                continue
+            new_prompt, new_meta = result
+            if new_prompt is not None:
+                updated_prompt = new_prompt
+            if new_meta:
+                updated_meta.update(new_meta)
+        return updated_prompt, updated_meta
+
+    def handle_chat_response(prompt: str, response: str, metadata: dict[str, Any]) -> None:
+        """Dispatch ``handle_chat_response`` hooks."""
+
+        manager = get_plugin_manager()
+        if manager is None:
+            return
+        manager.hook.handle_chat_response(
+            prompt=prompt, response=response, metadata=dict(metadata)
+        )
 
 else:  # pragma: no cover - pluggy unavailable
 
@@ -90,6 +151,23 @@ else:  # pragma: no cover - pluggy unavailable
         """No-op fallback when :mod:`pluggy` is missing."""
 
         LOG.debug("Pluggy not available; skipping plugin hooks")
+        return None
+
+    def get_plugin_manager() -> None:
+        """Return ``None`` when pluggy is unavailable."""
+
+        return None
+
+    def prepare_chat_prompt(
+        prompt: str, metadata: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
+        """Return inputs unchanged when pluggy is missing."""
+
+        return prompt, metadata
+
+    def handle_chat_response(prompt: str, response: str, metadata: dict[str, Any]) -> None:
+        """No-op fallback when pluggy is missing."""
+
         return None
 
     class _Marker:

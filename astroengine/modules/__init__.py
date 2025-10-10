@@ -48,6 +48,7 @@ def bootstrap_default_registry() -> AstroRegistry:
     register_esoteric_module(registry)
 
     register_mundane_module(registry)
+    register_chinese_module(registry)
     register_jyotish_module(registry)
     register_narrative_module(registry)
     register_chinese_module(registry)

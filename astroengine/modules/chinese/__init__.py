@@ -1,76 +1,58 @@
-"""Register Chinese calendrical assets with the :class:`AstroRegistry`."""
+"""Registry wiring for Chinese astrology engines."""
 
 from __future__ import annotations
 
-from ...systems.chinese import (
-    EARTHLY_BRANCHES,
-    FIVE_ELEMENTS,
-    HEAVENLY_STEMS,
-    LUNAR_INFO,
-    SHENGXIAO_ANIMALS,
-)
 from ..registry import AstroModule, AstroRegistry
 
 __all__ = ["register_chinese_module"]
 
 
+DOC_PATH = "docs/module/chinese_astrology.md"
+PROFILE_PATH = "profiles/domains/chinese.yaml"
+
+
 def register_chinese_module(registry: AstroRegistry) -> AstroModule:
-    """Attach Chinese lunisolar lookup tables and symbolism metadata."""
+    """Attach Chinese astrology chart builders to the registry."""
 
     module = registry.register_module(
         "chinese",
         metadata={
-            "description": "Chinese lunisolar calendar and BaZi symbolism",
-            "sources": [
-                "Hong Kong Observatory — Chinese Calendar Data (1900–2099)",
-                "Helmer Aslaksen, The Mathematics of the Chinese Calendar (2010)",
-            ],
+            "description": "Four Pillars (BaZi) and Zi Wei Dou Shu chart computation.",
+            "documentation": DOC_PATH,
+            "profiles": [PROFILE_PATH],
         },
     )
 
-    calendar = module.register_submodule(
-        "calendar",
+    bazi = module.register_submodule(
+        "four_pillars",
         metadata={
-            "description": "Bit-packed lunar month metadata derived from Hong Kong Observatory tables.",
+            "description": "Sexagenary pillar calculations for BaZi charts.",
+            "api": "astroengine.chinese.compute_four_pillars",
         },
     )
-    calendar.register_channel(
-        "lunisolar",
-        metadata={"coverage": "1900-2099"},
+    bazi.register_channel(
+        "engines",
+        metadata={"description": "Primary BaZi computation routine."},
     ).register_subchannel(
-        "observatory_table",
-        metadata={"encoding": "LunarInfo"},
-        payload={
-            "start_year": 1900,
-            "end_year": 2099,
-            "lunar_info": list(LUNAR_INFO),
-        },
+        "default",
+        metadata={"tests": ["tests/chinese/test_four_pillars.py"]},
+        payload={"callable": "astroengine.chinese.compute_four_pillars"},
     )
 
-    zodiac = module.register_submodule(
-        "zodiac",
-        metadata={"description": "Sexagenary stems, branches, and zodiac animal mappings."},
-    )
-    zodiac.register_channel("stems").register_subchannel(
-        "ten_heavenly",
-        payload={"stems": list(HEAVENLY_STEMS)},
-    )
-    zodiac.register_channel("branches").register_subchannel(
-        "twelve_earthly",
-        payload={
-            "branches": list(EARTHLY_BRANCHES),
-            "animals": list(SHENGXIAO_ANIMALS),
+    zi_wei = module.register_submodule(
+        "zi_wei_dou_shu",
+        metadata={
+            "description": "Twelve-palace Zi Wei Dou Shu star placement.",
+            "api": "astroengine.chinese.compute_zi_wei_chart",
         },
     )
-
-    symbolism = module.register_submodule(
-        "symbolism",
-        metadata={"description": "Wu Xing associations used in Chinese elemental astrology."},
-    )
-    symbolism.register_channel("elements").register_subchannel(
-        "wu_xing",
-        payload={"meanings": dict(FIVE_ELEMENTS)},
+    zi_wei.register_channel(
+        "engines",
+        metadata={"description": "Primary Zi Wei chart routine."},
+    ).register_subchannel(
+        "default",
+        metadata={"tests": ["tests/chinese/test_zi_wei.py"]},
+        payload={"callable": "astroengine.chinese.compute_zi_wei_chart"},
     )
 
     return module
-

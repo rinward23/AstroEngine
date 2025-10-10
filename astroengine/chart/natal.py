@@ -9,6 +9,7 @@ from typing import Any
 
 from ..ephemeris import BodyPosition, HousePositions, SwissEphemerisAdapter
 from ..scoring import DEFAULT_ASPECTS, OrbCalculator
+from ..utils.angles import norm360
 from .config import ChartConfig
 
 __all__ = [
@@ -62,6 +63,24 @@ BODY_EXPANSIONS: Mapping[str, Mapping[str, int]] = {
 _POINT_EXPANSIONS: Mapping[str, tuple[str, ...]] = {
     "vertex": ("Vertex", "Anti-Vertex"),
 }
+
+
+def _point_body_position(name: str, longitude: float, julian_day: float) -> BodyPosition:
+    """Return a :class:`BodyPosition` for longitude-only chart points."""
+
+    lon = norm360(longitude)
+    return BodyPosition(
+        body=name,
+        julian_day=float(julian_day),
+        longitude=lon,
+        latitude=0.0,
+        distance_au=0.0,
+        speed_longitude=0.0,
+        speed_latitude=0.0,
+        speed_distance=0.0,
+        declination=0.0,
+        speed_declination=0.0,
+    )
 
 
 def build_body_map(
