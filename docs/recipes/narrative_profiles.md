@@ -5,6 +5,58 @@ can blend in active time-lord stacks. The same offline templates power the
 CLI and Python APIs, ensuring deterministic output that references real
 event data.
 
+## Offline / local narrative models
+
+Remote GPT access remains optional. The
+``astroengine.narrative.local_model.LocalNarrativeClient`` adapter loads
+registered backends (for example a ``llama.cpp`` binding) and exposes the
+same ``summarize(prompt, temperature=...)`` interface used by
+``GPTNarrativeClient``. Register backends at import time and toggle them via
+``ASTROENGINE_LOCAL_MODEL``:
+
+```python
+from astroengine.narrative.local_model import LocalNarrativeClient, register_backend
+
+
+def llama_factory(options: dict[str, object]):
+    from llama_cpp import Llama
+
+    llm = Llama(model_path=options["model_path"])
+
+    def adapter(prompt: str, *, temperature: float = 0.2, **_: object) -> str:
+        response = llm.create_chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+        )
+        return response["choices"][0]["message"]["content"]
+
+    return adapter
+
+
+register_backend("llama.cpp", llama_factory, replace=True)
+
+client = LocalNarrativeClient(backend="llama.cpp", options={"model_path": "./ggml-model.bin"})
+print(client.summarize("List three key themes from today's transits."))
+```
+
+The CLI mirrors this via ``astroengine chatbot``. Use ``--local-backend`` (or
+``--local`` to defer to ``ASTROENGINE_LOCAL_MODEL``) together with optional
+``--local-option KEY=VALUE`` overrides. Without any local parameters the
+command falls back to the configured remote GPT client.
+
+```bash
+# Remote GPT invocation (requires ASTROENGINE_OPENAI_KEY)
+astroengine chatbot "Summarise the leading transit themes for today"
+
+# Local inference with a registered backend
+astroengine chatbot --local-backend llama.cpp --local-option model_path=./ggml-model.bin \
+  "Summarise the leading transit themes for today"
+```
+
+Responses default to being journalled for later review (see below). Disable
+that behaviour per-invocation via ``--no-journal`` when working with
+ephemeral prompts.
+
 ## High-level narrative overlays
 
 The ``astroengine.config`` module now exposes a dedicated narrative profile
@@ -111,3 +163,38 @@ astroengine query --sqlite events.db --limit 5 \
 The command prints the top events and a second block describing the
 electional window, incorporating any time-lord metadata stored in the
 ``meta_json`` column.
+
+## Journaling context in narratives
+
+The ``astroengine.narrative.journaling`` module persists chatbot prompts and
+responses under ``~/.astroengine/journal``. Each entry stores timestamps,
+tags, backend metadata, and the raw exchange. Recent entries can be threaded
+into prompts, offline templates, and ``summarize_top_events`` calls. A typical
+workflow:
+
+```python
+from astroengine.narrative.journaling import (
+    latest_entries,
+    log_entry,
+    journal_prompt_lines,
+)
+from astroengine.narrative import summarize_top_events
+
+# Persist the most recent conversation
+log_entry(prompt="What did Mars activate today?", response="Mars square Venus...", model="remote:gpt-4o")
+
+# Reuse journal context when building a new summary
+entries = latest_entries(3)
+summary = summarize_top_events(
+    events,
+    profile="transits",
+    journal_entries=entries,
+    prefer_template=True,
+)
+print(summary)
+```
+
+The CLI equivalent supplies ``--include-journal N`` so the last *N* entries
+are prepended to the prompt before the selected backend runs. Journal files
+are portable JSON blobs and can be inspected manually or synced across
+devices to maintain continuity between offline and online sessions.

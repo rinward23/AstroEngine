@@ -78,9 +78,13 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "narrative.prompt.event_line": "{index}. {timestamp} — {moving} vs {target} ({kind}); score={score} orb={orb}",
         "narrative.prompt.timelords": "Active time-lords: {summary}.",
         "narrative.prompt.wrap": "Compose a concise narrative of 2-3 sentences.",
+        "narrative.prompt.journal_header": "Recent journal context:",
+        "narrative.prompt.journal_line": "- {timestamp}: {summary}{tags}",
         "narrative.template.title": "{title}:",
         "narrative.template.event_line": "- {timestamp}: {moving} → {target} ({kind}), score={score}",
         "narrative.template.timelords": "Time-lords: {summary}",
+        "narrative.template.journal_header": "Recent journal reflections:",
+        "narrative.template.journal_line": "- {timestamp}: {summary}{tags}",
         "narrative.no_events": "No events available for narrative summary.",
         "narrative.llm_unavailable": (
             "LLM narrative mode requested but no LLM backend is configured. Provide a custom composer via "
@@ -203,9 +207,13 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
         "narrative.prompt.event_line": "{index}. {timestamp} — {moving} vs {target} ({kind}); puntuación={score} orbe={orb}",
         "narrative.prompt.timelords": "Cronocratores activos: {summary}.",
         "narrative.prompt.wrap": "Redacta un relato conciso de 2-3 frases.",
+        "narrative.prompt.journal_header": "Contexto reciente del diario:",
+        "narrative.prompt.journal_line": "- {timestamp}: {summary}{tags}",
         "narrative.template.title": "{title}:",
         "narrative.template.event_line": "- {timestamp}: {moving} → {target} ({kind}), puntuación={score}",
         "narrative.template.timelords": "Cronocratores: {summary}",
+        "narrative.template.journal_header": "Reflexiones recientes del diario:",
+        "narrative.template.journal_line": "- {timestamp}: {summary}{tags}",
         "narrative.no_events": "No hay eventos disponibles para el resumen narrativo.",
         "narrative.llm_unavailable": (
             "Se solicitó el modo narrativo LLM pero no hay backend configurado. Proporciona un compositor personalizado "
