@@ -59,4 +59,34 @@ def test_swiss_vs_skyfield_sun_diff_under_one_degree():
     assert decl_diff < 1.0  # regression: ensure axes are not swapped
 
 
+@pytest.mark.skipif(
+    importlib.util.find_spec("skyfield") is None
+    or importlib.util.find_spec("jplephem") is None
+    or importlib.util.find_spec("swisseph") is None,
+    reason="providers missing",
+)
+def test_swiss_vs_skyfield_single_body_position_close():
+    import astroengine.providers.skyfield_provider  # ensure registration
+
+    from astroengine.providers import get_provider
+    from astroengine.providers.swiss_provider import SwissProvider
+
+    try:
+        sf = get_provider("skyfield")
+    except KeyError:
+        pytest.skip("skyfield provider unavailable")
+
+    se = SwissProvider()
+    ts = dt.datetime(2024, 6, 1, 0, 0, 0).isoformat() + "Z"
+
+    swiss_pos = se.position("Sun", ts)
+    skyfield_pos = sf.position("Sun", ts)
+
+    lon_diff = abs(((swiss_pos.lon - skyfield_pos.lon) + 180) % 360 - 180)
+    assert lon_diff < 1.0
+    assert abs(swiss_pos.lat - skyfield_pos.lat) < 1.0
+    assert abs(swiss_pos.dec - skyfield_pos.dec) < 1.0
+    assert abs(swiss_pos.speed_lon - skyfield_pos.speed_lon) < 0.5
+
+
 # >>> AUTO-GEN END: AE Provider Tests v1.0
