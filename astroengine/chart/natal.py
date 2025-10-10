@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime
+from typing import Any
 
 from ..ephemeris import BodyPosition, HousePositions, SwissEphemerisAdapter
 from ..scoring import DEFAULT_ASPECTS, OrbCalculator
@@ -175,6 +176,81 @@ def _compute_aspects(
     return hits
 
 
+def _normalize_traditions(traditions: Sequence[str] | str) -> list[str]:
+    if isinstance(traditions, str):
+        items = [traditions]
+    else:
+        items = list(traditions)
+    ordered: dict[str, None] = {}
+    for entry in items:
+        if entry is None:
+            continue
+        ordered.setdefault(str(entry).lower(), None)
+    return list(ordered.keys())
+
+
+def _pillar_dict(pillar: tuple[str, str]) -> dict[str, str]:
+    return {"stem": pillar[0], "branch": pillar[1]}
+
+
+def _compute_tradition_metadata(
+    moment: datetime,
+    traditions: Sequence[str] | str,
+) -> dict[str, Any]:
+    resolved = _normalize_traditions(traditions)
+    payload: dict[str, Any] = {}
+    for name in resolved:
+        if name == "chinese":
+            from ..systems import chinese
+
+            lunar = chinese.chinese_lunar_from_gregorian(moment)
+            pillars = chinese.four_pillars_from_moment(moment)
+            year_branch = pillars.year[1]
+            zodiac_animal = chinese.SHENGXIAO_ANIMALS[
+                chinese.EARTHLY_BRANCHES.index(year_branch)
+            ]
+            payload[name] = {
+                "lunar_date": {
+                    "year": lunar.year,
+                    "month": lunar.month,
+                    "day": lunar.day,
+                    "is_leap_month": lunar.is_leap_month,
+                },
+                "four_pillars": {
+                    "year": _pillar_dict(pillars.year),
+                    "month": _pillar_dict(pillars.month),
+                    "day": _pillar_dict(pillars.day),
+                    "hour": _pillar_dict(pillars.hour),
+                },
+                "zodiac_animal": zodiac_animal,
+                "hour_branch": chinese.hour_branch(moment),
+            }
+        elif name == "mayan":
+            from ..systems import mayan
+
+            long_count = mayan.long_count_from_gregorian(moment)
+            calendar_round = mayan.calendar_round_from_gregorian(moment)
+            payload[name] = {
+                "long_count": {
+                    **asdict(long_count),
+                    "total_days": long_count.total_days(),
+                },
+                "calendar_round": asdict(calendar_round),
+                "correlation": mayan.GMT_CORRELATION,
+            }
+        elif name == "tibetan":
+            from ..systems import tibetan
+
+            rabjung = tibetan.gregorian_year_to_rabjung(moment.year)
+            payload[name] = {
+                **asdict(rabjung),
+                "cycle_start": tibetan.rabjung_to_gregorian_year(rabjung.cycle, 1),
+            }
+        else:
+            raise ValueError(f"Unknown tradition '{name}'")
+    return payload
+
+
 def compute_natal_chart(
     moment: datetime,
     location: ChartLocation,
@@ -186,6 +262,7 @@ def compute_natal_chart(
     config: ChartConfig | None = None,
     adapter: SwissEphemerisAdapter | None = None,
     orb_calculator: OrbCalculator | None = None,
+    traditions: Sequence[str] | str | None = None,
 ) -> NatalChart:
     """Compute a natal chart snapshot using Swiss Ephemeris data."""
 
@@ -216,7 +293,10 @@ def compute_natal_chart(
     zodiac = chart_config.zodiac
     ayanamsa_name = chart_config.ayanamsha if zodiac == "sidereal" else None
     ayanamsa_degrees = adapter.ayanamsa(jd_ut) if ayanamsa_name else None
-    provenance: dict[str, object] = {"zodiac": zodiac, "house_system": chart_config.house_system}
+    provenance: dict[str, object] = {
+        "zodiac": zodiac,
+        "house_system": chart_config.house_system,
+    }
     if ayanamsa_name:
         provenance.update(
             {
@@ -230,6 +310,9 @@ def compute_natal_chart(
     else:
         provenance["nodes_variant"] = chart_config.nodes_variant
         provenance["lilith_variant"] = chart_config.lilith_variant
+
+    if traditions:
+        provenance["traditions"] = _compute_tradition_metadata(moment, traditions)
 
     return NatalChart(
         moment=moment,
