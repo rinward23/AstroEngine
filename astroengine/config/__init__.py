@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from ..config import Settings as RuntimeSettings
-from ..config import settings as runtime_settings
+from ..runtime_config import RuntimeSettings, runtime_settings
 from ..core.config import load_profile_json, profile_into_ctx
 from .features import (
     EXPERIMENTAL_MODALITIES,

@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from ...chart.config import ChartConfig
-from ...config import settings as runtime_settings
+from ...runtime_config import runtime_settings
 from ...electional import (
     ElectionalCandidate,
     ElectionalConstraintEvaluation,

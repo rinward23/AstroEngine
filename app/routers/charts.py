@@ -22,8 +22,8 @@ from astroengine.config import (
     Settings,
     apply_profile_overlay,
     load_profile_overlay,
-    settings as runtime_settings,
 )
+from astroengine.runtime_config import runtime_settings
 from astroengine.report import render_chart_pdf
 from astroengine.report.builders import build_chart_report_context
 

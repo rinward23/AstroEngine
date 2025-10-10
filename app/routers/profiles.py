@@ -13,8 +13,8 @@ from astroengine.config import (
     load_profile_overlay,
     save_settings,
     save_user_profile,
-    settings as runtime_settings,
 )
+from astroengine.runtime_config import runtime_settings
 
 router = APIRouter(prefix="/v1/profiles", tags=["profiles"])
 

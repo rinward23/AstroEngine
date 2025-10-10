@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from ...analysis import AstrocartographyResult, MapLine, compute_astrocartography_lines
-from ...config import settings as runtime_settings
+from ...runtime_config import runtime_settings
 from ...ephemeris import SwissEphemerisAdapter
 from ...userdata.vault import Natal, load_natal
 from ..rate_limit import heavy_endpoint_rate_limiter

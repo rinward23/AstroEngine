@@ -5,11 +5,8 @@ from __future__ import annotations
 import requests
 import streamlit as st
 
-from astroengine.config import (
-    NarrativeCfg,
-    list_narrative_profiles,
-    settings as runtime_settings,
-)
+from astroengine.config import NarrativeCfg, list_narrative_profiles
+from astroengine.runtime_config import runtime_settings
 
 st.set_page_config(page_title="AstroEngine — Narrative Profiles", layout="wide")
 st.title("🗂️ Narrative Profiles")

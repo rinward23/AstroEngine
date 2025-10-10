@@ -25,7 +25,7 @@ def _default_home() -> Path:
 _ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
-class Settings(BaseSettings):
+class RuntimeSettings(BaseSettings):
     """Runtime configuration resolved from the process environment."""
 
     model_config = SettingsConfigDict(
@@ -69,9 +69,9 @@ class Settings(BaseSettings):
         return Path(value).expanduser()
 
     @model_validator(mode="after")
-    def _propagate_ephemeris_alias(self) -> "Settings":
+    def _propagate_ephemeris_alias(self) -> "RuntimeSettings":
         if self.se_ephe_path is None and self.swe_eph_path is not None:
-            object.__setattr__(self, "se_ephe_path", self.swe_ephe_path)
+            object.__setattr__(self, "se_ephe_path", self.swe_eph_path)
         return self
 
     def config_file_path(self) -> Path:
@@ -112,6 +112,11 @@ class Settings(BaseSettings):
         return self.se_ephe_path
 
 
-settings = Settings()
+runtime_settings = RuntimeSettings()
 
-__all__ = ["Settings", "settings"]
+# Backwards compatibility aliases
+Settings = RuntimeSettings
+settings = runtime_settings
+
+__all__ = ["RuntimeSettings", "runtime_settings", "Settings", "settings"]
+

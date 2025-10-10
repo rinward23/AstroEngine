@@ -7,7 +7,8 @@ import streamlit as st
 
 
 def build_system_prompt() -> str:
-    from astroengine.config import compose_narrative_from_mix, settings as runtime_settings
+    from astroengine.config import compose_narrative_from_mix
+    from astroengine.runtime_config import runtime_settings
 
     settings = runtime_settings.persisted()
     try:

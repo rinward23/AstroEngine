@@ -8,7 +8,7 @@ import sys
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
-from astroengine.config import settings as runtime_settings
+from astroengine.runtime_config import runtime_settings
 from astroengine.visual import (
     MultiWheelComposition,
     MultiWheelLayer,

@@ -18,8 +18,8 @@ from astroengine.config import (
     default_settings,
     load_settings,
     save_settings,
-    settings as runtime_settings,
 )
+from astroengine.runtime_config import runtime_settings
 
 PromptFn = Callable[[str], str]
 PrintFn = Callable[[str], None]

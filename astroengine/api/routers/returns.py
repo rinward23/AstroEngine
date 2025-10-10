@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from ...analysis import aries_ingress_year, lunar_return_datetimes, solar_return_datetime
 from ...analysis.returns import ReturnComputationError
-from ...config import settings as runtime_settings
+from ...runtime_config import runtime_settings
 from ...userdata.vault import Natal, load_natal
 
 router = APIRouter(prefix="/v1", tags=["returns"])

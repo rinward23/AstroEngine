@@ -9,7 +9,7 @@ import pydeck as pdk
 import streamlit as st
 
 from astroengine.analysis import compute_astrocartography_lines
-from astroengine.config import settings as runtime_settings
+from astroengine.runtime_config import runtime_settings
 from astroengine.ephemeris import SwissEphemerisAdapter
 from astroengine.ephemeris.swe import has_swe
 from astroengine.userdata.vault import list_natals, load_natal

@@ -5,7 +5,8 @@ from collections.abc import Mapping
 
 import streamlit as st
 
-from astroengine.config import Settings, settings as runtime_settings
+from astroengine.config import Settings
+from astroengine.runtime_config import runtime_settings
 from astroengine.visual import (
     MultiWheelComposition,
     MultiWheelLayer,

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 
-from astroengine.config import settings as runtime_settings
+from astroengine.runtime_config import runtime_settings
 
 _LOGGER = logging.getLogger("astroengine.telemetry")
 

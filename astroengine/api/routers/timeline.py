@@ -18,7 +18,8 @@ from ...analysis import (
     find_stations,
     void_of_course_moon,
 )
-from ...config import default_settings, settings as runtime_settings
+from ...config import default_settings
+from ...runtime_config import runtime_settings
 from ...events import EclipseEvent, LunationEvent, StationEvent
 from .._time import ensure_utc_datetime
 
