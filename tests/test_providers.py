@@ -53,10 +53,10 @@ def test_swiss_vs_skyfield_sun_diff_under_one_degree():
     sf_pos = sf.positions_ecliptic(t, ["sun"])["sun"]
 
     lon_diff = abs((se_pos["lon"] - sf_pos["lon"] + 180) % 360 - 180)
-    decl_diff = abs(se_pos["decl"] - sf_pos["decl"])
-
     assert lon_diff < 1.0  # coarse sanity; detailed QA lives elsewhere
-    assert decl_diff < 1.0
+
+    decl_diff = abs(se_pos["decl"] - sf_pos["decl"])
+    assert decl_diff < 1.0  # regression: ensure axes are not swapped
 
 
 # >>> AUTO-GEN END: AE Provider Tests v1.0
