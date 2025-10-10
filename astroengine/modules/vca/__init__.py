@@ -4,13 +4,7 @@ from __future__ import annotations
 
 from ...profiles import load_resonance_weights
 from ..registry import AstroModule, AstroRegistry
-from .catalogs import (
-    VCA_CENTAURS,
-    VCA_CORE_BODIES,
-    VCA_EXT_ASTEROIDS,
-    VCA_SENSITIVE_POINTS,
-    VCA_TNOS,
-)
+from .catalogs import load_vca_body_catalog, load_vca_sensitive_points
 from .profiles import VCA_DOMAIN_PROFILES
 from .rulesets import VCA_RULESET
 
@@ -53,31 +47,65 @@ def register_vca_module(registry: AstroRegistry) -> AstroModule:
         "catalogs",
         metadata={"description": "Planetary and point catalogs"},
     )
-    bodies = catalogs.register_channel("bodies", metadata={"default_profile": "core"})
+    bodies_payload = load_vca_body_catalog()
+    include = list(bodies_payload.get("include", []))
+
+    optional_groups_raw = bodies_payload.get("optional_groups", {})
+    optional_groups = {
+        str(name): list(values)
+        for name, values in optional_groups_raw.items()
+        if isinstance(values, list)
+    }
+    fixed_stars_raw = bodies_payload.get("fixed_stars", {})
+    fixed_stars = {
+        "enabled": bool(fixed_stars_raw.get("enabled", False)),
+        "list": list(fixed_stars_raw.get("list", []))
+        if isinstance(fixed_stars_raw.get("list"), list)
+        else [],
+    }
+    bodies = catalogs.register_channel(
+        "bodies",
+        metadata={"default_profile": "outline"},
+    )
+    bodies.register_subchannel(
+        "outline",
+        metadata={"description": "Canonical VCA outline bodies"},
+        payload={
+            "include": include,
+            "optional_groups": optional_groups,
+            "fixed_stars": fixed_stars,
+        },
+    )
     bodies.register_subchannel(
         "core",
         metadata={"description": "Core planets and luminaries"},
-        payload={"bodies": VCA_CORE_BODIES},
+        payload={"bodies": include},
     )
     bodies.register_subchannel(
         "extended",
         metadata={"description": "Extended asteroid catalog"},
-        payload={"bodies": VCA_EXT_ASTEROIDS},
+        payload={"bodies": optional_groups.get("asteroids_main", [])},
     )
     bodies.register_subchannel(
         "centaurs",
         metadata={"description": "Centaurs"},
-        payload={"bodies": VCA_CENTAURS},
+        payload={"bodies": optional_groups.get("centaurs", [])},
     )
     bodies.register_subchannel(
         "tnos",
         metadata={"description": "Trans-Neptunian objects"},
-        payload={"bodies": VCA_TNOS},
+        payload={"bodies": optional_groups.get("tno", [])},
     )
+    bodies.register_subchannel(
+        "fixed_stars",
+        metadata={"description": "Fixed star defaults"},
+        payload=fixed_stars,
+    )
+    sensitive_points = list(load_vca_sensitive_points())
     bodies.register_subchannel(
         "sensitive_points",
         metadata={"description": "Sensitive chart points"},
-        payload={"bodies": VCA_SENSITIVE_POINTS},
+        payload={"bodies": sensitive_points},
     )
 
     # Profiles
