@@ -7,15 +7,24 @@ from math import gcd
 
 BASE_ASPECTS = {
     "conjunction": 0.0,
-    "opposition": 180.0,
-    "square": 90.0,
-    "trine": 120.0,
-    "sextile": 60.0,
-    "quincunx": 150.0,
+    "semisextile": 30.0,
+    "undecile": 32.7273,
+    "semiquintile": 36.0,
+    "novile": 40.0,
     "semisquare": 45.0,
-    "sesquisquare": 135.0,
+    "septile": 51.4286,
+    "sextile": 60.0,
     "quintile": 72.0,
+    "binovile": 80.0,
+    "square": 90.0,
+    "biseptile": 102.8571,
+    "tredecile": 108.0,
+    "trine": 120.0,
+    "sesquisquare": 135.0,
     "biquintile": 144.0,
+    "quincunx": 150.0,
+    "triseptile": 154.2857,
+    "opposition": 180.0,
 }
 
 

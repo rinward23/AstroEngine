@@ -19,6 +19,12 @@ def test_exact_sextile_match():
     assert abs(m["orb"]) < 1e-9 and abs(m["angle"] - 60.0) < 1e-9
 
 
+def test_exact_harmonic_match():
+    m = match_pair("Sun", "Moon", 5.0, 45.0, ["novile"], POLICY)
+    assert m is not None and m["aspect"] == "novile"
+    assert abs(m["orb"]) < 1e-9 and abs(m["angle"] - 40.0) < 1e-9
+
+
 def test_out_of_orb_excluded():
     # delta = 90, but sextile allowed only 3 → should be None
     m = match_pair("Mars", "Venus", 0.0, 90.0, ["sextile"], POLICY)
