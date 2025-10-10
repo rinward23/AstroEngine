@@ -8,8 +8,6 @@ from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from time import perf_counter
 
-import numpy as np
-
 from ..canonical import canonical_round, normalize_longitude, normalize_speed_per_day
 from ..core.time import julian_day
 from ..ephemeris import SwissEphemerisAdapter
@@ -163,9 +161,8 @@ def warm_daily(bodies: Iterable[str], start_jd: float, end_jd: float) -> int:
     if end < jd:
         return 0
 
-    days = np.arange(jd, end + 1, dtype=np.int64)
     cached_bodies = tuple(body.lower() for body in bodies)
-    for day in days:
+    for day in range(jd, end + 1):
         day_jd = float(day)
         for body in cached_bodies:
             get_daily_entry(day_jd, body)
