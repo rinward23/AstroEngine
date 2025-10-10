@@ -124,8 +124,11 @@ class SkyfieldProvider:
             if not key:
                 continue
             body = self.kernel[key]
-            lon_deg, lat_deg, _ = self._lon_lat_dec(t, earth, body)
-            out[name] = {"lon": lon_deg, "decl": lat_deg}
+            ecl = earth.at(t).observe(body).ecliptic_position()
+            lat, lon, distance = (
+                ecl.spherical_latlon()
+            )  # skyfield returns (lat, lon, distance)
+            out[name] = {"lon": float(lon.degrees % 360.0), "decl": float(lat.degrees)}
         return out
 
     def position(self, body: str, ts_utc: str) -> BodyPosition:
