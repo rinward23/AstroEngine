@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from .adapters import numerology_mapper, tarot_mapper
 from .alchemy import ALCHEMY_STAGES, AlchemyStage
+from .chakras import (
+    ChakraCorrespondence,
+    chakra_correspondences,
+    chakra_emphasis,
+)
 from .decans import (
     DECANS,
     DecanAssignment,
@@ -36,6 +41,9 @@ __all__ = [
     "DECANS",
     "DecanAssignment",
     "DecanDefinition",
+    "ChakraCorrespondence",
+    "chakra_correspondences",
+    "chakra_emphasis",
     "assign_decans",
     "decan_for_longitude",
     "TREE_OF_LIFE_SEPHIROTH",
