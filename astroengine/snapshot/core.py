@@ -5,9 +5,7 @@ import hashlib
 import io
 import json
 import tarfile
-import tempfile
 from collections.abc import Sequence
-from contextlib import ExitStack
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from importlib.metadata import PackageNotFoundError, version
@@ -100,42 +98,37 @@ def _walk_source(
         files.append((source, rel_posix))
 
 
-@dataclass
-class _PreparedFile:
-    arcname: str
-    size: int
-    sha256: str
-    spool: IO[bytes]
+class _HashingFile:
+    """Wrap a file object to compute SHA256 while streaming."""
 
+    def __init__(self, fileobj: IO[bytes]):
+        self._file = fileobj
+        self._digest = hashlib.sha256()
+        self._size = 0
 
-def _prepare_files(
-    files: list[tuple[Path, str]],
-    stack: ExitStack,
-) -> tuple[list[_PreparedFile], list[dict], int]:
-    prepared: list[_PreparedFile] = []
-    manifest_entries: list[dict] = []
-    total_size = 0
-    for filesystem_path, arcname in sorted(files, key=lambda item: item[1]):
-        spool = stack.enter_context(tempfile.SpooledTemporaryFile(max_size=_BUFFER_SIZE))
-        digest = hashlib.sha256()
-        size = 0
-        with filesystem_path.open("rb") as handle:
-            while True:
-                chunk = handle.read(_BUFFER_SIZE)
-                if not chunk:
-                    break
-                spool.write(chunk)
-                digest.update(chunk)
-                size += len(chunk)
-        spool.seek(0)
-        manifest_entries.append({
-            "path": arcname,
-            "sha256": digest.hexdigest(),
-            "size": size,
-        })
-        prepared.append(_PreparedFile(arcname=arcname, size=size, sha256=digest.hexdigest(), spool=spool))
-        total_size += size
-    return prepared, manifest_entries, total_size
+    def read(self, size: int = -1) -> bytes:  # pragma: no cover - exercised via tarfile
+        data = self._file.read(size)
+        if data:
+            self._digest.update(data)
+            self._size += len(data)
+        return data
+
+    def close(self) -> None:  # pragma: no cover - defensive
+        self._file.close()
+
+    def seek(self, offset: int, whence: int = io.SEEK_SET) -> int:  # pragma: no cover - defensive
+        return self._file.seek(offset, whence)
+
+    def tell(self) -> int:  # pragma: no cover - defensive
+        return self._file.tell()
+
+    @property
+    def hexdigest(self) -> str:
+        return self._digest.hexdigest()
+
+    @property
+    def size(self) -> int:
+        return self._size
 
 
 def create_snapshot(
@@ -196,53 +189,74 @@ def create_snapshot(
     manifest_meta = dict(meta or {})
     manifest_meta.setdefault("tool", {"name": "astroengine.snapshot", "version": _tool_version()})
 
-    with ExitStack() as stack:
-        prepared_files, manifest_entries, total_size = _prepare_files(files, stack)
-        manifest_entries.sort(key=lambda item: item["path"])
-        manifest_payload = {
-            "archive": str(target),
-            "file_count": len(manifest_entries),
-            "bytes": total_size,
-            "files": manifest_entries,
-            "meta": manifest_meta,
-        }
-        manifest_bytes = json.dumps(
-            manifest_payload,
-            sort_keys=True,
-            ensure_ascii=False,
-            separators=(",", ":"),
-        ).encode("utf-8")
+    files_sorted = sorted(files, key=lambda item: item[1])
+    manifest_entries: list[dict] = []
+    total_size = 0
 
-        with open(target, "wb") as file_handle:
-            with gzip.GzipFile(fileobj=file_handle, mode="wb", compresslevel=9, mtime=0) as gz:
-                with tarfile.open(fileobj=gz, mode="w", format=tarfile.PAX_FORMAT) as tar:
-                    manifest_info = tarfile.TarInfo(MANIFEST_NAME)
-                    manifest_info.size = len(manifest_bytes)
-                    manifest_info.mtime = 0
-                    manifest_info.mode = 0o644
-                    manifest_info.uid = manifest_info.gid = 0
-                    manifest_info.uname = manifest_info.gname = ""
-                    tar.addfile(manifest_info, io.BytesIO(manifest_bytes))
+    with open(target, "wb") as file_handle:
+        with gzip.GzipFile(fileobj=file_handle, mode="wb", compresslevel=9, mtime=0) as gz:
+            with tarfile.open(fileobj=gz, mode="w", format=tarfile.PAX_FORMAT) as tar:
+                for directory in sorted(directories, key=lambda item: (item.count("/"), item)):
+                    name = directory if directory.endswith("/") else f"{directory}/"
+                    info = tarfile.TarInfo(name)
+                    info.type = tarfile.DIRTYPE
+                    info.mtime = 0
+                    info.mode = 0o755
+                    info.uid = info.gid = 0
+                    info.uname = info.gname = ""
+                    tar.addfile(info)
 
-                    for directory in sorted(directories, key=lambda item: (item.count("/"), item)):
-                        name = directory if directory.endswith("/") else f"{directory}/"
-                        info = tarfile.TarInfo(name)
-                        info.type = tarfile.DIRTYPE
-                        info.mtime = 0
-                        info.mode = 0o755
-                        info.uid = info.gid = 0
-                        info.uname = info.gname = ""
-                        tar.addfile(info)
+                for filesystem_path, arcname in files_sorted:
+                    info = tarfile.TarInfo(arcname)
+                    stat_result = filesystem_path.stat()
+                    info.size = stat_result.st_size
+                    info.mtime = 0
+                    info.mode = 0o644
+                    info.uid = info.gid = 0
+                    info.uname = info.gname = ""
 
-                    for prepared in prepared_files:
-                        info = tarfile.TarInfo(prepared.arcname)
-                        info.size = prepared.size
-                        info.mtime = 0
-                        info.mode = 0o644
-                        info.uid = info.gid = 0
-                        info.uname = info.gname = ""
-                        prepared.spool.seek(0)
-                        tar.addfile(info, prepared.spool)
+                    with filesystem_path.open("rb") as handle:
+                        stream = _HashingFile(handle)
+                        tar.addfile(info, stream)
+                        digest = stream.hexdigest
+                        bytes_written = stream.size
+
+                    manifest_entries.append(
+                        {
+                            "path": arcname,
+                            "sha256": digest,
+                            "size": stat_result.st_size,
+                        }
+                    )
+                    total_size += stat_result.st_size
+
+                    if bytes_written != stat_result.st_size:
+                        raise IOError(
+                            f"size changed while archiving: {filesystem_path}"
+                        )
+
+                manifest_entries.sort(key=lambda item: item["path"])
+                manifest_payload = {
+                    "archive": str(target),
+                    "file_count": len(manifest_entries),
+                    "bytes": total_size,
+                    "files": manifest_entries,
+                    "meta": manifest_meta,
+                }
+                manifest_bytes = json.dumps(
+                    manifest_payload,
+                    sort_keys=True,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+
+                manifest_info = tarfile.TarInfo(MANIFEST_NAME)
+                manifest_info.size = len(manifest_bytes)
+                manifest_info.mtime = 0
+                manifest_info.mode = 0o644
+                manifest_info.uid = manifest_info.gid = 0
+                manifest_info.uname = manifest_info.gname = ""
+                tar.addfile(manifest_info, io.BytesIO(manifest_bytes))
 
     archive_hash = hashlib.sha256()
     with open(target, "rb") as handle:
