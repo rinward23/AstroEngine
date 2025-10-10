@@ -61,6 +61,28 @@ values were recorded. 【F:astroengine/modules/reference/catalog.py†L153-L204�
 | Golden Dawn tarot correspondences | Major, minor, and court card mappings. | `astroengine/esoteric/tarot.py` | Regardie, *The Golden Dawn* (1989). [^11] |
 | Tree of Life paths | Hebrew letter, planetary, and tarot attributions for Golden Dawn pathworking. | `astroengine/esoteric/tree_of_life.py` | Wang, *The Qabalistic Tarot* (2004). [^12] |
 
+## Astrological indicators registry
+
+The indicators submodule exposes the outline of celestial bodies, house
+systems, aspect families, zodiac subdivisions, timing techniques, esoteric
+frameworks, cultural lineages, collective cycles, and symbolic overlays that
+power runtime charting. The full structure and provenance notes are captured in
+the [Astrological indicators outline](astrological_indicators.md). Runtime
+clients can query the hierarchy through the `reference.indicators.catalog`
+channel in the registry. 【F:docs/reference/astrological_indicators.md†L1-L210】【F:astroengine/modules/reference/__init__.py†L1-L120】
+
+| Indicator family | Summary | Registry path |
+| --- | --- | --- |
+| Celestial bodies | Luminaries, classical planets, modern additions, and calculated points used across chart engines. | `reference.indicators.catalog.celestial_bodies` |
+| House systems | Quadrant, whole-sign, equal, and topocentric routines validated through the Swiss Ephemeris adapter. | `reference.indicators.catalog.house_systems` |
+| Aspect families & harmonics | Base, minor, and harmonic aspect groups with shared orb governance. | `reference.indicators.catalog.aspect_families` |
+| Zodiac subdivisions | Bounds, decans, dwads, dodekatemoria, and nakṣatra overlays. | `reference.indicators.catalog.zodiac_subdivisions` |
+| Timing techniques | Transit, progression, direction, profection, and releasing engines. | `reference.indicators.catalog.timing_techniques` |
+| Esoteric systems | Seven Rays, Tree of Life, tarot, and chakra correspondences. | `reference.indicators.catalog.esoteric_systems` |
+| Cultural systems | Jyotiṣa, Hellenistic, Mesoamerican, and humanistic frameworks. | `reference.indicators.catalog.cultural_systems` |
+| Collective cycles | Outer planet pairs, ingress analytics, eclipse seasons, and planetary phase indexes. | `reference.indicators.catalog.collective_cycles` |
+| Symbolic overlays | Arabic parts, fixed stars, asteroid catalogues, and mythopoetic narratives. | `reference.indicators.catalog.symbolic_overlays` |
+
 ### Registry integration guarantees
 
 The registry helper accepts new entries without replacing existing

@@ -4,6 +4,7 @@ from astroengine.modules.reference.catalog import (
     CHART_TYPES,
     FRAMEWORKS,
     GLOSSARY,
+    INDICATORS,
 )
 
 
@@ -68,6 +69,14 @@ def test_reference_module_exposes_catalogued_entries():
     systems = frameworks.get_channel("systems")
     for key, entry in FRAMEWORKS.items():
         assert systems.get_subchannel(key).metadata["term"] == entry.term
+
+    indicators = module.get_submodule("indicators")
+    catalog = indicators.get_channel("catalog")
+    for key, entry in INDICATORS.items():
+        node = catalog.get_subchannel(key).describe()
+        assert node["metadata"]["term"] == entry.term
+        assert node["payload"]["summary"] == entry.summary
+        assert node["payload"]["sources"] == [source.as_payload() for source in entry.sources]
 
 
 def test_orchestration_module_registers_multi_agent_workflow():

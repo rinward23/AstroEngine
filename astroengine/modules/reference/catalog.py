@@ -17,6 +17,7 @@ __all__ = [
     "GLOSSARY",
     "CHART_TYPES",
     "FRAMEWORKS",
+    "INDICATORS",
     "REFERENCE_SECTIONS",
 ]
 
@@ -98,6 +99,114 @@ _RETURN_TEXT_SOURCE: Final[ReferenceSource] = ReferenceSource(
 _RETURN_CHART_SOURCES: Final[tuple[ReferenceSource, ReferenceSource]] = (
     _RETURN_MODULE_SOURCE,
     _RETURN_TEXT_SOURCE,
+)
+
+_INDICATORS_OUTLINE_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Astrological indicators outline",
+    citation="AstroEngine maintainers. (2025). Astrological indicators outline.",
+    repository_path="docs/reference/astrological_indicators.md",
+)
+
+_HOUSE_SYSTEMS_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="House systems engine",
+    citation="AstroEngine maintainers. (2025). House system enumeration and validation routines.",
+    repository_path="core/houses_plus/engine.py",
+)
+
+_HOUSE_CONFIG_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Chart configuration normaliser",
+    citation="AstroEngine maintainers. (2025). Chart configuration validation for house systems.",
+    repository_path="astroengine/chart/config.py",
+)
+
+_HARMONICS_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Aspect harmonics registry",
+    citation="AstroEngine maintainers. (2025). Harmonic aspect families and canonical angles.",
+    repository_path="astroengine/core/aspects_plus/harmonics.py",
+)
+
+_ASPECT_POLICY_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Aspect policy dataset",
+    citation="AstroEngine maintainers. (2025). Aspect families, harmonics, and orb allowances.",
+    repository_path="profiles/aspects_policy.json",
+)
+
+_DIGNITIES_DATA_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Traditional dignity dataset",
+    citation="AstroEngine maintainers. (2025). Bounds, decans, and dignity scoring coefficients.",
+    repository_path="profiles/dignities.csv",
+)
+
+_DECANS_MODULE_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Decan correspondence module",
+    citation="AstroEngine maintainers. (2025). Decan-to-tarot mappings and runtime helpers.",
+    repository_path="astroengine/esoteric/decans.py",
+)
+
+_TRANSITS_MODULE_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Transit detection module",
+    citation="AstroEngine maintainers. (2025). Transit scanning and aspect matching pipeline.",
+    repository_path="astroengine/chart/transits.py",
+)
+
+_PROFECTIONS_MODULE_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Annual profections engine",
+    citation="AstroEngine maintainers. (2025). Traditional profection and time-lord scheduler.",
+    repository_path="astroengine/engine/traditional/profections.py",
+)
+
+_ESOTERIC_MODULE_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Esoteric overlays registry",
+    citation="AstroEngine maintainers. (2025). Registry wiring for decans, tarot, and Seven Rays datasets.",
+    repository_path="astroengine/modules/esoteric/__init__.py",
+)
+
+_SEVEN_RAYS_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Seven Rays correspondences",
+    citation="AstroEngine maintainers. (2025). Seven Rays planetary and ray attributions.",
+    repository_path="astroengine/esoteric/seven_rays.py",
+)
+
+_JYOTISH_MODULE_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Jyotiṣa toolkit",
+    citation="AstroEngine maintainers. (2025). Jyotiṣa graha dignities, yogas, and dasa calculations.",
+    repository_path="astroengine/jyotish/__init__.py",
+)
+
+_TRADITIONAL_MODELS_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Traditional model definitions",
+    citation="AstroEngine maintainers. (2025). Sect, triplicity, and time-lord configuration models.",
+    repository_path="astroengine/engine/traditional/models.py",
+)
+
+_MUNDANE_DOC_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Outer cycle analytics documentation",
+    citation="AstroEngine maintainers. (2025). Outer planet cycles, harmonics, and ingress scoring outline.",
+    repository_path="docs/module/mundane/submodules/outer_cycle_analytics.md",
+)
+
+_INGRESS_MODULE_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Mundane ingress module",
+    citation="AstroEngine maintainers. (2025). Cardinal ingress chart computation and cycle baselines.",
+    repository_path="astroengine/mundane/ingress.py",
+)
+
+_ARABIC_PARTS_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Arabic parts analysis module",
+    citation="AstroEngine maintainers. (2025). Arabic parts calculations and scoring helpers.",
+    repository_path="astroengine/analysis/arabic_parts.py",
+)
+
+_LOTS_EVENTS_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Lots event engine",
+    citation="AstroEngine maintainers. (2025). Event-driven part calculations and metadata payloads.",
+    repository_path="astroengine/engine/lots/events.py",
+)
+
+_FIXED_STARS_DATA_SOURCE: Final[ReferenceSource] = ReferenceSource(
+    name="Fixed star catalog dataset",
+    citation="AstroEngine maintainers. (2025). Fixed star positions and metadata for symbolic overlays.",
+    repository_path="profiles/fixed_stars.csv",
 )
 
 
@@ -433,8 +542,148 @@ FRAMEWORKS: Mapping[str, ReferenceEntry] = {
 }
 
 
+INDICATORS: Mapping[str, ReferenceEntry] = {
+    "celestial_bodies": ReferenceEntry(
+        term="Celestial bodies",
+        summary=(
+            "Luminaries, classical planets, modern discoveries, and calculated points "
+            "enumerated in the indicators outline and implemented through the "
+            "``DEFAULT_BODIES`` map shared by chart factories."
+        ),
+        sources=(
+            _INDICATORS_OUTLINE_SOURCE,
+            _NATAL_MODULE_SOURCE,
+        ),
+        related=("profiles/base_profile.yaml",),
+        tags=("astrology", "bodies"),
+    ),
+    "house_systems": ReferenceEntry(
+        term="House systems",
+        summary=(
+            "Quadrant, whole-sign, equal, and topocentric house options with provenance "
+            "logging that records requested versus computed systems."
+        ),
+        sources=(
+            _INDICATORS_OUTLINE_SOURCE,
+            _HOUSE_SYSTEMS_SOURCE,
+            _HOUSE_CONFIG_SOURCE,
+        ),
+        related=("core/houses_plus/engine.py", "astroengine/chart/config.py"),
+        tags=("astrology", "houses"),
+    ),
+    "aspect_families": ReferenceEntry(
+        term="Aspect families and harmonics",
+        summary=(
+            "Ptolemaic, minor, and harmonic aspect groups with shared orb governance "
+            "mirrored in the aspect policy dataset."
+        ),
+        sources=(
+            _INDICATORS_OUTLINE_SOURCE,
+            _HARMONICS_SOURCE,
+            _ASPECT_POLICY_SOURCE,
+        ),
+        related=("profiles/aspects_policy.json", "docs/module/core-transit-math.md"),
+        tags=("astrology", "aspects"),
+    ),
+    "zodiac_subdivisions": ReferenceEntry(
+        term="Zodiac subdivisions",
+        summary=(
+            "Bounds, decans, dwads, and nakṣatra overlays that expand sign-based "
+            "interpretation frameworks."
+        ),
+        sources=(
+            _INDICATORS_OUTLINE_SOURCE,
+            _DIGNITIES_DATA_SOURCE,
+            _DECANS_MODULE_SOURCE,
+        ),
+        related=("profiles/dignities.csv", "astroengine/esoteric/decans.py"),
+        tags=("astrology", "dignities"),
+    ),
+    "timing_techniques": ReferenceEntry(
+        term="Timing techniques",
+        summary=(
+            "Transit, progression, direction, and profection engines that drive "
+            "forecasting workflows and parity checks."
+        ),
+        sources=(
+            _INDICATORS_OUTLINE_SOURCE,
+            _TRANSITS_MODULE_SOURCE,
+            _PROFECTIONS_MODULE_SOURCE,
+        ),
+        related=(
+            "astroengine/chart/transits.py",
+            "astroengine/chart/progressions.py",
+            "astroengine/chart/directions.py",
+        ),
+        tags=("astrology", "timing"),
+    ),
+    "esoteric_systems": ReferenceEntry(
+        term="Esoteric systems",
+        summary=(
+            "Seven Rays psychology, Tree of Life paths, tarot correspondences, and "
+            "chakra mappings that enrich interpretive overlays."
+        ),
+        sources=(
+            _INDICATORS_OUTLINE_SOURCE,
+            _ESOTERIC_MODULE_SOURCE,
+            _SEVEN_RAYS_SOURCE,
+        ),
+        related=("astroengine/esoteric/seven_rays.py", "astroengine/esoteric/tarot.py"),
+        tags=("esoteric", "symbolism"),
+    ),
+    "cultural_systems": ReferenceEntry(
+        term="Cultural systems",
+        summary=(
+            "Jyotiṣa, Hellenistic, Mesoamerican, and humanistic frameworks that align "
+            "with AstroEngine's multicultural tooling."
+        ),
+        sources=(
+            _INDICATORS_OUTLINE_SOURCE,
+            _JYOTISH_MODULE_SOURCE,
+            _TRADITIONAL_MODELS_SOURCE,
+        ),
+        related=("astroengine/jyotish", "astroengine/engine/traditional"),
+        tags=("astrology", "cultural"),
+    ),
+    "collective_cycles": ReferenceEntry(
+        term="Collective cycles",
+        summary=(
+            "Outer-planet synodic pairs, ingress analytics, eclipse seasons, and "
+            "planetary phase indexes for socio-economic modelling."
+        ),
+        sources=(
+            _INDICATORS_OUTLINE_SOURCE,
+            _MUNDANE_DOC_SOURCE,
+            _INGRESS_MODULE_SOURCE,
+        ),
+        related=("astroengine/mundane/ingress.py", "profiles/vca_outline.json"),
+        tags=("astrology", "mundane"),
+    ),
+    "symbolic_overlays": ReferenceEntry(
+        term="Symbolic overlays",
+        summary=(
+            "Arabic parts, fixed stars, asteroid selections, and mythopoetic "
+            "narratives layered onto core chart data."
+        ),
+        sources=(
+            _INDICATORS_OUTLINE_SOURCE,
+            _ARABIC_PARTS_SOURCE,
+            _LOTS_EVENTS_SOURCE,
+            _FIXED_STARS_DATA_SOURCE,
+        ),
+        related=(
+            "astroengine/analysis/arabic_parts.py",
+            "astroengine/engine/lots",
+            "profiles/fixed_stars.csv",
+        ),
+        tags=("astrology", "symbolism"),
+    ),
+}
+
+
 REFERENCE_SECTIONS: Mapping[str, Mapping[str, ReferenceEntry]] = {
     "glossary": GLOSSARY,
     "chart_types": CHART_TYPES,
     "frameworks": FRAMEWORKS,
+    "indicators": INDICATORS,
 }
