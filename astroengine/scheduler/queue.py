@@ -5,7 +5,7 @@ import sqlite3
 import uuid
 from typing import Any
 
-from .db import connect, now
+from .db import get_connection, now
 
 LEASE_SEC = 120
 
@@ -19,7 +19,7 @@ def enqueue(
     dedupe_key: str | None = None,
     max_attempts: int = 5,
 ) -> str:
-    con = connect()
+    con = get_connection()
     cur = con.cursor()
     jid = str(uuid.uuid4())
     t = now()
@@ -41,7 +41,7 @@ def enqueue(
         )
     except sqlite3.IntegrityError:
         if dedupe_key:
-            row = con.execute(
+            row = cur.execute(
                 "SELECT id FROM jobs WHERE dedupe_key=?", (dedupe_key,)
             ).fetchone()
             if row:
@@ -49,7 +49,7 @@ def enqueue(
         raise
     finally:
         con.commit()
-        con.close()
+        cur.close()
     return jid
 
 
@@ -62,7 +62,7 @@ def _recover_stale(cur: sqlite3.Cursor, t: int) -> None:
 
 
 def claim_one() -> dict[str, Any] | None:
-    con = connect()
+    con = get_connection()
     cur = con.cursor()
     t = now()
 
@@ -106,69 +106,83 @@ def claim_one() -> dict[str, Any] | None:
                 return dict(job_row) if job_row else None
             # Another worker claimed it; try again.
     finally:
-        con.close()
+        cur.close()
 
 
 def heartbeat(job_id: str) -> None:
-    con = connect()
+    con = get_connection()
     t = now()
-    con.execute(
-        "UPDATE jobs SET heartbeat_at=?, updated_at=? WHERE id=? AND state='running'",
-        (t, t, job_id),
-    )
-    con.commit()
-    con.close()
+    cur = con.cursor()
+    try:
+        cur.execute(
+            "UPDATE jobs SET heartbeat_at=?, updated_at=? WHERE id=? AND state='running'",
+            (t, t, job_id),
+        )
+        con.commit()
+    finally:
+        cur.close()
 
 
 def done(job_id: str, result: dict[str, Any] | None = None) -> None:
-    con = connect()
+    con = get_connection()
     t = now()
-    con.execute(
-        "UPDATE jobs SET state='done', result=?, updated_at=? WHERE id=?",
-        (json.dumps(result or {}), t, job_id),
-    )
-    con.commit()
-    con.close()
+    cur = con.cursor()
+    try:
+        cur.execute(
+            "UPDATE jobs SET state='done', result=?, updated_at=? WHERE id=?",
+            (json.dumps(result or {}), t, job_id),
+        )
+        con.commit()
+    finally:
+        cur.close()
 
 
 def fail(job_id: str, error: str, *, base_backoff: int = 5) -> None:
-    con = connect()
+    con = get_connection()
     t = now()
-    row = con.execute(
-        "SELECT attempts, max_attempts FROM jobs WHERE id=?", (job_id,)
-    ).fetchone()
-    if not row:
-        con.close()
-        return
-    attempts, max_attempts = int(row[0]), int(row[1])
-    if attempts >= max_attempts:
-        con.execute(
-            "UPDATE jobs SET state='failed', last_error=?, updated_at=? WHERE id=?",
-            (error, t, job_id),
-        )
-    else:
-        backoff = min(300, base_backoff * (2 ** max(attempts - 1, 0)))
-        con.execute(
-            "UPDATE jobs SET state='queued', backoff_until=?, last_error=?, updated_at=? WHERE id=?",
-            (t + backoff, error, t, job_id),
-        )
-    con.commit()
-    con.close()
+    cur = con.cursor()
+    try:
+        row = cur.execute(
+            "SELECT attempts, max_attempts FROM jobs WHERE id=?", (job_id,)
+        ).fetchone()
+        if not row:
+            return
+        attempts, max_attempts = int(row[0]), int(row[1])
+        if attempts >= max_attempts:
+            cur.execute(
+                "UPDATE jobs SET state='failed', last_error=?, updated_at=? WHERE id=?",
+                (error, t, job_id),
+            )
+        else:
+            backoff = min(300, base_backoff * (2 ** max(attempts - 1, 0)))
+            cur.execute(
+                "UPDATE jobs SET state='queued', backoff_until=?, last_error=?, updated_at=? WHERE id=?",
+                (t + backoff, error, t, job_id),
+            )
+        con.commit()
+    finally:
+        cur.close()
 
 
 def cancel(job_id: str) -> None:
-    con = connect()
+    con = get_connection()
     t = now()
-    con.execute(
-        "UPDATE jobs SET state='canceled', updated_at=? WHERE id=? AND state IN ('queued','running')",
-        (t, job_id),
-    )
-    con.commit()
-    con.close()
+    cur = con.cursor()
+    try:
+        cur.execute(
+            "UPDATE jobs SET state='canceled', updated_at=? WHERE id=? AND state IN ('queued','running')",
+            (t, job_id),
+        )
+        con.commit()
+    finally:
+        cur.close()
 
 
 def get(job_id: str) -> dict[str, Any] | None:
-    con = connect()
-    row = con.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
-    con.close()
+    con = get_connection()
+    cur = con.cursor()
+    try:
+        row = cur.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
+    finally:
+        cur.close()
     return dict(row) if row else None
