@@ -1,4 +1,7 @@
+import io
 import json
+import sys
+from types import SimpleNamespace
 
 from astroengine import cli
 
@@ -146,3 +149,61 @@ def test_cli_scan_parser_supports_sidereal():
     assert ns.sidereal is True
     assert ns.ayanamsha == "lahiri"
     assert ns.detectors == ["lunations"]
+
+
+def test_cli_export_handles_large_jsonl(tmp_path, monkeypatch):
+    from astroengine.cli import export as export_mod
+
+    jsonl_path = tmp_path / "events.jsonl"
+    out_path = tmp_path / "events.parquet"
+
+    events = [{"event_id": idx, "value": idx * 2} for idx in range(2048)]
+    with jsonl_path.open("w", encoding="utf-8") as handle:
+        for event in events:
+            handle.write(json.dumps(event) + "\n")
+
+    captured: list[dict[str, object]] = []
+
+    def fake_export(path: str, stream):
+        assert path == str(out_path)
+        for record in stream:
+            captured.append(record)
+        return len(captured)
+
+    monkeypatch.setattr(export_mod, "export_parquet_dataset", fake_export)
+
+    args = SimpleNamespace(
+        input=str(jsonl_path),
+        out=str(out_path),
+        format="jsonl",
+        key=None,
+        multiwheel_spec=None,
+        multiwheel_out=None,
+        multiwheel_format="svg",
+    )
+
+    exit_code = export_mod.run(args)
+    assert exit_code == 0
+    assert len(captured) == len(events)
+    assert captured[0]["event_id"] == 0
+    assert captured[-1]["value"] == (len(events) - 1) * 2
+
+
+def test_load_events_streams_stdin_jsonl(monkeypatch):
+    from astroengine.cli import export as export_mod
+
+    class NoReadStringIO(io.StringIO):
+        def read(self, *args, **kwargs):  # pragma: no cover - defensive guard
+            raise AssertionError("stream should be consumed lazily via iteration")
+
+    payload = "\n".join(json.dumps({"index": idx}) for idx in range(3))
+    fake_stdin = NoReadStringIO(payload)
+    monkeypatch.setattr(
+        export_mod,
+        "sys",
+        SimpleNamespace(stdin=fake_stdin, stderr=sys.stderr),
+    )
+
+    events = list(export_mod._load_events("-", "jsonl", None))
+    assert [event["index"] for event in events] == [0, 1, 2]
+    assert fake_stdin.tell() == len(payload)
