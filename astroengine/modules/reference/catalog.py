@@ -358,6 +358,33 @@ FRAMEWORKS: Mapping[str, ReferenceEntry] = {
         ),
         tags=("psychology", "esoteric"),
     ),
+    "chakras": ReferenceEntry(
+        term="Tantric chakra correspondences",
+        summary=(
+            "Chakra ↔ planetary ruler mapping with Mind/Body/Spirit weights "
+            "derived from Bihar School of Yoga materials and Judith's psychology "
+            "framework, packaged in ``astroengine.esoteric.chakras``."
+        ),
+        sources=(
+            ReferenceSource(
+                name="AstroEngine chakra correspondences",
+                citation="AstroEngine maintainers. (2025). Chakra correspondence dataset.",
+                repository_path="astroengine/esoteric/chakras.py",
+            ),
+            ReferenceSource(
+                name="Kundalini Tantra",
+                citation="Satyananda Saraswati, S. (1984). Kundalini Tantra. Bihar School of Yoga.",
+            ),
+            ReferenceSource(
+                name="Wheels of Life",
+                citation="Judith, A. (1987). Wheels of Life: A User's Guide to the Chakra System. Llewellyn Publications.",
+            ),
+        ),
+        related=(
+            "astroengine/modules/esoteric/__init__.py",
+        ),
+        tags=("esoteric", "energy"),
+    ),
     "tarot_correspondences": ReferenceEntry(
         term="Golden Dawn tarot correspondences",
         summary=(

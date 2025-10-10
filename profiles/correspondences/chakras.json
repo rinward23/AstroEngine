@@ -1,0 +1,72 @@
+{
+  "tradition": "Tantric chakra-planet correspondences (Bihar School of Yoga lineage) with modern psychological interpretation.",
+  "sources": [
+    "Satyananda Saraswati, Swami. Kundalini Tantra. Bihar School of Yoga, 1984.",
+    "Judith, Anodea. Wheels of Life: A User's Guide to the Chakra System. Llewellyn Publications, 1987."
+  ],
+  "chakras": [
+    {
+      "id": "muladhara",
+      "sanskrit": "Muladhara",
+      "english": "Root",
+      "element": "EARTH",
+      "planetary_rulers": ["mars"],
+      "domain_weights": {"MIND": 0.1, "BODY": 0.7, "SPIRIT": 0.2},
+      "notes": "Survival, grounding, and physical security emphasis per Judith's exposition of Muladhara (Ch. 3)."
+    },
+    {
+      "id": "svadhisthana",
+      "sanskrit": "Svadhisthana",
+      "english": "Sacral",
+      "element": "WATER",
+      "planetary_rulers": ["mercury"],
+      "domain_weights": {"MIND": 0.1, "BODY": 0.6, "SPIRIT": 0.3},
+      "notes": "Fluidity, sensuality, and emotional regulation anchored in bodily waters (Judith, Ch. 4)."
+    },
+    {
+      "id": "manipura",
+      "sanskrit": "Manipura",
+      "english": "Solar Plexus",
+      "element": "FIRE",
+      "planetary_rulers": ["sun"],
+      "domain_weights": {"MIND": 0.4, "BODY": 0.3, "SPIRIT": 0.3},
+      "notes": "Personal power, self-definition, and vitality per Judith's Manipura profile (Ch. 5)."
+    },
+    {
+      "id": "anahata",
+      "sanskrit": "Anahata",
+      "english": "Heart",
+      "element": "AIR",
+      "planetary_rulers": ["venus"],
+      "domain_weights": {"MIND": 0.2, "BODY": 0.25, "SPIRIT": 0.55},
+      "notes": "Love, relational balance, and devotional presence outlined in Judith's heart chakra chapter (Ch. 6)."
+    },
+    {
+      "id": "vishuddha",
+      "sanskrit": "Vishuddha",
+      "english": "Throat",
+      "element": "ETHER",
+      "planetary_rulers": ["jupiter"],
+      "domain_weights": {"MIND": 0.5, "BODY": 0.1, "SPIRIT": 0.4},
+      "notes": "Expression, resonance, and subtle ether harmonics emphasised by Judith (Ch. 7)."
+    },
+    {
+      "id": "ajna",
+      "sanskrit": "Ajna",
+      "english": "Third Eye",
+      "element": "LIGHT",
+      "planetary_rulers": ["saturn"],
+      "domain_weights": {"MIND": 0.55, "BODY": 0.05, "SPIRIT": 0.4},
+      "notes": "Perception, insight, and disciplined attention summarised in Judith's Ajna discussion (Ch. 8)."
+    },
+    {
+      "id": "sahasrara",
+      "sanskrit": "Sahasrara",
+      "english": "Crown",
+      "element": "CONSCIOUSNESS",
+      "planetary_rulers": ["moon"],
+      "domain_weights": {"MIND": 0.25, "BODY": 0.05, "SPIRIT": 0.7},
+      "notes": "Transcendence, integration, and spiritual union described in Judith's crown chakra synthesis (Ch. 9)."
+    }
+  ]
+}
