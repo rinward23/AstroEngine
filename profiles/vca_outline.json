@@ -15,6 +15,21 @@
     },
     "fixed_stars": {"enabled": false, "list": ["regulus", "spica", "algol", "aldebaran", "antares", "fomalhaut", "sirius", "arcturus", "vega", "altair"]}
   },
+  "sensitive_points": [
+    "asc",
+    "dsc",
+    "mc",
+    "ic",
+    "vertex",
+    "antivertex",
+    "east_point",
+    "polar_asc",
+    "lot_fortune",
+    "lot_spirit",
+    "black_moon_lilith",
+    "priapus",
+    "prenatal_eclipse"
+  ],
   "aspects": {
     "major": [0, 60, 90, 120, 180],
     "minor": [30, 45, 135, 150],
