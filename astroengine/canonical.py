@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal, Protocol
@@ -330,62 +330,88 @@ def event_from_legacy(
     )
 
 
+def iter_events_from_any(
+    seq: Iterable[Mapping[str, Any] | _HasAttrs | TransitEvent]
+) -> Iterator[TransitEvent]:
+    """Yield canonical :class:`TransitEvent` objects lazily from ``seq``."""
+
+    for item in seq:
+        yield event_from_legacy(item)
+
+
 def events_from_any(
     seq: Iterable[Mapping[str, Any] | _HasAttrs | TransitEvent],
 ) -> list[TransitEvent]:
     """Vector form of :func:`event_from_legacy` with strict conversion."""
 
-    return [event_from_legacy(x) for x in seq]
+    return list(iter_events_from_any(seq))
+
+
+_SQLITE_INSERT = """
+    INSERT INTO transits_events (
+        ts, moving, target, aspect, orb, orb_abs, applying, score,
+        profile_id, natal_id, event_year, meta_json
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+
+
+def _row_params(event: TransitEvent) -> tuple[Any, ...]:
+    payload = _event_row(event)
+    return (
+        payload["ts"],
+        payload["moving"],
+        payload["target"],
+        payload["aspect"],
+        payload["orb"],
+        payload["orb_abs"],
+        1 if payload["applying"] else 0,
+        payload["score"],
+        payload["profile_id"],
+        payload["natal_id"],
+        payload["event_year"],
+        payload["meta_json"],
+    )
 
 
 def sqlite_write_canonical(
-    db_path: str, events: Iterable[Mapping[str, Any] | _HasAttrs | TransitEvent]
+    db_path: str,
+    events: Iterable[Mapping[str, Any] | _HasAttrs | TransitEvent],
+    *,
+    batch_size: int = 512,
 ) -> int:
     """Append canonical events to SQLite (table: ``transits_events``)."""
 
     import sqlite3
 
-    evs = events_from_any(events)
-    if not evs:
-        return 0
+    if batch_size <= 0:
+        raise ValueError("batch_size must be a positive integer")
 
-    rows = []
-    for e in evs:
-        payload = _event_row(e)
-        rows.append(
-            (
-                payload["ts"],
-                payload["moving"],
-                payload["target"],
-                payload["aspect"],
-                payload["orb"],
-                payload["orb_abs"],
-                1 if payload["applying"] else 0,
-                payload["score"],
-                payload["profile_id"],
-                payload["natal_id"],
-                payload["event_year"],
-                payload["meta_json"],
-            )
-        )
+    event_iter = iter_events_from_any(events)
+    try:
+        first_event = next(event_iter)
+    except StopIteration:
+        return 0
 
     ensure_sqlite_schema(db_path)
     con = sqlite3.connect(db_path)
     apply_default_pragmas(con)
     try:
         cur = con.cursor()
-        cur.executemany(
-            """
-            INSERT INTO transits_events (
-                ts, moving, target, aspect, orb, orb_abs, applying, score,
-                profile_id, natal_id, event_year, meta_json
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            rows,
-        )
-        con.commit()
-        return len(rows)
+        rows: list[tuple[Any, ...]] = [_row_params(first_event)]
+        total = 0
+        for event in event_iter:
+            rows.append(_row_params(event))
+            if len(rows) >= batch_size:
+                cur.executemany(_SQLITE_INSERT, rows)
+                con.commit()
+                total += len(rows)
+                rows.clear()
+        if rows:
+            cur.executemany(_SQLITE_INSERT, rows)
+            con.commit()
+            total += len(rows)
+        return total
     finally:
         con.close()
 
@@ -581,6 +607,7 @@ __all__ = [
     "BodyPosition",
     "TransitEvent",
     "event_from_legacy",
+    "iter_events_from_any",
     "events_from_any",
     "sqlite_write_canonical",
     "sqlite_read_canonical",
