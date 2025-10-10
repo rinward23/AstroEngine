@@ -34,3 +34,21 @@ def test_sort_bodies_for_scan() -> None:
     ordered = sort_bodies_for_scan(["Pluto", "Moon", "Eris", "Mars", "Moon"])
     assert ordered[0] == "moon"
     assert ordered[-1] in {"eris", "pluto"}
+
+
+def test_angle_aliases_classify_as_points() -> None:
+    for label in [
+        "Asc",
+        "ascendant",
+        "MC",
+        "midheaven",
+        "IC",
+        "imum coeli",
+        "DSC",
+        "descendant",
+    ]:
+        assert body_class(label) == "point"
+
+    assert canonical_name("Midheaven") == "mc"
+    assert canonical_name("Imum Coeli") == "ic"
+    assert canonical_name("Descendant") == "dsc"
