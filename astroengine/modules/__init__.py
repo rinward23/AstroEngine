@@ -8,12 +8,12 @@ from .developer_platform import register_developer_platform_module
 from .esoteric import register_esoteric_module
 from .event_detectors import register_event_detectors_module
 from .integrations import register_integrations_module
+from .jyotish import register_jyotish_module
+from .mayan import register_mayan_module
 from .mundane import register_mundane_module
 from .narrative import register_narrative_module
-from .jyotish import register_jyotish_module
 from .interop import register_interop_module
 from .predictive import register_predictive_module
-from .reference import register_reference_module
 from .registry import (
     AstroChannel,
     AstroModule,
@@ -24,6 +24,7 @@ from .registry import (
 from .providers import register_providers_module
 from .orchestration import register_orchestration_module
 from .ritual import register_ritual_module
+from .tibetan import register_tibetan_module
 from .ux import register_ux_module
 from .vca import register_vca_module
 
@@ -50,6 +51,9 @@ def bootstrap_default_registry() -> AstroRegistry:
     register_chinese_module(registry)
     register_jyotish_module(registry)
     register_narrative_module(registry)
+    register_chinese_module(registry)
+    register_mayan_module(registry)
+    register_tibetan_module(registry)
 
     register_ritual_module(registry)
     register_predictive_module(registry)
