@@ -5,6 +5,7 @@ import json
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Literal, Protocol
 
 _SQLITE_IMPORT_ERROR: ModuleNotFoundError | None = None
@@ -369,8 +370,9 @@ def sqlite_write_canonical(
             )
         )
 
-    ensure_sqlite_schema(db_path)
-    con = sqlite3.connect(db_path)
+    normalized_path = str(Path(db_path).expanduser().resolve())
+    ensure_sqlite_schema(normalized_path)
+    con = sqlite3.connect(normalized_path)
     apply_default_pragmas(con)
     try:
         cur = con.cursor()
@@ -400,8 +402,9 @@ def sqlite_read_canonical(
 
     import sqlite3
 
-    ensure_sqlite_schema(db_path)
-    con = sqlite3.connect(db_path)
+    normalized_path = str(Path(db_path).expanduser().resolve())
+    ensure_sqlite_schema(normalized_path)
+    con = sqlite3.connect(normalized_path)
     con.row_factory = sqlite3.Row
     apply_default_pragmas(con)
     try:
