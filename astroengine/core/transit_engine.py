@@ -359,13 +359,28 @@ class TransitEngine:
 
 
 _DEFAULT_TRANSIT_ASPECTS: dict[str, tuple[float, str]] = {
+    # Major aspects mirror ``profiles/aspects_policy.json`` "enabled" entries.
     "conjunction": (0.0, "major"),
-    "semisextile": (30.0, "minor"),
     "sextile": (60.0, "major"),
     "square": (90.0, "major"),
     "trine": (120.0, "major"),
-    "quincunx": (150.0, "minor"),
     "opposition": (180.0, "major"),
+    # Minor aspects mirror ``enabled_minors`` entries.
+    "semisextile": (30.0, "minor"),
+    "semisquare": (45.0, "minor"),
+    "sesquisquare": (135.0, "minor"),
+    "quincunx": (150.0, "minor"),
+    "quintile": (72.0, "minor"),
+    "biquintile": (144.0, "minor"),
+    "semiquintile": (36.0, "minor"),
+    # Harmonic aspects mirror ``enabled_harmonics`` entries.
+    "novile": (40.0, "harmonic"),
+    "binovile": (80.0, "harmonic"),
+    "septile": (51.4286, "harmonic"),
+    "biseptile": (102.8571, "harmonic"),
+    "triseptile": (154.2857, "harmonic"),
+    "tredecile": (108.0, "harmonic"),
+    "undecile": (32.7273, "harmonic"),
 }
 
 
@@ -474,8 +489,19 @@ def _body_name_map(
 
 
 def _aspect_definitions(aspects: Iterable[object] | None) -> list[tuple[str, float, str]]:
+    """Normalise caller provided aspects into ``(name, angle, family)`` tuples.
+
+    When ``aspects`` is falsy the complete default catalogue is returned. This
+    catalogue mirrors ``profiles/aspects_policy.json`` and therefore provides
+    major, minor, and harmonic contact families without requiring additional
+    configuration from callers.
+    """
+
     if not aspects:
-        return [(name, angle, family) for name, (angle, family) in _DEFAULT_TRANSIT_ASPECTS.items()]
+        return [
+            (name, angle, family)
+            for name, (angle, family) in _DEFAULT_TRANSIT_ASPECTS.items()
+        ]
 
     resolved: list[tuple[str, float, str]] = []
     for item in aspects:
@@ -496,7 +522,10 @@ def _aspect_definitions(aspects: Iterable[object] | None) -> list[tuple[str, flo
             family = str(item.get("family", "custom"))
             resolved.append((name.strip().lower() or "custom", angle_val % 360.0, family))
     if not resolved:
-        return [(name, angle, family) for name, (angle, family) in _DEFAULT_TRANSIT_ASPECTS.items()]
+        return [
+            (name, angle, family)
+            for name, (angle, family) in _DEFAULT_TRANSIT_ASPECTS.items()
+        ]
     return resolved
 
 
@@ -520,7 +549,8 @@ def scan_transits(
     aspects:
         Iterable of aspect descriptors. Strings reference the default aspect
         catalogue (conjunction, square, etc.) while numeric entries are treated
-        as explicit angles in degrees.
+        as explicit angles in degrees. When omitted the full major, minor, and
+        harmonic catalogue defined in :mod:`profiles.aspects_policy` is used.
     orb_deg:
         Maximum allowable deviation from the target aspect angle expressed in
         **degrees**. Events exceeding this offset are filtered from the result
