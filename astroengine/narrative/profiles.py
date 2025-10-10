@@ -157,6 +157,14 @@ class NarrativeProfileSpec:
         synopsis = self.synopsis.format(count=len(payloads), **context)
         if synopsis:
             lines.append(synopsis)
+        journal_header = context.get("journal_header")
+        journal_lines = context.get("journal_excerpt_lines")
+        if journal_header and journal_lines:
+            lines.append(str(journal_header))
+            if isinstance(journal_lines, str):
+                lines.append(str(journal_lines))
+            else:
+                lines.extend(str(line) for line in journal_lines)
         for event in payloads:
             line = self.event_template.format(**{**event, **context})
             lines.append(line)

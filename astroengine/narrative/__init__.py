@@ -9,15 +9,25 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..domains import rollup_domain_scores
 from ..infrastructure.paths import profiles_dir
 from ..utils import load_json_document
 from ..utils.i18n import translate
 from .gpt_api import GPTNarrativeClient
+from .journaling import (
+    journal_context_payload,
+    journal_prompt_lines,
+    journal_template_lines,
+)
+from .local_model import LocalNarrativeClient
 from .profiles import render_profile, timelord_outline
 from .prompts import build_summary_prompt, build_template_summary
+
+if TYPE_CHECKING:  # pragma: no cover - imported for typing only
+    from .journaling import JournalEntry
+    from .local_model import LocalNarrativeClient
 
 try:  # pragma: no cover - optional dependency
     from jinja2 import Template
@@ -39,6 +49,8 @@ __all__ = [
     "build_template_summary",
     "markdown_to_html",
     "markdown_to_plaintext",
+    "GPTNarrativeClient",
+    "LocalNarrativeClient",
 ]
 
 _LOG = logging.getLogger(__name__)
@@ -251,6 +263,8 @@ def summarize_top_events(
     timelords: Any | None = None,
     profile_context: Mapping[str, Any] | None = None,
     prefer_template: bool = False,
+    journal_entries: Sequence["JournalEntry"] | Iterable["JournalEntry"] | None = None,
+    locale: str | None = None,
 ) -> str:
     """Return a narrative summary of the top-N events."""
 
@@ -262,6 +276,19 @@ def summarize_top_events(
     top_events = sorted_events[: max(top_n, 1)]
 
     context = dict(profile_context or {})
+    if locale is not None:
+        context.setdefault("locale", locale)
+
+    journal_sequence = list(journal_entries or [])
+    prompt_journal_lines: list[str] = []
+    template_journal_lines: list[str] = []
+    if journal_sequence:
+        prompt_journal_lines = journal_prompt_lines(journal_sequence, locale=locale)
+        template_journal_lines = journal_template_lines(journal_sequence, locale=locale)
+        context.update(journal_context_payload(journal_sequence, locale=locale))
+        context.setdefault("journal_template_lines", template_journal_lines)
+        context.setdefault("journal_prompt_lines", prompt_journal_lines)
+
     offline = render_profile(profile, top_events, timelords=timelords, context=context)
 
     if prefer_template:
@@ -274,6 +301,8 @@ def summarize_top_events(
             profile=profile,
             timelords=timelords,
             context=context,
+            locale=locale,
+            journal_lines=prompt_journal_lines,
         )
 
     except Exception as exc:  # pragma: no cover - defensive fallback
