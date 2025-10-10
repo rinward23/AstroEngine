@@ -297,7 +297,7 @@ CHART_TYPES: Mapping[str, ReferenceEntry] = {
             ),
         ),
         related=(
-            "astroengine/modules/relation_timeline",
+            "astroengine/relation_timeline",
             "astroengine/modules/vca",
         ),
         tags=("astrology", "relationship"),
