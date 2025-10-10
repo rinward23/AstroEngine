@@ -13,16 +13,17 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any as _TypingAny, Literal, cast
 
-from ..chart.natal import DEFAULT_BODIES
+from ..chart.natal import BODY_EXPANSIONS, DEFAULT_BODIES, build_body_map
 from ..detectors_aspects import AspectHit
 from ..ephemeris import EphemerisAdapter, EphemerisConfig, EphemerisSample
-from ..ephemeris.swisseph_adapter import SwissEphemerisAdapter
+from ..ephemeris.swisseph_adapter import SwissEphemerisAdapter, VariantConfig
 from ..ephemeris.refinement import SECONDS_PER_DAY, RefineResult, refine_event
 from .qcache import DEFAULT_QSEC, qbin, qcache
 from .time import to_tt
 from .angles import classify_relative_motion, signed_delta
 from .angles import normalize_degrees as _normalize_degrees
 from .api import TransitEvent as LegacyTransitEvent
+from .bodies import canonical_name
 
 try:
     from ..canonical import TransitEvent, events_from_any
@@ -375,16 +376,100 @@ def _parse_iso8601(ts: str) -> _dt.datetime:
     return dt.astimezone(_dt.UTC)
 
 
-def _body_name_map(names: Iterable[str] | None) -> dict[str, int]:
+def _normalized_variant(value: str | None) -> str:
+    lowered = (value or "mean").lower()
+    return "true" if lowered == "true" else "mean"
+
+
+def _variant_nodes(vc: VariantConfig) -> str:
+    if hasattr(vc, "normalized_nodes"):
+        return vc.normalized_nodes()
+    return _normalized_variant(getattr(vc, "nodes_variant", "mean"))
+
+
+def _variant_lilith(vc: VariantConfig) -> str:
+    if hasattr(vc, "normalized_lilith"):
+        return vc.normalized_lilith()
+    return _normalized_variant(getattr(vc, "lilith_variant", "mean"))
+
+
+def _body_name_map(
+    names: Iterable[str] | None,
+    *,
+    adapter: SwissEphemerisAdapter | None = None,
+) -> dict[str, int]:
     if not names:
         return {name: int(code) for name, code in DEFAULT_BODIES.items()}
-    lookup = {name.lower(): (name, int(code)) for name, code in DEFAULT_BODIES.items()}
+
+    adapter = adapter or SwissEphemerisAdapter.get_default_adapter()
+    variant_config = getattr(adapter, "_variant_config", None)
+    if variant_config is None:
+        chart_config = getattr(adapter, "chart_config", None)
+        nodes_variant = getattr(chart_config, "nodes_variant", "mean")
+        lilith_variant = getattr(chart_config, "lilith_variant", "mean")
+        variant_config = VariantConfig(
+            nodes_variant=nodes_variant,
+            lilith_variant=lilith_variant,
+        )
+
+    catalog = build_body_map({key: True for key in BODY_EXPANSIONS}, base=DEFAULT_BODIES)
+    lookup: dict[str, tuple[str, int]] = {}
+
+    for display_name, code in catalog.items():
+        lowered = display_name.lower()
+        lookup.setdefault(lowered, (display_name, int(code)))
+        canonical = canonical_name(display_name)
+        if canonical:
+            lookup.setdefault(canonical, (display_name, int(code)))
+
+    mean_node_entry = lookup.get("mean node")
+    true_node_entry = lookup.get("true node")
+    mean_south_entry = lookup.get("mean south node")
+    true_south_entry = lookup.get("true south node")
+    node_variant = _variant_nodes(variant_config)
+    preferred_node = true_node_entry if node_variant == "true" else mean_node_entry
+    preferred_south = true_south_entry if node_variant == "true" else mean_south_entry
+
+    if mean_node_entry:
+        lookup["mean_node"] = mean_node_entry
+        lookup.setdefault("mean node", mean_node_entry)
+    if true_node_entry:
+        lookup["true_node"] = true_node_entry
+        lookup.setdefault("true node", true_node_entry)
+    if preferred_node:
+        for alias in ("node", "north_node", "nn"):
+            lookup[alias] = preferred_node
+    if preferred_south:
+        for alias in ("south_node", "sn"):
+            lookup[alias] = preferred_south
+
+    mean_lilith_entry = lookup.get("black moon lilith (mean)")
+    true_lilith_entry = lookup.get("black moon lilith (true)")
+    lilith_variant = _variant_lilith(variant_config)
+    preferred_lilith = true_lilith_entry if lilith_variant == "true" else mean_lilith_entry
+
+    if mean_lilith_entry:
+        for alias in ("mean_lilith", "mean lilith"):
+            lookup[alias] = mean_lilith_entry
+    if true_lilith_entry:
+        for alias in ("true_lilith", "true lilith", "true black moon lilith"):
+            lookup[alias] = true_lilith_entry
+    if preferred_lilith:
+        for alias in ("lilith", "black_moon_lilith", "black moon lilith"):
+            lookup[alias] = preferred_lilith
+
     resolved: dict[str, int] = {}
     for candidate in names:
-        key = str(candidate).lower()
-        if key in lookup:
-            canonical, code = lookup[key]
-            resolved[canonical] = code
+        key = canonical_name(str(candidate)) or str(candidate).strip().lower()
+        if not key:
+            continue
+        entry = lookup.get(key)
+        if entry is None:
+            entry = lookup.get(str(candidate).strip().lower())
+        if entry is None:
+            continue
+        display, code = entry
+        resolved[display] = code
     return resolved
 
 
@@ -460,8 +545,12 @@ def scan_transits(
     adapter = SwissEphemerisAdapter.get_default_adapter()
     engine = TransitEngine.with_default_adapter()
 
-    moving_map = _body_name_map(bodies)
-    target_map = _body_name_map(targets) if targets is not None else dict(moving_map)
+    moving_map = _body_name_map(bodies, adapter=adapter)
+    target_map = (
+        _body_name_map(targets, adapter=adapter)
+        if targets is not None
+        else dict(moving_map)
+    )
     if not moving_map or not target_map:
         return []
 
