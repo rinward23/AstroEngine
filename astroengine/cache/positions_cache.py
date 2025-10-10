@@ -1,6 +1,7 @@
 # >>> AUTO-GEN BEGIN: positions-cache v1.0
 from __future__ import annotations
 
+import atexit
 import logging
 import sqlite3
 from collections.abc import Iterable, Sequence
@@ -21,6 +22,9 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 DB = CACHE_DIR / "positions.sqlite"
 
 _LOGGER = logging.getLogger(__name__)
+
+_CONNECTION: sqlite3.Connection | None = None
+_INITIALIZED = False
 
 _BODY_CODES = {
     "sun": "SUN",
@@ -59,12 +63,34 @@ CREATE INDEX IF NOT EXISTS ix_positions_daily_day_body
 }
 
 
-def _connect():
-    con = sqlite3.connect(str(DB))
-    apply_default_pragmas(con)
-    con.executescript(_SQL["init"])
-    con.commit()
-    return con
+def _close_connection() -> None:
+    global _CONNECTION, _INITIALIZED
+
+    if _CONNECTION is not None:
+        try:
+            _CONNECTION.close()
+        finally:  # pragma: no cover - defensive guard
+            _CONNECTION = None
+            _INITIALIZED = False
+
+
+def _get_connection() -> sqlite3.Connection:
+    global _CONNECTION, _INITIALIZED
+
+    if _CONNECTION is None:
+        con = sqlite3.connect(str(DB))
+        apply_default_pragmas(con)
+        _CONNECTION = con
+        atexit.register(_close_connection)
+
+    assert _CONNECTION is not None  # narrow type for mypy
+
+    if not _INITIALIZED:
+        _CONNECTION.executescript(_SQL["init"])
+        _CONNECTION.commit()
+        _INITIALIZED = True
+
+    return _CONNECTION
 
 
 def _day_jd(jd_ut: float) -> int:
@@ -85,22 +111,18 @@ def get_daily_entry(
     jd_ut: float, body: str
 ) -> tuple[float, float | None, float | None]:
     normalized = body.lower()
-    con = _connect()
-    try:
-        cur = con.execute(_SQL["get_full"], (_day_jd(jd_ut), normalized))
+    con = _get_connection()
+    with con.cursor() as cur:
+        cur.execute(_SQL["get_full"], (_day_jd(jd_ut), normalized))
         row = cur.fetchone()
-        if row is not None:
-            lon, lat, speed = row
-            lon_f = normalize_longitude(float(lon))
-            lat_f = None if lat is None else canonical_round(float(lat))
-            speed_f = (
-                None
-                if speed is None
-                else normalize_speed_per_day(float(speed))
-            )
-            return lon_f, lat_f, speed_f
-    finally:
-        con.close()
+    if row is not None:
+        lon, lat, speed = row
+        lon_f = normalize_longitude(float(lon))
+        lat_f = None if lat is None else canonical_round(float(lat))
+        speed_f = (
+            None if speed is None else normalize_speed_per_day(float(speed))
+        )
+        return lon_f, lat_f, speed_f
 
     if not _ensure_swiss_available():
         raise RuntimeError("Swiss ephemeris unavailable for cache compute")
@@ -113,9 +135,9 @@ def get_daily_entry(
     lon = normalize_longitude(float(sample.longitude))
     lat = canonical_round(float(sample.latitude))
     speed = normalize_speed_per_day(float(sample.speed_longitude))
-    con = _connect()
-    try:
-        con.execute(
+    con = _get_connection()
+    with con.cursor() as cur:
+        cur.execute(
             _SQL["upsert"],
             (
                 _day_jd(jd_ut),
@@ -125,9 +147,7 @@ def get_daily_entry(
                 speed,
             ),
         )
-        con.commit()
-    finally:
-        con.close()
+    con.commit()
     return lon, lat, speed
 
 
