@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from datetime import datetime, timedelta, timezone
 
 LOG = logging.getLogger(__name__)
 
@@ -15,6 +16,8 @@ except ImportError:
         exc_info=True,
     )
     load = None
+
+from astroengine.canonical import BodyPosition
 
 from . import register_provider
 
@@ -72,12 +75,48 @@ class SkyfieldProvider:
             None  # skyfield computes ecliptic-of-date via .ecliptic_position()
         )
 
+    @staticmethod
+    def _normalize_iso(iso_utc: str) -> datetime:
+        dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+
+    def _skyfield_time_from_datetime(self, dt: datetime):
+        seconds = dt.second + dt.microsecond / 1_000_000
+        return self.ts.utc(
+            dt.year,
+            dt.month,
+            dt.day,
+            dt.hour,
+            dt.minute,
+            seconds,
+        )
+
+    def _skyfield_time(self, iso_utc: str):
+        dt = self._normalize_iso(iso_utc)
+        return self._skyfield_time_from_datetime(dt)
+
+    @staticmethod
+    def _wrap_angle_diff(a: float, b: float) -> float:
+        diff = a - b
+        return (diff + 180.0) % 360.0 - 180.0
+
+    def _lon_lat_dec(self, time_obj, earth, body) -> tuple[float, float, float]:
+        observation = earth.at(time_obj).observe(body)
+        ecliptic = observation.ecliptic_position()
+        lon_angle, lat_angle, _ = ecliptic.spherical_latlon()
+        lon_deg = float(lon_angle.degrees % 360.0)
+        lat_deg = float(lat_angle.degrees)
+        apparent = observation.apparent()
+        _, dec_angle, _ = apparent.radec()
+        dec_deg = float(dec_angle.degrees)
+        return lon_deg, lat_deg, dec_deg
+
     def positions_ecliptic(
         self, iso_utc: str, bodies: Iterable[str]
     ) -> dict[str, dict[str, float]]:
-        t = self.ts.from_datetime64([iso_utc]).at(
-            0
-        )  # accepts numpy datetime64 or str in newer versions
+        t = self._skyfield_time(iso_utc)
         out: dict[str, dict[str, float]] = {}
         earth = self.kernel["earth"]
         for name in bodies:
@@ -85,12 +124,38 @@ class SkyfieldProvider:
             if not key:
                 continue
             body = self.kernel[key]
-            ecl = earth.at(t).observe(body).ecliptic_position()
-            lon, lat, distance = (
-                ecl.spherical_latlon()
-            )  # skyfield returns lat, lon order
-            out[name] = {"lon": float(lon.degrees % 360.0), "decl": float(lat.degrees)}
+            lon_deg, lat_deg, _ = self._lon_lat_dec(t, earth, body)
+            out[name] = {"lon": lon_deg, "decl": lat_deg}
         return out
+
+    def position(self, body: str, ts_utc: str) -> BodyPosition:
+        normalized = body.lower()
+        key = _PLANET_KEYS.get(normalized)
+        if key is None:
+            raise KeyError(normalized)
+
+        earth = self.kernel["earth"]
+        target = self.kernel[key]
+        base_dt = self._normalize_iso(ts_utc)
+        t = self._skyfield_time_from_datetime(base_dt)
+        lon_deg, lat_deg, dec_deg = self._lon_lat_dec(t, earth, target)
+
+        delta = timedelta(minutes=1)
+        delta_days = delta.total_seconds() / 86400.0
+        before_dt = base_dt - delta
+        after_dt = base_dt + delta
+        t_before = self._skyfield_time_from_datetime(before_dt)
+        t_after = self._skyfield_time_from_datetime(after_dt)
+        lon_before, _, _ = self._lon_lat_dec(t_before, earth, target)
+        lon_after, _, _ = self._lon_lat_dec(t_after, earth, target)
+        speed_lon = self._wrap_angle_diff(lon_after, lon_before) / (2.0 * delta_days)
+
+        return BodyPosition(
+            lon=lon_deg,
+            lat=lat_deg,
+            dec=dec_deg,
+            speed_lon=speed_lon,
+        )
 
 
 def _register() -> None:
