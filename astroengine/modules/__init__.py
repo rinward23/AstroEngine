@@ -14,6 +14,7 @@ from .mundane import register_mundane_module
 from .narrative import register_narrative_module
 from .interop import register_interop_module
 from .predictive import register_predictive_module
+from .reference import register_reference_module
 from .registry import (
     AstroChannel,
     AstroModule,
@@ -51,7 +52,6 @@ def bootstrap_default_registry() -> AstroRegistry:
     register_chinese_module(registry)
     register_jyotish_module(registry)
     register_narrative_module(registry)
-    register_chinese_module(registry)
     register_mayan_module(registry)
     register_tibetan_module(registry)
 
