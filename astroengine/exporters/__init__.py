@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+import itertools
+from collections.abc import Iterable, Iterator
 from collections.abc import Iterable as _TypingIterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -19,6 +20,8 @@ except Exception:  # pragma: no cover
 
 _PYARROW_MODULES: tuple[_TypingAny, _TypingAny] | None = None
 _PARQUET_OK: bool | None = None
+
+_PARQUET_WRITE_BATCH_SIZE = 512
 
 __all__ = [
     "LegacyTransitEvent",
@@ -123,22 +126,6 @@ class SQLiteExporter:
 
     def write(self, events: Iterable[LegacyTransitEvent]) -> None:
         con = self._connect()
-        rows = [
-            (
-                event.kind,
-                event.timestamp,
-                event.moving,
-                event.target,
-                float(event.orb_abs),
-                float(event.orb_allow),
-                event.applying_or_separating,
-                float(event.score),
-                event.lon_moving,
-                event.lon_target,
-                json.dumps(event.metadata, sort_keys=True),
-            )
-            for event in events
-        ]
         con.executemany(
             """
             INSERT INTO transit_events
@@ -146,7 +133,22 @@ class SQLiteExporter:
              lon_moving, lon_target, metadata)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            rows,
+            (
+                (
+                    event.kind,
+                    event.timestamp,
+                    event.moving,
+                    event.target,
+                    float(event.orb_abs),
+                    float(event.orb_allow),
+                    event.applying_or_separating,
+                    float(event.score),
+                    event.lon_moving,
+                    event.lon_target,
+                    json.dumps(event.metadata, sort_keys=True),
+                )
+                for event in events
+            ),
         )
         con.commit()
         con.close()
@@ -164,8 +166,38 @@ class ParquetExporter:
         modules = _load_pyarrow(required=True)
         assert modules is not None  # for type-checkers
         pa_module, pq_module = modules
-        table = pa_module.Table.from_pylist([event.to_dict() for event in events])
-        pq_module.write_table(table, self.path)
+        iterator = iter(events)
+        try:
+            first_event = next(iterator)
+        except StopIteration:
+            empty_table = pa_module.Table.from_pylist([])
+            pq_module.write_table(empty_table, self.path)
+            return
+
+        chained_events = itertools.chain([first_event], iterator)
+        writer = None
+        try:
+            for batch_dicts in _batched_event_dicts(
+                chained_events, _PARQUET_WRITE_BATCH_SIZE
+            ):
+                record_batch = pa_module.RecordBatch.from_pylist(batch_dicts)
+                if writer is None:
+                    writer = pq_module.ParquetWriter(self.path, record_batch.schema)
+                writer.write_batch(record_batch)
+        finally:
+            if writer is not None:
+                writer.close()
+
+
+def _batched_event_dicts(
+    events: Iterable[LegacyTransitEvent], batch_size: int
+) -> Iterator[list[dict[str, _TypingAny]]]:
+    iterator = iter(events)
+    while True:
+        raw_batch = list(itertools.islice(iterator, batch_size))
+        if not raw_batch:
+            break
+        yield [event.to_dict() for event in raw_batch]
 
 
 # >>> AUTO-GEN BEGIN: Canonical Export Adapters v1.0
