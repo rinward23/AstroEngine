@@ -49,10 +49,14 @@ def test_swiss_vs_skyfield_sun_diff_under_one_degree():
     se = SwissProvider()
 
     t = dt.datetime(2024, 6, 1, 0, 0, 0).isoformat() + "Z"
-    a = se.positions_ecliptic(t, ["sun"])["sun"]["lon"]
-    b = sf.positions_ecliptic(t, ["sun"])["sun"]["lon"]
-    diff = abs((a - b + 180) % 360 - 180)
-    assert diff < 1.0  # coarse sanity; detailed QA lives elsewhere
+    se_pos = se.positions_ecliptic(t, ["sun"])["sun"]
+    sf_pos = sf.positions_ecliptic(t, ["sun"])["sun"]
+
+    lon_diff = abs((se_pos["lon"] - sf_pos["lon"] + 180) % 360 - 180)
+    decl_diff = abs(se_pos["decl"] - sf_pos["decl"])
+
+    assert lon_diff < 1.0  # coarse sanity; detailed QA lives elsewhere
+    assert decl_diff < 1.0
 
 
 # >>> AUTO-GEN END: AE Provider Tests v1.0
