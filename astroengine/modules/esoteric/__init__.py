@@ -11,6 +11,7 @@ from ...esoteric import (
     I_CHING_HEXAGRAMS,
     MASTER_NUMBERS,
     NUMEROLOGY_NUMBERS,
+    chakra_correspondences,
     SEVEN_RAYS,
     TAROT_COURTS,
     TAROT_MAJORS,
