@@ -43,7 +43,8 @@ sources; synthetic values are prohibited.
 ### Could Have (C)
 
 * Multilingual address parsing with transliteration support and reverse-
-  geocoding heatmap hints for ambiguous contexts.
+  geocoding heatmap hints for ambiguous contexts. ✅ Implemented via the
+  bundled DSL and Streamlit overlays described below.
 
 ## Architectural Overview
 
@@ -165,6 +166,15 @@ sources; synthetic values are prohibited.
   operation, ensuring all lookups use local caches only. Telemetry records the
   bundle version used for each query.
 
+### Map Tile Caching Strategy
+
+The bundle manager now provisions an LRU tile cache (`TileCache`) with TTL-aware
+entries. UI components request tiles via the cache, allowing hot tiles to be
+served from memory while prefetching neighbouring tiles for smoother panning in
+pydeck overlays. Cache statistics (hits, misses, evictions) are exposed for
+observability and surfaced in the Streamlit location picker to confirm bundle
+health during offline audits.
+
 ## Data Model
 
 ```text
@@ -254,3 +264,30 @@ confidence scores, ensuring downstream consumers can audit responses.
 This specification enables downstream engineers to implement the Atlas module
 without ambiguity while guaranteeing that every timezone and geo-political output
 originates from verifiable, non-synthetic data sources.
+### Multilingual Address DSL & Transliteration
+
+The `astroengine.atlas.geocoder` package ships a lightweight DSL that converts
+language-specific templates into compiled regular expressions. Bundled grammar
+definitions cover English, Spanish, French, German, and Russian, with optional
+components (postal codes, administrative areas) mapped to canonical field
+names. The parser first evaluates the raw Unicode input, then falls back to a
+script-aware transliteration helper that converts Cyrillic and Greek characters
+into Latin approximations for robust matching against the offline gazetteer.
+
+The DSL exposes:
+
+* `AddressParser.parse(text, language=None)` — returns structured components and
+  a normalised query string suitable for offline indices and online fallbacks.
+* `transliterate(text, aggressive=False)` / `normalize_token(text)` — shared
+  helpers reused by the geocoder core, UI, and bundle manager to keep caches in
+  sync with search tokens.
+
+### Reverse Geocoding Heatmap Hints
+
+The Streamlit location picker integrates `heatmap_hints(lat, lon)` to surface a
+contextual heatmap around the selected coordinate. The helper synthesises
+nearby waypoints (cardinal offsets) with decaying weights so analysts can gauge
+the density of nearby candidates even when the offline gazetteer returns a
+single match. When `pydeck` is available the component renders a heatmap layer;
+otherwise a tabular fallback presents the hint payload alongside tile cache
+statistics.
