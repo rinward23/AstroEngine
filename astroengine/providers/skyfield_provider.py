@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from importlib import metadata as importlib_metadata
 
 LOG = logging.getLogger(__name__)
 
@@ -19,7 +21,11 @@ except ImportError:
 
 from astroengine.canonical import BodyPosition
 
-from . import register_provider
+from . import (
+    ProviderMetadata,
+    register_provider,
+    register_provider_metadata,
+)
 
 _PLANET_KEYS = {
     "sun": "sun",
@@ -33,6 +39,29 @@ _PLANET_KEYS = {
     "neptune": "neptune barycenter",
     "pluto": "pluto barycenter",
 }
+
+
+def _package_version(name: str) -> str | None:
+    try:
+        return importlib_metadata.version(name)
+    except importlib_metadata.PackageNotFoundError:
+        return None
+
+
+def _skyfield_metadata(*, available: bool) -> ProviderMetadata:
+    return ProviderMetadata(
+        provider_id="skyfield",
+        version=_package_version("skyfield"),
+        supported_bodies=tuple(sorted(_PLANET_KEYS)),
+        supported_frames=("ecliptic_true_date", "equatorial_true"),
+        supports_declination=True,
+        supports_light_time=True,
+        cache_layout={"kernels": "${ASTROENGINE_CACHE}/skyfield/de440s"},
+        extras_required=("skyfield", "jplephem"),
+        description="Skyfield DE ephemeris provider with cached kernels.",
+        module="astroengine.providers.skyfield_provider",
+        available=available,
+    )
 
 
 class SkyfieldProvider:
@@ -163,27 +192,42 @@ class SkyfieldProvider:
 
 
 def _register() -> None:
-    if load is not None:
-        try:
-            register_provider("skyfield", SkyfieldProvider())
-        except FileNotFoundError:
-            LOG.info(
-                "skyfield provider registration skipped",
-                extra={"err_code": "SKYFIELD_KERNEL_NOT_FOUND", "provider": "skyfield"},
-                exc_info=True,
-            )
-        except ImportError:
-            LOG.info(
-                "skyfield provider import unavailable",
-                extra={"err_code": "SKYFIELD_IMPORT", "provider": "skyfield"},
-                exc_info=True,
-            )
-        except Exception:
-            LOG.exception(
-                "unexpected skyfield provider registration failure",
-                extra={"err_code": "SKYFIELD_REGISTER_UNEXPECTED", "provider": "skyfield"},
-            )
+    metadata_template = _skyfield_metadata(available=False)
+    if load is None:
+        register_provider_metadata(metadata_template, overwrite=True)
+        return
+
+    try:
+        provider = SkyfieldProvider()
+    except FileNotFoundError:
+        register_provider_metadata(metadata_template, overwrite=True)
+        LOG.info(
+            "skyfield provider registration skipped",
+            extra={"err_code": "SKYFIELD_KERNEL_NOT_FOUND", "provider": "skyfield"},
+            exc_info=True,
+        )
+    except ImportError:
+        register_provider_metadata(metadata_template, overwrite=True)
+        LOG.info(
+            "skyfield provider import unavailable",
+            extra={"err_code": "SKYFIELD_IMPORT", "provider": "skyfield"},
+            exc_info=True,
+        )
+    except Exception:
+        register_provider_metadata(metadata_template, overwrite=True)
+        LOG.exception(
+            "unexpected skyfield provider registration failure",
+            extra={"err_code": "SKYFIELD_REGISTER_UNEXPECTED", "provider": "skyfield"},
+        )
+    else:
+        metadata = replace(metadata_template, available=True)
+        register_provider(
+            "skyfield",
+            provider,
+            metadata=metadata,
+            aliases=("skyfield_ephemeris",),
+        )
 
 
 _register()
-# >>> AUTO-GEN END: AE Skyfield Provider v1.0
+# >>> AUTO-GEN END: AE Skyfield Provider v2.0

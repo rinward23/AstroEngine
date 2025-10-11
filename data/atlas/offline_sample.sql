@@ -24,4 +24,14 @@ VALUES (
     'Europe/London',
     8908081
 );
+INSERT OR REPLACE INTO places (name, country, search_name, latitude, longitude, tzid, population)
+VALUES (
+    'München, Germany',
+    'DE',
+    'munchen germany',
+    48.1374,
+    11.5755,
+    'Europe/Berlin',
+    1471508
+);
 COMMIT;

@@ -19,5 +19,6 @@
 | I-12 | Finalise narrative bundle persistence and templates | Narrative Collective | ✅ Complete | 2024-07-29 | `astroengine/modules/narrative/`, `docs/recipes/narrative_profiles.md` | Narrative outputs composed by `astroengine.narrative.compose_narrative`; verified by `tests/test_narrative_summaries.py` |
 | I-13 | Ship UX overlays with documented data sources | UX & Maps Team | ✅ Complete | 2024-10-05 | `astroengine/modules/ux/`, `docs/module/interop.md` | `docs/module/ux/overlays_data_sources.md`, Solar Fire provenance links |
 | I-14 | Publish developer platform specifications (SDKs, CLI, portal, webhooks) | Developer Experience Guild | ✅ Complete | 2024-05-27 | `sdks/*`, `cli/`, `devportal/`, `openapi/v*.json` | `docs/module/developer_platform.md`, `docs/module/developer_platform/*.md`, updated `SPEC_COMPLETION_PLAN.md` |
+| I-15 | Canonicalise detector outputs against Solar Fire exports | Quality & Release Guilds | ✅ Complete | 2025-10-06 | `tests/golden/detectors/`, `docs-site/docs/fixtures/` | `tests/test_detector_golden_outputs.py`, `docs/module/qa_acceptance.md` |
 
 Future work: add new rows when detectors, providers, or export channels are implemented so progress remains auditable.

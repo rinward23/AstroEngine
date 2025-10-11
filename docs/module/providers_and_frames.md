@@ -28,15 +28,16 @@ These nodes reference the files and documentation described below so the runtime
 - **`EphemerisProvider` Protocol** — providers implement `positions_ecliptic(iso_utc, bodies)` to return longitude/declination maps for every requested body and `position(body, ts_utc)` to expose the canonical `BodyPosition` view. The protocol is intentionally narrow so detectors can rely on the same data shape whether the adapter is Swiss Ephemeris or Skyfield.
 - **Registry helpers** — `register_provider(name, provider)`, `get_provider(name="swiss")`, and `list_providers()` maintain an in-memory catalogue populated during import time. `ensure_sweph_alias()` installs a compatibility shim so downstream code can import `swisseph` even when the host packages it as `pyswisseph`.
 - **Autoregistration** — modules such as `astroengine.providers.skyfield_provider` and `astroengine.providers.swiss_provider` call `register_provider` when their dependencies load successfully. Implementations are encouraged to mirror this behaviour to keep the module → submodule → channel hierarchy intact.
+- **Provider metadata & entrypoints** — `ProviderMetadata` records provenance, supported frames, cache layout, and optional dependency state for each provider while `load_entry_point_providers()` scans the `astroengine.providers` entry-point group. Metadata can be queried with `get_provider_metadata()`/`get_provider_metadata_for_name()` so governance tooling can audit available plugins.
 
 ## Bundled provider plans
 
 Two provider designs ship in Markdown form to document expected behaviour:
 
-- **Skyfield provider** (`astroengine/providers/skyfield_provider.md`): details cache warming for DE440s files, cadence policies (inners ≤6h, outers ≤24h, Moon 1h), light-time handling, and deterministic logging requirements. The notes also specify the metrics/events providers should emit.
+- **Skyfield provider** (`astroengine/providers/skyfield_provider.md`): details cache warming for DE440s files, cadence policies (inners ≤6h, outers ≤24h, Moon 1h), light-time handling, and deterministic logging requirements. The notes also specify the metrics/events providers should emit. The runtime module now registers `skyfield` (aliased as `skyfield_ephemeris`) when local kernels are present and records metadata via `ProviderMetadata` so optional dependency state remains observable. `tests/test_providers.py`, `tests/test_provider_registry_metadata.py`, and `tests/test_providers_module_registry.py` keep the implementation and documentation in lockstep.
 - **Swiss Ephemeris provider** (`astroengine/providers/swe_provider.md`): outlines licensing considerations, dependency checks, delta-T configuration, and parity expectations relative to Skyfield.
 
-The Swiss Ephemeris bridge (`astroengine/providers/swiss_provider.py`) ships today and the Skyfield provider registers itself when local JPL kernels are available. Design notes stay in Markdown form so future adapters (e.g., NASA Spice, HORIZONS) can align with the same provenance expectations before merging into the registry.
+The Swiss Ephemeris bridge (`astroengine/providers/swiss_provider.py`) ships today and the Skyfield provider registers itself when local JPL kernels are available. Both providers publish metadata (available flag, supported bodies, cache layout) even when dependencies are missing so the governance layer can report status via `list_provider_metadata()`. Design notes stay in Markdown form so future adapters (e.g., NASA Spice, HORIZONS) can align with the same provenance expectations before merging into the registry.
 
 ## Coordinate frames and cadences
 
@@ -59,5 +60,17 @@ Topocentric observer configuration (latitude, longitude, elevation) must be acce
 - Environment validation via `python -m astroengine.infrastructure.environment pyswisseph numpy pydantic python-dateutil timezonefinder tzdata pyyaml click rich orjson pyarrow duckdb` should precede provider parity runs to confirm dependency versions.
 - Record revisions to provider configurations and documentation according to `docs/governance/data_revision_policy.md` so provenance remains auditable.
 - Providers must never fabricate values. When a dataset is unavailable (e.g., Solar Fire export missing), raise a provenance error rather than falling back to synthetic numbers.
+
+### Cross-provider parity tolerances
+
+The QA suite exercises representative charts stored at `qa/artifacts/provider_parity/charts.json` and enforces the following tolerances when comparing Skyfield and Swiss Ephemeris outputs:
+
+| Metric | Tolerance |
+| --- | --- |
+| Ecliptic longitude difference | ≤ 2 arcseconds (≈0.00056°) |
+| Declination / ecliptic latitude difference | ≤ 2 arcseconds (≈0.00056°) |
+| Longitudinal speed difference | ≤ 0.02°/day |
+
+Parity fixtures cover mundane, natal, and historical event timestamps to ensure a mix of solar, lunar, and outer-planet alignments. The automated tests under `tests/test_provider_parity.py` load these payloads directly, keeping documented tolerances synchronized with the QA artefacts.
 
 Documenting the provider contract here ensures that future plugins remain compatible with the reworked environment while protecting the module hierarchy from accidental drift.

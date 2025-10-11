@@ -12,7 +12,15 @@ from .metrics import (
     EPHEMERIS_CACHE_HITS,
     EPHEMERIS_CACHE_MISSES,
     EPHEMERIS_SWE_CACHE_HIT_RATIO,
+    PROVIDER_CACHE_HITS,
+    PROVIDER_FAILURES,
+    PROVIDER_QUERIES,
+    PROVIDER_REGISTRATIONS,
+    PROVIDER_REGISTRY_ACTIVE,
+    ProviderMetricRecorder,
     ensure_metrics_registered,
+    get_provider_metrics,
+    register_provider_metrics,
 )
 
 __all__ = [
@@ -24,7 +32,15 @@ __all__ = [
     "EPHEMERIS_CACHE_MISSES",
     "EPHEMERIS_CACHE_COMPUTE_DURATION",
     "EPHEMERIS_SWE_CACHE_HIT_RATIO",
+    "PROVIDER_CACHE_HITS",
+    "PROVIDER_FAILURES",
+    "PROVIDER_QUERIES",
+    "PROVIDER_REGISTRATIONS",
+    "PROVIDER_REGISTRY_ACTIVE",
+    "ProviderMetricRecorder",
     "ensure_metrics_registered",
+    "get_provider_metrics",
+    "register_provider_metrics",
     "DoctorCheck",
     "run_system_doctor",
 ]

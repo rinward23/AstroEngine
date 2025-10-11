@@ -10,6 +10,7 @@ from pathlib import Path
 
 from ....app_api import canonicalize_events, run_scan_or_raise
 from ....detectors.common import enable_cache
+from ....exporters.manifest import ExportManifestBuilder
 from ....exporters_ics import write_ics_canonical
 from ....utils import DEFAULT_TARGET_FRAMES, DETECTOR_NAMES, available_frames
 from ..._compat import cli_legacy_missing_reason
@@ -189,6 +190,7 @@ def run(args: argparse.Namespace) -> int:
     if getattr(args, "cache", False):
         enable_cache(True)
 
+    provider_label = args.provider or "auto"
     provider = args.provider
     if provider == "auto":
         provider = None
@@ -222,6 +224,24 @@ def run(args: argparse.Namespace) -> int:
     canonical_events = canonicalize_events(raw_events)
     records = canonical_events_to_dicts(canonical_events)
 
+    manifest = ExportManifestBuilder(canonical_events)
+    manifest.record_profile(getattr(args, "profile", None))
+    manifest.record_window(args.start_utc, args.end_utc)
+    entry_module, entry_function = used_entrypoint
+    base_meta = {
+        "command": "scan",
+        "entrypoint": f"{entry_module}.{entry_function}",
+        "moving": list(moving),
+        "targets": list(targets),
+        "target_frames": list(frame_selection),
+        "provider": provider_label,
+        "detectors": list(detectors),
+        "step_minutes": step_minutes,
+        "sidereal": args.sidereal,
+        "ayanamsha": args.ayanamsha,
+        "profile": getattr(args, "profile", None),
+    }
+
     if args.export_json:
         try:
             path = Path(args.export_json)
@@ -234,6 +254,14 @@ def run(args: argparse.Namespace) -> int:
         try:
             rows = write_sqlite_canonical(args.export_sqlite, canonical_events)
             print(f"SQLite export complete: {args.export_sqlite} ({rows} rows)")
+            manifest_path = manifest.write(
+                args.export_sqlite,
+                fmt="sqlite",
+                rows=rows,
+                explicit_window=(args.start_utc, args.end_utc),
+                meta=base_meta,
+            )
+            print(f"Manifest written: {manifest_path}")
         except Exception as exc:  # pragma: no cover - dataset I/O issues
             print(f"SQLite export failed ({exc})", file=sys.stderr)
 
@@ -241,6 +269,14 @@ def run(args: argparse.Namespace) -> int:
         try:
             rows = write_parquet_canonical(args.export_parquet, canonical_events)
             print(f"Parquet export complete: {args.export_parquet} ({rows} rows)")
+            manifest_path = manifest.write(
+                args.export_parquet,
+                fmt="parquet",
+                rows=rows,
+                explicit_window=(args.start_utc, args.end_utc),
+                meta=base_meta,
+            )
+            print(f"Manifest written: {manifest_path}")
         except Exception as exc:  # pragma: no cover
             print(f"Parquet export failed ({exc})", file=sys.stderr)
 
@@ -252,6 +288,14 @@ def run(args: argparse.Namespace) -> int:
                 calendar_name=args.ics_title or "AstroEngine Events",
             )
             print(f"ICS export complete: {args.export_ics} ({rows} events)")
+            manifest_path = manifest.write(
+                args.export_ics,
+                fmt="ics",
+                rows=rows,
+                explicit_window=(args.start_utc, args.end_utc),
+                meta={**base_meta, "calendar_name": args.ics_title or "AstroEngine Events"},
+            )
+            print(f"Manifest written: {manifest_path}")
         except Exception as exc:  # pragma: no cover - ICS I/O issues
             print(f"ICS export failed ({exc})", file=sys.stderr)
 
@@ -261,10 +305,26 @@ def run(args: argparse.Namespace) -> int:
         print(
             f"SQLite export complete: {args.sqlite} ({canonical_written['sqlite']} rows)"
         )
+        manifest_path = manifest.write(
+            args.sqlite,
+            fmt="sqlite",
+            rows=canonical_written["sqlite"],
+            explicit_window=(args.start_utc, args.end_utc),
+            meta=base_meta,
+        )
+        print(f"Manifest written: {manifest_path}")
     if canonical_written.get("parquet"):
         print(
             f"Parquet export complete: {args.parquet} ({canonical_written['parquet']} rows)"
         )
+        manifest_path = manifest.write(
+            args.parquet,
+            fmt="parquet",
+            rows=canonical_written["parquet"],
+            explicit_window=(args.start_utc, args.end_utc),
+            meta=base_meta,
+        )
+        print(f"Manifest written: {manifest_path}")
 
     table = format_event_table(canonical_events)
     module_name, func_name = used_entrypoint
