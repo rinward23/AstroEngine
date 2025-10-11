@@ -8,6 +8,7 @@ from importlib import metadata as importlib_metadata
 from typing import Any, Protocol
 
 from ..canonical import BodyPosition
+from ..observability.metrics import register_provider_metrics
 from .se_fixedstars import get_star_lonlat as get_star_lonlat
 from .sweph_bridge import ensure_sweph_alias
 
