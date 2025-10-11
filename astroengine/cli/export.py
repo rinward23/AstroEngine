@@ -16,6 +16,7 @@ from astroengine.visual import (
     export_multiwheel,
 )
 
+from ..exporters.manifest import ExportManifestBuilder
 from ..exporters_batch import export_parquet_dataset
 
 
@@ -174,11 +175,25 @@ def run(args: argparse.Namespace) -> int:
         print(f"failed to load input events: {exc}", file=sys.stderr)
         return 1
 
+    manifest = ExportManifestBuilder()
+    event_stream = manifest.wrap(events)
     try:
-        written = export_parquet_dataset(args.out, events)
+        written = export_parquet_dataset(args.out, event_stream)
     except Exception as exc:  # pragma: no cover - dataset I/O issues are reported
         print(f"export failed: {exc}", file=sys.stderr)
         return 1
 
+    meta = {
+        "command": "export",
+        "input": args.input,
+        "input_format": args.format,
+    }
+    manifest_path = manifest.write(
+        args.out,
+        fmt="parquet",
+        rows=written,
+        meta=meta,
+    )
     print(f"wrote {written} events to {args.out}")
+    print(f"manifest written to {manifest_path}")
     return 0
