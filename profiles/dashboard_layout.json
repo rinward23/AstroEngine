@@ -1,0 +1,14 @@
+{
+  "default": {
+    "dashboard_bottom_split": 0.5,
+    "dashboard_column_ratio": 0.65,
+    "dashboard_slot_height": 420,
+    "dashboard_slots": {
+      "Bottom Left": "astro_map",
+      "Bottom Right": "aspect_grid",
+      "Top Left": "chart_wheel",
+      "Top Right": "timeline"
+    },
+    "dashboard_top_split": 0.5
+  }
+}

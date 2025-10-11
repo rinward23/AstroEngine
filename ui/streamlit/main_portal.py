@@ -49,13 +49,101 @@ DEFAULT_LAYOUT = {
 }
 
 
+def _default_layout_payload() -> dict[str, Any]:
+    """Return a fresh copy of the built-in dashboard layout profile."""
+
+    return {
+        "dashboard_slots": DEFAULT_LAYOUT.copy(),
+        "dashboard_column_ratio": 0.65,
+        "dashboard_top_split": 0.5,
+        "dashboard_bottom_split": 0.5,
+        "dashboard_slot_height": 420,
+    }
+
+
+LAYOUT_VALUE_KEYS = (
+    "dashboard_column_ratio",
+    "dashboard_top_split",
+    "dashboard_bottom_split",
+    "dashboard_slot_height",
+)
+
+
+def _apply_layout_to_session(layout: Mapping[str, Any], *, name: str | None = None) -> None:
+    """Populate Streamlit session state with values from a saved layout."""
+
+    slots = layout.get("dashboard_slots") if isinstance(layout, Mapping) else None
+    if isinstance(slots, Mapping):
+        merged_slots = {slot: DEFAULT_LAYOUT.get(slot, "Empty") for slot in DEFAULT_LAYOUT}
+        merged_slots.update({slot: str(value) for slot, value in slots.items()})
+        st.session_state.dashboard_slots = merged_slots
+
+    for key in LAYOUT_VALUE_KEYS:
+        if key in layout:
+            st.session_state[key] = layout[key]
+
+    if name:
+        st.session_state.dashboard_layout_name = name
+        st.session_state.dashboard_layout_selector = name
+
+
+def _load_selected_layout() -> None:
+    """Callback for the layout selector to swap between saved presets."""
+
+    selected = st.session_state.get("dashboard_layout_selector")
+    if not selected:
+        return
+
+    selected = selected.strip() or DEFAULT_LAYOUT_NAME
+    current = (st.session_state.get("dashboard_layout_name") or "").strip()
+    if selected == current:
+        return
+
+    if selected == DEFAULT_LAYOUT_NAME:
+        layout = _default_layout_payload()
+    else:
+        layout = load_layout(selected)
+    if layout is None:
+        st.session_state["dashboard_layout_error"] = f"Layout '{selected}' is not available."
+        if current:
+            st.session_state.dashboard_layout_selector = current
+        return
+
+    _apply_layout_to_session(layout, name=selected)
+    st.session_state["dashboard_layout_message"] = f"Loaded layout '{selected}'."
+    st.experimental_rerun()
+
+
 def _init_dashboard_state() -> None:
+    layout_name = st.session_state.setdefault("dashboard_layout_name", DEFAULT_LAYOUT_NAME)
+    st.session_state.setdefault("dashboard_layout_selector", layout_name)
+
+    if layout_name == DEFAULT_LAYOUT_NAME:
+        saved_layout: Mapping[str, Any] | None = _default_layout_payload()
+    else:
+        saved_layout = load_layout(layout_name)
+        if saved_layout is None and "dashboard_slots" not in st.session_state:
+            st.session_state["dashboard_layout_error"] = (
+                f"Layout '{layout_name}' could not be loaded. Defaults applied."
+            )
+            layout_name = DEFAULT_LAYOUT_NAME
+            st.session_state.dashboard_layout_name = DEFAULT_LAYOUT_NAME
+            st.session_state.dashboard_layout_selector = DEFAULT_LAYOUT_NAME
+            saved_layout = _default_layout_payload()
+
+    if saved_layout:
+        if "dashboard_slots" not in st.session_state:
+            _apply_layout_to_session(saved_layout, name=layout_name)
+        else:
+            for key in LAYOUT_VALUE_KEYS:
+                if key not in st.session_state and key in saved_layout:
+                    st.session_state[key] = saved_layout[key]
+
+    defaults = _default_layout_payload()
     if "dashboard_slots" not in st.session_state:
-        st.session_state.dashboard_slots = DEFAULT_LAYOUT.copy()
-    st.session_state.setdefault("dashboard_column_ratio", 0.65)
-    st.session_state.setdefault("dashboard_top_split", 0.5)
-    st.session_state.setdefault("dashboard_bottom_split", 0.5)
-    st.session_state.setdefault("dashboard_slot_height", 420)
+        st.session_state.dashboard_slots = defaults["dashboard_slots"]
+    for key in LAYOUT_VALUE_KEYS:
+        st.session_state.setdefault(key, defaults[key])
 
 
 def _slot_selector(slot: str, categories: list[str], panes: dict[str, PaneSpec]) -> None:
@@ -113,7 +201,96 @@ def _layout_toolbar(panes: dict[str, PaneSpec]) -> None:
     with st.container():
         toolbar = st.container()
         with toolbar:
+            if message := st.session_state.pop("dashboard_layout_message", None):
+                st.success(message)
+            if error := st.session_state.pop("dashboard_layout_error", None):
+                st.error(error)
+
             st.markdown('<div class="dashboard-toolbar">', unsafe_allow_html=True)
+            available_layouts = list_layouts()
+            selector_default = (
+                st.session_state.get("dashboard_layout_selector")
+                or st.session_state.get("dashboard_layout_name")
+                or (available_layouts[0] if available_layouts else DEFAULT_LAYOUT_NAME)
+            )
+            if selector_default and selector_default not in available_layouts:
+                available_layouts = [*available_layouts, selector_default]
+            seen: set[str] = set()
+            ordered_layouts: list[str] = []
+            for name in available_layouts:
+                if name not in seen:
+                    seen.add(name)
+                    ordered_layouts.append(name)
+            if DEFAULT_LAYOUT_NAME in seen:
+                ordered_layouts = [
+                    DEFAULT_LAYOUT_NAME,
+                    *[name for name in ordered_layouts if name != DEFAULT_LAYOUT_NAME],
+                ]
+            available_layouts = ordered_layouts
+            selector_default = selector_default or (
+                available_layouts[0] if available_layouts else DEFAULT_LAYOUT_NAME
+            )
+            st.session_state.setdefault("dashboard_layout_selector", selector_default)
+            st.session_state.setdefault("dashboard_layout_name", selector_default)
+            selector_index = (
+                available_layouts.index(st.session_state.get("dashboard_layout_selector", selector_default))
+                if available_layouts
+                and st.session_state.get("dashboard_layout_selector", selector_default) in available_layouts
+                else 0
+            )
+
+            control_cols = st.columns([3, 1, 1])
+            with control_cols[0]:
+                st.selectbox(
+                    "Saved layouts",
+                    options=available_layouts,
+                    index=selector_index,
+                    key="dashboard_layout_selector",
+                    on_change=_load_selected_layout,
+                    help="Switch between saved dashboard presets stored on disk.",
+                )
+                st.text_input(
+                    "Layout name",
+                    key="dashboard_layout_name",
+                    help="Name used when saving the current configuration.",
+                )
+            with control_cols[1]:
+                if st.button("💾 Save layout", use_container_width=True):
+                    layout_name = (
+                        st.session_state.get("dashboard_layout_name", DEFAULT_LAYOUT_NAME).strip()
+                    )
+                    if not layout_name:
+                        st.session_state["dashboard_layout_error"] = "Provide a name before saving the layout."
+                    else:
+                        slots = st.session_state.get("dashboard_slots")
+                        layout_payload = {
+                            "dashboard_slots": dict(slots)
+                            if isinstance(slots, dict)
+                            else DEFAULT_LAYOUT.copy(),
+                            "dashboard_column_ratio": float(
+                                st.session_state.get("dashboard_column_ratio", 0.65)
+                            ),
+                            "dashboard_top_split": float(
+                                st.session_state.get("dashboard_top_split", 0.5)
+                            ),
+                            "dashboard_bottom_split": float(
+                                st.session_state.get("dashboard_bottom_split", 0.5)
+                            ),
+                            "dashboard_slot_height": int(
+                                st.session_state.get("dashboard_slot_height", 420)
+                            ),
+                        }
+                        save_layout(layout_name, layout_payload)
+                        st.session_state.dashboard_layout_selector = layout_name
+                        st.session_state.dashboard_layout_name = layout_name
+                        st.session_state["dashboard_layout_message"] = f"Saved layout '{layout_name}'."
+                        st.experimental_rerun()
+            with control_cols[2]:
+                if st.button("↩️ Reset to defaults", use_container_width=True):
+                    _apply_layout_to_session(_default_layout_payload(), name=DEFAULT_LAYOUT_NAME)
+                    st.session_state["dashboard_layout_message"] = "Layout reset to defaults."
+                    st.experimental_rerun()
+
             ratio_col, height_col = st.columns([3, 2])
             with ratio_col:
                 st.slider(
