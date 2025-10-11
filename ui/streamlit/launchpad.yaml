@@ -1,0 +1,72 @@
+- key: chart_library
+  title: "Chart Library"
+  description: "Browse saved charts, manage tags, and open records in downstream tools."
+  path: "ui/streamlit/chart_library.py"
+  category: "Core Workflows"
+  tags:
+    - charts
+    - catalog
+- key: profiles_manager
+  title: "Profiles Manager"
+  description: "Curate natal and relationship profiles, attach metadata, and sync with the API registry."
+  path: "ui/streamlit/profiles_manager.py"
+  category: "Core Workflows"
+  tags:
+    - profiles
+    - registry
+- key: narrative_profiles
+  title: "Narrative Profiles"
+  description: "Author and review narrative templates that back report generation and the copilot."
+  path: "ui/streamlit/narrative_profiles_manager.py"
+  category: "Narrative"
+  tags:
+    - writing
+    - reports
+- key: vedic_app
+  title: "Vedic Workspace"
+  description: "Inspect Parasara dignities, karakas, and gochara overlays with live Swiss ephemeris data."
+  path: "ui/streamlit/vedic_app.py"
+  category: "Astrology Labs"
+  tags:
+    - vedic
+    - dignities
+- key: relationship_lab
+  title: "Relationship Lab"
+  description: "Run synastry composites, Davison charts, and compatibility diagnostics from curated datasets."
+  path: "ui/streamlit/pages/11_Relationship_Lab.py"
+  category: "Astrology Labs"
+  tags:
+    - synastry
+    - composites
+- key: lots_sandbox
+  title: "Lots Sandbox"
+  description: "Experiment with classical lots and Arabic parts with adjustable formulas and provenance notes."
+  path: "ui/streamlit/pages/08_Lots_Sandbox.py"
+  category: "Astrology Labs"
+  tags:
+    - traditional
+    - lots
+- key: astrocartography
+  title: "Astrocartography Map"
+  description: "Project planetary lines on an interactive globe and export routes for travel planning."
+  path: "ui/streamlit/10_Astrocartography_Map.py"
+  category: "Geospatial"
+  tags:
+    - mapping
+    - travel
+- key: system_doctor
+  title: "System Doctor"
+  description: "Audit API health, dependency versions, and runtime telemetry to troubleshoot deployments."
+  path: "ui/streamlit/pages/13_System_Doctor.py"
+  category: "Diagnostics"
+  tags:
+    - health
+    - support
+- key: event_explorer
+  title: "Event Explorer"
+  description: "Review forecast timelines, progressions, and ingress hits across saved scenarios."
+  path: "ui/streamlit/pages/06_Event_Explorer.py"
+  category: "Core Workflows"
+  tags:
+    - timelines
+    - forecasting

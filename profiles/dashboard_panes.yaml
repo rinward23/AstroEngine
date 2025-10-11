@@ -1,0 +1,6 @@
+# Dashboard pane overrides live here. See docs/profiles.md for details.
+# Provide a list of pane definitions, for example:
+# - id: custom_weather
+#   label: Weather Radar
+#   category: Geospatial
+#   renderer: my_package.streamlit:render_weather

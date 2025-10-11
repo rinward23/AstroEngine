@@ -11,12 +11,15 @@ from ...esoteric import (
     I_CHING_HEXAGRAMS,
     MASTER_NUMBERS,
     NUMEROLOGY_NUMBERS,
+    chakra_correspondences,
     SEVEN_RAYS,
     TAROT_COURTS,
     TAROT_MAJORS,
     TAROT_SPREADS,
+    chakra_correspondences,
     TREE_OF_LIFE_PATHS,
     TREE_OF_LIFE_SEPHIROTH,
+    chakra_correspondences,
 )
 from ..registry import AstroRegistry
 
