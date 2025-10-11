@@ -1,0 +1,40 @@
+name: Solar Fire parity
+
+on:
+  pull_request:
+    paths:
+      - 'astroengine/detectors/**'
+      - 'astroengine/modules/event_detectors/**'
+      - 'qa/artifacts/solarfire/**'
+      - 'qa/validation/**'
+      - 'docs/module/event-detectors/**'
+      - 'docs/module/qa_acceptance.md'
+  push:
+    branches:
+      - main
+    paths:
+      - 'astroengine/detectors/**'
+      - 'astroengine/modules/event_detectors/**'
+      - 'qa/artifacts/solarfire/**'
+      - 'qa/validation/**'
+      - 'docs/module/event-detectors/**'
+      - 'docs/module/qa_acceptance.md'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Verify Solar Fire hashes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate Solar Fire report hashes
+        run: |
+          set -euxo pipefail
+          python -m qa.validation.report check-solarfire
