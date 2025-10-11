@@ -36,6 +36,18 @@ def test_geocode_offline_sample_city(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     assert result["lon"] == pytest.approx(-0.1278, abs=1e-4)
 
 
+def test_geocode_offline_transliteration(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    db_path = _materialize_offline_sample(tmp_path)
+    settings = _offline_settings(db_path)
+    monkeypatch.setattr("astroengine.geo.atlas.load_settings", lambda: settings)
+
+    result = geocode("München, Germany")
+    assert result["name"] == "München, Germany"
+    assert result["tz"] == "Europe/Berlin"
+    assert result["lat"] == pytest.approx(48.1374, abs=1e-4)
+    assert result["lon"] == pytest.approx(11.5755, abs=1e-4)
+
+
 def test_geocode_offline_missing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     db_path = tmp_path / "missing.sqlite"
     settings = _offline_settings(db_path)
@@ -61,9 +73,10 @@ def test_geocode_uses_online_when_enabled(monkeypatch: pytest.MonkeyPatch) -> No
 
     calls: dict[str, int] = {"count": 0}
 
-    def _fake_online(query: str) -> GeocodeResult:  # type: ignore[name-defined]
+    def _fake_online(query: str, components=None) -> GeocodeResult:  # type: ignore[name-defined]
         calls["count"] += 1
-        return {"name": query.title(), "lat": 1.0, "lon": 2.0, "tz": "UTC"}
+        normalised = components.normalised_query() if components else query
+        return {"name": normalised.title(), "lat": 1.0, "lon": 2.0, "tz": "UTC"}
 
     monkeypatch.setattr("astroengine.geo.atlas._geocode_online", _fake_online)
 

@@ -57,12 +57,21 @@ def register_providers_module(registry: AstroRegistry) -> None:
     plugins.register_subchannel(
         "skyfield",
         metadata={
-            "description": "Skyfield DE ephemeris provider plan (implementation pending).",
-            "status": "planned",
+            "description": "Skyfield DE ephemeris provider leveraging cached DE kernels.",
+            "status": "active",
+            "tests": [
+                "tests/test_providers.py",
+                "tests/test_provider_registry_metadata.py",
+                "tests/test_providers_module_registry.py",
+            ],
         },
         payload={
             "design_notes": "astroengine/providers/skyfield_provider.md",
-            "datasets": ["astroengine/providers/skyfield_kernels.py"],
+            "module": "astroengine.providers.skyfield_provider",
+            "datasets": [
+                "astroengine/providers/skyfield_kernels.py",
+                "docs/module/providers_and_frames.md",
+            ],
         },
     )
 

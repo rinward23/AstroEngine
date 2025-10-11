@@ -3,7 +3,8 @@ services:
     build:
       context: .
     image: astroengine:latest
-    command: astroengine-api
+    command:
+      - serve-api
     environment:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATABASE_URL: ${DATABASE_URL:-sqlite+pysqlite:////data/dev.db}
@@ -22,7 +23,12 @@ services:
 
   ui:
     image: astroengine:latest
-    command: astroengine-streamlit --server.address 0.0.0.0 --server.port 8501
+    command:
+      - serve-ui
+      - --server.address
+      - 0.0.0.0
+      - --server.port
+      - "8501"
     depends_on:
       api:
         condition: service_healthy
@@ -47,7 +53,11 @@ services:
     profiles:
       - tools
     image: astroengine:latest
-    command: sleep infinity
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - sleep infinity
     environment:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATABASE_URL: ${DATABASE_URL:-sqlite+pysqlite:////data/dev.db}

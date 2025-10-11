@@ -136,7 +136,7 @@ Desktop shortcut for **Start AstroEngine** is offered via checkbox (default on).
 ## 12. Documentation & Support Deliverables
 
 - Update `docs/DEV_SETUP.md` with reference to installer for Windows users.
-- Author `docs/runbook/windows_installer_support.md` (future work) covering troubleshooting steps, log locations, repair instructions.
+- Reference [`docs/runbook/windows_installer_support.md`](../../../../runbook/windows_installer_support.md) for troubleshooting steps, log locations, and repair instructions.
 - Provide FAQ entry for Swiss Ephemeris import and dataset integrity commitments.
 
 ## 13. Open Questions

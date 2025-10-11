@@ -16,7 +16,7 @@ This plan captures the checks that must pass before shipping changes to the runt
 1. Create or activate a virtual environment and install dependencies via `pip install -e .[dev]`.
 2. Capture an environment report with `python -m astroengine.infrastructure.environment pyswisseph numpy pydantic python-dateutil timezonefinder tzdata pyyaml click rich orjson pyarrow duckdb`; attach the JSON output to QA notes when publishing releases.
 3. Run `pytest` to execute the automated suite. The current tests are fast (≪1 s) and provide coverage for schemas, registry wiring, profiles, and scoring helpers.
-4. For any changes impacting ephemeris or scoring, generate a Solar Fire comparison report (CSV or PDF) and capture the checksum alongside the QA artefacts. This proves runtime output matches the external benchmark.
+4. For any changes impacting ephemeris or scoring, generate a Solar Fire comparison report (CSV or PDF) and capture the checksum alongside the QA artefacts. Hashes for the committed parity bundle live in `qa/artifacts/solarfire/expectations.json` and can be re-verified with `python -m qa.validation.report check-solarfire`.
 
 ## Automated test inventory
 
@@ -31,15 +31,21 @@ This plan captures the checks that must pass before shipping changes to the runt
 | `tests/test_result_schema.py` | Validates the run result schema using `astroengine.validation.validate_payload`. | Confirms required fields and nested structures. |
 | `tests/test_contact_gate_schema.py` | Performs the same checks for contact gate decisions. | Prevents incompatible gate payloads from shipping. |
 | `tests/test_sanity.py` | Placeholder guard that keeps the suite green even when no other tests run. | Should remain trivial and quick. |
-| `tests/perf/test_detectors_bench.py` | Benchmarks core detector families against Swiss Ephemeris baselines. | CI fails when mean/median latencies regress by more than 25 %. |
+| `tests/test_provider_parity.py` | Cross-validates Skyfield and Swiss Ephemeris results using shared QA fixtures. | Loads `qa/artifacts/provider_parity/charts.json` and enforces tolerances documented in `docs/module/providers_and_frames.md`. |
+
+## Solar Fire parity verification
+
+- Solar Fire comparison artefacts are stored under `qa/artifacts/solarfire/<YYYY-MM-DD>/`. The canonical hash expectations for the active bundle live at `qa/artifacts/solarfire/expectations.json`.
+- Run `python -m qa.validation.report check-solarfire` to compare the committed reports against the recorded hashes. The helper prints the digests when they match and fails with a diff when mismatches occur.
+- CI enforces this check through `.github/workflows/solarfire-parity.yml`, which runs whenever detector modules or Solar Fire artefacts change. Update the expectations file only after regenerating the reports from verified Solar Fire exports.
 
 ## Future additions
 
 As additional modules come online (e.g., event detectors, provider parity suites), extend this plan with:
 
 - Golden dataset comparisons for detector outputs.
-- Extend performance coverage to additional detector families as they land (e.g., house ingresses once production datasets are wired in).
-- Cross-provider parity tests once both Skyfield and Swiss Ephemeris implementations are available.
+- Performance benchmarks with clearly documented thresholds.
+- Maintain cross-provider parity tests to ensure Skyfield and Swiss Ephemeris remain within the documented tolerances (`tests/test_provider_parity.py`).
 - Documentation of new QA artefacts in `docs/burndown.md` and, when data changes, entries in `docs/governance/data_revision_policy.md`.
 - Automated verification that Solar Fire comparison reports match the runtime output for a rolling sample of charts (store hashes for each report).
 

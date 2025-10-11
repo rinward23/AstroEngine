@@ -48,12 +48,14 @@ Each entry points to the datasets listed below with provenance metadata taken di
 
 ### `profiles/fixed_stars.csv`
 
-- **Purpose**: Provides FK6-derived longitude/declination positions, magnitudes, and orb widths for bright fixed stars referenced
-  by the future fixed-star detector channel.
-- **Origins**: Solar Fire “Bright Stars” catalogue (Hipparcos/ FK6 reduction). The `provenance` column records the export file
-  hash and capture date.
-- **Structure**: Primary key `star_id`; includes columns for `ra_deg`, `dec_deg`, `ecliptic_longitude_deg`, `epoch`,
-  `orb_default_deg`, and `orb_mag_le_1_deg`. These values feed the `fixed_star_orbs_deg` block in `profiles/base_profile.yaml`.
+- **Purpose**: Provides FK6-derived longitude/declination positions, magnitudes, and orb widths for the fixed-star detector
+  channel.
+- **Origins**: Solar Fire “Bright Stars” catalogue (Hipparcos/FK6 reduction) cross-referenced with the HYG Database v4.1 commit
+  `c7f7f883fe678cc7680169a50ccd7dcc49b060ce` (CC-BY-SA 4.0). The `provenance` column records the HIP identifier, upstream
+  source hashes, and the obliquity constant used when converting equatorial to ecliptic coordinates.
+- **Structure**: Primary key `star_id`; includes columns for `ra_deg`, `dec_deg`, `ecliptic_longitude_deg`,
+  `ecliptic_latitude_deg`, `epoch`, `magnitude`, `orb_default_deg`, and `orb_mag_le_1_deg`. The table currently lists 286 stars
+  brighter than V = 4.5 and feeds the `fixed_star_orbs_deg` block in `profiles/base_profile.yaml`.
 - **Integrity**: When a new catalogue is imported, compute a SHA-256 checksum, store it in the CSV, and index the dataset in
   SQLite if it grows beyond a few hundred rows. Document the import command and verification steps in the revision log.
 

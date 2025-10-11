@@ -41,7 +41,7 @@ The items below describe what "spec complete" means for the assets currently tra
 
 ## F. Future work tracking
 
-- Planned detectors and provider implementations are documented but not yet shipped. Leave placeholders in the documentation and update this definition once the corresponding code and tests land.
+- Planned detectors and provider implementations documented in the original plan are now implemented. Keep registry wiring (`astroengine/modules/event_detectors/__init__.py`, `astroengine/modules/providers/__init__.py`) in sync with documentation and tests such as `tests/test_event_detectors_module_registry.py`, `tests/test_provider_registry_metadata.py`, and `tests/test_providers_module_registry.py` whenever new features land.
 - Any newly introduced feature must add:
   1. Documentation under `docs/module/`.
   2. QA coverage under `tests/`.

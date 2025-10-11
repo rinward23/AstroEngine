@@ -1,0 +1,99 @@
+{
+  "$id": "https://astro.engine/schemas/shadow_period_event_v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Shadow Period Event",
+  "description": "Schema for astroengine.events.ShadowPeriod payloads emitted by the stations.shadow detector.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ts",
+    "jd",
+    "body",
+    "kind",
+    "end_ts",
+    "end_jd",
+    "retrograde_station_ts",
+    "retrograde_station_jd",
+    "retrograde_longitude",
+    "direct_station_ts",
+    "direct_station_jd",
+    "direct_longitude",
+    "start_longitude",
+    "end_longitude"
+  ],
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Start timestamp for the shadow interval in ISO-8601 UTC."
+    },
+    "jd": {
+      "type": "number",
+      "description": "Julian day number at the start of the shadow interval."
+    },
+    "body": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_\-]*$",
+      "description": "Identifier for the transiting body (lowercase by convention)."
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "pre",
+        "post"
+      ],
+      "description": "Whether the window precedes the retrograde station or follows the direct station."
+    },
+    "end_ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "End timestamp for the shadow interval in ISO-8601 UTC."
+    },
+    "end_jd": {
+      "type": "number",
+      "description": "Julian day number at the end of the shadow interval."
+    },
+    "retrograde_station_ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the retrograde station anchoring the shadow window."
+    },
+    "retrograde_station_jd": {
+      "type": "number",
+      "description": "Julian day number of the retrograde station."
+    },
+    "retrograde_longitude": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360,
+      "description": "Ecliptic longitude at the retrograde station in degrees (0–360)."
+    },
+    "direct_station_ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the direct station paired with the shadow window."
+    },
+    "direct_station_jd": {
+      "type": "number",
+      "description": "Julian day number of the direct station."
+    },
+    "direct_longitude": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360,
+      "description": "Ecliptic longitude at the direct station in degrees (0–360)."
+    },
+    "start_longitude": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360,
+      "description": "Longitude where the shadow window begins (matches the direct station longitude for post windows)."
+    },
+    "end_longitude": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360,
+      "description": "Longitude where the shadow window ends (matches the retrograde station longitude for pre windows)."
+    }
+  }
+}

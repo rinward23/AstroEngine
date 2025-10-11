@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+import math
 from typing import Any
 from zoneinfo import ZoneInfo
 
 import streamlit as st
 
+from astroengine.atlas.bundle_manager import default_bundle_manager
+from astroengine.atlas.geocoder import heatmap_hints
 from astroengine.geo import geocode
 
 
@@ -170,4 +173,59 @@ def location_picker(
         else:
             container.caption(f"{selection['name']} — {tzid or 'Unknown timezone'}")
 
+        lat = float(selection.get("lat", 0.0))
+        lon = float(selection.get("lon", 0.0))
+        hints = heatmap_hints(lat, lon)
+        if hints:
+            _prefetch_tiles(lat, lon)
+            try:  # pragma: no cover - optional dependency path
+                import pydeck as pdk
+
+                layer = pdk.Layer(
+                    "HeatmapLayer",
+                    hints,
+                    get_position="[lon, lat]",
+                    get_weight="weight",
+                    radius_pixels=60,
+                )
+                view_state = pdk.ViewState(latitude=lat, longitude=lon, zoom=7)
+                container.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state))
+            except Exception:
+                container.table(hints)
+            stats = _TILE_CACHE.stats
+            container.caption(
+                f"Tile cache — hits {stats.hits}, misses {stats.misses}, hit rate {stats.hit_rate:.0%}"
+            )
+
     return selection
+_TILE_CACHE = default_bundle_manager().tile_cache()
+
+
+def _tile_coords(lat: float, lon: float, zoom: int) -> tuple[int, int]:
+    lat_clamped = max(min(lat, 85.05112878), -85.05112878)
+    lat_rad = math.radians(lat_clamped)
+    n = 2**zoom
+    x = int((lon + 180.0) / 360.0 * n)
+    y = int((1.0 - math.log(math.tan(lat_rad) + 1 / math.cos(lat_rad)) / math.pi) / 2.0 * n)
+    return max(x, 0), max(y, 0)
+
+
+def _tile_loader(tile_id: tuple[str, int, int, int]) -> dict[str, object]:
+    layer, zoom, x, y = tile_id
+    return {
+        "layer": layer,
+        "z": zoom,
+        "x": x,
+        "y": y,
+        "fetched_at": datetime.now(UTC).isoformat(),
+    }
+
+
+def _prefetch_tiles(lat: float, lon: float) -> None:
+    tile_ids: list[tuple[str, int, int, int]] = []
+    for zoom in (5, 7, 9):
+        x, y = _tile_coords(lat, lon, zoom)
+        for dx in range(-1, 2):
+            for dy in range(-1, 2):
+                tile_ids.append(("atlas", zoom, x + dx, y + dy))
+    _TILE_CACHE.prefetch(tile_ids, _tile_loader)
