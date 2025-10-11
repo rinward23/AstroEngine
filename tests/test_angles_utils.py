@@ -41,6 +41,20 @@ def test_signed_delta_produces_expected_range():
     assert -180.0 <= signed_delta(720.0) < 180.0
 
 
+@pytest.mark.parametrize(
+    ("angle", "expected"),
+    [
+        (181.0, -179.0),
+        (-1, -1.0),
+        (180, -180.0),
+    ],
+)
+def test_signed_delta_specific_inputs(angle: float, expected: float) -> None:
+    """Representative values exercise the wrap-around branches."""
+
+    assert signed_delta(angle) == pytest.approx(expected)
+
+
 def test_angle_tracker_continuity():
     tracker = AngleTracker()
     values = [359.0, 1.0, 2.0]
