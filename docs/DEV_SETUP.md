@@ -37,3 +37,11 @@ pip install -e .[fallback-ephemeris]
 ```
 
 # >>> AUTO-GEN END: AstroEngine Dev Setup Guide v1.0
+
+## Windows installer path
+
+For per-user Windows setups that should mirror production environments,
+use the one-click installer described in the
+[Windows Installer Support Runbook](runbook/windows_installer_support.md).
+That guide details log locations, silent install flags, and the repair
+flow support should follow when issues arise.
