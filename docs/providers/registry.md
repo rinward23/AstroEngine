@@ -4,6 +4,10 @@
 PURPOSE
   - Document discovery, configuration, and conformance expectations for provider plugins exposed through the ``astroengine.providers`` entry-point group.
 
+IMPLEMENTATION STATUS
+  - `astroengine/providers/__init__.py` implements `ProviderMetadata`, `ProviderError`, alias-aware registration helpers, and `load_entry_point_providers()`.
+  - Metadata availability is exercised by `tests/test_provider_registry_metadata.py` while registry wiring for module metadata lives in `tests/test_providers_module_registry.py`.
+
 ENTRY POINT CONTRACT
   - Group: ``astroengine.providers``.
   - Each entry point must expose a callable ``load() -> EphemerisProvider``.
