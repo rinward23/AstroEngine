@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from astroengine.ephemeris.swe import has_swe
 
-_HAS_SWE = has_swe()
-
 from ..events import IngressEvent
+from ..profiles.profiles import load_base_profile
 from .common import body_lon, delta_deg, jd_to_iso, norm360, solve_zero_crossing
+
+_HAS_SWE = has_swe()
 
 __all__ = [
     "ZODIAC_SIGNS",
@@ -38,10 +40,8 @@ ZODIAC_SIGNS: Sequence[str] = (
 )
 
 
-_DEFAULT_BODIES: Sequence[str] = (
+_BASE_CORE_BODIES: tuple[str, ...] = (
     "sun",
-    "mercury",
-    "venus",
     "mars",
     "jupiter",
     "saturn",
@@ -52,10 +52,89 @@ _DEFAULT_BODIES: Sequence[str] = (
 
 
 @dataclass(frozen=True)
+class _IngressPolicy:
+    """Lightweight container for ingress feature toggles."""
+
+    enabled: bool = True
+    include_moon: bool = False
+    inner_mode: str = "angles_only"
+
+
+@dataclass(frozen=True)
 class _Sample:
 
     jd: float
     longitude: float
+
+
+def _policy_from_mapping(payload: Mapping[str, Any] | None) -> _IngressPolicy:
+    if not isinstance(payload, Mapping):
+        return _IngressPolicy()
+
+    include_moon = bool(payload.get("include_moon", False))
+    inner_mode_raw = str(payload.get("inner_mode", "angles_only") or "angles_only")
+    inner_mode = inner_mode_raw.strip().lower()
+    if inner_mode not in {"always", "angles_only"}:
+        inner_mode = "angles_only"
+    enabled = bool(payload.get("enabled", True))
+    return _IngressPolicy(enabled=enabled, include_moon=include_moon, inner_mode=inner_mode)
+
+
+def _ingress_policy(profile: Mapping[str, Any] | None = None) -> _IngressPolicy:
+    if profile is None:
+        try:
+            profile = load_base_profile()
+        except Exception:
+            profile = None
+
+    feature_flags = (
+        profile.get("feature_flags")
+        if isinstance(profile, Mapping)
+        else None
+    )
+    ingresses = (
+        feature_flags.get("ingresses")
+        if isinstance(feature_flags, Mapping)
+        else None
+    )
+    return _policy_from_mapping(ingresses)
+
+
+def _resolve_policy(
+    *,
+    include_moon: bool | None,
+    inner_mode: str | None,
+    profile: Mapping[str, Any] | None,
+) -> _IngressPolicy:
+    policy = _ingress_policy(profile)
+    if include_moon is not None:
+        policy = _IngressPolicy(
+            enabled=policy.enabled,
+            include_moon=bool(include_moon),
+            inner_mode=policy.inner_mode,
+        )
+    if inner_mode is not None:
+        mode = str(inner_mode or "").strip().lower()
+        if mode not in {"always", "angles_only"}:
+            raise ValueError(
+                "inner_mode must be 'always' or 'angles_only'"
+            )
+        policy = _IngressPolicy(
+            enabled=policy.enabled,
+            include_moon=policy.include_moon,
+            inner_mode=mode,
+        )
+    return policy
+
+
+def _default_bodies(policy: _IngressPolicy) -> tuple[str, ...]:
+    bodies: list[str] = [*_BASE_CORE_BODIES]
+    if policy.include_moon:
+        bodies.insert(1, "moon")
+    if policy.inner_mode == "always":
+        bodies.insert(1, "venus")
+        bodies.insert(1, "mercury")
+    return tuple(dict.fromkeys(bodies))
 
 
 def sign_index(longitude: float) -> int:
@@ -180,81 +259,41 @@ def find_sign_ingresses(
     end_jd: float,
     *,
     bodies: Sequence[str] | None = None,
+    include_moon: bool | None = None,
+    inner_mode: str | None = None,
+    profile: Mapping[str, Any] | None = None,
     step_hours: float = 6.0,
 ) -> list[IngressEvent]:
     """Detect sign ingress events between ``start_jd`` and ``end_jd`` inclusive."""
 
     if end_jd <= start_jd:
         return []
-
-    body_list = tuple(bodies or _DEFAULT_BODIES)
-    step_days = max(step_hours, 1.0) / 24.0
-    events: list[IngressEvent] = []
-
-    for body in body_list:
-        samples = list(_generate_samples(body, start_jd, end_jd, step_days))
-        for idx in range(1, len(samples)):
-            prev = samples[idx - 1]
-            curr = samples[idx]
-            if prev.longitude == curr.longitude:
-                continue
-            lower = min(prev.longitude, curr.longitude)
-            upper = max(prev.longitude, curr.longitude)
-            if math.isclose(lower, upper):
-                continue
-            start_index = math.floor(lower / 30.0)
-            end_index = math.floor(upper / 30.0)
-            if start_index == end_index:
-                continue
-
-            direction = 1 if curr.longitude > prev.longitude else -1
-            boundary_indices = range(start_index + 1, end_index + 1)
-            if direction < 0:
-                boundary_indices = reversed(list(boundary_indices))
-
-            left_sample = prev
-            for boundary_index in boundary_indices:
-                boundary = boundary_index * 30.0
-                if not (lower - 1e-6 <= boundary <= upper + 1e-6):
-                    continue
-                jd_root = _refine_ingress(body, left_sample, curr, boundary)
-                if not (start_jd <= jd_root <= end_jd):
-                    left_sample = _Sample(jd=jd_root, longitude=boundary)
-                    continue
-                lon_exact = norm360(body_lon(jd_root, body))
-                speed = _estimate_speed(body, jd_root)
-                retrograde = speed < 0
-                if direction >= 0:
-                    from_idx = sign_index(boundary - 1e-6)
-                    to_idx = sign_index(boundary + 1e-6)
-                else:
-                    from_idx = sign_index(boundary + 1e-6)
-                    to_idx = sign_index(boundary - 1e-6)
-                event = IngressEvent(
-                    ts=jd_to_iso(jd_root),
-                    jd=jd_root,
-                    body=body,
-                    from_sign=sign_name(from_idx),
-                    to_sign=sign_name(to_idx),
-                    longitude=lon_exact,
-                    speed_longitude=float(speed),
-                    motion="retrograde" if retrograde else "direct",
-                    retrograde=retrograde,
-                )
-                events.append(event)
-                left_sample = _Sample(jd=jd_root, longitude=boundary)
-
     if step_hours <= 0:
         raise ValueError("step_hours must be positive")
     if not _HAS_SWE:
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
 
-    body_list = tuple(bodies or _DEFAULT_BODIES)
-    step_days = step_hours / 24.0
+    policy = _resolve_policy(
+        include_moon=include_moon,
+        inner_mode=inner_mode,
+        profile=profile,
+    )
+    if not policy.enabled:
+        return []
+
+    if bodies is None:
+        body_tuple = _default_bodies(policy)
+    else:
+        body_tuple = tuple(dict.fromkeys(str(body) for body in bodies))
+
+    if not body_tuple:
+        return []
+
+    step_days = max(step_hours, 1.0) / 24.0
     events: list[IngressEvent] = []
     seen: set[tuple[str, int]] = set()
 
-    for body_label in body_list:
+    for body_label in body_tuple:
         body_key = body_label.lower()
         samples = iter(_generate_samples(body_key, start_jd, end_jd, step_days))
         try:
@@ -323,6 +362,7 @@ def find_sign_ingresses(
                         longitude=longitude,
                         motion=motion,
                         speed_deg_per_day=float(speed),
+                        speed_longitude=float(speed),
                     )
                 )
                 seen.add(key)
@@ -349,6 +389,9 @@ def find_house_ingresses(
     house_cusps: Sequence[float],
     *,
     bodies: Sequence[str] | None = None,
+    include_moon: bool | None = None,
+    inner_mode: str | None = None,
+    profile: Mapping[str, Any] | None = None,
     step_minutes: float = 60.0,
 ) -> list[IngressEvent]:
     """Return house ingress events for the supplied ``house_cusps``."""
@@ -358,8 +401,21 @@ def find_house_ingresses(
     if not _HAS_SWE:
         raise RuntimeError("Swiss ephemeris not available; install astroengine[ephem]")
 
+    policy = _resolve_policy(
+        include_moon=include_moon,
+        inner_mode=inner_mode,
+        profile=profile,
+    )
+    if not policy.enabled:
+        return []
+
     cusps = _normalise_cusps(house_cusps)
-    body_list = tuple(bodies or _DEFAULT_BODIES)
+    if bodies is None:
+        body_list = _default_bodies(policy)
+    else:
+        body_list = tuple(dict.fromkeys(str(body) for body in bodies))
+    if not body_list:
+        return []
     step_days = max(step_minutes, 1.0) / (24.0 * 60.0)
 
     events: list[IngressEvent] = []

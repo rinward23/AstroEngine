@@ -80,6 +80,25 @@ def test_cli_transits_runs(tmp_path):
     assert "timestamp" in data
 
 
+def test_cli_transit_ingresses(tmp_path):
+    output = tmp_path / "ingresses.json"
+    args = [
+        "transit",
+        "ingresses",
+        "--start-utc",
+        "2024-03-20T00:00:00Z",
+        "--end-utc",
+        "2024-03-23T00:00:00Z",
+        "--json",
+        str(output),
+        "--include-moon",
+    ]
+    exit_code = cli.main(args)
+    assert exit_code == 0
+    payload = json.loads(output.read_text())
+    assert any(record.get("body", "").lower() == "moon" for record in payload)
+
+
 def test_cli_validate_round_trip(tmp_path):
     payload = _valid_gate_payload()
     path = tmp_path / "payload.json"

@@ -120,7 +120,7 @@ def register_event_detectors_module(registry: AstroRegistry) -> None:
     )
     ingress_sign = ingresses.register_channel(
         "sign",
-        metadata={"profile_toggle": "feature_flags.ingresses.sign"},
+        metadata={"profile_toggle": "feature_flags.ingresses.enabled"},
     )
     ingress_sign.register_subchannel(
         "transits",
@@ -138,7 +138,7 @@ def register_event_detectors_module(registry: AstroRegistry) -> None:
     )
     ingress_house = ingresses.register_channel(
         "house",
-        metadata={"profile_toggle": "feature_flags.ingresses.house"},
+        metadata={"profile_toggle": "feature_flags.ingresses.enabled"},
     )
     ingress_house.register_subchannel(
         "transits",

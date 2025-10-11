@@ -8,8 +8,8 @@ source chart, and surface provenance in exported data.
 ## Feature toggles
 
 The ``ingresses`` block in ``profiles/base_profile.yaml`` controls
-whether ingress detections run. Keep the defaults in place until the
-project ships the dedicated detector channel:
+whether ingress detections run. The detector honours the toggles for
+including the Moon and gating Mercury/Venus reports:
 
 ```yaml
 ingresses:
@@ -18,17 +18,34 @@ ingresses:
   inner_mode: angles_only
 ```
 
-Setting ``include_moon`` to ``true`` will instruct the future detector to
-emit the Moon’s rapid sign changes. The ``inner_mode`` setting determines
+Setting ``include_moon`` to ``true`` will instruct the detector to emit
+the Moon’s rapid sign changes. The ``inner_mode`` setting determines
 whether Mercury and Venus ingresses are always reported or only when
 angles are involved.
 
+## Running the detector
+
+With the dedicated channel in place you can invoke the CLI directly
+instead of assembling ad-hoc scripts. The example below scans the Sun’s
+Aries ingress while opting into Moon events:
+
+```bash
+astroengine transit ingresses \
+  --start-utc 2024-03-18T00:00:00Z \
+  --end-utc 2024-03-23T00:00:00Z \
+  --include-moon \
+  --json aries_ingress.json
+```
+
+Automation pipelines can call the same logic programmatically via
+``astroengine.app_api.run_sign_ingress_detector`` which accepts the same
+feature flag overrides.
+
 ## Manual Aries ingress check
 
-Until the automated channel lands you can verify ephemeris health by
-locating the Aries ingress manually. The script below samples the Sun’s
-longitude over a ten-day window and reports the first timestamp inside
-Aries (0°–30°):
+You can still verify ephemeris health by locating the Aries ingress
+manually. The script below samples the Sun’s longitude over a ten-day
+window and reports the first timestamp inside Aries (0°–30°):
 
 ```python
 from datetime import datetime, timedelta, timezone
