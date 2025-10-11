@@ -21,6 +21,9 @@ documented calculation so no runtime module loses access to provenance.
 - ``profiles/dignities.csv`` and ``profiles/fixed_stars.csv`` — static
   datasets referenced by severity scoring and the future fixed-star
   channel.
+- ``profiles/dashboard_panes.yaml`` — optional overrides for Streamlit
+  portal panes, enabling new renderers or label/category adjustments
+  without editing application code.
 
 All files embed ``provenance`` sections or column-level citations so a
 change can be traced back to its Solar Fire source.
@@ -89,6 +92,27 @@ Merge the overlay with ``profile_into_ctx`` by loading the JSON and
 passing it as the second argument. Keep overlays under version control
 and document the Solar Fire source file or analytical justification in
 an adjacent ``README`` so the data lineage remains intact.
+
+## Configuring Streamlit portal panes
+
+The main portal assembles its dashboard panes from built-ins, plugin
+entry points, and an optional ``profiles/dashboard_panes.(yaml|json)``
+file. Each entry binds a renderer import path to a pane identifier,
+human-friendly label, and category for the slot selector. Renderers must
+be callables that accept a ``streamlit.DeltaGenerator`` instance.
+
+Example ``yaml`` record:
+
+```yaml
+- id: astro_map
+  label: Astrocartography Map
+  category: Geospatial
+  renderer: ui.streamlit.panes.catalog:_render_map
+```
+
+The same keys apply to JSON. Provide your own callable import path to
+add new visuals or regroup existing panes without touching
+``ui/streamlit/main_portal.py``.
 
 ## Validating changes
 

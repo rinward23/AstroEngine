@@ -8,6 +8,7 @@ from .chakras import (
     ChakraCorrespondence,
     chakra_correspondences,
     chakra_emphasis,
+    chakra_emphasis_for_chart,
 )
 from .decans import (
     DECANS,
@@ -44,6 +45,7 @@ __all__ = [
     "ChakraCorrespondence",
     "chakra_correspondences",
     "chakra_emphasis",
+    "chakra_emphasis_for_chart",
     "assign_decans",
     "decan_for_longitude",
     "TREE_OF_LIFE_SEPHIROTH",
