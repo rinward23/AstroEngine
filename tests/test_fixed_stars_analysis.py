@@ -21,17 +21,39 @@ EXPECTED_STARS = {
     "Sirius",
     "Betelgeuse",
     "Rigel",
+    "Canopus",
+    "Arcturus",
+    "Vega",
+    "Altair",
+    "Procyon",
 }
+
+FK6_SAMPLE = (
+    "Sirius",
+    "Canopus",
+    "Arcturus",
+    "Regulus",
+    "Spica",
+)
 
 
 def test_load_catalog_contains_seed_entries() -> None:
     stars = load_catalog()
     names = {star.name for star in stars}
     assert EXPECTED_STARS.issubset(names)
+    assert len(stars) >= 280
     regulus = next(star for star in stars if star.name == "Regulus")
     assert math.isclose(regulus.lon_deg, 149.8292, rel_tol=1e-6)
     assert math.isclose(regulus.lat_deg, 0.4648, rel_tol=1e-6)
     assert math.isclose(regulus.declination_deg, 11.9659, rel_tol=1e-4)
+
+
+def test_star_hits_match_fk6_longitudes() -> None:
+    stars = {star.name: star for star in load_catalog()}
+    for name in FK6_SAMPLE:
+        star = stars[name]
+        hits = star_hits(star.lon_deg, orbis=0.01)
+        assert any(hit_name == name and abs(delta) <= 1e-6 for hit_name, delta in hits)
 
 
 def test_star_hits_matches_regulus_within_orb() -> None:

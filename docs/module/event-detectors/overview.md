@@ -43,4 +43,5 @@ Each leaf node stores the resolver path, event type, backing datasets, and the a
 ## Future work
 
 - Author JSON schema documents for the new `ShadowPeriod` and house-ingress payloads and link them from `docs/module/interop.md`.
-- Expand fixed-star coverage beyond the reference plugin to include the FK6-derived catalogues shipped with production datasets.
+- Fixed-star coverage now enumerates the FK6-derived catalogue bundled under `profiles/fixed_stars.csv`, and the example plugin
+  loads every star brighter than V = 4.5 by default.
