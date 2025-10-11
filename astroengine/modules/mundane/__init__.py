@@ -78,6 +78,30 @@ def register_mundane_module(registry: AstroRegistry) -> None:
         },
     )
 
+    cycles = module.register_submodule(
+        "cycles",
+        metadata={
+            "description": "Outer planet cycle analytics aligned with dynamic aspect searches.",
+            "datasets": ["docs/module/mundane/submodules/outer_cycle_analytics.md"],
+            "tests": ["tests/test_aspect_search.py"],
+        },
+    )
+    cycles.register_channel(
+        "search",
+        metadata={
+            "description": "Scan mundane cycles using astroengine.core.aspects_plus.search helpers.",
+        },
+    ).register_subchannel(
+        "time_range",
+        metadata={
+            "description": "Time-windowed outer planet aspect searches including harmonic expansions.",
+        },
+        payload={
+            "resolver": "astroengine.mundane.cycles.search",
+            "datasets": ["docs/module/mundane/submodules/outer_cycle_analytics.md"],
+        },
+    )
+
     module.register_submodule(
         "aspects",
         metadata={

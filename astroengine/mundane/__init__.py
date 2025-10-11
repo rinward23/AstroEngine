@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .cycles import search as search_cycles
 from .ingress import (
     MundaneAspect,
     SolarIngressChart,
@@ -18,4 +19,5 @@ __all__ = [
     "compute_cardinal_ingress_charts",
     "compute_solar_ingress_chart",
     "compute_solar_quartet",
+    "search_cycles",
 ]
