@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import os
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import requests
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
+import yaml
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
@@ -29,13 +31,157 @@ st.markdown(
       .dashboard-toolbar .stSelectbox div[data-baseweb="select"] { min-height: 34px; }
       .dashboard-toolbar .stSlider { padding-top: 0; }
       .dashboard-slot > div:first-child { padding: 0.75rem; border-radius: 16px; background: var(--secondary-background-color); border: 1px solid rgba(255,255,255,0.08); }
+      .launchpad-card { border-radius: 16px; background: var(--secondary-background-color); padding: 1rem; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 0.4rem; min-height: 160px; }
+      .launchpad-card h4 { margin: 0; font-size: 1.05rem; }
+      .launchpad-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; font-size: 12px; }
+      .launchpad-tag { background: rgba(255,255,255,0.1); padding: 0.1rem 0.5rem; border-radius: 999px; }
+      .launchpad-card .stPageLink { margin-top: auto; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 st.title("🌌 AstroEngine — Main Portal")
-st.page_link("ui/streamlit/chart_library.py", label="Open Chart Library →")
+
+
+@dataclass(frozen=True)
+class LaunchpadEntry:
+    key: str
+    title: str
+    description: str
+    raw_path: str
+    absolute_path: Path | None
+    page_link: str
+    category: str
+    tags: tuple[str, ...]
+
+
+def _resolve_page_link(raw_path: str) -> str:
+    raw_path = raw_path.strip()
+    if not raw_path:
+        return ""
+    if raw_path.startswith(("http://", "https://")):
+        return raw_path
+
+    portal_dir = Path(__file__).resolve().parent
+    path_obj = Path(raw_path)
+
+    candidates: tuple[Path, ...]
+    if path_obj.is_absolute():
+        candidates = (path_obj,)
+    else:
+        candidates = ((ROOT_DIR / path_obj).resolve(), (portal_dir / path_obj).resolve())
+
+    for candidate in candidates:
+        try:
+            relative = candidate.relative_to(portal_dir)
+            return relative.as_posix()
+        except ValueError:
+            continue
+
+    return path_obj.as_posix()
+
+
+def _load_launchpad_entries(config_path: Path | None = None) -> list[LaunchpadEntry]:
+    config_path = config_path or Path(__file__).with_name("launchpad.yaml")
+    if not config_path.exists():
+        return []
+
+    with config_path.open("r", encoding="utf-8") as handle:
+        raw_entries: Any = yaml.safe_load(handle) or []
+
+    entries: list[LaunchpadEntry] = []
+    for raw in raw_entries:
+        if not isinstance(raw, dict):
+            continue
+        key = str(raw.get("key", "")).strip()
+        title = str(raw.get("title", "")).strip()
+        description = str(raw.get("description", "")).strip()
+        raw_path = str(raw.get("path", "")).strip()
+        category = str(raw.get("category", "Launchpad")).strip() or "Launchpad"
+        tags_source = raw.get("tags", [])
+        if isinstance(tags_source, (list, tuple)):
+            tags = tuple(str(tag).strip() for tag in tags_source if str(tag).strip())
+        else:
+            tags = (str(tags_source).strip(),) if str(tags_source).strip() else ()
+
+        if not key or not title or not raw_path:
+            continue
+
+        is_external = raw_path.startswith(("http://", "https://"))
+        if is_external:
+            absolute_path = None
+        else:
+            path_obj = Path(raw_path)
+            if path_obj.is_absolute():
+                absolute_path = path_obj
+            else:
+                absolute_path = (ROOT_DIR / path_obj).resolve()
+        page_link = _resolve_page_link(raw_path)
+
+        entries.append(
+            LaunchpadEntry(
+                key=key,
+                title=title,
+                description=description,
+                raw_path=raw_path,
+                absolute_path=absolute_path,
+                page_link=page_link,
+                category=category,
+                tags=tags,
+            )
+        )
+
+    return entries
+
+
+def _render_launchpad(entries: Sequence[LaunchpadEntry]) -> None:
+    if not entries:
+        return
+
+    st.markdown("### 🚀 Launchpad")
+    missing = [
+        entry
+        for entry in entries
+        if entry.absolute_path is not None and not entry.absolute_path.exists()
+    ]
+    if missing:
+        missing_paths = ", ".join(sorted(entry.raw_path for entry in missing))
+        st.warning(f"Launchpad entries reference missing files: {missing_paths}")
+
+    categories = sorted({entry.category for entry in entries})
+    for category in categories:
+        category_entries = sorted(
+            (entry for entry in entries if entry.category == category),
+            key=lambda entry: entry.title.lower(),
+        )
+        if not category_entries:
+            continue
+
+        st.markdown(f"#### {category}")
+        columns = st.columns(min(3, len(category_entries)))
+        for idx, entry in enumerate(category_entries):
+            column = columns[idx % len(columns)]
+            with column:
+                card = st.container()
+                card.markdown("<div class='launchpad-card'>", unsafe_allow_html=True)
+                card.markdown(f"<h4>{entry.title}</h4>", unsafe_allow_html=True)
+                if entry.description:
+                    card.write(entry.description)
+                if entry.tags:
+                    tags_html = "".join(
+                        f"<span class='launchpad-tag'>{tag}</span>" for tag in entry.tags
+                    )
+                    card.markdown(
+                        f"<div class='launchpad-tags'>{tags_html}</div>",
+                        unsafe_allow_html=True,
+                    )
+                card.page_link(entry.page_link, label="Open →", icon="➡️")
+                card.markdown("</div>", unsafe_allow_html=True)
+
+
+LAUNCHPAD_ENTRIES = _load_launchpad_entries()
+_render_launchpad(LAUNCHPAD_ENTRIES)
 
 
 def _api_base() -> str:
