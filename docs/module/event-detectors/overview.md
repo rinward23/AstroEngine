@@ -7,6 +7,7 @@
   - `profiles/feature_flags.md` (tabular description of the toggles referenced by the detectors).
   - `rulesets/transit/scan.ruleset.md`, `rulesets/transit/stations.ruleset.md`, `rulesets/transit/ingresses.ruleset.md`, `rulesets/transit/lunations.ruleset.md` (design notes for each detector family).
   - `astroengine/modules/vca/catalogs.py` (canonical body lists used when detectors are wired into the registry).
+  - `schemas/shadow_period_event_v1.json`, `schemas/house_ingress_event_v1.json` (JSON Schemas documenting detector payloads).
 
 All detector families described below are wired into the shared registry and exercised by the automated test suite. Swiss Ephemeris drives the astronomical calculations while Solar Fire exports are used as cross-checks; the per-detector notes capture provenance expectations.
 
@@ -40,7 +41,7 @@ Each leaf node stores the resolver path, event type, backing datasets, and the a
 - **Solar Fire verification**: Each detector has been cross-checked against Solar Fire scenarios documented in the corresponding ruleset. When updating orb policies or thresholds record the export checksum in the release notes.
 - **Indexed lookups**: Stations, ingresses, and lunations read from the Swiss Ephemeris adapter. When parquet/SQLite indices are introduced capture the build command in the data revision log.
 - **Profile parity**: When toggles in `profiles/base_profile.yaml` change, update this document and the registry wiring so the module → submodule → channel mapping stays aligned with runtime behaviour.
-- **Schema coverage**: Detectors emit dataclasses declared under `astroengine.events` or module-specific payloads. Any schema additions must be registered in `docs/module/interop.md` and backed by validation tests.
+- **Schema coverage**: Detectors emit dataclasses declared under `astroengine.events` or module-specific payloads. Any schema additions must be registered in `docs/module/interop.md`, with validation tests referencing the appropriate documents (e.g., `schemas/shadow_period_event_v1.json`, `schemas/house_ingress_event_v1.json`).
 
 ## Future work
 

@@ -1,0 +1,75 @@
+{
+  "$id": "https://astro.engine/schemas/house_ingress_event_v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "House Ingress Event",
+  "description": "Schema for astroengine.events.IngressEvent payloads emitted by the ingresses.house.transits detector.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ts",
+    "jd",
+    "body",
+    "longitude",
+    "from_sign",
+    "to_sign",
+    "retrograde",
+    "speed_longitude"
+  ],
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the ingress crossing in ISO-8601 UTC."
+    },
+    "jd": {
+      "type": "number",
+      "description": "Julian day number corresponding to the ingress timestamp."
+    },
+    "body": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_\-]*$",
+      "description": "Identifier for the transiting body (lowercase label)."
+    },
+    "longitude": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360,
+      "description": "Apparent ecliptic longitude of the body at the ingress (degrees)."
+    },
+    "from_sign": {
+      "type": "string",
+      "pattern": "^House (?:[1-9]|1[0-2])$",
+      "description": "Label of the natal house the body exits."
+    },
+    "to_sign": {
+      "type": "string",
+      "pattern": "^House (?:[1-9]|1[0-2])$",
+      "description": "Label of the natal house the body enters."
+    },
+    "sign": {
+      "type": "string",
+      "pattern": "^House (?:[1-9]|1[0-2])$",
+      "description": "Backwards-compatible alias for to_sign populated by astroengine.events.IngressEvent."
+    },
+    "motion": {
+      "type": "string",
+      "enum": [
+        "direct",
+        "retrograde"
+      ],
+      "description": "Derived motion flag computed from the longitudinal speed sign."
+    },
+    "retrograde": {
+      "type": "boolean",
+      "description": "Boolean flag indicating whether the body is retrograde at the crossing."
+    },
+    "speed_longitude": {
+      "type": "number",
+      "description": "Instantaneous longitudinal speed in degrees per day."
+    },
+    "speed_deg_per_day": {
+      "type": "number",
+      "description": "Alias for speed_longitude automatically mirrored by astroengine.events.IngressEvent."
+    }
+  }
+}
