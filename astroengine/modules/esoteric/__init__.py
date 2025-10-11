@@ -15,6 +15,7 @@ from ...esoteric import (
     TAROT_COURTS,
     TAROT_MAJORS,
     TAROT_SPREADS,
+    chakra_correspondences,
     TREE_OF_LIFE_PATHS,
     TREE_OF_LIFE_SEPHIROTH,
 )
