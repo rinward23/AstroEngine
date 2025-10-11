@@ -29,16 +29,31 @@ This plan captures the checks that must pass before shipping changes to the runt
 | `tests/test_orbs_policy.py` | Validates `schemas/orbs_policy.json` contents and schema registration filters. | Guarantees orb policy data stays in sync with documentation. |
 | `tests/test_result_schema.py` | Validates the run result schema using `astroengine.validation.validate_payload`. | Confirms required fields and nested structures. |
 | `tests/test_contact_gate_schema.py` | Performs the same checks for contact gate decisions. | Prevents incompatible gate payloads from shipping. |
+| `tests/test_detector_golden_outputs.py` | Canonicalises detector payloads exported from Solar Fire fixtures and compares them to the JSONL checksum under `tests/golden/detectors/`. | Guards against unreviewed detector drift. |
 | `tests/test_sanity.py` | Placeholder guard that keeps the suite green even when no other tests run. | Should remain trivial and quick. |
 
 ## Future additions
 
 As additional modules come online (e.g., event detectors, provider parity suites), extend this plan with:
 
-- Golden dataset comparisons for detector outputs.
+- Additional Solar Fire detector scenarios captured as JSONL fixtures (update `tests/golden/detectors/` and refresh the recorded checksums).
 - Performance benchmarks with clearly documented thresholds.
 - Cross-provider parity tests once both Skyfield and Swiss Ephemeris implementations are available.
 - Documentation of new QA artefacts in `docs/burndown.md` and, when data changes, entries in `docs/governance/data_revision_policy.md`.
 - Automated verification that Solar Fire comparison reports match the runtime output for a rolling sample of charts (store hashes for each report).
 
 Documenting these expectations ensures every release remains tied to reproducible test evidence generated inside the maintained environment.
+
+### Detector parity fixtures
+
+Solar Fire detector scenarios are stored under `tests/golden/detectors/` as
+canonical JSONL plus a SHA-256 checksum. Regenerate them by:
+
+1. Refreshing the Solar Fire derived fixtures via
+   `python docs-site/scripts/exec_notebooks.py --refresh-fixtures` (requires
+   pyswisseph and the stub ephemeris bundle).
+2. Running `python -m tests.helpers.detector_golden_dump` (see
+   `tests/test_detector_golden_outputs.py`) to rebuild the JSONL payloads and
+   update the recorded checksums.
+3. Reviewing the diff for provenance updates and capturing the new hash in
+   `docs/burndown.md` if the scenario matrix changes.
