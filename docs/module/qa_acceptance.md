@@ -7,6 +7,7 @@
   - Schemas in `schemas/`
   - Registry wiring in `astroengine/modules`
   - Profiles and data packs in `profiles/`
+  - Detector latency baselines in `qa/artifacts/benchmarks/detectors/2025-10-02.json`
 
 This plan captures the checks that must pass before shipping changes to the runtime or documentation. The focus is on the artefacts that currently exist in the repository; as new modules land, extend the plan and add corresponding tests.
 
@@ -30,13 +31,14 @@ This plan captures the checks that must pass before shipping changes to the runt
 | `tests/test_result_schema.py` | Validates the run result schema using `astroengine.validation.validate_payload`. | Confirms required fields and nested structures. |
 | `tests/test_contact_gate_schema.py` | Performs the same checks for contact gate decisions. | Prevents incompatible gate payloads from shipping. |
 | `tests/test_sanity.py` | Placeholder guard that keeps the suite green even when no other tests run. | Should remain trivial and quick. |
+| `tests/perf/test_detectors_bench.py` | Benchmarks core detector families against Swiss Ephemeris baselines. | CI fails when mean/median latencies regress by more than 25 %. |
 
 ## Future additions
 
 As additional modules come online (e.g., event detectors, provider parity suites), extend this plan with:
 
 - Golden dataset comparisons for detector outputs.
-- Performance benchmarks with clearly documented thresholds.
+- Extend performance coverage to additional detector families as they land (e.g., house ingresses once production datasets are wired in).
 - Cross-provider parity tests once both Skyfield and Swiss Ephemeris implementations are available.
 - Documentation of new QA artefacts in `docs/burndown.md` and, when data changes, entries in `docs/governance/data_revision_policy.md`.
 - Automated verification that Solar Fire comparison reports match the runtime output for a rolling sample of charts (store hashes for each report).

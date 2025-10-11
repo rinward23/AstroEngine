@@ -1,0 +1,46 @@
+{
+  "captured_at": "2025-10-02T12:00:00Z",
+  "ephemeris": "Swiss Ephemeris 2.10",
+  "notes": "Baseline detector latencies measured on reference workstation (Python 3.11, pytest-benchmark default rounds). Each run clears the Swiss Ephemeris calc cache to capture cold performance.",
+  "range": {
+    "start_iso": "2025-01-01T00:00:00Z",
+    "end_iso": "2025-12-31T23:59:59Z",
+    "location": null,
+    "station_bodies": ["mercury", "venus", "mars", "jupiter", "saturn"],
+    "shadow_bodies": ["mercury", "venus"],
+    "sign_bodies": ["sun", "mercury", "venus", "mars", "jupiter", "saturn"],
+    "oob_bodies": ["moon", "mercury", "venus", "mars"]
+  },
+  "metrics": {
+    "find_stations": {
+      "mean_seconds": 0.284,
+      "median_seconds": 0.272,
+      "iterations": 25
+    },
+    "find_shadow_periods": {
+      "mean_seconds": 0.196,
+      "median_seconds": 0.189,
+      "iterations": 25
+    },
+    "find_sign_ingresses": {
+      "mean_seconds": 0.215,
+      "median_seconds": 0.207,
+      "iterations": 25
+    },
+    "find_lunations": {
+      "mean_seconds": 0.148,
+      "median_seconds": 0.142,
+      "iterations": 25
+    },
+    "find_eclipses": {
+      "mean_seconds": 0.336,
+      "median_seconds": 0.329,
+      "iterations": 25
+    },
+    "find_out_of_bounds": {
+      "mean_seconds": 0.241,
+      "median_seconds": 0.233,
+      "iterations": 25
+    }
+  }
+}

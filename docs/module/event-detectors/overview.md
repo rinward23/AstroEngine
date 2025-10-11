@@ -21,6 +21,24 @@ All detector families described below are wired into the shared registry and exe
 | Declination aspects & out-of-bounds | Declination parallels/contraparallels and OOB crossings adhering to documented orb tables. | `astroengine.detectors.detect_decl_contacts`, `astroengine.detectors.out_of_bounds.find_out_of_bounds`. | `tests/test_detectors_aspects.py`, `tests/test_out_of_bounds_impl.py` |
 | Midpoints & overlays | Midpoint trees, fixed-star contacts, solar/lunar returns, and profection overlays share the transit scan ruleset. | `astroengine.chart.composite.compute_midpoint_tree`, plugin resolvers such as `astroengine.plugins.examples.fixed_star_hits`, `astroengine.detectors.returns.solar_lunar_returns`, `astroengine.timelords.profections.generate_profection_periods`. | `tests/test_progressions_directions_impl.py`, `tests/test_star_names_dataset.py`, `tests/test_timelords.py` |
 
+## Performance budgets
+
+Detectors are subject to cold-cache latency limits measured with `pytest-benchmark` on
+2025-10-02 (`qa/artifacts/benchmarks/detectors/2025-10-02.json`). Continuous
+integration enforces these budgets through `tests/perf/test_detectors_bench.py`,
+allowing a 25 % regression window over the recorded medians and means. The
+reference capture uses the Swiss Ephemeris cache with explicit invalidation
+before each run to reflect worst-case detector latency.
+
+| Detector | Baseline mean (ms) | CI mean budget (ms) | Baseline median (ms) | CI median budget (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| `find_stations` (`mercury`, `venus`, `mars`, `jupiter`, `saturn`) | 284 | 355 | 272 | 340 |
+| `find_shadow_periods` (`mercury`, `venus`) | 196 | 245 | 189 | 236 |
+| `find_sign_ingresses` (`sun`, `mercury`, `venus`, `mars`, `jupiter`, `saturn`) | 215 | 269 | 207 | 259 |
+| `find_lunations` | 148 | 185 | 142 | 178 |
+| `find_eclipses` (global visibility check) | 336 | 420 | 329 | 411 |
+| `find_out_of_bounds` (`moon`, `mercury`, `venus`, `mars`) | 241 | 301 | 233 | 291 |
+
 ## Registry topology
 
 The registry exposes the full detector hierarchy used by the runtime:
