@@ -26,6 +26,8 @@ from .channels.transit.common import canonical_events_to_dicts
 app = typer.Typer(help="AstroEngine command line interface.")
 chinese_app = typer.Typer(help="Chinese astrology chart calculators.")
 transits_app = typer.Typer(help="Transit scanning utilities.")
+transit_app = typer.Typer(help="Transit event utilities.")
+ruleset_app = typer.Typer(help="Ruleset authoring utilities.")
 _EPHEMERIS_SET_LABEL = ", ".join(available_sets())
 
 
