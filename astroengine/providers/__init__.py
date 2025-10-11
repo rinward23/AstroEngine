@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from typing import Protocol
 
 from ..canonical import BodyPosition
+from ..observability.metrics import register_provider_metrics
 from .se_fixedstars import get_star_lonlat as get_star_lonlat
 from .sweph_bridge import ensure_sweph_alias
 
@@ -39,8 +40,33 @@ class EphemerisProvider(Protocol):
 _REGISTRY: dict[str, EphemerisProvider] = {}
 
 
+def _extract_provider_version(provider: EphemerisProvider) -> str | None:
+    for attr in ("version", "__version__"):
+        value = getattr(provider, attr, None)
+        if isinstance(value, str) and value:
+            return value
+    metadata = getattr(provider, "metadata", None)
+    if isinstance(metadata, dict):
+        version = metadata.get("version")
+        if isinstance(version, str) and version:
+            return version
+    return None
+
+
 def register_provider(name: str, provider: EphemerisProvider) -> None:
     _REGISTRY[name] = provider
+    recorder = register_provider_metrics(
+        name, version=_extract_provider_version(provider)
+    )
+    # Attach metrics recorder to the provider for convenience when emitting data.
+    try:
+        setattr(provider, "metrics", recorder)
+    except Exception:  # pragma: no cover - defensive guard for slots
+        LOG.debug(
+            "provider metrics attachment failed",
+            extra={"provider": name, "err_code": "PROVIDER_METRICS_ATTACH"},
+            exc_info=True,
+        )
 
 
 def get_provider(name: str = "swiss") -> EphemerisProvider:

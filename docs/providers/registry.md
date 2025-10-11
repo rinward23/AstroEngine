@@ -44,5 +44,14 @@ CONFORMANCE TESTING
 
 TELEMETRY REGISTRATION
   - Each provider must emit metrics/log labels ``provider_id`` and ``version``.
-  - Registry module aggregates counters into Prometheus exporter (future work) and ensures consistent naming.
+  - Registry module wires provider registrations into the Prometheus exporter using
+    counters/gauges registered in :mod:`astroengine.observability.metrics`:
+        * ``astroengine_provider_registrations_total`` (labels: ``provider_id``, ``version``).
+        * ``astroengine_provider_registry_active`` (labels: ``provider_id``, ``version``).
+        * ``astroengine_provider_queries_total`` (labels: ``provider_id``, ``call``).
+        * ``astroengine_provider_cache_hits_total`` (labels: ``provider_id``).
+        * ``astroengine_provider_failures_total`` (labels: ``provider_id``, ``error_code``).
+  - Registered provider instances expose a ``metrics`` attribute referencing a
+    :class:`~astroengine.observability.metrics.ProviderMetricRecorder` for direct
+    emission of query/cache/failure counters.
 ```
