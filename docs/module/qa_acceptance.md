@@ -7,6 +7,7 @@
   - Schemas in `schemas/`
   - Registry wiring in `astroengine/modules`
   - Profiles and data packs in `profiles/`
+  - Detector latency baselines in `qa/artifacts/benchmarks/detectors/2025-10-02.json`
 
 This plan captures the checks that must pass before shipping changes to the runtime or documentation. The focus is on the artefacts that currently exist in the repository; as new modules land, extend the plan and add corresponding tests.
 
