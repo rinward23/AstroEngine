@@ -44,6 +44,14 @@ SCHEMA_REGISTRY: dict[str, SchemaMetadata] = {
         "filename": "natal_input_v1_ext.json",
         "kind": "jsonschema",
     },
+    "shadow_period_event_v1": {
+        "filename": "shadow_period_event_v1.json",
+        "kind": "jsonschema",
+    },
+    "house_ingress_event_v1": {
+        "filename": "house_ingress_event_v1.json",
+        "kind": "jsonschema",
+    },
 }
 
 

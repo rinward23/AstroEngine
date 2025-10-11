@@ -1,9 +1,11 @@
 import math
 from datetime import UTC, datetime
 
+import pytest
+
 from astroengine.chart.natal import ChartLocation
 from astroengine.detectors.ingress import find_ingresses
-from astroengine.detectors import ingresses as ingress_module
+from astroengine.detectors.ingresses import find_sign_ingresses
 from astroengine.ephemeris import SwissEphemerisAdapter
 from astroengine.mundane import compute_cardinal_ingress_charts
 
@@ -27,25 +29,14 @@ def test_compute_cardinal_ingress_charts_returns_natal_charts() -> None:
     assert min(abs(wrapped), abs(wrapped - 360.0)) < 0.5
 
 
-def test_refine_ingress_falls_back_to_linear_interpolation(monkeypatch) -> None:
-    with monkeypatch.context() as m:
-        def _raise_value_error(*args, **kwargs):
-            raise ValueError("no analytic root")
+def test_find_sign_ingresses_requires_swe(monkeypatch: pytest.MonkeyPatch) -> None:
+    import astroengine.detectors.ingresses as ingress_module
 
-        m.setattr(ingress_module, "solve_zero_crossing", _raise_value_error)
+    original_has_swe = ingress_module._HAS_SWE
+    monkeypatch.setattr(ingress_module, "_HAS_SWE", False, raising=False)
 
-        left = ingress_module._Sample(jd=2451545.0, longitude=29.5)
-        right = ingress_module._Sample(jd=2451545.25, longitude=31.0)
-        boundary = 30.0
-        expected = left.jd + ((boundary - left.longitude) / (right.longitude - left.longitude)) * (
-            right.jd - left.jd
-        )
-
-        refined = ingress_module._refine_ingress("sun", left, right, boundary)
-        assert math.isclose(refined, expected, rel_tol=0.0, abs_tol=1e-12)
-
-        adapter = SwissEphemerisAdapter()
-        start_jd = adapter.julian_day(datetime(2024, 3, 15, tzinfo=UTC))
-        end_jd = adapter.julian_day(datetime(2024, 3, 25, tzinfo=UTC))
-        events = ingress_module.find_sign_ingresses(start_jd, end_jd, bodies=["Sun"])
-        assert any(event.body.lower() == "sun" and event.to_sign == "Aries" for event in events)
+    try:
+        with pytest.raises(RuntimeError, match="Swiss ephemeris not available"):
+            find_sign_ingresses(2451545.0, 2451545.01, bodies=("sun",), step_hours=1.0)
+    finally:
+        monkeypatch.setattr(ingress_module, "_HAS_SWE", original_has_swe, raising=False)

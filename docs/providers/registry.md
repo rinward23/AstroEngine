@@ -4,6 +4,10 @@
 PURPOSE
   - Document discovery, configuration, and conformance expectations for provider plugins exposed through the ``astroengine.providers`` entry-point group.
 
+IMPLEMENTATION STATUS
+  - `astroengine/providers/__init__.py` implements `ProviderMetadata`, `ProviderError`, alias-aware registration helpers, and `load_entry_point_providers()`.
+  - Metadata availability is exercised by `tests/test_provider_registry_metadata.py` while registry wiring for module metadata lives in `tests/test_providers_module_registry.py`.
+
 ENTRY POINT CONTRACT
   - Group: ``astroengine.providers``.
   - Each entry point must expose a callable ``load() -> EphemerisProvider``.
@@ -44,5 +48,14 @@ CONFORMANCE TESTING
 
 TELEMETRY REGISTRATION
   - Each provider must emit metrics/log labels ``provider_id`` and ``version``.
-  - Registry module aggregates counters into Prometheus exporter (future work) and ensures consistent naming.
+  - Registry module wires provider registrations into the Prometheus exporter using
+    counters/gauges registered in :mod:`astroengine.observability.metrics`:
+        * ``astroengine_provider_registrations_total`` (labels: ``provider_id``, ``version``).
+        * ``astroengine_provider_registry_active`` (labels: ``provider_id``, ``version``).
+        * ``astroengine_provider_queries_total`` (labels: ``provider_id``, ``call``).
+        * ``astroengine_provider_cache_hits_total`` (labels: ``provider_id``).
+        * ``astroengine_provider_failures_total`` (labels: ``provider_id``, ``error_code``).
+  - Registered provider instances expose a ``metrics`` attribute referencing a
+    :class:`~astroengine.observability.metrics.ProviderMetricRecorder` for direct
+    emission of query/cache/failure counters.
 ```
