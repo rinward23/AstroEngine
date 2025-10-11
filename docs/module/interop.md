@@ -9,6 +9,8 @@
   - `schemas/contact_gate_schema_v2.json`
   - `schemas/natal_input_v1_ext.json`
   - `schemas/orbs_policy.json`
+  - `schemas/shadow_period_event_v1.json`
+  - `schemas/house_ingress_event_v1.json`
   - `docs/module/providers_and_frames.md` (provider cadence expectations referenced by transit exports)
   - Sample Solar Fire exports archived under `datasets/solarfire/*.sf`
   - Swiss Ephemeris kernels staged in `datasets/swisseph_stub/` (placeholder for production eph files)
@@ -28,6 +30,8 @@ The schema registry currently exposes the following keys via `astroengine.data.s
 - `interop.schemas.json_schema.result_v1_with_domains`
 - `interop.schemas.json_schema.contact_gate_v2`
 - `interop.schemas.json_schema.natal_input_v1_ext`
+- `interop.schemas.json_schema.shadow_period_event_v1`
+- `interop.schemas.json_schema.house_ingress_event_v1`
 - `interop.schemas.json_data.orbs_policy`
 
 These nodes ensure every export payload cites an audited schema or data document. New schemas MUST be registered alongside a
@@ -102,6 +106,13 @@ Tracks longitudinal/latitudinal samples for transiting bodies used to reconstruc
 | `bodies[*].samples[*].speed_longitude` | number | degrees/day | Derived from adjacent samples; ensure Δλ continuity across 0°/360°. |
 | `provenance.scan_window` | object | start/end ISO-8601 UTC | The requested time range. |
 | `provenance.ephemeris_checksum` | string | SHA256 | Digest of Swiss Ephemeris or Skyfield kernel bundle used. |
+
+### Detector payload schemas
+
+Detectors that emit standalone event payloads expose dedicated JSON Schema documents to keep the data contracts auditable:
+
+- `shadow_period_event_v1` (`schemas/shadow_period_event_v1.json`): captures `astroengine.events.ShadowPeriod` windows produced by the stations shadow detector, including paired station metadata and longitudinal bounds.
+- `house_ingress_event_v1` (`schemas/house_ingress_event_v1.json`): normalises `astroengine.events.IngressEvent` payloads emitted by the house ingress detector, covering motion flags, longitudinal speeds, and house labels.
 
 ## CSV & Parquet exports
 
