@@ -11,6 +11,10 @@ from contextlib import nullcontext
 from dataclasses import asdict, is_dataclass
 from typing import Any
 
+# Detector helpers
+from .detectors.common import iso_to_jd
+from .detectors.ingresses import find_sign_ingresses
+
 # Canonical adapters; tolerate absence if CP not yet applied
 LOG = logging.getLogger(__name__)
 
@@ -427,9 +431,62 @@ def canonicalize_events(objs: Iterable[Any]):
         return list(objs)
 
 
+def run_sign_ingress_detector(
+    start_utc: str,
+    end_utc: str,
+    *,
+    bodies: Sequence[str] | None = None,
+    include_moon: bool | None = None,
+    inner_mode: str | None = None,
+    profile: Mapping[str, Any] | None = None,
+    profile_id: str | None = None,
+    step_hours: float = 6.0,
+):
+    """Execute the sign ingress detector over an ISO-UTC window.
+
+    Parameters
+    ----------
+    start_utc, end_utc:
+        Inclusive UTC range expressed as ISO-8601 strings.
+    bodies:
+        Optional iterable restricting the moving bodies to evaluate. When
+        omitted the selection is derived from the active profile toggles.
+    include_moon, inner_mode, profile, profile_id:
+        Overrides applied to the ingress feature policy.  ``profile`` accepts a
+        fully parsed profile mapping, while ``profile_id`` defers loading to the
+        profile registry.  ``include_moon`` and ``inner_mode`` mirror the
+        feature flag overrides exposed in :mod:`profiles/base_profile.yaml`.
+    step_hours:
+        Sampling cadence in hours when scanning the coarse Swiss Ephemeris
+        stream before refinement.
+    """
+
+    resolved_profile = profile
+    if resolved_profile is None and profile_id is not None:
+        try:
+            from .profiles.profiles import load_profile as _load_profile
+        except Exception as exc:  # pragma: no cover - defensive import guard
+            raise RuntimeError("Profile support unavailable") from exc
+        resolved_profile = _load_profile(profile_id)
+
+    start_jd = iso_to_jd(start_utc)
+    end_jd = iso_to_jd(end_utc)
+
+    return find_sign_ingresses(
+        start_jd,
+        end_jd,
+        bodies=bodies,
+        include_moon=include_moon,
+        inner_mode=inner_mode,
+        profile=resolved_profile,
+        step_hours=step_hours,
+    )
+
+
 __all__ = [
     "available_scan_entrypoints",
     "run_scan_or_raise",
     "canonicalize_events",
+    "run_sign_ingress_detector",
 ]
 # >>> AUTO-GEN END: App Scan Wrapper v1.1

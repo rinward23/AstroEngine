@@ -5,6 +5,11 @@ Swiss Ephemeris data can be queried, and running the baseline transit
 scan used by the recipe docs. Every command below is designed to be
 copy-pasteable on macOS, Linux, or WSL.
 
+> **Windows installer:** Operators who used the one-click Setup wizard
+> can skip straight to the health checks after reviewing the
+> [Windows Installer Support Runbook](runbook/windows_installer_support.md)
+> for log locations and repair options.
+
 ## 1. Create an isolated environment
 
 AstroEngine targets **Python 3.11**. Start from an empty folder and

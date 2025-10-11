@@ -200,7 +200,8 @@ channel registered in the shared `AstroRegistry`.
 - `astroengine/core/stars_plus` hosts fixed-star lookup tables and scoring
   helpers.【F:astroengine/core/stars_plus/__init__.py†L1-L120】
 - `profiles/fixed_stars.csv` lists paran-ready stellar positions and metadata
-  for symbolic overlays.【F:profiles/fixed_stars.csv†L1-L200】
+  for symbolic overlays, covering 286 FK6-aligned stars brighter than V = 4.5
+  with J2000 equatorial and ecliptic coordinates.【F:profiles/fixed_stars.csv†L1-L200】
 
 ## Citations
 

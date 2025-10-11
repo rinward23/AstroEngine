@@ -12,7 +12,11 @@ from pathlib import Path
 import pytest
 
 if importlib.util.find_spec("swisseph") is None:
-    pytest.skip("pyswisseph not installed", allow_module_level=True)
+    warnings.warn(
+        "pyswisseph not installed; Swiss-marked tests will be skipped.",
+        RuntimeWarning,
+        stacklevel=1,
+    )
 
 import st_shim as _st_shim
 
@@ -141,6 +145,9 @@ def _ensure_repo_package() -> None:
         module = importlib.import_module("astroengine")
     except ModuleNotFoundError:
         return
+    except ImportError as exc:
+        LOG.debug("Deferred astroengine import during repo package setup: %s", exc)
+        return
     module_file = getattr(module, "__file__", "") or ""
     if module_file and str(GENERATED_ROOT) in module_file:
         for key in list(sys.modules):
@@ -231,7 +238,11 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(autouse=True)
-def _restore_repo_package() -> None:
+def _restore_repo_package(request: pytest.FixtureRequest) -> None:
+    if request.node.get_closest_marker("no_repo_package"):
+        yield
+        return
+
     _ensure_repo_package()
     yield
     _ensure_repo_package()

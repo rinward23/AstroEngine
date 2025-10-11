@@ -9,8 +9,7 @@
   - `schemas/contact_gate_schema_v2.json`
   - `schemas/natal_input_v1_ext.json`
   - `schemas/orbs_policy.json`
-  - `schemas/shadow_period_event_v1.json`
-  - `schemas/house_ingress_event_v1.json`
+  - `schemas/export_manifest_v1.json`
   - `docs/module/providers_and_frames.md` (provider cadence expectations referenced by transit exports)
   - Sample Solar Fire exports archived under `datasets/solarfire/*.sf`
   - Swiss Ephemeris kernels staged in `datasets/swisseph_stub/` (placeholder for production eph files)
@@ -33,6 +32,7 @@ The schema registry currently exposes the following keys via `astroengine.data.s
 - `interop.schemas.json_schema.shadow_period_event_v1`
 - `interop.schemas.json_schema.house_ingress_event_v1`
 - `interop.schemas.json_data.orbs_policy`
+- `interop.schemas.json_schema.export_manifest_v1`
 
 These nodes ensure every export payload cites an audited schema or data document. New schemas MUST be registered alongside a
 documented provenance trail before runtime code consumes them.
@@ -208,6 +208,18 @@ records with the following fields:
 ICS payloads must never downsample or average the underlying event timing. All date conversions rely on the Olson timezone from
 the natal record, ensuring daylight-saving transitions mirror Solar Fire’s documented offsets.
 
+## Export manifests
+
+All tabular/calendar exports now emit a sidecar manifest (`<file>.manifest.json`) that adheres to `schemas/export_manifest_v1.json`. The payload captures:
+
+- `profile_ids`: unique profiles observed in the exported events (falls back to CLI `--profile` when events omit metadata).
+- `natal_ids`: deduplicated natal references surfaced during canonicalization.
+- `scan_window`: explicit CLI window when available, otherwise the earliest/latest event window detected in metadata.
+- `outputs[*]`: checksum and size metadata for each artifact. Directory exports (e.g., Parquet datasets) include per-file hashes alongside an aggregate checksum so auditors can diff incremental refreshes.
+- `meta`: contextual arguments (provider, detectors, calendar title, etc.) plus the total number of canonical events captured.
+
+CLI commands producing SQLite/Parquet/ICS exports write the manifest next to the generated file or dataset directory. Integrators should archive both the dataset and manifest to preserve the verification trail.
+
 ## Provenance & validation requirements
 
 - Every export references a concrete dataset URI. Solar Fire archives should be stored under `datasets/solarfire/` with SHA256
@@ -216,8 +228,8 @@ the natal record, ensuring daylight-saving transitions mirror Solar Fire’s doc
   development, document that the data is truncated and unsuitable for production severity scoring.
 - Validation suites (`tests/test_result_schema.py`, etc.) MUST load at least one golden payload per schema, recompute the
   `validation_checksum`, and compare against recorded expectations.
-- CLI commands emitting CSV/Parquet/SQLite/ICS files should append a manifest JSON alongside the export summarizing profile IDs,
-  scan windows, and checksums to satisfy auditors. The manifest format will be defined in a future revision and linked here.
+- CLI commands emitting CSV/Parquet/SQLite/ICS files append a manifest JSON alongside each export summarizing profile IDs,
+  scan windows, and checksums. Consumers should validate against `schemas/export_manifest_v1.json`.
 - If a downstream integration cannot resolve the recorded URI, the export is considered non-compliant; retry logic must fetch the
   missing dataset instead of substituting synthetic data.
 

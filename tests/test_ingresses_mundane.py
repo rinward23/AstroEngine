@@ -42,6 +42,40 @@ def test_sign_ingresses_outer_planets_precision():
     assert after == event.to_sign
 
 
+def test_sign_ingresses_respects_profile_moon_toggle():
+    start = iso_to_jd("2024-03-20T00:00:00Z")
+    end = iso_to_jd("2024-03-27T00:00:00Z")
+
+    default_events = find_sign_ingresses(start, end, step_hours=3.0)
+    assert default_events
+    assert all(event.body.lower() != "moon" for event in default_events)
+
+    moon_events = find_sign_ingresses(
+        start,
+        end,
+        include_moon=True,
+        step_hours=3.0,
+    )
+    assert any(event.body.lower() == "moon" for event in moon_events)
+
+
+def test_sign_ingresses_inner_mode_always_includes_mercury():
+    start = iso_to_jd("2024-03-08T00:00:00Z")
+    end = iso_to_jd("2024-03-12T00:00:00Z")
+
+    restricted = find_sign_ingresses(start, end, step_hours=2.0)
+    assert all(event.body.lower() != "mercury" for event in restricted)
+
+    always = find_sign_ingresses(
+        start,
+        end,
+        inner_mode="always",
+        step_hours=2.0,
+    )
+    assert always
+    assert any(event.body.lower() == "mercury" for event in always)
+
+
 def test_house_ingresses_track_cusps():
     location = ChartLocation(latitude=34.0522, longitude=-118.2437)
     natal = compute_natal_chart(

@@ -4,6 +4,7 @@ import logging
 from collections.abc import Iterable
 from dataclasses import replace
 from datetime import UTC, datetime
+from importlib import metadata as importlib_metadata
 
 LOG = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ except ImportError:
     ) * 10  # type: ignore[assignment]
     _PYMEEUS_AVAILABLE = False
 
-from . import register_provider
+from . import ProviderMetadata, register_provider, register_provider_metadata
 
 _BODY_IDS: dict[str, int] = {
     "sun": 0,
@@ -82,6 +83,35 @@ _BODY_IDS: dict[str, int] = {
     "neptune": 8,
     "pluto": 9,
 }
+
+
+def _package_version(name: str) -> str | None:
+    try:
+        return importlib_metadata.version(name)
+    except importlib_metadata.PackageNotFoundError:
+        return None
+
+
+def _swiss_metadata(
+    *,
+    available: bool,
+    version: str | None,
+    description: str,
+    supports_declination: bool,
+) -> ProviderMetadata:
+    return ProviderMetadata(
+        provider_id="swiss_ephemeris",
+        version=version,
+        supported_bodies=tuple(sorted(_BODY_IDS)),
+        supported_frames=("ecliptic_true_date", "equatorial_true"),
+        supports_declination=supports_declination,
+        supports_light_time=False,
+        cache_layout={"ephemeris": "runtime_configured"},
+        extras_required=("ephem",),
+        description=description,
+        module="astroengine.providers.swiss_provider",
+        available=available,
+    )
 
 if _HAS_SWE:  # pragma: no cover - depends on installed ephemeris
     swe_module = swe()
@@ -359,7 +389,39 @@ class SwissFallbackProvider:
 
 def _register() -> None:
     if _HAS_SWE:
-        register_provider("swiss", SwissProvider())
+        metadata = _swiss_metadata(
+            available=True,
+            version=_package_version("pyswisseph"),
+            description="Swiss Ephemeris bridge via pyswisseph.",
+            supports_declination=True,
+        )
+        register_provider(
+            "swiss",
+            SwissProvider(),
+            metadata=metadata,
+            aliases=("swiss_ephemeris",),
+        )
     elif _PYMEEUS_AVAILABLE:
-        register_provider("swiss", SwissFallbackProvider())
+        metadata = _swiss_metadata(
+            available=True,
+            version=_package_version("pymeeus"),
+            description="PyMeeus fallback with limited accuracy for Swiss Ephemeris",
+            supports_declination=False,
+        )
+        register_provider(
+            "swiss",
+            SwissFallbackProvider(),
+            metadata=metadata,
+            aliases=("swiss_ephemeris",),
+        )
+    else:
+        metadata = _swiss_metadata(
+            available=False,
+            version=None,
+            description="Swiss Ephemeris provider unavailable (pyswisseph missing).",
+            supports_declination=False,
+        )
+        register_provider_metadata(metadata, overwrite=True)
+
+
 _register()
