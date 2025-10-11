@@ -18,6 +18,7 @@ from ...esoteric import (
     TAROT_SPREADS,
     TREE_OF_LIFE_PATHS,
     TREE_OF_LIFE_SEPHIROTH,
+    chakra_correspondences,
 )
 from ..registry import AstroRegistry
 
