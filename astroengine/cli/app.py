@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import os
+from argparse import Namespace
 from pathlib import Path
 import json
 from datetime import datetime
 from types import SimpleNamespace
-from typing import List, Optional
+from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 import typer
 
 from astroengine.boot import configure_logging
-from astroengine.ephe import DEFAULT_INSTALL_ROOT
+from astroengine.ephe import DEFAULT_INSTALL_ROOT, available_sets
 from astroengine.chinese import compute_four_pillars, compute_zi_wei_chart
 
 from . import diagnose
@@ -22,6 +23,8 @@ from ._compat import cli_legacy_missing_reason, try_import_cli_legacy
 
 app = typer.Typer(help="AstroEngine command line interface.")
 chinese_app = typer.Typer(help="Chinese astrology chart calculators.")
+transits_app = typer.Typer(help="Transit scanning utilities.")
+_EPHEMERIS_SET_LABEL = ", ".join(available_sets())
 
 
 def _parse_local_options(values: List[str]) -> Dict[str, str]:
@@ -353,6 +356,182 @@ def ephe_install(
     typer.echo(f"Files located under: {archive_path.parent}")
 
 
+@ephe_app.command("pull")
+def ephe_pull(
+    set_name: str = typer.Option(
+        "de440s",
+        "--set",
+        "-s",
+        help=f"Ephemeris set to download (available: {_EPHEMERIS_SET_LABEL}).",
+    ),
+    target: Optional[Path] = typer.Option(
+        None,
+        "--target",
+        help="Destination directory for the ephemeris files (defaults to the cache location for the selected set).",
+    ),
+    source: Optional[str] = typer.Option(
+        None,
+        "--source",
+        help="Override the base URL or local directory containing the ephemeris files.",
+    ),
+    force: bool = typer.Option(False, "--force", help="Overwrite existing files if present."),
+    timeout: int = typer.Option(60, "--timeout", help="HTTP timeout in seconds."),
+    skip_verify: bool = typer.Option(
+        False,
+        "--skip-verify",
+        help="Skip checksum validation for downloaded files.",
+    ),
+) -> None:
+    """Fetch curated ephemeris datasets into the local cache."""
+
+    from astroengine.ephe import pull as ephe_pull_mod
+
+    try:
+        result = ephe_pull_mod.pull_set(
+            set_name,
+            target=target,
+            source=source,
+            force=force,
+            timeout=timeout,
+            verify=not skip_verify,
+        )
+    except ephe_pull_mod.PullError as exc:
+        typer.secho(f"Error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(1) from exc
+
+    if result.downloaded:
+        typer.echo(
+            f"Downloaded {len(result.downloaded)} file(s) to {result.target_dir}."
+        )
+    else:
+        typer.echo("Ephemeris files already present; nothing downloaded.")
+    typer.echo(f"Manifest written to: {result.manifest_path}")
+
+
+@transits_app.command("scan")
+def transits_scan(
+    start_utc: str = typer.Option(
+        ..., "--start-utc", "--start", help="Start time (ISO-8601, UTC)."
+    ),
+    end_utc: str = typer.Option(..., "--end-utc", "--end", help="End time (ISO-8601, UTC)."),
+    moving: Optional[List[str]] = typer.Option(
+        None,
+        "--moving",
+        "--bodies",
+        help="Transiting bodies to scan (repeatable).",
+    ),
+    targets: Optional[List[str]] = typer.Option(
+        None,
+        "--target",
+        "--targets",
+        help="Target bodies or qualified identifiers (repeatable).",
+    ),
+    target_frames: Optional[List[str]] = typer.Option(
+        None,
+        "--target-frame",
+        "--frame",
+        help="Frame(s) to prefix targets (repeatable).",
+    ),
+    detectors: Optional[List[str]] = typer.Option(
+        None,
+        "--detector",
+        "--detectors",
+        help="Enable optional detectors (repeatable; use 'all' for every toggle).",
+    ),
+    entrypoints: Optional[List[str]] = typer.Option(
+        None,
+        "--entrypoint",
+        help="Explicit scan entrypoint module:function (repeatable).",
+    ),
+    provider: str = typer.Option(
+        "auto", "--provider", help="Ephemeris provider (auto, swiss, pymeeus, skyfield)."
+    ),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", help="Profile identifier to annotate export metadata."
+    ),
+    step_minutes: int = typer.Option(
+        60, "--step-minutes", min=1, help="Sampling cadence in minutes."
+    ),
+    accuracy_budget: Optional[str] = typer.Option(
+        None,
+        "--accuracy-budget",
+        help="Preset cadence (fast=120m, default=60m, high=15m).",
+    ),
+    json_path: Optional[Path] = typer.Option(
+        None, "--json", help="Write scan payload to this JSON file."
+    ),
+    export_json: Optional[Path] = typer.Option(
+        None, "--export-json", help="Write canonical events to a JSON file."
+    ),
+    export_sqlite: Optional[Path] = typer.Option(
+        None, "--export-sqlite", help="Write canonical events to a SQLite file."
+    ),
+    export_parquet: Optional[Path] = typer.Option(
+        None, "--export-parquet", help="Write canonical events to a Parquet dataset."
+    ),
+    export_ics: Optional[Path] = typer.Option(
+        None, "--export-ics", help="Write canonical events to an ICS calendar file."
+    ),
+    ics_title: str = typer.Option(
+        "AstroEngine Events", "--ics-title", help="Calendar title when exporting ICS."
+    ),
+    cache: bool = typer.Option(
+        False, "--cache", help="Enable Swiss longitude caching when available."
+    ),
+    sidereal: Optional[bool] = typer.Option(
+        None,
+        "--sidereal/--tropical",
+        help="Use sidereal zodiac settings for this scan (default inherits profile).",
+    ),
+    ayanamsha: Optional[str] = typer.Option(
+        None, "--ayanamsha", help="Sidereal ayanāṁśa to apply when sidereal mode is enabled."
+    ),
+    sqlite_path: Optional[Path] = typer.Option(
+        None, "--sqlite", help="Path to SQLite DB; writes into table transits_events."
+    ),
+    parquet_path: Optional[Path] = typer.Option(
+        None, "--parquet", help="Path to Parquet file or dataset directory."
+    ),
+    parquet_compression: str = typer.Option(
+        "snappy",
+        "--parquet-compression",
+        help="Compression codec for Parquet exports (snappy, gzip, brotli, ...).",
+    ),
+) -> None:
+    """Run the canonical AstroEngine transit scanner."""
+
+    from .channels.transit import scan as transit_scan
+
+    args = Namespace(
+        start_utc=start_utc,
+        end_utc=end_utc,
+        moving=list(moving) if moving else None,
+        targets=list(targets) if targets else None,
+        target_frames=list(target_frames) if target_frames else None,
+        detectors=list(detectors) if detectors else None,
+        entrypoint=list(entrypoints) if entrypoints else None,
+        provider=provider,
+        profile=profile,
+        step_minutes=step_minutes,
+        accuracy_budget=accuracy_budget,
+        json=str(json_path) if json_path else None,
+        export_json=str(export_json) if export_json else None,
+        export_sqlite=str(export_sqlite) if export_sqlite else None,
+        export_parquet=str(export_parquet) if export_parquet else None,
+        export_ics=str(export_ics) if export_ics else None,
+        ics_title=ics_title,
+        cache=cache,
+        sidereal=sidereal,
+        ayanamsha=ayanamsha,
+        sqlite=str(sqlite_path) if sqlite_path else None,
+        parquet=str(parquet_path) if parquet_path else None,
+        parquet_compression=parquet_compression,
+    )
+    exit_code = transit_scan.run(args)
+    raise typer.Exit(exit_code)
+
+
+app.add_typer(transits_app, name="transits")
 app.add_typer(ephe_app, name="ephe")
 app.add_typer(chinese_app, name="chinese")
 
