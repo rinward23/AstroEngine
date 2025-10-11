@@ -13,7 +13,7 @@ The table below mirrors the active registry described in `docs/module/event-dete
 | `declination` | `oob` | `astroengine.detectors.out_of_bounds.find_out_of_bounds` | `profiles/base_profile.yaml`, `rulesets/transit/scan.ruleset.md` | `tests/test_out_of_bounds_impl.py` |
 | `declination` | `parallel` | `astroengine.detectors.detect_decl_contacts` | Same as above | `tests/test_detectors_aspects.py` |
 | `overlays` | `midpoints.transits` | `astroengine.chart.composite.compute_midpoint_tree` | `profiles/base_profile.yaml`, `rulesets/transit/scan.ruleset.md` | `tests/test_progressions_directions_impl.py` |
-| `overlays` | `fixed_stars.contacts` | `astroengine.plugins.examples.fixed_star_hits._detect_fixed_star_hits` | `profiles/fixed_stars.csv`, `rulesets/transit/scan.ruleset.md` | `tests/test_star_names_dataset.py` |
+| `overlays` | `fixed_stars.contacts` | `astroengine.plugins.examples.fixed_star_hits._detect_fixed_star_hits` | `profiles/fixed_stars.csv`, `rulesets/transit/scan.ruleset.md` (FK6 catalogue, V ≤ 4.5) | `tests/test_star_names_dataset.py`, `tests/test_fixed_stars_analysis.py` |
 | `overlays` | `returns.transits` | `astroengine.detectors.returns.solar_lunar_returns` | `profiles/base_profile.yaml`, `rulesets/transit/scan.ruleset.md` | `tests/test_progressions_directions_impl.py` |
 | `overlays` | `profections.transits` | `astroengine.timelords.profections.generate_profection_periods` | `profiles/base_profile.yaml`, `rulesets/transit/scan.ruleset.md` | `tests/test_timelords.py`, `tests/test_timelords_systems.py` |
 
