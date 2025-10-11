@@ -246,6 +246,46 @@ def doctor(
     raise typer.Exit(exit_code)
 
 
+@ruleset_app.command("lint")
+def ruleset_lint(
+    target: Path = typer.Argument(
+        Path("rulesets"),
+        metavar="PATH",
+        help="Ruleset Markdown file or directory to lint.",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit lint findings as JSON."),
+) -> None:
+    """Validate Markdown rulesets against DSL invariants."""
+
+    from astroengine.core.ruleset_dsl import lint_ruleset_path
+
+    try:
+        issues = lint_ruleset_path(target)
+    except FileNotFoundError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        payload = [
+            {"path": str(issue.path), "code": issue.code, "message": issue.message}
+            for issue in issues
+        ]
+        typer.echo(json.dumps(payload, indent=2))
+    else:
+        if issues:
+            for issue in issues:
+                typer.secho(
+                    f"{issue.path}: {issue.code}: {issue.message}",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+        else:
+            typer.secho("All rulesets passed lint checks.", fg=typer.colors.GREEN)
+
+    if issues:
+        raise typer.Exit(1)
+
+
 @app.command("serve-api")
 def serve_api(
     host: str = typer.Option("127.0.0.1", "--host", help="Interface to bind."),
