@@ -60,4 +60,16 @@ Topocentric observer configuration (latitude, longitude, elevation) must be acce
 - Record revisions to provider configurations and documentation according to `docs/governance/data_revision_policy.md` so provenance remains auditable.
 - Providers must never fabricate values. When a dataset is unavailable (e.g., Solar Fire export missing), raise a provenance error rather than falling back to synthetic numbers.
 
+### Cross-provider parity tolerances
+
+The QA suite exercises representative charts stored at `qa/artifacts/provider_parity/charts.json` and enforces the following tolerances when comparing Skyfield and Swiss Ephemeris outputs:
+
+| Metric | Tolerance |
+| --- | --- |
+| Ecliptic longitude difference | ≤ 2 arcseconds (≈0.00056°) |
+| Declination / ecliptic latitude difference | ≤ 2 arcseconds (≈0.00056°) |
+| Longitudinal speed difference | ≤ 0.02°/day |
+
+Parity fixtures cover mundane, natal, and historical event timestamps to ensure a mix of solar, lunar, and outer-planet alignments. The automated tests under `tests/test_provider_parity.py` load these payloads directly, keeping documented tolerances synchronized with the QA artefacts.
+
 Documenting the provider contract here ensures that future plugins remain compatible with the reworked environment while protecting the module hierarchy from accidental drift.
