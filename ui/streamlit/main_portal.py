@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import streamlit as st
 
@@ -25,6 +26,11 @@ st.markdown(
       .dashboard-toolbar .stSelectbox div[data-baseweb="select"] { min-height: 34px; }
       .dashboard-toolbar .stSlider { padding-top: 0; }
       .dashboard-slot > div:first-child { padding: 0.75rem; border-radius: 16px; background: var(--secondary-background-color); border: 1px solid rgba(255,255,255,0.08); }
+      .launchpad-card { border-radius: 16px; background: var(--secondary-background-color); padding: 1rem; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 0.4rem; min-height: 160px; }
+      .launchpad-card h4 { margin: 0; font-size: 1.05rem; }
+      .launchpad-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; font-size: 12px; }
+      .launchpad-tag { background: rgba(255,255,255,0.1); padding: 0.1rem 0.5rem; border-radius: 999px; }
+      .launchpad-card .stPageLink { margin-top: auto; }
     </style>
     """,
     unsafe_allow_html=True,

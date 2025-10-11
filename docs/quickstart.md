@@ -115,6 +115,21 @@ The sidebar echoes the detected providers, Swiss ephemeris path, and the
 scan entrypoints that will be attempted. Use the **Run scan** button to
 produce the same events as the CLI example above.
 
+### Portal launchpad
+
+The consolidated **AstroEngine Portal** bundles the dashboard, diagnostics,
+and embedded Copilot into a single Streamlit surface. Start it with:
+
+```bash
+streamlit run ui/streamlit/main_portal.py
+```
+
+The top of the page now includes a Launchpad that lists curated apps and
+pages—chart management, labs, diagnostics, and more—based on the entries in
+``ui/streamlit/launchpad.yaml``. Update that YAML file to add new surfaces or
+tag existing ones; the portal automatically groups them by category and
+renders navigation cards for each entry.
+
 ## 7. Reproduce the recipes
 
 With the environment validated you can now work through the
