@@ -56,6 +56,7 @@ def register_event_detectors_module(registry: AstroRegistry) -> None:
                 "tests/test_lunations_impl.py",
                 "tests/test_out_of_bounds_impl.py",
                 "tests/test_detectors_aspects.py",
+                "tests/test_event_detectors_module_registry.py",
             ],
             "notes": "See docs/module/event-detectors/overview.md for Solar Fire verification reports.",
         },
