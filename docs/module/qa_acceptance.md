@@ -30,6 +30,7 @@ This plan captures the checks that must pass before shipping changes to the runt
 | `tests/test_result_schema.py` | Validates the run result schema using `astroengine.validation.validate_payload`. | Confirms required fields and nested structures. |
 | `tests/test_contact_gate_schema.py` | Performs the same checks for contact gate decisions. | Prevents incompatible gate payloads from shipping. |
 | `tests/test_sanity.py` | Placeholder guard that keeps the suite green even when no other tests run. | Should remain trivial and quick. |
+| `tests/test_provider_parity.py` | Cross-validates Skyfield and Swiss Ephemeris results using shared QA fixtures. | Loads `qa/artifacts/provider_parity/charts.json` and enforces tolerances documented in `docs/module/providers_and_frames.md`. |
 
 ## Solar Fire parity verification
 
@@ -43,7 +44,7 @@ As additional modules come online (e.g., event detectors, provider parity suites
 
 - Golden dataset comparisons for detector outputs.
 - Performance benchmarks with clearly documented thresholds.
-- Cross-provider parity tests once both Skyfield and Swiss Ephemeris implementations are available.
+- Maintain cross-provider parity tests to ensure Skyfield and Swiss Ephemeris remain within the documented tolerances (`tests/test_provider_parity.py`).
 - Documentation of new QA artefacts in `docs/burndown.md` and, when data changes, entries in `docs/governance/data_revision_policy.md`.
 - Automated verification that Solar Fire comparison reports match the runtime output for a rolling sample of charts (store hashes for each report).
 

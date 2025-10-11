@@ -1,0 +1,87 @@
+{
+    "metadata": {
+        "description": "Representative geocentric charts for verifying Swiss Ephemeris and Skyfield parity.",
+        "source": "Recorded for QA automation; timestamps selected from mundane, natal, and historical event contexts.",
+        "created": "2025-02-14T00:00:00Z",
+        "notes": "See docs/module/providers_and_frames.md for parity tolerances and provenance guidance."
+    },
+    "tolerances": {
+        "ecliptic_longitude_arcsec": 2.0,
+        "declination_arcsec": 2.0,
+        "speed_deg_per_day": 0.02
+    },
+    "body_samples": [
+        "sun",
+        "moon",
+        "mars",
+        "saturn"
+    ],
+    "charts": [
+        {
+            "id": "mundane_2024_06_01",
+            "timestamp": "2024-06-01T00:00:00Z",
+            "location": {
+                "name": "Greenwich Observatory",
+                "latitude": 51.4769,
+                "longitude": 0.0,
+                "elevation_m": 46.0
+            },
+            "bodies": [
+                "sun",
+                "moon",
+                "mercury",
+                "venus",
+                "mars",
+                "jupiter",
+                "saturn",
+                "uranus",
+                "neptune",
+                "pluto"
+            ]
+        },
+        {
+            "id": "natal_1991_08_25",
+            "timestamp": "1991-08-25T12:34:56Z",
+            "location": {
+                "name": "Chicago, IL",
+                "latitude": 41.8781,
+                "longitude": -87.6298,
+                "elevation_m": 181.0
+            },
+            "bodies": [
+                "sun",
+                "moon",
+                "mercury",
+                "venus",
+                "mars",
+                "jupiter",
+                "saturn",
+                "uranus",
+                "neptune",
+                "pluto"
+            ]
+        },
+        {
+            "id": "event_1980_01_01",
+            "timestamp": "1980-01-01T04:15:00Z",
+            "location": {
+                "name": "Sydney, AU",
+                "latitude": -33.8688,
+                "longitude": 151.2093,
+                "elevation_m": 58.0
+            },
+            "bodies": [
+                "sun",
+                "moon",
+                "mercury",
+                "venus",
+                "mars",
+                "jupiter",
+                "saturn",
+                "uranus",
+                "neptune",
+                "pluto"
+            ]
+        }
+    ]
+}
