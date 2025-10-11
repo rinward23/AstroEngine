@@ -92,6 +92,8 @@ def test_fixed_star_plugin_registers_detector_and_scoring():
     event = events[0]
     assert event.kind == "fixed_star_hit"
     assert event.metadata["fixed_star"] == "regulus"
+    assert event.metadata["fixed_star_name"] == "Regulus"
+    assert event.metadata["magnitude"] <= 4.5
 
     score = compute_score(_score_inputs())
     assert math.isclose(score.components["fixed_star.bonus"], 0.1)
