@@ -21,6 +21,8 @@ All detector families described below are wired into the shared registry and exe
 | Declination aspects & out-of-bounds | Declination parallels/contraparallels and OOB crossings adhering to documented orb tables. | `astroengine.detectors.detect_decl_contacts`, `astroengine.detectors.out_of_bounds.find_out_of_bounds`. | `tests/test_detectors_aspects.py`, `tests/test_out_of_bounds_impl.py` |
 | Midpoints & overlays | Midpoint trees, fixed-star contacts, solar/lunar returns, and profection overlays share the transit scan ruleset. | `astroengine.chart.composite.compute_midpoint_tree`, plugin resolvers such as `astroengine.plugins.examples.fixed_star_hits`, `astroengine.detectors.returns.solar_lunar_returns`, `astroengine.timelords.profections.generate_profection_periods`. | `tests/test_progressions_directions_impl.py`, `tests/test_star_names_dataset.py`, `tests/test_timelords.py` |
 
+Runtime wiring for each resolver in the table is also verified by `tests/test_event_detectors_module_registry.py`, which asserts that `astroengine/modules/event_detectors/__init__.py` exports the documented module → submodule → channel hierarchy.
+
 ## Registry topology
 
 The registry exposes the full detector hierarchy used by the runtime:
