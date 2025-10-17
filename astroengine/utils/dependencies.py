@@ -131,7 +131,7 @@ def _inspect_dependency(spec: DependencySpec) -> DependencyStatus:
         dist_error = _format_exception(exc)
 
     if dist_version is None and dist_error:
-        status = "WARN" if not spec.required else "WARN"
+        status = "FAIL" if spec.required else "WARN"
         detail = f"distribution metadata for {dist_name} unavailable"
         return DependencyStatus(
             spec=spec,
