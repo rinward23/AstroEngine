@@ -148,16 +148,16 @@ def _lilith_variant_codes() -> Mapping[str, int]:
 
 @lru_cache(maxsize=1)
 def _rise_transit_events() -> Mapping[str, int]:
-    swe = _swe()
+    swe_module = _swe()
     return {
-        "rise": swe().CALC_RISE,
-        "set": swe().CALC_SET,
-        "transit": swe().CALC_MTRANSIT,
-        "upper_transit": swe().CALC_MTRANSIT,
-        "meridian_transit": swe().CALC_MTRANSIT,
-        "culmination": swe().CALC_MTRANSIT,
-        "antitransit": swe().CALC_ITRANSIT,
-        "lower_transit": swe().CALC_ITRANSIT,
+        "rise": int(getattr(swe_module, "CALC_RISE", 1)),
+        "set": int(getattr(swe_module, "CALC_SET", 2)),
+        "transit": int(getattr(swe_module, "CALC_MTRANSIT", 4)),
+        "upper_transit": int(getattr(swe_module, "CALC_MTRANSIT", 4)),
+        "meridian_transit": int(getattr(swe_module, "CALC_MTRANSIT", 4)),
+        "culmination": int(getattr(swe_module, "CALC_MTRANSIT", 4)),
+        "antitransit": int(getattr(swe_module, "CALC_ITRANSIT", 8)),
+        "lower_transit": int(getattr(swe_module, "CALC_ITRANSIT", 8)),
     }
 
 
