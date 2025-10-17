@@ -110,9 +110,12 @@ def get_daily_entry(
 ) -> tuple[float, float | None, float | None]:
     normalized = body.lower()
     con = _get_connection()
-    with con.cursor() as cur:
+    cur = con.cursor()
+    try:
         cur.execute(_SQL["get_full"], (_day_jd(jd_ut), normalized))
         row = cur.fetchone()
+    finally:
+        cur.close()
     if row is not None:
         lon, lat, speed = row
         lon_f = normalize_longitude(float(lon))
@@ -134,7 +137,8 @@ def get_daily_entry(
     lat = canonical_round(float(sample.latitude))
     speed = normalize_speed_per_day(float(sample.speed_longitude))
     con = _get_connection()
-    with con.cursor() as cur:
+    cur = con.cursor()
+    try:
         cur.execute(
             _SQL["upsert"],
             (
@@ -145,6 +149,8 @@ def get_daily_entry(
                 speed,
             ),
         )
+    finally:
+        cur.close()
     con.commit()
     return lon, lat, speed
 
