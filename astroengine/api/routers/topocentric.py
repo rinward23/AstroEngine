@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import base64
 from datetime import UTC, datetime
+from functools import lru_cache
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from astroengine.ephemeris.swe import has_swe, swe
 
@@ -42,13 +43,35 @@ from ..schemas_observational import (
     VisibilityWindowModel,
 )
 
-_HAS_SWE = has_swe()
-_SUN_ID = int(getattr(swe(), "SUN", 0)) if _HAS_SWE else 0
-_MOON_ID = int(getattr(swe(), "MOON", 1)) if _HAS_SWE else 1
-
 router = APIRouter(prefix="/topocentric", tags=["topocentric"])
 
-_DEFAULT_ADAPTER = EphemerisAdapter(EphemerisConfig())
+_UNAVAILABLE_DETAIL = "Swiss Ephemeris is not available"
+
+
+def _ensure_swe_available() -> None:
+    if not has_swe():
+        raise HTTPException(status_code=503, detail=_UNAVAILABLE_DETAIL)
+
+
+@lru_cache(maxsize=1)
+def _adapter_factory() -> EphemerisAdapter:
+    return EphemerisAdapter(EphemerisConfig())
+
+
+def _get_adapter() -> EphemerisAdapter:
+    _ensure_swe_available()
+    return _adapter_factory()
+
+
+@lru_cache(maxsize=1)
+def _body_codes() -> tuple[int, int]:
+    swe_module = swe()
+    return int(getattr(swe_module, "SUN", 0)), int(getattr(swe_module, "MOON", 1))
+
+
+def _get_body_codes() -> tuple[int, int]:
+    _ensure_swe_available()
+    return _body_codes()
 
 
 def _observer_from_model(model: ObserverModel) -> ObserverLocation:
@@ -77,7 +100,7 @@ def _to_iso(dt: datetime | None) -> datetime | None:
 @router.post("/positions", response_model=TopocentricPositionResponse)
 def compute_positions(payload: TopocentricPositionRequest) -> TopocentricPositionResponse:
     observer = _observer_from_model(payload.observer)
-    adapter = _DEFAULT_ADAPTER
+    adapter = _get_adapter()
     topo_equ = topocentric_equatorial(adapter, payload.body, payload.moment, observer)
     topo_ecl = topocentric_ecliptic(adapter, payload.body, payload.moment, observer)
     horiz = horizontal_from_equatorial(
@@ -104,7 +127,7 @@ def compute_positions(payload: TopocentricPositionRequest) -> TopocentricPositio
 @router.post("/events", response_model=EventsResponse)
 def compute_events(payload: EventsRequest) -> EventsResponse:
     observer = _observer_from_model(payload.observer)
-    adapter = _DEFAULT_ADAPTER
+    adapter = _get_adapter()
     options = EventOptions(
         refraction=payload.refraction,
         met=_met_from_model(payload.met),
@@ -125,7 +148,7 @@ def compute_events(payload: EventsRequest) -> EventsResponse:
 @router.post("/visibility", response_model=VisibilityResponse)
 def compute_visibility(payload: VisibilityRequest) -> VisibilityResponse:
     observer = _observer_from_model(payload.observer)
-    adapter = _DEFAULT_ADAPTER
+    adapter = _get_adapter()
     constraints = _constraints_from_model(payload.constraints)
     windows = visibility_windows(
         adapter,
@@ -141,7 +164,7 @@ def compute_visibility(payload: VisibilityRequest) -> VisibilityResponse:
 @router.post("/heliacal", response_model=HeliacalResponse)
 def compute_heliacal(payload: HeliacalRequest) -> HeliacalResponse:
     observer = _observer_from_model(payload.observer)
-    adapter = _DEFAULT_ADAPTER
+    adapter = _get_adapter()
     profile = HeliacalProfile(
         mode=payload.profile.mode,
         min_object_altitude_deg=payload.profile.min_object_altitude_deg,
@@ -165,7 +188,7 @@ def compute_heliacal(payload: HeliacalRequest) -> HeliacalResponse:
 @router.post("/altaz/diagram", response_model=DiagramResponse)
 def generate_diagram(payload: DiagramRequest) -> DiagramResponse:
     observer = _observer_from_model(payload.observer)
-    adapter = _DEFAULT_ADAPTER
+    adapter = _get_adapter()
     diagram = render_altaz_diagram(
         adapter,
         payload.body,
@@ -184,6 +207,15 @@ def generate_diagram(payload: DiagramRequest) -> DiagramResponse:
 
 def _constraints_from_model(model: VisibilityConstraintsModel) -> VisibilityConstraints:
     met = _met_from_model(model.met)
+    sun_body = model.sun_body
+    moon_body = model.moon_body
+    if sun_body is None or moon_body is None:
+        default_sun, default_moon = _get_body_codes()
+        if sun_body is None:
+            sun_body = default_sun
+        if moon_body is None:
+            moon_body = default_moon
+
     return VisibilityConstraints(
         min_altitude_deg=model.min_altitude_deg,
         sun_altitude_max_deg=model.sun_altitude_max_deg,
@@ -193,8 +225,8 @@ def _constraints_from_model(model: VisibilityConstraintsModel) -> VisibilityCons
         met=met,
         horizon_dip_deg=model.horizon_dip_deg,
         step_seconds=model.step_seconds,
-        sun_body=model.sun_body if model.sun_body is not None else _SUN_ID,
-        moon_body=model.moon_body if model.moon_body is not None else _MOON_ID,
+        sun_body=sun_body,
+        moon_body=moon_body,
     )
 
 
