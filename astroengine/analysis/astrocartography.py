@@ -31,7 +31,10 @@ _DEFAULT_BODIES: tuple[str, ...] = (
     "pluto",
 )
 
-_HAS_SWE = has_swe()
+def _swisseph_available() -> bool:
+    """Return ``True`` when Swiss Ephemeris bindings are importable."""
+
+    return bool(has_swe())
 
 _BODY_RESOLVERS: Mapping[str, str] = {
     "sun": "SUN",
@@ -85,7 +88,7 @@ class AstrocartographyResult:
 
 
 def _require_swisseph() -> None:
-    if not _HAS_SWE:  # pragma: no cover - dependency guard
+    if not _swisseph_available():  # pragma: no cover - dependency guard
         raise RuntimeError(
             "Astrocartography helpers require pyswisseph. Install AstroEngine with "
             "the 'locational' extra to enable maps."
