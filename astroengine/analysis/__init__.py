@@ -20,7 +20,12 @@ from .fixed_stars import (
     load_catalog as load_fixed_star_catalog,
 )
 from .midpoints import compute_midpoints, get_midpoint_settings, midpoint_longitude
-from .returns import aries_ingress_year, lunar_return_datetimes, solar_return_datetime
+from .returns import (
+    ReturnComputationError,
+    aries_ingress_year,
+    lunar_return_datetimes,
+    solar_return_datetime,
+)
 from .timeline import (
     VoidOfCourseEvent,
     find_eclipses,
@@ -44,10 +49,6 @@ __all__ = [
     "AstrocartographyResult",
     "MapLine",
     "compute_astrocartography_lines",
-    # Declinations
-    "DeclinationAspect",
-    "declination_aspects",
-    "get_declinations",
     # Fixed stars
     "Star",
     "StarDeclinationAspect",
