@@ -111,6 +111,17 @@ def _normalize_longitude(value: float) -> float:
     return wrapped
 
 
+def _normalize_relative(value: float, reference: float) -> float:
+    """Shift ``value`` onto the longitude branch near ``reference``."""
+
+    adjusted = value
+    while adjusted - reference > 180.0:
+        adjusted -= 360.0
+    while adjusted - reference < -180.0:
+        adjusted += 360.0
+    return adjusted
+
+
 def _meridian_track(longitude: float, *, step_deg: float = 2.0) -> tuple[tuple[float, float], ...]:
     coordinates: list[tuple[float, float]] = []
     lat = -90.0
@@ -167,6 +178,29 @@ def _perpendicular_distance(
     if denominator == 0.0:
         return 0.0
     return numerator / denominator
+
+
+def _angular_separation(
+    ra1_deg: float | None,
+    dec1_deg: float | None,
+    ra2_deg: float | None,
+    dec2_deg: float | None,
+) -> float | None:
+    """Return the angular separation between two equatorial coordinates."""
+
+    if None in (ra1_deg, dec1_deg, ra2_deg, dec2_deg):
+        return None
+
+    ra1 = math.radians(ra1_deg)
+    dec1 = math.radians(dec1_deg)
+    ra2 = math.radians(ra2_deg)
+    dec2 = math.radians(dec2_deg)
+    cos_angle = (
+        math.sin(dec1) * math.sin(dec2)
+        + math.cos(dec1) * math.cos(dec2) * math.cos(ra1 - ra2)
+    )
+    cos_angle = max(-1.0, min(1.0, cos_angle))
+    return math.degrees(math.acos(cos_angle))
 
 
 def _rdp_simplify(
@@ -257,6 +291,87 @@ def compute_astrocartography_lines(
 
     parans: tuple[dict[str, object], ...] = tuple()
     if show_parans:
-        parans = tuple()
+        lines_by_kind: dict[str, list[MapLine]] = {kind: [] for kind in _AngleKinds}
+        for line in lines:
+            lines_by_kind.setdefault(line.kind, []).append(line)
+
+        paran_markers: list[dict[str, object]] = []
+        seen: set[tuple[object, ...]] = set()
+        combinations = (("MC", "ASC"), ("MC", "DSC"), ("IC", "ASC"), ("IC", "DSC"))
+
+        for meridian_kind, horizon_kind in combinations:
+            for meridian in lines_by_kind.get(meridian_kind, []):
+                if not meridian.coordinates:
+                    continue
+                longitude = _normalize_longitude(meridian.coordinates[0][0])
+                meridian_meta = meridian.metadata
+                for horizon in lines_by_kind.get(horizon_kind, []):
+                    coords = horizon.coordinates
+                    if len(coords) < 2:
+                        continue
+                    horizon_meta = horizon.metadata
+                    for idx in range(len(coords) - 1):
+                        lon1, lat1 = coords[idx]
+                        lon2, lat2 = coords[idx + 1]
+                        lon1_adj = _normalize_relative(lon1, longitude)
+                        lon2_adj = _normalize_relative(lon2, longitude)
+                        if math.isclose(lon1_adj, lon2_adj, abs_tol=1e-9):
+                            continue
+                        min_lon = min(lon1_adj, lon2_adj)
+                        max_lon = max(lon1_adj, lon2_adj)
+                        if not (min_lon - 1e-9 <= longitude <= max_lon + 1e-9):
+                            continue
+                        t = (longitude - lon1_adj) / (lon2_adj - lon1_adj)
+                        if t < -1e-6 or t > 1.0 + 1e-6:
+                            continue
+                        lat = lat1 + t * (lat2 - lat1)
+                        if lat < -90.0 - 1e-6 or lat > 90.0 + 1e-6:
+                            continue
+
+                        key = (
+                            meridian.body,
+                            meridian.kind,
+                            horizon.body,
+                            horizon.kind,
+                            round(longitude, 4),
+                            round(lat, 4),
+                        )
+                        if key in seen:
+                            continue
+                        seen.add(key)
+
+                        dx = lon2_adj - lon1_adj
+                        dy = lat2 - lat1
+                        magnitude = math.hypot(dx, dy)
+                        bearing_angle = None
+                        if magnitude > 0.0:
+                            cos_theta = max(-1.0, min(1.0, dy / magnitude))
+                            bearing_angle = math.degrees(math.acos(cos_theta))
+
+                        angular_sep = _angular_separation(
+                            meridian_meta.get("ra_deg") if meridian_meta else None,
+                            meridian_meta.get("decl_deg") if meridian_meta else None,
+                            horizon_meta.get("ra_deg") if horizon_meta else None,
+                            horizon_meta.get("decl_deg") if horizon_meta else None,
+                        )
+
+                        metadata: dict[str, float | None] = {
+                            "angular_separation_deg": angular_sep,
+                        }
+                        if bearing_angle is not None:
+                            metadata["bearing_difference_deg"] = bearing_angle
+
+                        paran_markers.append(
+                            {
+                                "coordinates": ((longitude, lat),),
+                                "longitude": longitude,
+                                "latitude": lat,
+                                "primary": {"body": meridian.body, "kind": meridian.kind},
+                                "secondary": {"body": horizon.body, "kind": horizon.kind},
+                                "metadata": metadata,
+                            }
+                        )
+
+        parans = tuple(paran_markers)
 
     return AstrocartographyResult(lines=tuple(lines), parans=parans)
