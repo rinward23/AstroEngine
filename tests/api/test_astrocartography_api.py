@@ -45,6 +45,39 @@ def test_astrocartography_endpoint_returns_geojson(monkeypatch: pytest.MonkeyPat
     assert len(first["geometry"]["coordinates"]) >= 2
 
 
+@pytest.mark.swiss
+def test_astrocartography_endpoint_includes_parans(monkeypatch: pytest.MonkeyPatch) -> None:
+    pytest.importorskip("swisseph")
+    _save_sample_natal()
+    app = create_app()
+    client = TestClient(app)
+
+    response = client.get(
+        "/v1/astrocartography",
+        params={
+            "natal_id": "sample",
+            "bodies": "sun,moon",
+            "line_types": "MC,IC,ASC,DSC",
+            "show_parans": "true",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["metadata"]["parans"] is True
+
+    paran_features = [
+        feature
+        for feature in payload["features"]
+        if feature["geometry"]["type"] == "MultiPoint"
+    ]
+    assert paran_features, "Expected paran markers when show_parans=true"
+
+    first = paran_features[0]["properties"]
+    assert "primary" in first and "secondary" in first
+    metadata = first.get("metadata", {})
+    assert "angular_separation_deg" in metadata
+
+
 def test_astrocartography_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     _save_sample_natal()
 
