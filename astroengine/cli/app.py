@@ -8,7 +8,7 @@ from pathlib import Path
 import json
 from datetime import datetime
 from types import SimpleNamespace
-from typing import Dict, List, Optional
+from typing import Dict, List, Mapping, Optional, Sequence
 from zoneinfo import ZoneInfo
 
 import typer
