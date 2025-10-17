@@ -45,9 +45,12 @@ _ROOT_TOL_SECONDS = 1.0
 _ORBITAL_ZERO_TOL = 1e-6
 
 try:  # pragma: no cover - import fallback mirrors other packages
-    from astroengine.ephemeris.swe import swe
+    from astroengine.ephemeris.swe import has_swe, swe
 except Exception:  # pragma: no cover - tests rely on dependency stub
     swe = None
+
+    def has_swe() -> bool:
+        return False
 
 
 _AE_JIT_ENABLED = os.getenv("AE_JIT", "").strip().lower() in {"1", "true", "yes"}
@@ -84,12 +87,23 @@ else:
         return values
 
 
-_DEFAULT_BODY_IDS = {
-    "Venus": getattr(swe, "VENUS", 3),
-    "Mars": getattr(swe, "MARS", 4),
-    "Jupiter": getattr(swe, "JUPITER", 5),
-    "Saturn": getattr(swe, "SATURN", 6),
-}
+_HAS_SWE = bool(swe is not None and has_swe())
+
+if _HAS_SWE:
+    swe_module = swe()
+    _DEFAULT_BODY_IDS = {
+        "Venus": int(getattr(swe_module, "VENUS", 3)),
+        "Mars": int(getattr(swe_module, "MARS", 4)),
+        "Jupiter": int(getattr(swe_module, "JUPITER", 5)),
+        "Saturn": int(getattr(swe_module, "SATURN", 6)),
+    }
+else:
+    _DEFAULT_BODY_IDS = {
+        "Venus": 3,
+        "Mars": 4,
+        "Jupiter": 5,
+        "Saturn": 6,
+    }
 
 
 @dataclass(frozen=True)
@@ -274,7 +288,7 @@ class _TimelineEngine:
     ) -> list[float]:
         if not moments:
             return []
-        if not supported_body(name):
+        if not _HAS_SWE or not supported_body(name):
             return [self._longitude(code, moment) for moment in moments]
 
         try:
