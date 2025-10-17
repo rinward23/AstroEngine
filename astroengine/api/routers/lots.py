@@ -25,6 +25,7 @@ from ...engine.lots.events import scan_lot_events
 from ...ephemeris.adapter import EphemerisAdapter
 from ...scoring.policy import load_orb_policy
 from ...web.responses import conditional_json_response
+from .._time import UtcDateTime
 
 router = APIRouter(prefix="/lots", tags=["lots"])
 
