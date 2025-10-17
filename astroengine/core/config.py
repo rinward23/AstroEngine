@@ -45,16 +45,26 @@ def profile_into_ctx(ctx: dict[str, Any], profile: dict[str, Any]) -> dict[str, 
     )
     if isinstance(policies, dict):
         if "orb" in policies:
-            ctx["orb_policy"] = policies["orb"]
+            ctx.setdefault("orb_policy", policies["orb"])
         if "severity" in policies:
-            ctx["severity_policy"] = policies["severity"]
+            ctx.setdefault("severity_policy", policies["severity"])
         if "visibility" in policies:
-            ctx["visibility_policy"] = policies["visibility"]
+            ctx.setdefault("visibility_policy", policies["visibility"])
     severity_mods = (
         profile.get("severity_modifiers") if isinstance(profile, dict) else None
     )
     if severity_mods is not None:
-        ctx["severity_modifiers"] = severity_mods
+        if (
+            "severity_modifiers" in ctx
+            and isinstance(ctx["severity_modifiers"], dict)
+            and isinstance(severity_mods, dict)
+        ):
+            merged = dict(ctx["severity_modifiers"])
+            for key, value in severity_mods.items():
+                merged.setdefault(key, value)
+            ctx["severity_modifiers"] = merged
+        elif "severity_modifiers" not in ctx:
+            ctx["severity_modifiers"] = severity_mods
     return ctx
 
 
