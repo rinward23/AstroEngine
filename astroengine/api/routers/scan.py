@@ -10,6 +10,8 @@ from fastapi import APIRouter, Body, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
+from .._time import UtcDateTime, ensure_utc_datetime
+
 from ...core.transit_engine import scan_transits
 from ...detectors.directed_aspects import solar_arc_natal_aspects
 from ...detectors.progressed_aspects import progressed_natal_aspects
