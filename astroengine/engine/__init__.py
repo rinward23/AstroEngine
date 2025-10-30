@@ -1,11 +1,10 @@
-"""High level transit scanning helpers used by the CLI and unit tests."""
-
 from __future__ import annotations
 
 import sys
+from importlib import import_module
 from types import ModuleType
+from typing import TYPE_CHECKING, Any
 
-from . import scanning as _scanning
 from .context import (
     ScanFeaturePlan,
     ScanFeatureToggles,
@@ -14,44 +13,24 @@ from .context import (
     build_scan_profile_context,
 )
 from .frames import TargetFrameResolver
-from .scanning import (
-    ScanConfig,
-    events_to_dicts,
-    fast_scan,
-    get_active_aspect_angles,
-    resolve_provider,
-    scan_contacts,
-)
 
-_FEATURE_ATTRS = {
-    "FEATURE_LUNATIONS",
-    "FEATURE_ECLIPSES",
-    "FEATURE_STATIONS",
-    "FEATURE_PROGRESSIONS",
-    "FEATURE_DIRECTIONS",
-    "FEATURE_RETURNS",
-    "FEATURE_PROFECTIONS",
-    "FEATURE_TIMELORDS",
-}
-
-
-def __getattr__(name: str):
-    if name in _FEATURE_ATTRS:
-        return getattr(_scanning, name)
-    raise AttributeError(f"module 'astroengine.engine' has no attribute '{name}'")
-
-
-class _EngineModule(ModuleType):
-    def __setattr__(self, name, value):
-        if name in _FEATURE_ATTRS:
-            setattr(_scanning, name, value)
-        super().__setattr__(name, value)
-
-
-_module = sys.modules[__name__]
-_module.__class__ = _EngineModule
-for _attr in _FEATURE_ATTRS:
-    setattr(_module, _attr, getattr(_scanning, _attr))
+if TYPE_CHECKING:  # pragma: no cover
+    from .scanning import (
+        FEATURE_DIRECTIONS,
+        FEATURE_ECLIPSES,
+        FEATURE_LUNATIONS,
+        FEATURE_PROFECTIONS,
+        FEATURE_PROGRESSIONS,
+        FEATURE_RETURNS,
+        FEATURE_STATIONS,
+        FEATURE_TIMELORDS,
+        ScanConfig,
+        events_to_dicts,
+        fast_scan,
+        get_active_aspect_angles,
+        resolve_provider,
+        scan_contacts,
+    )
 
 __all__ = [
     "events_to_dicts",
@@ -75,3 +54,45 @@ __all__ = [
     "FEATURE_PROFECTIONS",
     "FEATURE_TIMELORDS",
 ]
+
+_SCANNING_EXPORTS: set[str] = {
+    "ScanConfig",
+    "events_to_dicts",
+    "fast_scan",
+    "get_active_aspect_angles",
+    "resolve_provider",
+    "scan_contacts",
+    "FEATURE_LUNATIONS",
+    "FEATURE_ECLIPSES",
+    "FEATURE_STATIONS",
+    "FEATURE_PROGRESSIONS",
+    "FEATURE_DIRECTIONS",
+    "FEATURE_RETURNS",
+    "FEATURE_PROFECTIONS",
+    "FEATURE_TIMELORDS",
+}
+
+
+def _load_scanning() -> ModuleType:
+    return import_module(".scanning", __name__)
+
+
+def __getattr__(name: str) -> Any:
+    if name in _SCANNING_EXPORTS:
+        module = _load_scanning()
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module 'astroengine.engine' has no attribute '{name}'")
+
+
+class _EngineModule(ModuleType):
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in _SCANNING_EXPORTS:
+            module = _load_scanning()
+            setattr(module, name, value)
+        super().__setattr__(name, value)
+
+
+_module = sys.modules[__name__]
+_module.__class__ = _EngineModule

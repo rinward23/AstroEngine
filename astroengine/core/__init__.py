@@ -21,12 +21,6 @@ from .domains import (
     DomainResolver,
     natal_domain_factor,
 )
-from .engine import (
-    apply_profile_if_any,
-    get_active_aspect_angles,
-    get_feature_flag,
-    maybe_attach_domain_fields,
-)
 from .scoring import compute_domain_factor
 from .time import TimeConversion, to_tt
 
@@ -60,7 +54,21 @@ __all__ = [
 ]
 
 
+_ENGINE_ATTRS = {
+    "apply_profile_if_any",
+    "get_active_aspect_angles",
+    "get_feature_flag",
+    "maybe_attach_domain_fields",
+}
+
+
 def __getattr__(name: str):
+    if name in _ENGINE_ATTRS:
+        from . import engine as _engine
+
+        value = getattr(_engine, name)
+        globals()[name] = value
+        return value
     if name == "TransitEngine":
         from .transit_engine import TransitEngine as _TransitEngine
 

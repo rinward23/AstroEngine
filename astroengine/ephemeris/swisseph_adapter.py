@@ -15,8 +15,6 @@ from typing import TYPE_CHECKING, ClassVar, Final
 
 logger = logging.getLogger(__name__)
 
-from astroengine.engine.ephe_runtime import init_ephe
-
 from .cache import calc_ut_cached
 from .swe import swe as _swe
 
@@ -26,8 +24,6 @@ def get_swisseph() -> ModuleType:
 
     return _swe()
 
-from ..core.bodies import canonical_name
-from ..observability import EPHEMERIS_SWE_CACHE_HIT_RATIO
 from .sidereal import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,
@@ -72,9 +68,9 @@ def _update_swe_cache_hit_ratio() -> None:
 
     total = _swe_calc_hits + _swe_calc_misses
     if not total:
-        EPHEMERIS_SWE_CACHE_HIT_RATIO.set(0.0)
+        _swe_cache_hit_ratio().set(0.0)
         return
-    EPHEMERIS_SWE_CACHE_HIT_RATIO.set(_swe_calc_hits / total)
+    _swe_cache_hit_ratio().set(_swe_calc_hits / total)
 
 
 HOUSE_CODE_BY_NAME: Mapping[str, str] = {
@@ -593,7 +589,7 @@ class SwissEphemerisAdapter:
                         break
 
         candidate_str = str(candidate) if candidate else None
-        flags = init_ephe(candidate_str, force=True)
+        flags = _init_ephe(candidate_str, force=True)
         return candidate_str, flags
 
     def _refresh_flags(self) -> None:
@@ -657,7 +653,7 @@ class SwissEphemerisAdapter:
             + moment_utc.second / 3600.0
             + moment_utc.microsecond / 3.6e9
         )
-        init_ephe()
+        _init_ephe()
         swe = _swe()
         return swe().julday(moment_utc.year, moment_utc.month, moment_utc.day, hour)
 
@@ -998,7 +994,7 @@ class SwissEphemerisAdapter:
             return None, False
         original = (body_name or "").strip()
         lowered = original.lower()
-        canonical = canonical_name(original)
+        canonical = _canonical_name(original)
 
         node_variant = self._variant_config.normalized_nodes()
         if lowered in {"true_node", "true node"}:
@@ -1230,4 +1226,21 @@ def swe_calc(
         _update_swe_cache_hit_ratio()
 
     return result
+
+def _init_ephe(*args, **kwargs):
+    """Lazily import and invoke :func:`astroengine.engine.ephe_runtime.init_ephe`."""
+
+    from astroengine.engine.ephe_runtime import init_ephe as _init
+
+    return _init(*args, **kwargs)
+
+def _canonical_name(name: str) -> str:
+    from ..core.bodies import canonical_name as _canonical
+
+    return _canonical(name)
+
+def _swe_cache_hit_ratio():
+    from ..observability import EPHEMERIS_SWE_CACHE_HIT_RATIO
+
+    return EPHEMERIS_SWE_CACHE_HIT_RATIO
 

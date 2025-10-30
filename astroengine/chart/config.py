@@ -9,7 +9,33 @@ from ..ephemeris.sidereal import (
     SUPPORTED_AYANAMSHAS,
     normalize_ayanamsha_name,
 )
-from ..ephemeris.swisseph_adapter import HOUSE_ALIASES, HOUSE_CODE_BY_NAME
+
+HOUSE_CODE_BY_NAME: dict[str, str] = {
+    "placidus": "P",
+    "koch": "K",
+    "regiomontanus": "R",
+    "campanus": "C",
+    "equal": "A",
+    "whole_sign": "W",
+    "porphyry": "O",
+    "alcabitius": "B",
+    "topocentric": "T",
+    "morinus": "M",
+    "meridian": "X",
+    "vehlow_equal": "V",
+    "sripati": "S",
+    "equal_mc": "D",
+}
+
+HOUSE_ALIASES: dict[str, str] = {
+    "ws": "whole_sign",
+    "wholesign": "whole_sign",
+    "w": "whole_sign",
+    "axial": "meridian",
+    "vehlow": "vehlow_equal",
+    "sripathi": "sripati",
+    "equalmc": "equal_mc",
+}
 
 __all__ = [
     "ChartConfig",
