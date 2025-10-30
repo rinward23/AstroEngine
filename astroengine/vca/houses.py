@@ -8,13 +8,35 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from functools import lru_cache
+from typing import TYPE_CHECKING, Any
 
-from ..chart.config import ChartConfig
-from ..chart.natal import DEFAULT_BODIES, ChartLocation
+from ..chart.config import ChartConfig as _ChartConfig
 from ..core.bodies import canonical_name
 from ..ephemeris import HousePositions, SwissEphemerisAdapter
 from ..infrastructure.paths import profiles_dir
+
+if TYPE_CHECKING:  # pragma: no cover - imports for static analysis only
+    from ..chart.natal import ChartLocation
+
+
+@lru_cache(maxsize=1)
+def _chart_config_cls():
+    return _ChartConfig
+
+
+@lru_cache(maxsize=1)
+def _chart_location_cls():
+    from ..chart.natal import ChartLocation as _ChartLocation
+
+    return _ChartLocation
+
+
+@lru_cache(maxsize=1)
+def _default_bodies():
+    from ..chart.natal import DEFAULT_BODIES as _DEFAULT_BODIES
+
+    return _DEFAULT_BODIES
 
 __all__ = [
     "DomainW",
@@ -217,14 +239,15 @@ def _extract_location(chart: Any) -> ChartLocation | None:
     candidate = getattr(chart, "location", None)
     if candidate is None and isinstance(chart, Mapping):
         candidate = chart.get("location")
-    if isinstance(candidate, ChartLocation):
+    location_cls = _chart_location_cls()
+    if isinstance(candidate, location_cls):
         return candidate
     if isinstance(candidate, Mapping):
         lat = candidate.get("latitude", candidate.get("lat"))
         lon = candidate.get("longitude", candidate.get("lon"))
         if lat is None or lon is None:
             return None
-        return ChartLocation(latitude=float(lat), longitude=float(lon))
+        return location_cls(latitude=float(lat), longitude=float(lon))
     lat = getattr(chart, "lat", None)
     lon = getattr(chart, "lon", None)
     if lat is None or lon is None:
@@ -233,7 +256,7 @@ def _extract_location(chart: Any) -> ChartLocation | None:
             lon = chart.get("lon")
     if lat is None or lon is None:
         return None
-    return ChartLocation(latitude=float(lat), longitude=float(lon))
+    return location_cls(latitude=float(lat), longitude=float(lon))
 
 
 def _coerce_house_positions(value: Any) -> HousePositions | None:
@@ -267,7 +290,7 @@ def _coerce_house_positions(value: Any) -> HousePositions | None:
 
 
 def _compute_houses(moment: datetime, location: ChartLocation, system: str) -> HousePositions:
-    chart_config = ChartConfig(house_system=system)
+    chart_config = _chart_config_cls()(house_system=system)
     adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
     jd = adapter.julian_day(moment)
     return adapter.houses(jd, location.latitude, location.longitude, system=system)
@@ -330,15 +353,16 @@ def _body_longitude(chart: Any, body: str) -> float | None:
     if moment is None or location is None:
         return None
     canonical = canonical_name(body)
-    code = DEFAULT_BODIES.get(body) or DEFAULT_BODIES.get(body.capitalize())
+    bodies = _default_bodies()
+    code = bodies.get(body) or bodies.get(body.capitalize())
     if code is None:
-        for key, value in DEFAULT_BODIES.items():
+        for key, value in bodies.items():
             if canonical_name(key) == canonical:
                 code = value
                 break
     if code is None:
         return None
-    adapter = SwissEphemerisAdapter.from_chart_config(ChartConfig())
+    adapter = SwissEphemerisAdapter.from_chart_config(_chart_config_cls()())
     jd = adapter.julian_day(moment)
     position = adapter.body_position(jd, code, body_name=body)
     return float(position.longitude) % 360.0

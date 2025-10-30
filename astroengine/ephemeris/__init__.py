@@ -42,7 +42,6 @@ __all__ = [
     "HousePositions",
     "FixedStarPosition",
     "RiseTransitResult",
-
     "TimeScaleContext",
     "SupportIssue",
     "filter_supported",

@@ -344,7 +344,7 @@ class EphemerisAdapter:
             )
 
         candidate_str = str(candidate) if candidate else None
-        self._base_calc_flags = init_ephe(
+        self._base_calc_flags = _init_ephe(
             candidate_str, force=True, prefer_moshier=prefer_moshier
         )
         if candidate_str:
@@ -517,3 +517,7 @@ class EphemerisAdapter:
             self._config.ephemeris_path,
             self._use_tt,
         )
+def _init_ephe(*args, **kwargs):
+    from astroengine.engine.ephe_runtime import init_ephe as _init
+
+    return _init(*args, **kwargs)
