@@ -250,6 +250,9 @@ astroengine = [
   "datasets/swisseph_stub/*",
   "data/*.csv",
 ]
+core = [
+  "interpret_plus/samples/*.yaml",
+]
 
 [project.entry-points."astroengine.plugins"]
 # name = "module:function"
@@ -266,7 +269,7 @@ fallback_version = "0.0.0"
 
 [tool.setuptools]
 # Install the real package directory (not the generated skeleton only)
-packages = { find = { where = ["."], include = ["astroengine*"] } }
+packages = { find = { where = ["."], include = ["astroengine*", "core*"] } }
 include-package-data = true
 license-files = ["LICENSE", "NOTICE*", "COPYING*"]
 # >>> AUTO-GEN END: packaging-and-extras v1.0

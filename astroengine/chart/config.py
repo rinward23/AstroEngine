@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..ephemeris.house_systems import HOUSE_ALIASES, HOUSE_CODE_BY_NAME
 from ..ephemeris.sidereal import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,

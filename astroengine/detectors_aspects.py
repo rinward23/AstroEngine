@@ -6,21 +6,41 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .core.angles import DeltaLambdaTracker, classify_relative_motion, signed_delta
 from .core.bodies import body_class
 from .infrastructure.paths import profiles_dir
 from .refine import adaptive_corridor_width
 from .utils.io import load_json_document
-from .vca.houses import (
-    DomainW,
-    HouseSystem,
-    load_house_profile,
-    weights_for_body,
-)
-from .vca.houses import (
-    blend as blend_domains,
-)
+
+if TYPE_CHECKING:  # pragma: no cover - import cycle guard
+    from .vca.houses import DomainW, HouseSystem
+
+
+def _load_house_profile(*args, **kwargs):
+    from .vca.houses import load_house_profile as _load_profile
+
+    return _load_profile(*args, **kwargs)
+
+
+def _weights_for_body(*args, **kwargs):
+    from .vca.houses import weights_for_body as _weights_for_body_impl
+
+    return _weights_for_body_impl(*args, **kwargs)
+
+
+def _blend_domains(*args, **kwargs):
+    from .vca.houses import blend as _blend
+
+    return _blend(*args, **kwargs)
+
+
+def _house_system_class():
+    from .vca.houses import HouseSystem as _HouseSystem
+
+    return _HouseSystem
+
 
 __all__ = ["AspectHit", "detect_aspects"]
 
@@ -255,15 +275,15 @@ def detect_aspects(
     domain_lat_lon: tuple[float, float] | None = None
 
     if natal_chart is not None:
-        domain_profile, domain_meta = load_house_profile()
+        domain_profile, domain_meta = _load_house_profile()
         houses = getattr(natal_chart, "houses", None)
         if domain_system is None and houses is not None:
             domain_system = getattr(houses, "system", None)
         if domain_system is None:
-            domain_system = HouseSystem.PLACIDUS
+            domain_system = _house_system_class().PLACIDUS
         domain_system = str(domain_system).lower()
         try:
-            domain_target = weights_for_body(
+            domain_target = _weights_for_body(
                 natal_chart, target, domain_system, profile=domain_profile
             )
         except Exception:
@@ -329,16 +349,16 @@ def detect_aspects(
                                 "positions": {moving: moving_pos},
                             }
                             try:
-                                transit_weights = weights_for_body(
+                                transit_weights = _weights_for_body(
                                     transit_chart,
                                     moving,
-                                    domain_system or HouseSystem.PLACIDUS,
+                                    domain_system or _house_system_class().PLACIDUS,
                                     profile=domain_profile,
                                 )
                             except Exception:
                                 transit_weights = None
                             if transit_weights is not None:
-                                domain_weights = blend_domains(
+                                domain_weights = _blend_domains(
                                     [domain_target, transit_weights],
                                     alphas=domain_alphas,
                                 )

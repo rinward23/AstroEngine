@@ -21,7 +21,6 @@ from .models import (
     Prohibition,
     RadicalityCheck,
     Significator,
-    SignificatorSet,
     TranslationOfLight,
 )
 from .profiles import HoraryProfile, get_profile
@@ -91,7 +90,9 @@ def _serialize_contact(contact: AspectContact | None) -> dict[str, Any] | None:
     }
 
 
-def _serialize_sequence(obj: TranslationOfLight | CollectionOfLight | None) -> dict[str, Any] | None:
+def _serialize_sequence(
+    obj: TranslationOfLight | CollectionOfLight | None,
+) -> dict[str, Any] | None:
     if obj is None:
         return None
     payload: dict[str, Any] = {}

@@ -2,45 +2,30 @@
 
 from __future__ import annotations
 
-from .adapter import (
-    EphemerisAdapter,
-    EphemerisConfig,
-    EphemerisSample,
-    ObserverLocation,
-    RefinementError,
-    TimeScaleContext,
-)
-from .refinement import (
-    SECONDS_PER_DAY,
-    RefineResult,
-    bracket_root,
-    refine_event,
-    refine_root,
-)
-from .support import SupportIssue, filter_supported
-from .swisseph_adapter import (
-    BodyPosition,
-    FixedStarPosition,
-    HousePositions,
-    RiseTransitResult,
-    SwissEphemerisAdapter,
-)
+from importlib import import_module
+from typing import TYPE_CHECKING, Any
 
-__all__ = [
+_ADAPTER_ATTRS = {
     "EphemerisAdapter",
     "EphemerisConfig",
     "EphemerisSample",
     "ObserverLocation",
     "RefinementError",
+    "TimeScaleContext",
+}
+_REFINEMENT_ATTRS = {
+    "SECONDS_PER_DAY",
     "RefineResult",
+    "bracket_root",
     "refine_event",
     "refine_root",
-    "bracket_root",
-    "SECONDS_PER_DAY",
-    "SwissEphemerisAdapter",
+}
+_SUPPORT_ATTRS = {"SupportIssue", "filter_supported"}
+_SWISSEPH_ATTRS = {
     "BodyPosition",
-    "HousePositions",
+    "EquatorialPosition",
     "FixedStarPosition",
+    "HousePositions",
     "RiseTransitResult",
     "TimeScaleContext",
     "SupportIssue",

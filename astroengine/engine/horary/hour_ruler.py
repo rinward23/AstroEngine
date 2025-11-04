@@ -5,27 +5,25 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris.swe import has_swe, swe
 
-if TYPE_CHECKING:  # pragma: no cover - typing aid only
-    from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
+from ...core.time import julian_day
+from ...ritual.timing import PLANETARY_HOUR_TABLE
+from .models import GeoLocation, PlanetaryHourResult
 
 _HAS_SWE = has_swe()
 _SwissAdapter: type[SwissEphemerisAdapter] | None
 
 if _HAS_SWE:  # pragma: no branch - sentinel guards runtime import
-    from ...ephemeris.swisseph_adapter import (
-        SwissEphemerisAdapter as _SwissEphemerisAdapter,
-    )
-
-    _SwissAdapter = _SwissEphemerisAdapter
+    from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter as _SwissAdapter
 else:  # pragma: no cover - fallback exercised when swe missing
-    _SwissAdapter = None
+    _SwissAdapter = None  # type: ignore[assignment]
 
-from ...core.time import julian_day
-from astroengine.engine.ephe_runtime import init_ephe
-from ...ritual.timing import PLANETARY_HOUR_TABLE
-from .models import GeoLocation, PlanetaryHourResult
+if TYPE_CHECKING:  # pragma: no cover - typing aid only
+    from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
+else:
+    SwissEphemerisAdapter = _SwissAdapter  # type: ignore[assignment]
 
 __all__ = [
     "GeoLocation",
@@ -183,7 +181,7 @@ def moonrise_moonset(
         location,
         body_code=swe().MOON,
         body_name="Moon",
-        flags=flags,
+        flags=_moon_flags(),
     )
     return (
         resolved_adapter.from_julian_day(prev_rise),

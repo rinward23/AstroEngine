@@ -2,11 +2,6 @@ from datetime import UTC, datetime
 
 import pytest
 
-swe = pytest.importorskip(
-    "swisseph",
-    reason="pyswisseph not installed; install extras with `.[providers]`",
-)
-
 from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.engine.vedic import (
     PRIMARY_AYANAMSAS,
@@ -16,29 +11,31 @@ from astroengine.engine.vedic import (
     swe_ayanamsa,
 )
 
+pytestmark = pytest.mark.swiss
 
-def _jd(moment: datetime) -> float:
+
+def _jd(moment: datetime, swe_module) -> float:
     init_ephe()
-    return swe().julday(
+    return swe_module.julday(
         moment.year, moment.month, moment.day, moment.hour + moment.minute / 60.0
     )
 
 
-def test_ayanamsa_matches_swisseph():
+def test_ayanamsa_matches_swisseph(swiss_ephemeris):
     moments = [
         datetime(1990, 5, 4, 12, 30, tzinfo=UTC),
         datetime(2005, 1, 1, 0, 0, tzinfo=UTC),
         datetime(2024, 6, 21, 18, 0, tzinfo=UTC),
     ]
     for moment in moments:
-        jd = _jd(moment)
+        jd = _jd(moment, swiss_ephemeris)
         for preset, info in SIDEREAL_PRESETS.items():
-            _flags, expected = swe().get_ayanamsa_ex_ut(jd, info.swe_mode)
+            _flags, expected = swiss_ephemeris.get_ayanamsa_ex_ut(jd, info.swe_mode)
             result = ayanamsa_value(preset, moment)
             assert abs(result - expected) < 1e-4
 
 
-def test_primary_presets_and_helper_metadata():
+def test_primary_presets_and_helper_metadata(swiss_ephemeris):
     presets = set(available_ayanamsas())
     for preset in PRIMARY_AYANAMSAS:
         assert preset in presets

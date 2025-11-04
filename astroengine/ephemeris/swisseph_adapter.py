@@ -16,6 +16,10 @@ from typing import TYPE_CHECKING, ClassVar, Final
 logger = logging.getLogger(__name__)
 
 from .cache import calc_ut_cached
+from .house_systems import (
+    HOUSE_CODE_BYTES_BY_NAME,
+    resolve_house_code,
+)
 from .swe import swe as _swe
 
 
@@ -71,57 +75,6 @@ def _update_swe_cache_hit_ratio() -> None:
         _swe_cache_hit_ratio().set(0.0)
         return
     _swe_cache_hit_ratio().set(_swe_calc_hits / total)
-
-
-HOUSE_CODE_BY_NAME: Mapping[str, str] = {
-    "placidus": "P",
-    "koch": "K",
-    "regiomontanus": "R",
-    "campanus": "C",
-    "equal": "A",
-    "whole_sign": "W",
-    "porphyry": "O",
-    "alcabitius": "B",
-    "topocentric": "T",
-    "morinus": "M",
-    "meridian": "X",
-    "vehlow_equal": "V",
-    "sripati": "S",
-    "equal_mc": "D",
-}
-
-HOUSE_ALIASES: Mapping[str, str] = {
-    "ws": "whole_sign",
-    "wholesign": "whole_sign",
-    "w": "whole_sign",
-    "axial": "meridian",
-    "vehlow": "vehlow_equal",
-    "sripathi": "sripati",
-    "equalmc": "equal_mc",
-}
-
-
-def resolve_house_code(name_or_code: str) -> tuple[str, str]:
-    """Return the canonical name and Swiss code for ``name_or_code``."""
-
-    token = (name_or_code or "").strip()
-    if not token:
-        return "placidus", HOUSE_CODE_BY_NAME["placidus"]
-    lowered = token.lower()
-    # Direct Swiss code (single letter)
-    if len(token) == 1 and token.upper() in {code for code in HOUSE_CODE_BY_NAME.values()}:
-        code = token.upper()
-        for name, mapped in HOUSE_CODE_BY_NAME.items():
-            if mapped == code:
-                return name, code
-        return token.lower(), code
-    canonical = HOUSE_ALIASES.get(lowered, lowered)
-    if canonical in HOUSE_CODE_BY_NAME:
-        return canonical, HOUSE_CODE_BY_NAME[canonical]
-    raise ValueError(
-        f"Unsupported house system '{name_or_code}'. Valid options: "
-        f"{sorted(HOUSE_CODE_BY_NAME)}"
-    )
 
 
 @lru_cache(maxsize=1)
@@ -308,33 +261,7 @@ class SwissEphemerisAdapter:
     _AYANAMSHA_MODES: ClassVar[dict[str, int] | None] = None
 
 
-    _HOUSE_SYSTEM_CODES: ClassVar[Mapping[str, bytes]] = {
-        "placidus": b"P",
-        "koch": b"K",
-        "regiomontanus": b"R",
-        "campanus": b"C",
-        "equal": b"A",
-        "whole_sign": b"W",
-        "porphyry": b"O",
-        "alcabitius": b"B",
-        "topocentric": b"T",
-        "morinus": b"M",
-        "meridian": b"X",
-        "vehlow_equal": b"V",
-        "sripati": b"S",
-        "equal_mc": b"D",
-    }
-    _HOUSE_SYSTEM_ALIASES: ClassVar[Mapping[str, str]] = {
-        "ws": "whole_sign",
-        "wholesign": "whole_sign",
-        "whole": "whole_sign",
-        "equalmc": "equal_mc",
-        "equal_mc": "equal_mc",
-        "vehlow": "vehlow_equal",
-        "axial": "meridian",
-        "meridian_axial": "meridian",
-        "topo": "topocentric",
-    }
+    _WHOLE_SIGN_CODE: ClassVar[bytes] = HOUSE_CODE_BYTES_BY_NAME["whole_sign"]
 
     @classmethod
     def _ayanamsha_modes(cls) -> dict[str, int]:
@@ -1048,7 +975,7 @@ class SwissEphemerisAdapter:
                 fallback_from = used_key
                 fallback_reason = str(exc)
                 used_key = "whole_sign"
-                used_code = self._HOUSE_SYSTEM_CODES["whole_sign"]
+                used_code = type(self)._WHOLE_SIGN_CODE
                 logger.warning(
                     {
                         "event": "house_system_fallback",
@@ -1140,7 +1067,7 @@ class SwissEphemerisAdapter:
     def is_sidereal(self) -> bool:
         return self._is_sidereal
 
-    def _resolve_house_system(self, system: str | None) -> tuple[str, str]:
+    def _resolve_house_system(self, system: str | None) -> tuple[str, bytes]:
         """Return the canonical house system key and Swiss code."""
 
 
@@ -1149,29 +1076,8 @@ class SwissEphemerisAdapter:
         else:
             key = system.strip().lower()
 
-        alias = self._HOUSE_SYSTEM_ALIASES.get(key, key)
-
-        code = self._HOUSE_SYSTEM_CODES.get(alias)
-        if code is not None:
-            return alias, code
-
-        if len(key) == 1:
-            code = key.upper().encode("ascii")
-            canonical = next(
-                (
-                    name
-                    for name, candidate in self._HOUSE_SYSTEM_CODES.items()
-                    if candidate == code
-                ),
-                key.lower(),
-            )
-            return canonical, code
-
-        options = ", ".join(sorted(self._HOUSE_SYSTEM_CODES))
-        raise ValueError(
-            "Unsupported house system "
-            f"'{system or self.chart_config.house_system}'. Valid options: {options}"
-        )
+        canonical, _ = resolve_house_code(key)
+        return canonical, HOUSE_CODE_BYTES_BY_NAME[canonical]
 
 def swe_calc(
     *, jd_ut: float, planet_index: int, flag: int, use_tt: bool = False

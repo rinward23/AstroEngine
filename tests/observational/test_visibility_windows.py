@@ -10,16 +10,32 @@ pytest.importorskip(
     reason="Pillow not installed; install extras with `pip install -e .[ui,reports]`.",
 )
 
-from astroengine.engine.observational import (
-    MetConditions,
-    VisibilityConstraints,
-    horizontal_from_equatorial,
-    topocentric_equatorial,
-    visibility_windows,
-)
-from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
+try:
+    from astroengine.engine.observational import (
+        MetConditions,
+        VisibilityConstraints,
+        horizontal_from_equatorial,
+        topocentric_equatorial,
+        visibility_windows,
+    )
+    from astroengine.engine.returns._codes import resolve_body_code
+    from astroengine.ephemeris import EphemerisConfig
+    from astroengine.ephemeris import EphemerisAdapter, ObserverLocation
+except ImportError as exc:  # pragma: no cover - optional dependency gating
+    pytest.skip(
+        f"Observational ephemeris support unavailable: {exc}", allow_module_level=True
+    )
+    EphemerisAdapter = None  # type: ignore[assignment]
+    ObserverLocation = None  # type: ignore[assignment]
+    resolve_body_code = lambda name: None  # type: ignore[assignment]
+    _EPHEMERIS_IMPORT_ERROR = exc
+else:
+    _EPHEMERIS_IMPORT_ERROR = None
 
-swe = pytest.importorskip("swisseph")
+pytestmark = pytest.mark.swiss
+
+MARS_CODE = resolve_body_code("Mars").code
+SUN_CODE = resolve_body_code("Sun").code
 
 
 def _separation(ra1: float, dec1: float, ra2: float, dec2: float) -> float:
@@ -36,6 +52,8 @@ def _separation(ra1: float, dec1: float, ra2: float, dec2: float) -> float:
 
 
 def test_visibility_windows_constraints() -> None:
+    if EphemerisAdapter is None or ObserverLocation is None:
+        pytest.skip(f"EphemerisAdapter unavailable: {_EPHEMERIS_IMPORT_ERROR}")
     adapter = EphemerisAdapter(EphemerisConfig())
     observer = ObserverLocation(latitude_deg=34.0522, longitude_deg=-118.2437, elevation_m=71.0)
     start = datetime(2024, 5, 1, 3, 0, tzinfo=UTC)
@@ -50,12 +68,12 @@ def test_visibility_windows_constraints() -> None:
         met=MetConditions(temperature_c=12.0, pressure_hpa=1010.0),
         step_seconds=600,
     )
-    windows = visibility_windows(adapter, swe().MARS, start, end, observer, constraints)
+    windows = visibility_windows(adapter, MARS_CODE, start, end, observer, constraints)
     assert windows, "Expected at least one visibility window"
 
     for window in windows:
         midpoint = window.start + (window.end - window.start) / 2
-        equ = topocentric_equatorial(adapter, swe().MARS, midpoint, observer)
+        equ = topocentric_equatorial(adapter, MARS_CODE, midpoint, observer)
         horiz = horizontal_from_equatorial(
             equ.right_ascension_deg,
             equ.declination_deg,
@@ -66,7 +84,7 @@ def test_visibility_windows_constraints() -> None:
         )
         assert horiz.altitude_deg >= constraints.min_altitude_deg - 0.5
         if constraints.sun_separation_min_deg is not None:
-            sun_equ = topocentric_equatorial(adapter, swe().SUN, midpoint, observer)
+            sun_equ = topocentric_equatorial(adapter, SUN_CODE, midpoint, observer)
             sun_sep = _separation(
                 equ.right_ascension_deg,
                 equ.declination_deg,
