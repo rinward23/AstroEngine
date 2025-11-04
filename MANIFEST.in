@@ -7,6 +7,9 @@ recursive-include astroengine/data *.csv
 
 recursive-include astroengine/exporters/reports/relationship/templates *
 
+# Core package data
+recursive-include core/interpret_plus/samples *.yaml
+
 # >>> AUTO-GEN END: astroengine manifest data v1.0
 
 include LICENSE
