@@ -94,7 +94,9 @@ class SingleSampleProvider:
     def __init__(self, ctx: SampleContext) -> None:
         self._ctx = ctx
 
-    def positions_ecliptic(self, iso_utc: str, bodies: Iterable[str]) -> dict[str, dict[str, float]]:
+    def positions_ecliptic(
+        self, iso_utc: str, bodies: Iterable[str]
+    ) -> dict[str, dict[str, float]]:
         if iso_utc != self._ctx.iso:
             raise ValueError("Sample provider only supports the bound timestamp")
         out: dict[str, dict[str, float]] = {}
@@ -599,7 +601,9 @@ class DeclinationConstraint:
         return ElectionalConstraintEvaluation("declination", True, detail)
 
 
-def _normalize_constraints(payload: Sequence[Mapping[str, Any]]) -> tuple[list[Constraint], set[str], set[str]]:
+def _normalize_constraints(
+    payload: Sequence[Mapping[str, Any]]
+) -> tuple[list[Constraint], set[str], set[str]]:
     constraints: list[Constraint] = []
     bodies: set[str] = set()
     axes: set[str] = set()
@@ -725,7 +729,7 @@ def _score_evaluations(evaluations: Sequence[ElectionalConstraintEvaluation]) ->
         if not ev.passed:
             return 0.0
         strength = ev.detail.get("strength")
-        if isinstance(strength, (int, float)) and not isinstance(strength, bool):
+        if isinstance(strength, int | float) and not isinstance(strength, bool):
             score += float(strength)
         else:
             score += 1.0

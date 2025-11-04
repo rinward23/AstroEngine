@@ -210,7 +210,10 @@ def _build_score(
             name="Kendra Bala",
             value=_kendra_bala(house_idx),
             maximum=60.0,
-            description="Angular strength determined by the house placement relative to the ascendant.",
+            description=(
+                "Angular strength determined by the house placement relative "
+                "to the ascendant."
+            ),
         ),
         "dig_bala": ShadbalaFactor(
             name="Dig Bala",
@@ -228,7 +231,10 @@ def _build_score(
             name="Cheshta Bala",
             value=_cheshta_bala(planet, speed_longitude),
             maximum=60.0,
-            description="Dynamic strength from current apparent motion speed (retrograde emphasis).",
+            description=(
+                "Dynamic strength from current apparent motion speed "
+                "(retrograde emphasis)."
+            ),
         ),
     }
     return ShadbalaScore(planet=planet, factors=factors, missing=MISSING_COMPONENTS)

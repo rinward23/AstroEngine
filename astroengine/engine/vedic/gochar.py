@@ -169,7 +169,10 @@ def _retrograde_flag(data: Mapping[str, object] | object) -> bool | None:
     return None
 
 
-def _active_dasha_index(periods: Sequence[DashaPeriod] | None, moment: datetime) -> dict[str, tuple[str, ...]]:
+def _active_dasha_index(
+    periods: Sequence[DashaPeriod] | None,
+    moment: datetime,
+) -> dict[str, tuple[str, ...]]:
     index: dict[str, set[str]] = {}
     if not periods:
         return {}

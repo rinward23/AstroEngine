@@ -84,7 +84,7 @@ def _build_dignity_tables() -> dict[str, object]:
             decans[sign].append((record.start_deg, record.end_deg or 30.0, planet))
 
     for collection in (bounds, decans):
-        for sign, items in collection.items():
+        for _sign, items in collection.items():
             items.sort(key=lambda entry: entry[0])
 
     return {
@@ -104,7 +104,7 @@ def house_ruler(sign: str | int | float) -> str:
     """Return the domicile ruler for the supplied zodiac sign."""
 
     tables = _build_dignity_tables()
-    if isinstance(sign, (int, float)):
+    if isinstance(sign, int | float):
         if isinstance(sign, int) and 1 <= sign <= 12:
             sign_name = SIGN_NAMES[int(sign) - 1]
         else:
