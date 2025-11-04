@@ -246,3 +246,22 @@ def _restore_repo_package(request: pytest.FixtureRequest) -> None:
     _ensure_repo_package()
     yield
     _ensure_repo_package()
+
+
+@pytest.fixture(scope="session")
+def swiss_ephemeris() -> "types.ModuleType":
+    """Return the Swiss Ephemeris module when available.
+
+    Tests that depend on precise Swiss data can request this fixture rather than
+    importing :mod:`swisseph` directly.  The fixture honours the same gating
+    checks used by the ``swiss`` marker so that collection skips occur
+    consistently when either the Python bindings or the ephemeris files are
+    missing.
+    """
+
+    if not (_have_pyswisseph() and _have_ephe_path()):
+        pytest.skip("Swiss Ephemeris unavailable (missing pyswisseph or SE_EPHE_PATH).")
+
+    from astroengine.ephemeris.swe import swe as swe_proxy
+
+    return swe_proxy()

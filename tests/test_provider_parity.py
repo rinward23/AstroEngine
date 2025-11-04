@@ -9,7 +9,6 @@ import pytest
 
 pytestmark = pytest.mark.swiss
 
-pytest.importorskip("swisseph", reason="pyswisseph required for provider parity")
 pytest.importorskip("skyfield", reason="skyfield required for provider parity")
 pytest.importorskip("jplephem", reason="jplephem kernel support required")
 
