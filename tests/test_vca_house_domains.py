@@ -5,18 +5,24 @@ from datetime import UTC, datetime
 
 import pytest
 
-from astroengine.chart import ChartLocation, compute_natal_chart
-from astroengine.detectors_aspects import detect_aspects
-from astroengine.engine import TargetFrameResolver, scan_contacts
-from astroengine.vca.houses import (
-    HouseSystem,
-    domain_for_house,
-    house_of,
-    load_house_profile,
-)
+pytestmark = pytest.mark.swiss
 
-pytest.importorskip("swisseph")
-
+try:
+    from astroengine.chart import ChartLocation, compute_natal_chart
+    from astroengine.detectors_aspects import detect_aspects
+    from astroengine.engine import TargetFrameResolver, scan_contacts
+    from astroengine.vca.houses import (
+        HouseSystem,
+        domain_for_house,
+        house_of,
+        load_house_profile,
+    )
+except ImportError as exc:  # pragma: no cover - optional dependency gating
+    pytest.skip(f"VCA house support unavailable: {exc}", allow_module_level=True)
+    compute_natal_chart = None  # type: ignore[assignment]
+    _NATAL_IMPORT_ERROR = exc
+else:
+    _NATAL_IMPORT_ERROR = None
 
 def test_load_house_profile_complete() -> None:
     profile, _ = load_house_profile(None)
@@ -39,6 +45,8 @@ def test_domain_for_house_applies_boosts() -> None:
 
 
 def test_house_of_returns_valid_range() -> None:
+    if compute_natal_chart is None:
+        pytest.skip(f"compute_natal_chart unavailable: {_NATAL_IMPORT_ERROR}")
     moment = datetime(1990, 2, 16, 13, 30, tzinfo=UTC)
     location = ChartLocation(latitude=40.7128, longitude=-74.0060)
     chart = compute_natal_chart(moment, location)
@@ -48,6 +56,8 @@ def test_house_of_returns_valid_range() -> None:
 
 
 def test_detect_aspects_emits_domain_weights() -> None:
+    if compute_natal_chart is None:
+        pytest.skip(f"compute_natal_chart unavailable: {_NATAL_IMPORT_ERROR}")
     moment = datetime(1990, 2, 16, 13, 30, tzinfo=UTC)
     location = ChartLocation(latitude=40.7128, longitude=-74.0060)
     natal_chart = compute_natal_chart(moment, location)
@@ -78,6 +88,8 @@ def test_detect_aspects_emits_domain_weights() -> None:
 
 
 def test_scan_contacts_attaches_domain_weights() -> None:
+    if compute_natal_chart is None:
+        pytest.skip(f"compute_natal_chart unavailable: {_NATAL_IMPORT_ERROR}")
     moment = datetime(1990, 2, 16, 13, 30, tzinfo=UTC)
     location = ChartLocation(latitude=40.7128, longitude=-74.0060)
     natal_chart = compute_natal_chart(moment, location)

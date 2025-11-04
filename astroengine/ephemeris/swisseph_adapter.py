@@ -28,8 +28,6 @@ def get_swisseph() -> ModuleType:
 
     return _swe()
 
-from ..core.bodies import canonical_name
-from ..observability import EPHEMERIS_SWE_CACHE_HIT_RATIO
 from .sidereal import (
     DEFAULT_SIDEREAL_AYANAMSHA,
     SUPPORTED_AYANAMSHAS,
@@ -74,9 +72,9 @@ def _update_swe_cache_hit_ratio() -> None:
 
     total = _swe_calc_hits + _swe_calc_misses
     if not total:
-        EPHEMERIS_SWE_CACHE_HIT_RATIO.set(0.0)
+        _swe_cache_hit_ratio().set(0.0)
         return
-    EPHEMERIS_SWE_CACHE_HIT_RATIO.set(_swe_calc_hits / total)
+    _swe_cache_hit_ratio().set(_swe_calc_hits / total)
 
 
 @lru_cache(maxsize=1)
@@ -923,7 +921,7 @@ class SwissEphemerisAdapter:
             return None, False
         original = (body_name or "").strip()
         lowered = original.lower()
-        canonical = canonical_name(original)
+        canonical = _canonical_name(original)
 
         node_variant = self._variant_config.normalized_nodes()
         if lowered in {"true_node", "true node"}:
@@ -1136,8 +1134,19 @@ def swe_calc(
     return result
 
 def _init_ephe(*args, **kwargs):
-    """Lazy import wrapper around :func:`astroengine.engine.ephe_runtime.init_ephe`."""
+    """Lazily import and invoke :func:`astroengine.engine.ephe_runtime.init_ephe`."""
 
     from astroengine.engine.ephe_runtime import init_ephe as _init
 
     return _init(*args, **kwargs)
+
+def _canonical_name(name: str) -> str:
+    from ..core.bodies import canonical_name as _canonical
+
+    return _canonical(name)
+
+def _swe_cache_hit_ratio():
+    from ..observability import EPHEMERIS_SWE_CACHE_HIT_RATIO
+
+    return EPHEMERIS_SWE_CACHE_HIT_RATIO
+

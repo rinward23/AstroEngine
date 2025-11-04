@@ -9,15 +9,15 @@ from typing import Any
 import pytest
 
 from astroengine.ephemeris import EphemerisAdapter
+from astroengine.engine.returns._codes import resolve_body_code
 
-_swe = pytest.importorskip("swisseph")
+pytestmark = pytest.mark.swiss
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "ephemeris" / "sun_moon_2024.json"
 GOLDEN_FIXTURES: list[dict[str, Any]] = json.loads(FIXTURE_PATH.read_text())
 
 BODY_IDS = {
-    "sun": _swe.SUN,
-    "moon": _swe.MOON,
+    name: resolve_body_code(name).code for name in ("sun", "moon")
 }
 
 ADAPTER = EphemerisAdapter()

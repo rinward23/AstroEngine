@@ -1,8 +1,8 @@
+"""Judgement engine tallying horary testimonies."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable
-
-"""Judgement engine tallying horary testimonies."""
 
 from ...chart.natal import NatalChart
 from .aspects_logic import aspect_between, find_collection, find_prohibition, find_translation
@@ -110,24 +110,32 @@ def score_testimonies(
         if mutual or any_reception:
             weight = _lookup_weight(weights, "applying_with_reception")
             if weight:
+                rationale = (
+                    f"{significators.querent.body} applies to "
+                    f"{significators.quesited.body} with reception"
+                )
                 total += _add(
                     contributions,
                     "applying_with_reception",
                     "Applying aspect with reception",
                     weight,
                     1.0,
-                    f"{significators.querent.body} applies to {significators.quesited.body} with reception",
+                    rationale,
                 )
         else:
             weight = _lookup_weight(weights, "applying_no_reception")
             if weight:
+                rationale = (
+                    f"{significators.querent.body} applies to "
+                    f"{significators.quesited.body}"
+                )
                 total += _add(
                     contributions,
                     "applying_no_reception",
                     "Applying aspect without reception",
                     weight,
                     1.0,
-                    f"{significators.querent.body} applies to {significators.quesited.body}",
+                    rationale,
                 )
     elif main_contact is not None and not main_contact.applying:
         weight = _lookup_weight(weights, "applying_no_reception")
@@ -177,16 +185,24 @@ def score_testimonies(
     if prohibition is not None:
         weight = _lookup_weight(weights, "prohibition")
         if weight:
+            rationale = (
+                f"{prohibition.preventing_body} perfects with a "
+                "significator before the main aspect"
+            )
             total += _add(
                 contributions,
                 "prohibition",
                 "Prohibition",
                 weight,
                 1.0,
-                f"{prohibition.preventing_body} perfects with a significator before the main aspect",
+                rationale,
             )
 
-    next_contact = _moon_next_aspect(chart, profile, exclude={significators.querent.body, significators.quesited.body})
+    exclude = {
+        significators.querent.body,
+        significators.quesited.body,
+    }
+    next_contact = _moon_next_aspect(chart, profile, exclude=exclude)
     if next_contact is not None:
         target, days = next_contact
         weight = _lookup_weight(weights, "moon_next_good")

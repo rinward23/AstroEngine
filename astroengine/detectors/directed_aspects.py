@@ -4,21 +4,62 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 from time import perf_counter
+from typing import TYPE_CHECKING
 
-from ..chart.config import ChartConfig
-from ..chart.natal import DEFAULT_BODIES, ChartLocation, compute_natal_chart
-from ..chart.progressions import compute_secondary_progressed_chart
 from ..core.angles import normalize_degrees, signed_delta
 from ..detectors_aspects import AspectHit
 from ..ephemeris import SwissEphemerisAdapter
 from ..observability import ASPECT_COMPUTE_DURATION, COMPUTE_ERRORS
 
+if TYPE_CHECKING:  # pragma: no cover
+    from ..chart.natal import ChartLocation
+
 __all__ = ["solar_arc_natal_aspects"]
 
 
 _PARTILE_THRESHOLD_DEG = 10.0 / 60.0
-_DEFAULT_LOCATION = ChartLocation(latitude=0.0, longitude=0.0)
+
+
+@lru_cache(maxsize=1)
+def _chart_config_cls():
+    from ..chart.config import ChartConfig
+
+    return ChartConfig
+
+
+@lru_cache(maxsize=1)
+def _chart_location_cls():
+    from ..chart.natal import ChartLocation
+
+    return ChartLocation
+
+
+@lru_cache(maxsize=1)
+def _default_bodies():
+    from ..chart.natal import DEFAULT_BODIES
+
+    return DEFAULT_BODIES
+
+
+@lru_cache(maxsize=1)
+def _compute_natal_chart():
+    from ..chart.natal import compute_natal_chart
+
+    return compute_natal_chart
+
+
+@lru_cache(maxsize=1)
+def _compute_secondary_progressed_chart():
+    from ..chart.progressions import compute_secondary_progressed_chart
+
+    return compute_secondary_progressed_chart
+
+
+def _default_location():
+    cls = _chart_location_cls()
+    return cls(latitude=0.0, longitude=0.0)
 
 
 def _parse_iso(value: str) -> datetime:
@@ -33,8 +74,9 @@ def _isoformat(moment: datetime) -> str:
 
 
 def _resolve_body_names(selection: Sequence[str] | None) -> list[str]:
+    bodies = _default_bodies()
     if selection is None:
-        return list(DEFAULT_BODIES.keys())
+        return list(bodies.keys())
 
     resolved: list[str] = []
     for token in selection:
@@ -42,7 +84,7 @@ def _resolve_body_names(selection: Sequence[str] | None) -> list[str]:
         if not normalized:
             continue
         match = next(
-            (name for name in DEFAULT_BODIES if name.lower() == normalized.lower()),
+            (name for name in bodies if name.lower() == normalized.lower()),
             None,
         )
         if match and match not in resolved:
@@ -133,17 +175,18 @@ def solar_arc_natal_aspects(
             raise ValueError("step_days must be positive for solar arc aspect scans")
 
         target_names = _resolve_body_names(bodies)
-        body_codes = {name: DEFAULT_BODIES[name] for name in target_names}
+        bodies = _default_bodies()
+        body_codes = {name: bodies[name] for name in target_names}
         if "Sun" not in body_codes:
-            body_codes = {**body_codes, "Sun": DEFAULT_BODIES["Sun"]}
+            body_codes = {**body_codes, "Sun": bodies["Sun"]}
 
-        chart_config = ChartConfig()
+        chart_config = _chart_config_cls()()
         adapter = SwissEphemerisAdapter.from_chart_config(chart_config)
         natal_moment = _parse_iso(natal_ts)
 
-        natal_chart = compute_natal_chart(
+        natal_chart = _compute_natal_chart()(
             natal_moment,
-            _DEFAULT_LOCATION,
+            _default_location(),
             bodies=body_codes,
             config=chart_config,
             adapter=adapter,
@@ -170,10 +213,10 @@ def solar_arc_natal_aspects(
             detection_bodies.append("Sun")
 
         while current <= end:
-            progressed = compute_secondary_progressed_chart(
+            progressed = _compute_secondary_progressed_chart()(
                 natal_chart,
                 current,
-                bodies={"Sun": DEFAULT_BODIES["Sun"]},
+                bodies={"Sun": _default_bodies()["Sun"]},
                 config=chart_config,
                 adapter=adapter,
             )

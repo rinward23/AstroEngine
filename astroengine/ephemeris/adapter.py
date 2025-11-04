@@ -13,7 +13,7 @@ from time import perf_counter
 from typing import Final, cast
 
 from astroengine.engine.ephe_runtime import init_ephe
-from astroengine.ephemeris.swe import has_swe, swe
+from astroengine.ephemeris import swe as swe_module
 
 from ..core.angles import AspectMotion, DeltaLambdaTracker, classify_relative_motion
 from ..core.time import TimeConversion, to_tt
@@ -30,11 +30,21 @@ from .sidereal import (
 )
 from .swisseph_adapter import swe_calc
 
-_HAS_SWE: Final[bool] = has_swe()
+_SIDEREAL_MODE_MAP: dict[str, int] = {}
 
-if _HAS_SWE:
-    _SIDEREAL_MODE_MAP: dict[str, int] = {}
-    swe_module = swe()
+
+def _swisseph_available() -> bool:
+    """Return ``True`` when Swiss Ephemeris bindings can be used."""
+
+    return swe_module.has_swe()
+
+
+def _ensure_sidereal_modes_loaded() -> None:
+    """Populate sidereal mode map if Swiss Ephemeris is available."""
+
+    if _SIDEREAL_MODE_MAP or not _swisseph_available():
+        return
+    module = swe_module.swe()
     for key, attr in (
         ("lahiri", "SIDM_LAHIRI"),
         ("fagan_bradley", "SIDM_FAGAN_BRADLEY"),
@@ -42,11 +52,9 @@ if _HAS_SWE:
         ("raman", "SIDM_RAMAN"),
         ("deluce", "SIDM_DELUCE"),
     ):
-        value = getattr(swe_module, attr, None)
+        value = getattr(module, attr, None)
         if value is not None:
             _SIDEREAL_MODE_MAP[key] = int(value)
-else:
-    _SIDEREAL_MODE_MAP: dict[str, int] = {}
 
 __all__ = [
     "EphemerisAdapter",
@@ -261,17 +269,17 @@ class EphemerisAdapter:
     def _resolve_flags(self, flags: int | None) -> int:
         if flags is not None:
             return flags
-        if not _HAS_SWE:
+        if not _swisseph_available():
             return 0
-        swe_module = swe()
+        module = swe_module.swe()
         base = self._base_calc_flags or init_ephe(
             prefer_moshier=bool(self._config.prefer_moshier)
         )
-        base |= cast(int, swe_module.FLG_SPEED)
+        base |= cast(int, module.FLG_SPEED)
         if self._config.topocentric:
-            base |= cast(int, swe_module.FLG_TOPOCTR)
+            base |= cast(int, module.FLG_TOPOCTR)
         if self._config.sidereal:
-            base |= cast(int, swe_module.FLG_SIDEREAL)
+            base |= cast(int, module.FLG_SIDEREAL)
         return base
 
     def _store(self, key: tuple[float, int, int], sample: EphemerisSample) -> None:
@@ -313,7 +321,7 @@ class EphemerisAdapter:
         self._apply_config(config)
 
     def _configure_runtime(self) -> None:
-        if not _HAS_SWE:
+        if not _swisseph_available():
             self._base_calc_flags = 0
             return
 
@@ -336,31 +344,32 @@ class EphemerisAdapter:
             )
 
         candidate_str = str(candidate) if candidate else None
-        self._base_calc_flags = init_ephe(
+        self._base_calc_flags = _init_ephe(
             candidate_str, force=True, prefer_moshier=prefer_moshier
         )
         if candidate_str:
             LOG.debug("Swiss ephemeris runtime configured with path: %s", candidate_str)
 
     def _configure_observer(self) -> None:
-        if not _HAS_SWE:
+        if not _swisseph_available():
             return
-        swe_module = swe()
+        module = swe_module.swe()
         if not self._config.topocentric or self._config.observer is None:
-            swe_module.set_topo(0.0, 0.0, 0.0)
+            module.set_topo(0.0, 0.0, 0.0)
             return
         lon, lat, elev = self._config.observer.as_tuple()
-        swe_module.set_topo(lon, lat, elev)
+        module.set_topo(lon, lat, elev)
 
     def _configure_sidereal(self) -> None:
         self._sidereal_mode_code = None
         self._sidereal_mode_key = None
         if not self._config.sidereal:
             return
-        if not _HAS_SWE:
+        if not _swisseph_available():
             raise RuntimeError(
                 "Sidereal calculations require pyswisseph to be installed"
             )
+        _ensure_sidereal_modes_loaded()
         desired = self._config.sidereal_mode or DEFAULT_SIDEREAL_AYANAMSHA
         key = normalize_ayanamsha_name(desired)
         if key not in SUPPORTED_AYANAMSHAS:
@@ -376,7 +385,7 @@ class EphemerisAdapter:
             raise ValueError(
                 f"Swiss Ephemeris does not expose a sidereal constant for '{key}'"
             ) from exc
-        swe().set_sid_mode(mode_code, 0.0, 0.0)
+        swe_module.swe().set_sid_mode(mode_code, 0.0, 0.0)
         self._sidereal_mode_code = mode_code
         self._sidereal_mode_key = key
 
@@ -386,7 +395,7 @@ class EphemerisAdapter:
         [TimeConversion, int, int],
         tuple[float, float, float, float, float, float, float, float, float, float],
     ]:
-        if not _HAS_SWE:
+        if not _swisseph_available():
             return self._moshier_backend
         if self._config.prefer_moshier:
             return self._moshier_backend
@@ -401,10 +410,11 @@ class EphemerisAdapter:
         )
         if serr:
             raise RuntimeError(serr)
+        module = swe_module.swe()
         eq_result, _, serr_eq = swe_calc(
             jd_ut=jd,
             planet_index=body,
-            flag=flags | swe().FLG_EQUATORIAL,
+            flag=flags | module.FLG_EQUATORIAL,
             use_tt=self._use_tt,
         )
         if serr_eq:
@@ -427,10 +437,11 @@ class EphemerisAdapter:
     def _moshier_backend(
         self, moment: TimeConversion, body: int, flags: int
     ) -> tuple[float, float, float, float, float, float, float, float, float, float]:
-        if not _HAS_SWE:
+        if not _swisseph_available():
             raise RuntimeError("Moshier fallback requires pyswisseph to be installed")
         jd = moment.jd_tt if self._use_tt else moment.jd_utc
-        moshier_flags = flags | swe().FLG_MOSEPH
+        module = swe_module.swe()
+        moshier_flags = flags | module.FLG_MOSEPH
         result, _, serr = swe_calc(
             jd_ut=jd,
             planet_index=body,
@@ -442,7 +453,7 @@ class EphemerisAdapter:
         eq_result, _, serr_eq = swe_calc(
             jd_ut=jd,
             planet_index=body,
-            flag=moshier_flags | swe().FLG_EQUATORIAL,
+            flag=moshier_flags | module.FLG_EQUATORIAL,
             use_tt=self._use_tt,
         )
         if serr_eq:
@@ -506,3 +517,7 @@ class EphemerisAdapter:
             self._config.ephemeris_path,
             self._use_tt,
         )
+def _init_ephe(*args, **kwargs):
+    from astroengine.engine.ephe_runtime import init_ephe as _init
+
+    return _init(*args, **kwargs)

@@ -5,7 +5,12 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from astroengine.engine.ephe_runtime import init_ephe
 from astroengine.ephemeris.swe import has_swe, swe
+
+from ...core.time import julian_day
+from ...ritual.timing import PLANETARY_HOUR_TABLE
+from .models import GeoLocation, PlanetaryHourResult
 
 _HAS_SWE = has_swe()
 
@@ -16,17 +21,8 @@ else:  # pragma: no cover - fallback exercised when swe missing
 
 if TYPE_CHECKING:  # pragma: no cover - typing aid only
     from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
-
-if _SwissAdapter is not None:
-    SwissEphemerisAdapter = _SwissAdapter
-else:  # pragma: no cover - ensures attribute exists for typing tools
-    SwissEphemerisAdapter = None  # type: ignore[assignment]
-
-from ...core.time import julian_day
-from astroengine.engine.ephe_runtime import init_ephe
-from ...ephemeris.swisseph_adapter import SwissEphemerisAdapter
-from ...ritual.timing import PLANETARY_HOUR_TABLE
-from .models import GeoLocation, PlanetaryHourResult
+else:
+    SwissEphemerisAdapter = _SwissAdapter  # type: ignore[assignment]
 
 __all__ = ["planetary_hour", "sunrise_sunset", "moonrise_moonset"]
 
@@ -169,7 +165,7 @@ def moonrise_moonset(
         location,
         body_code=swe().MOON,
         body_name="Moon",
-        flags=_MOON_FLAGS,
+        flags=_moon_flags(),
     )
     return (
         resolved_adapter.from_julian_day(prev_rise),
@@ -251,51 +247,5 @@ def planetary_hour(moment: datetime, location: GeoLocation) -> PlanetaryHourResu
         next_sunrise=next_sunrise_dt,
         day_ruler=day_ruler,
         sequence=sequence,
-    )
-
-def moonrise_moonset(
-    moment: datetime,
-    location: GeoLocation,
-    *,
-    adapter: SwissEphemerisAdapter | None = None,
-) -> tuple[datetime, datetime, datetime]:
-    """Return moonrise, moonset, and next moonrise around ``moment``."""
-
-    adapter = adapter or SwissEphemerisAdapter.get_default_adapter()
-    if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=UTC)
-    else:
-        moment = moment.astimezone(UTC)
-
-    jd = julian_day(moment)
-    prev_moonrise_jd = _next_event(
-        adapter,
-        jd - 1.0,
-        "rise",
-        location,
-        body_code=swe().MOON,
-        body_name="Moon",
-    )
-    moonset_jd = _next_event(
-        adapter,
-        prev_moonrise_jd + 0.01,
-        "set",
-        location,
-        body_code=swe().MOON,
-        body_name="Moon",
-    )
-    next_moonrise_jd = _next_event(
-        adapter,
-        prev_moonrise_jd + 0.51,
-        "rise",
-        location,
-        body_code=swe().MOON,
-        body_name="Moon",
-    )
-
-    return (
-        adapter.from_julian_day(prev_moonrise_jd).astimezone(UTC),
-        adapter.from_julian_day(moonset_jd).astimezone(UTC),
-        adapter.from_julian_day(next_moonrise_jd).astimezone(UTC),
     )
 

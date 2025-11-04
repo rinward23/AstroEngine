@@ -126,7 +126,11 @@ def aspect_between(
 def _bodies_sorted_by_speed(chart: NatalChart, bodies: Iterable[str], reverse: bool) -> list[str]:
     return sorted(
         bodies,
-        key=lambda name: abs(chart.positions.get(name).speed_longitude) if name in chart.positions else 0.0,
+        key=lambda name: (
+            abs(chart.positions.get(name).speed_longitude)
+            if name in chart.positions
+            else 0.0
+        ),
         reverse=reverse,
     )
 
@@ -165,7 +169,12 @@ def find_translation(
             continue
         contact_a = aspect_between(chart, translator, body_a, profile)
         contact_b = aspect_between(chart, translator, body_b, profile)
-        if contact_a and contact_b and not contact_a.applying and _perfection_in_window(contact_b, limit):
+        if (
+            contact_a
+            and contact_b
+            and not contact_a.applying
+            and _perfection_in_window(contact_b, limit)
+        ):
             return TranslationOfLight(
                 translator=translator,
                 from_body=body_a,

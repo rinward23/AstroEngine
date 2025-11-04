@@ -6,6 +6,8 @@ from .swe import swe
 
 
 def _init_ephe(*args, **kwargs):
+    """Lazily import the Swiss ephemeris initialiser."""
+
     from astroengine.engine.ephe_runtime import init_ephe as _init
 
     return _init(*args, **kwargs)

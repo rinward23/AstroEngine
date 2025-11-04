@@ -11,6 +11,33 @@ from ..ephemeris.sidereal import (
     normalize_ayanamsha_name,
 )
 
+HOUSE_CODE_BY_NAME: dict[str, str] = {
+    "placidus": "P",
+    "koch": "K",
+    "regiomontanus": "R",
+    "campanus": "C",
+    "equal": "A",
+    "whole_sign": "W",
+    "porphyry": "O",
+    "alcabitius": "B",
+    "topocentric": "T",
+    "morinus": "M",
+    "meridian": "X",
+    "vehlow_equal": "V",
+    "sripati": "S",
+    "equal_mc": "D",
+}
+
+HOUSE_ALIASES: dict[str, str] = {
+    "ws": "whole_sign",
+    "wholesign": "whole_sign",
+    "w": "whole_sign",
+    "axial": "meridian",
+    "vehlow": "vehlow_equal",
+    "sripathi": "sripati",
+    "equalmc": "equal_mc",
+}
+
 __all__ = [
     "ChartConfig",
     "DEFAULT_SIDEREAL_AYANAMSHA",
