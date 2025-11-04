@@ -4,10 +4,15 @@ from datetime import UTC, datetime
 
 import pytest
 
-from astroengine.engine.ephe_runtime import init_ephe
-from astroengine.ephemeris import SwissEphemerisAdapter
+pytestmark = pytest.mark.swiss
 
-swe = pytest.importorskip("swisseph")
+try:
+    from astroengine.engine.ephe_runtime import init_ephe
+    from astroengine.ephemeris import SwissEphemerisAdapter
+except ImportError as exc:  # pragma: no cover - optional dependency gating
+    pytest.skip(
+        f"Swiss Ephemeris adapter unavailable: {exc}", allow_module_level=True
+    )
 
 
 def test_julian_day_roundtrip_precision() -> None:
@@ -19,25 +24,25 @@ def test_julian_day_roundtrip_precision() -> None:
     assert delta < 5e-4
 
 
-def test_rise_transit_alignment_with_swisseph() -> None:
+def test_rise_transit_alignment_with_swisseph(swiss_ephemeris) -> None:
     adapter = SwissEphemerisAdapter()
     init_ephe()
-    jd = swe().julday(2024, 6, 1, 0.0)
+    jd = swiss_ephemeris.julday(2024, 6, 1, 0.0)
     latitude = 40.7128
     longitude = -74.0060
     ours = adapter.rise_transit(
         jd,
-        swe().SUN,
+        swiss_ephemeris.SUN,
         latitude=latitude,
         longitude=longitude,
         event="rise",
         flags=adapter._calc_flags,  # noqa: SLF001 - intentional test access
         body_name="Sun",
     )
-    expected_status, expected_tret = swe().rise_trans(
+    expected_status, expected_tret = swiss_ephemeris.rise_trans(
         jd,
-        swe().SUN,
-        swe().CALC_RISE,
+        swiss_ephemeris.SUN,
+        swiss_ephemeris.CALC_RISE,
         (longitude, latitude, 0.0),
         0.0,
         0.0,
@@ -48,26 +53,26 @@ def test_rise_transit_alignment_with_swisseph() -> None:
     assert abs(ours.julian_day - expected_tret[0]) < 1e-6
 
 
-def test_fixed_star_matches_native_computation() -> None:
+def test_fixed_star_matches_native_computation(swiss_ephemeris) -> None:
     adapter = SwissEphemerisAdapter()
     init_ephe()
-    jd = swe().julday(2024, 1, 1, 0.0)
+    jd = swiss_ephemeris.julday(2024, 1, 1, 0.0)
     star = adapter.fixed_star("Aldebaran", jd, flags=adapter._calc_flags)
-    values, name, retflags = swe().fixstar_ut("Aldebaran", jd, adapter._calc_flags)
+    values, name, retflags = swiss_ephemeris.fixstar_ut("Aldebaran", jd, adapter._calc_flags)
     assert star.name.strip().lower() == name.strip().lower()
     assert abs(star.longitude - values[0]) < 1e-6
     assert abs(star.latitude - values[1]) < 1e-6
     assert star.flags == retflags
 
 
-def test_compute_bodies_many_matches_single_calls() -> None:
+def test_compute_bodies_many_matches_single_calls(swiss_ephemeris) -> None:
     adapter = SwissEphemerisAdapter()
     init_ephe()
-    jd = swe().julday(2024, 2, 1, 0.0)
+    jd = swiss_ephemeris.julday(2024, 2, 1, 0.0)
     bodies = {
-        "Sun": int(swe().SUN),
-        "Moon": int(swe().MOON),
-        "Mars": int(swe().MARS),
+        "Sun": int(swiss_ephemeris.SUN),
+        "Moon": int(swiss_ephemeris.MOON),
+        "Mars": int(swiss_ephemeris.MARS),
     }
     aggregated = adapter.compute_bodies_many(jd, bodies)
     assert set(aggregated) == set(bodies)
@@ -88,25 +93,27 @@ def test_compute_bodies_many_matches_single_calls() -> None:
         )
 
 
-def test_ayanamsa_variants() -> None:
+def test_ayanamsa_variants(swiss_ephemeris) -> None:
     adapter = SwissEphemerisAdapter(zodiac="sidereal", ayanamsa="lahiri")
     init_ephe()
-    jd = swe().julday(2024, 5, 10, 0.0)
+    jd = swiss_ephemeris.julday(2024, 5, 10, 0.0)
     ut_value = adapter.ayanamsa(jd)
-    expected_ut = swe().get_ayanamsa_ut(jd)
+    expected_ut = swiss_ephemeris.get_ayanamsa_ut(jd)
     assert abs(ut_value - expected_ut) < 1e-8
 
     true_value = adapter.ayanamsa(jd, true_longitude=True)
-    expected_true = swe().get_ayanamsa(jd + swe().deltat(jd))
+    expected_true = swiss_ephemeris.get_ayanamsa(jd + swiss_ephemeris.deltat(jd))
     assert abs(true_value - expected_true) < 1e-8
 
     details = adapter.ayanamsa_details(jd)
-    flags, expected = swe().get_ayanamsa_ex_ut(jd, int(swe().SIDM_LAHIRI))
-    assert details["mode"] == int(swe().SIDM_LAHIRI)
+    flags, expected = swiss_ephemeris.get_ayanamsa_ex_ut(
+        jd, int(swiss_ephemeris.SIDM_LAHIRI)
+    )
+    assert details["mode"] == int(swiss_ephemeris.SIDM_LAHIRI)
     assert details["flags"] == flags
     assert abs(details["value"] - expected) < 1e-8
 
 
-def test_planet_name_resolution() -> None:
-    name = SwissEphemerisAdapter.planet_name(int(swe().MARS))
+def test_planet_name_resolution(swiss_ephemeris) -> None:
+    name = SwissEphemerisAdapter.planet_name(int(swiss_ephemeris.MARS))
     assert "mars" in name.lower()

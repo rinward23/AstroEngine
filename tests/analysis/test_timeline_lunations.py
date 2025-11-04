@@ -1,18 +1,23 @@
 from __future__ import annotations
 
-import os
 from datetime import UTC, datetime
 
 import pytest
 
-from astroengine.analysis import find_lunations
+try:
+    from astroengine.analysis import find_lunations
+except ImportError as exc:  # pragma: no cover - depends on optional deps
+    find_lunations = None  # type: ignore[assignment]
+    _ANALYSIS_IMPORT_ERROR = exc
+else:
+    _ANALYSIS_IMPORT_ERROR = None
 
-pytest.importorskip("swisseph")
-if not (os.environ.get("SE_EPHE_PATH") or os.environ.get("SWE_EPH_PATH")):
-    pytest.skip("Swiss ephemeris not available", allow_module_level=True)
+pytestmark = pytest.mark.swiss
 
 
 def test_find_lunations_wrapper_orders_events() -> None:
+    if find_lunations is None:
+        pytest.skip(f"find_lunations unavailable: {_ANALYSIS_IMPORT_ERROR}")
     start = datetime(2025, 9, 1, tzinfo=UTC)
     end = datetime(2025, 10, 1, tzinfo=UTC)
     events = find_lunations(start, end)

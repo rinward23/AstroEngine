@@ -15,10 +15,10 @@ from core.rel_plus import (
     midpoint_time,
 )
 
-swe = pytest.importorskip("swisseph")
+pytestmark = pytest.mark.swiss
 
 
-def _julian_day(dt: datetime) -> float:
+def _julian_day(dt: datetime, swe_module) -> float:
     ts = dt.astimezone(UTC)
     frac = (
         ts.hour
@@ -27,24 +27,26 @@ def _julian_day(dt: datetime) -> float:
         + ts.microsecond / 3_600_000_000.0
     )
     init_ephe()
-    return swe().julday(ts.year, ts.month, ts.day, frac)
+    return swe_module.julday(ts.year, ts.month, ts.day, frac)
 
 
-def _obliquity(jd_ut: float) -> float:
-    if hasattr(swe, "obl_ecl"):
-        return swe().obl_ecl(jd_ut)[0]  # type: ignore[call-arg]
+def _obliquity(jd_ut: float, swe_module) -> float:
+    if hasattr(swe_module, "obl_ecl"):
+        return swe_module.obl_ecl(jd_ut)[0]  # type: ignore[call-arg]
     base_flag = init_ephe()
-    values, _ = swe().calc_ut(jd_ut, swe().ECL_NUT, base_flag)
+    values, _ = swe_module.calc_ut(jd_ut, swe_module.ECL_NUT, base_flag)
     return values[0]
 
 
-def test_davison_houses_matches_swe():
+def test_davison_houses_matches_swe(swiss_ephemeris):
     dt = datetime(2024, 3, 21, 12, 30, tzinfo=UTC)
     result = DavisonResult(mid_when=dt, mid_lat=10.0, mid_lon=20.0, positions={})
     houses = davison_houses(result, "O")
 
-    jd = _julian_day(dt)
-    cusps_ref, ascmc_ref = swe().houses_ex(jd, result.mid_lat, result.mid_lon, b"O")
+    jd = _julian_day(dt, swiss_ephemeris)
+    cusps_ref, ascmc_ref = swiss_ephemeris.houses_ex(
+        jd, result.mid_lat, result.mid_lon, b"O"
+    )
 
     assert pytest.approx(houses.ascendant, rel=0, abs=1e-6) == (ascmc_ref[0] % 360.0)
     assert pytest.approx(houses.midheaven, rel=0, abs=1e-6) == (ascmc_ref[1] % 360.0)
@@ -52,20 +54,20 @@ def test_davison_houses_matches_swe():
         assert pytest.approx(cusp, rel=0, abs=1e-6) == (cusps_ref[idx] % 360.0)
 
 
-def test_composite_houses_armc_midpoint_matches_reference():
+def test_composite_houses_armc_midpoint_matches_reference(swiss_ephemeris):
     event_a = BirthEvent(when=datetime(1990, 1, 1, 5, 15, tzinfo=UTC), lat=40.0, lon=-73.0)
     event_b = BirthEvent(when=datetime(1992, 6, 10, 18, 45, tzinfo=UTC), lat=34.0, lon=-118.0)
     houses = composite_houses(event_a, event_b, "O")
 
-    jd_a = _julian_day(event_a.when)
-    jd_b = _julian_day(event_b.when)
-    lst_a = (swe().sidtime(jd_a) * 15.0 + event_a.lon) % 360.0
-    lst_b = (swe().sidtime(jd_b) * 15.0 + event_b.lon) % 360.0
+    jd_a = _julian_day(event_a.when, swiss_ephemeris)
+    jd_b = _julian_day(event_b.when, swiss_ephemeris)
+    lst_a = (swiss_ephemeris.sidtime(jd_a) * 15.0 + event_a.lon) % 360.0
+    lst_b = (swiss_ephemeris.sidtime(jd_b) * 15.0 + event_b.lon) % 360.0
     armc = circular_midpoint(lst_a, lst_b)
     mid_lat, _ = geodesic_midpoint(event_a.lat, event_a.lon, event_b.lat, event_b.lon)
-    jd_mid = _julian_day(midpoint_time(event_a.when, event_b.when))
-    eps = _obliquity(jd_mid)
-    cusps_ref, ascmc_ref = swe().houses_armc(armc, mid_lat, eps, b"O")
+    jd_mid = _julian_day(midpoint_time(event_a.when, event_b.when), swiss_ephemeris)
+    eps = _obliquity(jd_mid, swiss_ephemeris)
+    cusps_ref, ascmc_ref = swiss_ephemeris.houses_armc(armc, mid_lat, eps, b"O")
 
     assert pytest.approx(houses.ascendant, rel=0, abs=1e-6) == (ascmc_ref[0] % 360.0)
     assert pytest.approx(houses.midheaven, rel=0, abs=1e-6) == (ascmc_ref[1] % 360.0)

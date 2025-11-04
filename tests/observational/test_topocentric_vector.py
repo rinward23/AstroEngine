@@ -9,10 +9,25 @@ pytest.importorskip(
     reason="Pillow not installed; install extras with `pip install -e .[ui,reports]`.",
 )
 
-from astroengine.engine.observational import topocentric_equatorial
-from astroengine.ephemeris import EphemerisAdapter, EphemerisConfig, ObserverLocation
+try:
+    from astroengine.engine.observational import topocentric_equatorial
+    from astroengine.engine.returns._codes import resolve_body_code
+    from astroengine.ephemeris import EphemerisConfig
+    from astroengine.ephemeris import EphemerisAdapter, ObserverLocation
+except ImportError as exc:  # pragma: no cover - optional dependency gating
+    pytest.skip(
+        f"Observational ephemeris support unavailable: {exc}", allow_module_level=True
+    )
+    EphemerisAdapter = None  # type: ignore[assignment]
+    ObserverLocation = None  # type: ignore[assignment]
+    resolve_body_code = lambda name: None  # type: ignore[assignment]
+    _EPHEMERIS_IMPORT_ERROR = exc
+else:
+    _EPHEMERIS_IMPORT_ERROR = None
 
-swe = pytest.importorskip("swisseph")
+pytestmark = pytest.mark.swiss
+
+MOON_CODE = resolve_body_code("Moon").code
 
 
 def _adapter(topocentric: bool, observer: ObserverLocation | None) -> EphemerisAdapter:
@@ -26,9 +41,11 @@ def _angular_delta(a: float, b: float) -> float:
 
 
 def test_topocentric_matches_swiss_ephemeris() -> None:
+    if EphemerisAdapter is None or ObserverLocation is None:
+        pytest.skip(f"EphemerisAdapter unavailable: {_EPHEMERIS_IMPORT_ERROR}")
     observer = ObserverLocation(latitude_deg=51.4779, longitude_deg=-0.0015, elevation_m=46.0)
     moment = datetime(2024, 3, 20, 5, 30, tzinfo=UTC)
-    body = swe().MOON
+    body = MOON_CODE
 
     geo_adapter = _adapter(False, None)
     topo_equ = topocentric_equatorial(geo_adapter, body, moment, observer)

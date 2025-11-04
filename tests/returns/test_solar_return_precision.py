@@ -4,22 +4,36 @@ from datetime import UTC, datetime
 
 import pytest
 
-pytest.importorskip(
-    "swisseph",
-    reason="pyswisseph not installed; install extras with `pip install -e .[ephem,providers]`.",
-)
+try:
+    from astroengine.core.time import to_tt
+except ImportError as exc:  # pragma: no cover - optional dependency gating
+    to_tt = None  # type: ignore[assignment]
+    _CORE_IMPORT_ERROR = exc
+else:
+    _CORE_IMPORT_ERROR = None
 
-from astroengine.core.time import to_tt
 from astroengine.engine.returns import find_return_instant, guess_window
 from astroengine.engine.returns._codes import resolve_body_code
-from astroengine.ephemeris import EphemerisAdapter
+
+try:
+    from astroengine.ephemeris import EphemerisAdapter
+except ImportError as exc:  # pragma: no cover - optional dependency gating
+    EphemerisAdapter = None  # type: ignore[assignment]
+    _EPHEMERIS_IMPORT_ERROR = exc
+else:
+    _EPHEMERIS_IMPORT_ERROR = None
 
 
 def _wrap(delta: float) -> float:
     return ((delta + 180.0) % 360.0) - 180.0
 
 
+@pytest.mark.swiss
 def test_solar_return_precision() -> None:
+    if to_tt is None:
+        pytest.skip(f"to_tt unavailable: {_CORE_IMPORT_ERROR}")
+    if EphemerisAdapter is None:
+        pytest.skip(f"EphemerisAdapter unavailable: {_EPHEMERIS_IMPORT_ERROR}")
     adapter = EphemerisAdapter()
     natal_dt = datetime(1990, 5, 4, 12, 30, tzinfo=UTC)
     code = resolve_body_code("Sun").code
