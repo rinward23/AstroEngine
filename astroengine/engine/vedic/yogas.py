@@ -193,7 +193,11 @@ def _planet_strengths(
             house=house,
             house_class=_house_class(house),
             retrograde=position.speed_longitude < 0,
-            combust=_separation(position.longitude, sun_lon) <= combust_threshold if name != "Sun" else False,
+            combust=(
+                _separation(position.longitude, sun_lon) <= combust_threshold
+                if name != "Sun"
+                else False
+            ),
             dignity=dignity,
             dignity_label=label,
             dispositor=dispositor,
@@ -407,15 +411,23 @@ def _collect_bhandhan(
         strengths.get("Mars"),
         strengths.get("Saturn"),
     ]
-    malefics_in_kendra = [status for status in malefics if status and status.house in KENDRA_HOUSES]
+    malefics_in_kendra = [
+        status for status in malefics if status and status.house in KENDRA_HOUSES
+    ]
     if not malefics_in_kendra:
         return []
-    lagna_weak = lagna_status.house in DUSTHANA_HOUSES or lagna_status.dignity.get("fall") or lagna_status.dignity.get("detriment")
+    lagna_weak = (
+        lagna_status.house in DUSTHANA_HOUSES
+        or lagna_status.dignity.get("fall")
+        or lagna_status.dignity.get("detriment")
+    )
     if not lagna_weak:
         return []
     checks = {
         "strength": {
-            "malefics_in_kendra": tuple((status.name, status.house) for status in malefics_in_kendra),
+            "malefics_in_kendra": tuple(
+                (status.name, status.house) for status in malefics_in_kendra
+            ),
             "lagna_lord_house": lagna_status.house,
         },
         "dignity": {

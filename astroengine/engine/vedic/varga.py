@@ -160,7 +160,9 @@ VARGA_DEFINITIONS: dict[str, VargaDefinition] = {
         part_key="saptamsa",
         start_fn=_ODD_EVEN_7TH,
         dest_fn=_sequential_dest(_ODD_EVEN_7TH),
-        rule_description="Odd signs count from the natal sign; even signs count from the 7th sign.",
+        rule_description=(
+            "Odd signs count from the natal sign; even signs count from the 7th sign."
+        ),
     ),
     "D9": VargaDefinition(
         code="D9",
@@ -169,7 +171,9 @@ VARGA_DEFINITIONS: dict[str, VargaDefinition] = {
         part_key="pada",
         start_fn=_modal_start,
         dest_fn=_sequential_dest(_modal_start),
-        rule_description="Movable signs count from the natal sign, fixed from the 9th, dual from the 5th.",
+        rule_description=(
+            "Movable signs count from the natal sign, fixed from the 9th, dual from the 5th."
+        ),
     ),
     "D10": VargaDefinition(
         code="D10",
@@ -178,7 +182,9 @@ VARGA_DEFINITIONS: dict[str, VargaDefinition] = {
         part_key="part",
         start_fn=_modal_start,
         dest_fn=_sequential_dest(_modal_start),
-        rule_description="Movable signs count from the natal sign, fixed from the 9th, dual from the 5th.",
+        rule_description=(
+            "Movable signs count from the natal sign, fixed from the 9th, dual from the 5th."
+        ),
     ),
     "D12": VargaDefinition(
         code="D12",
@@ -187,7 +193,9 @@ VARGA_DEFINITIONS: dict[str, VargaDefinition] = {
         part_key="dwadasamsa",
         start_fn=_ODD_EVEN_7TH,
         dest_fn=_sequential_dest(_ODD_EVEN_7TH),
-        rule_description="Odd signs count from the natal sign; even signs count from the 7th sign.",
+        rule_description=(
+            "Odd signs count from the natal sign; even signs count from the 7th sign."
+        ),
     ),
     "D16": VargaDefinition(
         code="D16",
@@ -249,26 +257,11 @@ def _varga_components(longitude: float, definition: VargaDefinition) -> tuple[in
     return dest_sign, varga_longitude % 360.0, part_index + 1, start_sign
 
 
-def rasi_sign(longitude: float) -> tuple[int, float, dict[str, int | str]]:
-    """Return the base Rāśi sign index and longitude for ``longitude``."""
-
-    sign_idx = sign_index(longitude)
-    return sign_idx, longitude % 360.0, {}
-
-
 def navamsa_sign(longitude: float) -> tuple[int, float, int]:
     """Return the Navāṁśa sign index, longitude, and pada for ``longitude``."""
 
     dest_sign, lon, pada, _ = _varga_components(longitude, VARGA_DEFINITIONS["D9"])
     return dest_sign, lon, pada
-
-
-def saptamsa_sign(longitude: float) -> tuple[int, float, int]:
-    """Return the Saptāṁśa sign index, longitude, and part for ``longitude``."""
-
-    dest_sign, lon, part, _ = _varga_components(longitude, VARGA_DEFINITIONS["D7"])
-    return dest_sign, lon, part
-
 
 def dasamsa_sign(longitude: float) -> tuple[int, float, int]:
     """Return the Daśāṁśa sign index, longitude, and decan for ``longitude``."""
