@@ -13,6 +13,20 @@ conda env update -f environment.yml --prune
 conda activate astroengine
 ```
 
+### Required providers, Swiss data, and migrations
+
+Before running diagnostics, walk through this checklist:
+
+- [ ] Install the providers extras with `pip install -e .[providers]` (or run
+  `make install-optional`).
+- [ ] Export `SE_EPHE_PATH` to your Swiss ephemeris data directory; if you do
+  not have licensed files, the bundled fallback `datasets/swisseph_stub`
+  maintains deterministic behaviour.
+- [ ] Apply the latest database schema with `alembic upgrade head`.
+
+Completing these steps clears the WARNs surfaced by
+`python -m astroengine.diagnostics --strict`.
+
 ## Swiss Ephemeris data
 
 `pyswisseph` loads ephemeris files from `SWE_EPH_PATH`. Set one of:
