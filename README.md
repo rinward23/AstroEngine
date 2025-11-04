@@ -447,6 +447,18 @@ These helpers ensure the module → submodule → channel → subchannel hierarc
 remains intact, particularly when integrating new Solar Fire derived datasets or
 augmenting the runtime with additional registries.
 
+Before running diagnostics, walk through this checklist:
+
+- [ ] Install the providers extras with `pip install -e .[providers]` (or run
+  `make install-optional`).
+- [ ] Export `SE_EPHE_PATH` to your Swiss ephemeris data directory; when no
+  licensed files are available the bundled fallback
+  `datasets/swisseph_stub` keeps deterministic tests passing.
+- [ ] Apply the latest database schema with `alembic upgrade head`.
+
+Completing these steps clears the WARNs surfaced by
+`python -m astroengine.diagnostics --strict`.
+
 ### Updating dependency manifests
 
 `requirements/base.in`, `requirements/dev.in`, and
