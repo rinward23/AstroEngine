@@ -1,4 +1,5 @@
-from astroengine import DEFAULT_REGISTRY, serialize_vca_ruleset
+from astroengine.modules import DEFAULT_REGISTRY
+from astroengine.modules.vca import serialize_vca_ruleset
 from astroengine.modules.orchestration import load_multi_agent_plan
 from astroengine.modules.reference.catalog import (
     CHART_TYPES,

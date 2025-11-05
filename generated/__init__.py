@@ -29,17 +29,15 @@ except Exception as exc:  # pragma: no cover — leave import errors to normal f
 
 # Re-export common public API symbols if available (best-effort, no hard deps)
 try:  # noqa: SIM105
-    from astroengine import TransitEngine as TransitEngine  # type: ignore[attr-defined]
+    from astroengine.transits import TransitEngine as TransitEngine
 except Exception as exc:  # pragma: no cover
     _LOG.debug("TransitEngine not available for generated shim: %s", exc)
 try:
-    from astroengine import (
-        TransitScanConfig as TransitScanConfig,
-    )  # type: ignore[attr-defined]
+    from astroengine.transits import TransitScanConfig as TransitScanConfig
 except Exception as exc:  # pragma: no cover
     _LOG.debug("TransitScanConfig not available for generated shim: %s", exc)
 try:
-    from astroengine import TransitEvent as TransitEvent  # type: ignore[attr-defined]
+    from astroengine.transits import TransitEvent as TransitEvent
 except Exception as exc:  # pragma: no cover
     _LOG.debug("TransitEvent not available for generated shim: %s", exc)
 

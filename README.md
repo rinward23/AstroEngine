@@ -365,8 +365,8 @@ import astroengine
 Import once, use everywhere:
 
 ```python
-from astroengine import TransitEvent, BodyPosition
-from astroengine.canonical import events_from_any
+from astroengine.transits import TransitEvent
+from astroengine.canonical import BodyPosition, events_from_any
 ```
 
 * **TransitEvent** is the single event model returned by scans and written by exporters.

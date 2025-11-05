@@ -13,7 +13,8 @@ from time import perf_counter
 from typing import Final, cast
 
 from astroengine.engine.ephe_runtime import init_ephe
-from astroengine.ephemeris import swe as swe_module
+
+from . import swe as swe_module
 
 from ..core.angles import AspectMotion, DeltaLambdaTracker, classify_relative_motion
 from ..core.time import TimeConversion, to_tt
