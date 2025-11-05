@@ -15,6 +15,7 @@ from starlette.responses import Response
 from app.db.session import engine
 from app.observability import configure_observability
 from app.telemetry import resolve_observability_config, setup_tracing
+from astroengine.api._factory import AppFactoryConfig, RouterSpec, create_app as _create_app
 from astroengine.cache.positions_cache import warm_startup_grid
 from astroengine.config import settings
 from astroengine.web.middleware import configure_compression
@@ -53,40 +54,35 @@ except ImportError:  # pragma: no cover - exercised in environments without orjs
 else:
     DEFAULT_RESPONSE_CLASS = ORJSONResponse
 
-app = FastAPI(
-    title="AstroEngine Plus API", default_response_class=DEFAULT_RESPONSE_CLASS
-)
-configure_compression(app)
-configure_observability(app)
-_obs_cfg = resolve_observability_config(app)
-setup_tracing(
-    app,
-    sqlalchemy_engine=engine,
-    sampling_ratio=getattr(_obs_cfg, "sampling_ratio", None),
-    enabled=getattr(_obs_cfg, "otel_enabled", None),
-)
-app.include_router(aspects_router)
-app.include_router(declinations_router)
-app.include_router(electional_router)
-app.include_router(events_router)
-app.include_router(doctor_router)
-app.include_router(transits_router)
-app.include_router(policies_router)
-app.include_router(lots_router)
-app.include_router(relationship_router)
-app.include_router(interpret_router)
-app.include_router(reports_router)
-app.include_router(health_router)
-app.include_router(settings_router)
-app.include_router(notes_router)
-app.include_router(data_router)
-app.include_router(charts_router)
-app.include_router(profiles_router)
-app.include_router(narrative_profiles_router)
-if settings.dev_mode:
-    from app.devmode import router as devmode_router
 
-    app.include_router(devmode_router)
+def _setup_observability(app: FastAPI) -> None:
+    configure_observability(app)
+    obs_cfg = resolve_observability_config(app)
+    setup_tracing(
+        app,
+        sqlalchemy_engine=engine,
+        sampling_ratio=getattr(obs_cfg, "sampling_ratio", None),
+        enabled=getattr(obs_cfg, "otel_enabled", None),
+    )
+
+
+def _install_security_headers(app: FastAPI) -> None:
+    @app.middleware("http")
+    async def security_headers(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """Apply default security headers to every HTTP response."""
+
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault(
+            "Permissions-Policy", "geolocation=(), microphone=()"
+        )
+        if request.method == "GET":
+            response.headers.setdefault("Cache-Control", "public, max-age=60")
+        return response
 
 
 def _log_ephemeris_path(state: Any, ephemeris_path: Path | None) -> None:
@@ -114,66 +110,99 @@ def _log_ephemeris_path(state: Any, ephemeris_path: Path | None) -> None:
         )
 
 
-@app.on_event("startup")
-def _init_singletons() -> None:
-    """Initialize application-wide state on startup."""
+def _register_startup(app: FastAPI) -> None:
+    @app.on_event("startup")
+    def _init_singletons() -> None:
+        """Initialize application-wide state on startup."""
 
-    app.state.trust_proxy = settings.trust_proxy
-    app.state.settings = settings.persisted()
-    _log_ephemeris_path(app.state, settings.ephemeris_path)
-    app.state.safe_mode = settings.safe_mode
-    if settings.safe_mode:
-        app.state.plugin_registry = None
-        app.state.loaded_plugins = []
-        app.state.loaded_providers = []
-    else:
-        try:
-            from astroengine.plugins.runtime import (
-                Registry,
-                load_plugins,
-                load_providers,
-            )
-        except ImportError:  # pragma: no cover - optional dependency missing
+        app.state.trust_proxy = settings.trust_proxy
+        app.state.settings = settings.persisted()
+        _log_ephemeris_path(app.state, settings.ephemeris_path)
+        app.state.safe_mode = settings.safe_mode
+        if settings.safe_mode:
             app.state.plugin_registry = None
             app.state.loaded_plugins = []
             app.state.loaded_providers = []
         else:
-            registry = Registry()
-            app.state.plugin_registry = registry
             try:
-                app.state.loaded_plugins = load_plugins(registry)
-                app.state.loaded_providers = load_providers(registry)
-            except Exception as exc:  # pragma: no cover - defensive guard
-                app.state.plugin_registry_error = str(exc)
+                from astroengine.plugins.runtime import (
+                    Registry,
+                    load_plugins,
+                    load_providers,
+                )
+            except ImportError:  # pragma: no cover - optional dependency missing
+                app.state.plugin_registry = None
                 app.state.loaded_plugins = []
                 app.state.loaded_providers = []
-    app.state.dev_mode_enabled = settings.dev_mode
+            else:
+                registry = Registry()
+                app.state.plugin_registry = registry
+                try:
+                    app.state.loaded_plugins = load_plugins(registry)
+                    app.state.loaded_providers = load_providers(registry)
+                except Exception as exc:  # pragma: no cover - defensive guard
+                    app.state.plugin_registry_error = str(exc)
+                    app.state.loaded_plugins = []
+                    app.state.loaded_providers = []
+        app.state.dev_mode_enabled = settings.dev_mode
 
-    try:
-        warmed_entries = warm_startup_grid()
-    except Exception:  # pragma: no cover - defensive guard
-        LOGGER.exception("Startup cache warm failed")
-        app.state.startup_cache_warm_entries = 0
-    else:
-        app.state.startup_cache_warm_entries = warmed_entries
-        LOGGER.debug("Warmed %s JD/body entries during startup", warmed_entries)
+        try:
+            warmed_entries = warm_startup_grid()
+        except Exception:  # pragma: no cover - defensive guard
+            LOGGER.exception("Startup cache warm failed")
+            app.state.startup_cache_warm_entries = 0
+        else:
+            app.state.startup_cache_warm_entries = warmed_entries
+            LOGGER.debug("Warmed %s JD/body entries during startup", warmed_entries)
 
 
-@app.middleware("http")
-async def security_headers(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    """Apply default security headers to every HTTP response."""
-    response = await call_next(request)
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("Referrer-Policy", "no-referrer")
-    response.headers.setdefault(
-        "Permissions-Policy", "geolocation=(), microphone=()"
-    )
-    if request.method == "GET":
-        response.headers.setdefault("Cache-Control", "public, max-age=60")
-    return response
+def _install_dev_mode_router(app: FastAPI) -> None:
+    if not settings.dev_mode:
+        return
+
+    from app.devmode import router as devmode_router
+
+    app.include_router(devmode_router)
+
+
+_ROUTERS = (
+    RouterSpec(aspects_router),
+    RouterSpec(declinations_router),
+    RouterSpec(electional_router),
+    RouterSpec(events_router),
+    RouterSpec(doctor_router),
+    RouterSpec(transits_router),
+    RouterSpec(policies_router),
+    RouterSpec(lots_router),
+    RouterSpec(relationship_router),
+    RouterSpec(interpret_router),
+    RouterSpec(reports_router),
+    RouterSpec(health_router),
+    RouterSpec(settings_router),
+    RouterSpec(notes_router),
+    RouterSpec(data_router),
+    RouterSpec(charts_router),
+    RouterSpec(profiles_router),
+    RouterSpec(narrative_profiles_router),
+)
+
+
+_CONFIG = AppFactoryConfig(
+    title="AstroEngine Plus API",
+    default_response_class=DEFAULT_RESPONSE_CLASS,
+    middlewares=(configure_compression,),
+    observability=(_setup_observability,),
+    routers=_ROUTERS,
+    startup_hooks=(_register_startup,),
+    on_create=(_install_security_headers, _install_dev_mode_router),
+)
+
+
+def create_app() -> FastAPI:
+    return _create_app(_CONFIG)
+
+
+app = create_app()
 
 
 __all__ = [

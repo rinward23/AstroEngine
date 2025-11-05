@@ -13,6 +13,7 @@ from fastapi.responses import ORJSONResponse
 from astroengine.boot.logging import configure_logging
 from astroengine.config import Settings, default_settings, load_settings
 
+from ._factory import AppFactoryConfig, RouterSpec, create_app as _create_app
 from .errors import install_error_handlers
 from .routers import (
     analysis as analysis_router,
@@ -48,6 +49,10 @@ def _load_domain_settings() -> Settings:
         return default_settings()
 
 
+def _configure_gzip(app: FastAPI) -> None:
+    app.add_middleware(GZipMiddleware, minimum_size=512)
+
+
 def _configure_cors(app: FastAPI) -> None:
     origins: Iterable[str] = api_settings.cors_origins
     if not origins:
@@ -62,31 +67,15 @@ def _configure_cors(app: FastAPI) -> None:
     )
 
 
-def _register_routes(app: FastAPI) -> None:
-    app.include_router(health_router.router)
-    app.include_router(plus_router.router)
-    app.include_router(analysis_router.router)
-    app.include_router(interpret_router.router)
-    app.include_router(forecast_router.router)
-    app.include_router(natals_router.router)
-    app.include_router(doctor_router.router)
-    app.include_router(lots_router.router, prefix="/v1", tags=["lots"])
-    app.include_router(scan_router.router, prefix="/v1/scan", tags=["scan"])
-    app.include_router(returns_router.router)
-    app.include_router(synastry_router.router, prefix="/v1/synastry", tags=["synastry"])
-    app.include_router(vedic_router.router)
-    app.include_router(topocentric_router.router, prefix="/v1", tags=["topocentric"])
-    app.include_router(transit_overlay_router.router)
-    app.include_router(timeline_router.router, prefix="/v1", tags=["timeline"])
-
-
-def _register_startup_hooks(app: FastAPI) -> None:
+def _prime_settings(app: FastAPI) -> None:
     @app.on_event("startup")
-    def _prime_settings() -> None:
+    def _prime() -> None:
         app.state.settings = _load_domain_settings()
 
+
+def _ensure_ephemeris(app: FastAPI) -> None:
     @app.on_event("startup")
-    def _ensure_ephemeris() -> None:
+    def _ensure() -> None:
         try:
             from astroengine.ephemeris import SwissEphemerisAdapter
         except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency missing
@@ -103,8 +92,10 @@ def _register_startup_hooks(app: FastAPI) -> None:
 
         app.state.ephemeris_adapter = adapter
 
+
+def _ensure_database(app: FastAPI) -> None:
     @app.on_event("startup")
-    def _ensure_database() -> None:
+    def _ensure() -> None:
         try:
             from sqlalchemy import text
             from app.db.session import engine
@@ -125,32 +116,49 @@ def _register_startup_hooks(app: FastAPI) -> None:
         app.state.database_engine = engine
 
 
+_ROUTERS = (
+    RouterSpec(health_router.router),
+    RouterSpec(plus_router.router),
+    RouterSpec(analysis_router.router),
+    RouterSpec(interpret_router.router),
+    RouterSpec(forecast_router.router),
+    RouterSpec(natals_router.router),
+    RouterSpec(doctor_router.router),
+    RouterSpec(lots_router.router, prefix="/v1", tags=["lots"]),
+    RouterSpec(scan_router.router, prefix="/v1/scan", tags=["scan"]),
+    RouterSpec(returns_router.router),
+    RouterSpec(synastry_router.router, prefix="/v1/synastry", tags=["synastry"]),
+    RouterSpec(vedic_router.router),
+    RouterSpec(topocentric_router.router, prefix="/v1", tags=["topocentric"]),
+    RouterSpec(transit_overlay_router.router),
+    RouterSpec(timeline_router.router, prefix="/v1", tags=["timeline"]),
+)
+
+
+_CONFIG = AppFactoryConfig(
+    title="AstroEngine API",
+    version="1.0",
+    default_response_class=ORJSONResponse,
+    openapi_tags=[
+        {"name": "system", "description": "Service level operations."},
+        {"name": "interpret", "description": "Relationship interpretation services."},
+        {"name": "natals", "description": "Stored natal chart management."},
+        {"name": "scan", "description": "Transit and progression scanning."},
+        {"name": "synastry", "description": "Synastry chart operations."},
+        {"name": "analysis", "description": "Catalog and fixed-star lookups."},
+    ],
+    state={"api_settings": api_settings},
+    middlewares=(_configure_gzip, _configure_cors),
+    observability=(install_error_handlers,),
+    routers=_ROUTERS,
+    startup_hooks=(_prime_settings, _ensure_ephemeris, _ensure_database),
+)
+
+
 def create_app() -> FastAPI:
     """Instantiate and configure the FastAPI application."""
 
-    app = FastAPI(
-        title="AstroEngine API",
-        version="1.0",
-        default_response_class=ORJSONResponse,
-        openapi_tags=[
-            {"name": "system", "description": "Service level operations."},
-            {"name": "interpret", "description": "Relationship interpretation services."},
-            {"name": "natals", "description": "Stored natal chart management."},
-            {"name": "scan", "description": "Transit and progression scanning."},
-            {"name": "synastry", "description": "Synastry chart operations."},
-            {"name": "analysis", "description": "Catalog and fixed-star lookups."},
-        ],
-    )
-
-    app.state.api_settings = api_settings
-
-    app.add_middleware(GZipMiddleware, minimum_size=512)
-    install_error_handlers(app)
-    _configure_cors(app)
-    _register_routes(app)
-    _register_startup_hooks(app)
-
-    return app
+    return _create_app(_CONFIG)
 
 
 def get_app() -> FastAPI:
