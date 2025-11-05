@@ -175,11 +175,16 @@ class APIClient:
         self,
         *,
         page: int = 1,
-        page_size: int = 250,
+        page_size: int = 100,
     ) -> list[dict[str, Any]]:
         """Return only the ``items`` portion of the paged natal listing."""
 
-        items = self.list_natals(page=page, page_size=page_size, items_only=True)
+        effective_page_size = min(page_size, 100)
+        items = self.list_natals(
+            page=page,
+            page_size=effective_page_size,
+            items_only=True,
+        )
         # ``list_natals`` validates that ``items`` is a list when ``items_only``
         # is True, but mypy needs a precise return type in this helper.
         return cast(list[dict[str, Any]], items)

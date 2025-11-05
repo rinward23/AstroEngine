@@ -132,3 +132,29 @@ def test_list_natals_supports_paging(monkeypatch) -> None:
     assert captured["url"] == "http://astro.test/v1/natals"
     assert captured["params"] == {"page": 2, "page_size": 50}
     assert captured["timeout"] == 30
+
+
+def test_list_natals_items_defaults_to_api_limit(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_list_natals(
+        self,
+        *,
+        page: int,
+        page_size: int,
+        items_only: bool,
+    ) -> list[dict[str, object]]:
+        captured["page"] = page
+        captured["page_size"] = page_size
+        captured["items_only"] = items_only
+        return []
+
+    monkeypatch.setattr(APIClient, "list_natals", fake_list_natals)
+
+    client = APIClient(base_url="http://astro.test")
+    payload = client.list_natals_items()
+
+    assert payload == []
+    assert captured["page"] == 1
+    assert captured["page_size"] == 100
+    assert captured["items_only"] is True
