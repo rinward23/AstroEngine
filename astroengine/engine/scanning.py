@@ -26,6 +26,17 @@ from ..detectors_aspects import AspectHit, detect_aspects
 
 from ..ephemeris import EphemerisConfig, SwissEphemerisAdapter
 from ..ephemeris.support import filter_supported
+from ..transits.engine import (
+    FEATURE_DIRECTIONS,
+    FEATURE_ECLIPSES,
+    FEATURE_LUNATIONS,
+    FEATURE_PROGRESSIONS,
+    FEATURE_PROFECTIONS,
+    FEATURE_RETURNS,
+    FEATURE_STATIONS,
+    FEATURE_TIMELORDS,
+    TickCachingProvider,
+)
 from astroengine.ephemeris.swe import has_swe, swe
 
 from ..exporters import LegacyTransitEvent
@@ -82,18 +93,6 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..chart.natal import NatalChart
 
 
-# >>> AUTO-GEN BEGIN: engine-feature-flags v1.0
-# Feature flags (default OFF to preserve current behavior)
-FEATURE_LUNATIONS = False
-FEATURE_ECLIPSES = False
-FEATURE_STATIONS = False
-FEATURE_PROGRESSIONS = False
-FEATURE_DIRECTIONS = False
-FEATURE_RETURNS = False
-FEATURE_PROFECTIONS = False
-FEATURE_TIMELORDS = False
-# >>> AUTO-GEN END: engine-feature-flags v1.0
-
 _BODY_CODE_TO_NAME = {
     0: "sun",
     1: "moon",
@@ -118,54 +117,6 @@ _VIMSHOTTARI_LORDS = {
     "saturn",
     "mercury",
 }
-
-
-class _TickCachingProvider:
-    """Memoize ``positions_ecliptic`` calls for a single scan session."""
-
-    __slots__ = ("_provider", "_cache", "_canonical_cache")
-
-    def __init__(self, provider: object) -> None:
-        self._provider = provider
-        self._cache: dict[
-            tuple[str, tuple[str, ...]], Mapping[str, Mapping[str, float]]
-        ] = {}
-        self._canonical_cache: dict[frozenset[str], tuple[str, ...]] = {}
-
-    def positions_ecliptic(
-        self, iso_utc: str, bodies: Iterable[str] | None
-    ) -> Mapping[str, Mapping[str, float]]:
-        if bodies is None:
-            raise TypeError("positions_ecliptic requires an iterable of body names")
-
-        bodies_tuple = tuple(bodies)
-        if not bodies_tuple:
-            return {}
-
-        lowered = tuple(name.lower() for name in bodies_tuple)
-        canonical_key = frozenset(lowered)
-        canonical = self._canonical_cache.get(canonical_key)
-        if canonical is None:
-            canonical = tuple(sorted(canonical_key))
-            self._canonical_cache[canonical_key] = canonical
-        key = (iso_utc, canonical)
-
-        normalized = self._cache.get(key)
-        if normalized is None:
-            result = self._provider.positions_ecliptic(iso_utc, bodies_tuple)
-            normalized = {name.lower(): data for name, data in result.items()}
-            self._cache[key] = normalized
-
-        return {
-            name: normalized[name_lower]
-            for name, name_lower in zip(bodies_tuple, lowered, strict=False)
-            if name_lower in normalized
-        }
-
-    def __getattr__(self, name: str):  # pragma: no cover - delegation passthrough
-        return getattr(self._provider, name)
-
-
 _SWE_MODULE = swe() if has_swe() else None
 
 if _SWE_MODULE is not None:  # pragma: no cover - availability tested via swiss-marked tests
@@ -722,7 +673,7 @@ def scan_contacts(
 
     decl_ticks, mirror_ticks, aspect_ticks, plugin_ticks = tee(tick_source, 4)
 
-    cached_provider = _TickCachingProvider(scan_provider)
+    cached_provider = TickCachingProvider(scan_provider)
 
 
     def _append_event(event: LegacyTransitEvent) -> None:
