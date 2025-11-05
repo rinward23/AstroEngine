@@ -30,14 +30,10 @@ SIGNS = [
 
 def _load_natals() -> list[dict[str, Any]]:
     try:
-        data = api.list_natals(page_size=100)
+        return api.list_natals_items(page_size=100)
     except Exception as exc:  # pragma: no cover - UI feedback only
         st.sidebar.error(f"Unable to load natals: {exc}")
         return []
-    items = data.get("items") if isinstance(data, dict) else None
-    if isinstance(items, list):
-        return items
-    return []
 
 
 def _format_longitude(value: float) -> tuple[float, str]:
