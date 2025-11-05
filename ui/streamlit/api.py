@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable, Sequence
-from typing import Any
+from typing import Any, cast
 
 import requests
 from requests import Response
@@ -79,8 +79,21 @@ class APIClient:
         return data
 
     # ---- Natals ------------------------------------------------------------
-    def list_natals(self, page: int = 1, page_size: int = 100) -> dict[str, Any]:
-        """Return a page of stored natal charts."""
+    def list_natals(
+        self,
+        page: int = 1,
+        page_size: int = 100,
+        *,
+        items_only: bool = False,
+    ) -> dict[str, Any] | list[dict[str, Any]]:
+        """Return a page of stored natal charts.
+
+        Args:
+            page: Page number to request from the API.
+            page_size: Number of results per page.
+            items_only: When ``True``, return only the ``items`` list from the
+                response payload instead of the full dictionary.
+        """
 
         response = requests.get(
             f"{self.base}/v1/natals",
@@ -91,6 +104,11 @@ class APIClient:
         data = response.json()
         if not isinstance(data, dict):  # pragma: no cover - defensive
             raise RuntimeError("Unexpected response payload from /v1/natals")
+        if items_only:
+            items = data.get("items")
+            if not isinstance(items, list):  # pragma: no cover - defensive
+                raise RuntimeError("Unexpected response payload from /v1/natals")
+            return items
         return data
 
     # ---- Analysis ----------------------------------------------------------
@@ -153,18 +171,18 @@ class APIClient:
         return r.json()
 
     # ---- Natals -----------------------------------------------------------
-    def list_natals(self, limit: int = 250) -> list[dict[str, Any]]:
-        r = requests.get(
-            f"{self.base}/v1/natals",
-            params={"page_size": limit},
-            timeout=30,
-        )
-        r.raise_for_status()
-        data = r.json()
-        items = data.get("items") if isinstance(data, dict) else None
-        if not isinstance(items, list):  # pragma: no cover - defensive
-            raise RuntimeError("Unexpected response payload from /v1/natals")
-        return items
+    def list_natals_items(
+        self,
+        *,
+        page: int = 1,
+        page_size: int = 250,
+    ) -> list[dict[str, Any]]:
+        """Return only the ``items`` portion of the paged natal listing."""
+
+        items = self.list_natals(page=page, page_size=page_size, items_only=True)
+        # ``list_natals`` validates that ``items`` is a list when ``items_only``
+        # is True, but mypy needs a precise return type in this helper.
+        return cast(list[dict[str, Any]], items)
 
     # ---- Forecast ---------------------------------------------------------
     def forecast_stack(

@@ -23,7 +23,7 @@ def _iso(dt: datetime) -> str:
 st.sidebar.header("Configuration")
 
 try:
-    natal_records = api.list_natals()
+    natal_records = api.list_natals_items()
 except Exception as exc:  # pragma: no cover - streamlit runtime
     natal_records = []
     st.sidebar.warning(f"Unable to load stored natals: {exc}")
