@@ -34,7 +34,7 @@ argument so downstream code can request precomputed cultural metadata.
 `traditions` can be a string or sequence of strings:
 
 ```python
-from astroengine.chart import ChartLocation, compute_natal_chart
+from astroengine.charts import ChartLocation, compute_natal_chart
 
 chart = compute_natal_chart(
     moment=moment,
