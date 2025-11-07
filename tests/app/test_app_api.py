@@ -103,6 +103,18 @@ def test_normalize_result_payload_accepts_iterables_and_dataclasses():
     ]
 
 
+def test_normalize_result_payload_accepts_tuples():
+    payload = (
+        {"body": "Mars", "detail": "retrograde"},
+        Event("Venus", "direct"),
+    )
+    normalized = app_api._normalize_result_payload(payload)
+    assert normalized == [
+        {"body": "Mars", "detail": "retrograde"},
+        {"body": "Venus", "detail": "direct"},
+    ]
+
+
 def test_normalize_result_payload_rejects_strings():
     assert app_api._normalize_result_payload("not-events") is None
 
