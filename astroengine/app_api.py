@@ -241,10 +241,10 @@ def _normalize_result_payload(result: Any) -> list[dict[str, Any]] | None:
             payload = events_attr() if callable(events_attr) else events_attr
         if isinstance(payload, Mapping):
             items = [payload]
-        elif isinstance(payload, list | tuple):
+        elif isinstance(payload, (list, tuple)):
             items = list(payload)
         else:
-            if isinstance(payload, str | bytes):
+            if isinstance(payload, (str, bytes)):
                 return None
             try:
                 items = list(payload)
