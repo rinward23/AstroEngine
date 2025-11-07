@@ -1273,7 +1273,7 @@ def _format_timelord_period(period) -> str:
         if sign:
             extras.append(str(sign))
         if metadata.get("loosing"):
-            extras.append("loosing")
+            extras.append("loosing of the bond")
     detail = f" ({', '.join(extras)})" if extras else ""
     return f"- {period.system}/{period.level}: {period.ruler}{detail}"
 
