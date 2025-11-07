@@ -45,7 +45,7 @@ Profiles reference providers through the following keys in `profiles/base_profil
 
 - `providers.default` selects the primary plugin (`skyfield` by default).
 - `providers.skyfield.cache_path` documents the expected ephemeris cache location (`${ASTROENGINE_CACHE}/skyfield/de440s`).
-- `providers.swe.enabled` and `providers.swe.delta_t` illustrate how optional providers expose toggles.
+- `providers.swe.enabled` and `providers.swe.delta_t` illustrate how optional providers expose toggles; the delta-T override is expressed in seconds (TT-UT) using Swiss Ephemeris constants and defaults to `swe.DELTAT_DEFAULT`, the Stephenson & Morrison (2016) curve distributed with Swiss Ephemeris.
 - `providers.*.cadence_hours` define recommended sampling cadences by body class (`inner`, `outer`, `moon`, `minor`). Detectors should inherit these settings to keep the pipeline deterministic.
 - Cadence and cache settings must be cross-checked against Solar Fire export intervals; record any deviations in the provenance log so comparisons remain valid.
 
