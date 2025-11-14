@@ -39,6 +39,10 @@ providers:
   swe:
     enabled: false
     ephemeris_path: null
+    # Delta-T override for Swiss Ephemeris (seconds TT-UT). Null keeps
+    # swe.DELTAT_DEFAULT, which follows the Stephenson & Morrison (2016)
+    # curve published with the Swiss Ephemeris distribution.
+    delta_t: null
     cadence_hours:
       inner: 6
       outer: 24
