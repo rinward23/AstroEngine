@@ -80,6 +80,25 @@ def test_filter_kwargs_for_includes_aliases():
     }
 
 
+def test_filter_kwargs_for_var_keyword_preserves_optional_fields():
+    def fn(**kwargs):
+        return kwargs
+
+    proposed = {
+        "profile_id": "p1",
+        "detectors": ["ingress"],
+        "window_start": "2024-01-01T00:00:00Z",
+    }
+
+    filtered = app_api._filter_kwargs_for(fn, proposed)
+
+    assert filtered["profile_id"] == "p1"
+    assert filtered["detectors"] == ["ingress"]
+    # Alias expansion still provides canonical variants for declared parameters
+    assert filtered["profile"] == "p1"
+    assert filtered["window_start"] == "2024-01-01T00:00:00Z"
+
+
 @dataclass
 class Event:
     body: str

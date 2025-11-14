@@ -167,7 +167,11 @@ def _filter_kwargs_for(fn, proposed: dict[str, Any]) -> dict[str, Any]:
     Supports common alias keys for start/end/provider/profile fields.
     """
     sig = inspect.signature(fn)
-    params = set(sig.parameters.keys())
+    params = sig.parameters
+    accepts_var_kw = any(
+        param.kind is inspect.Parameter.VAR_KEYWORD for param in params.values()
+    )
+    param_names = set(params.keys())
 
     alias_map = {
         "start_utc": ["start", "start_ts", "start_time", "window_start", "utc_start"],
@@ -191,8 +195,13 @@ def _filter_kwargs_for(fn, proposed: dict[str, Any]) -> dict[str, Any]:
                 expanded.setdefault(alias, proposed[key])
 
     for key in list(expanded.keys()):
-        if key in params:
+        if key in param_names:
             final[key] = expanded[key]
+
+    if accepts_var_kw:
+        for key, value in expanded.items():
+            final.setdefault(key, value)
+
     return final
 
 
