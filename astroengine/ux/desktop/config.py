@@ -116,7 +116,8 @@ class DesktopConfigManager:
 
         data = self._redacted_dict(config, redact_secrets=False)
         data["schema_version"] = self.CURRENT_SCHEMA_VERSION
-        yaml.safe_dump(data, self.config_path.open("w", encoding="utf-8"), sort_keys=True)
+        with self.config_path.open("w", encoding="utf-8") as fh:
+            yaml.safe_dump(data, fh, sort_keys=True)
         self._write_streamlit_theme(config.theme)
         self.apply_environment(config)
         self._apply_autostart(config.autostart)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import sqlite3
 from pathlib import Path
@@ -51,6 +52,26 @@ def test_save_roundtrip(manager: DesktopConfigManager, tmp_path: Path) -> None:
     assert updated.database_url.endswith("db.sqlite")
     reloaded = manager.load()
     assert reloaded.database_url.endswith("db.sqlite")
+
+
+def test_save_uses_context_manager(
+    manager: DesktopConfigManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = manager.load()
+    handles: list[io.StringIO] = []
+
+    def fake_open(self: Path, mode: str = "r", encoding: str | None = None):
+        assert mode == "w"
+        handle = io.StringIO()
+        handles.append(handle)
+        return handle
+
+    monkeypatch.setattr(Path, "open", fake_open, raising=False)
+
+    manager.save(config)
+
+    assert handles, "expected configuration file to be opened for writing"
+    assert handles[0].closed
 
 
 def test_probe_database_failure(manager: DesktopConfigManager) -> None:
