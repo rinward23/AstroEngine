@@ -109,7 +109,9 @@ Tracks longitudinal/latitudinal samples for transiting bodies used to reconstruc
 
 ### Detector payload schemas
 
-Detectors that emit standalone event payloads expose dedicated JSON Schema documents to keep the data contracts auditable:
+Detectors that emit standalone event payloads expose dedicated JSON Schema documents to keep the data contracts auditable; see
+the [`event-detectors` overview](event-detectors/overview.md#schema-alignment) for runtime context. Sample payloads in
+`tests/test_result_schema.py` validate each schema so the docs, registry, and runtime stay aligned:
 
 - `shadow_period_event_v1` (`schemas/shadow_period_event_v1.json`): captures `astroengine.events.ShadowPeriod` windows produced by the stations shadow detector, including paired station metadata and longitudinal bounds.
 - `house_ingress_event_v1` (`schemas/house_ingress_event_v1.json`): normalises `astroengine.events.IngressEvent` payloads emitted by the house ingress detector, covering motion flags, longitudinal speeds, and house labels.
