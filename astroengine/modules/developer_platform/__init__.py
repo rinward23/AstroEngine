@@ -220,8 +220,8 @@ def register_developer_platform_module(registry: AstroRegistry) -> None:
     ).register_subchannel(
         "jobs",
         metadata={
-            "description": "Planned webhook job processing pipelines.",
-            "status": "planned",
+            "description": "Webhook job processing pipelines backed by recorded payloads.",
+            "status": "beta",
         },
         payload={
             "documentation": "docs/module/developer_platform/webhooks.md#jobs",
@@ -230,8 +230,8 @@ def register_developer_platform_module(registry: AstroRegistry) -> None:
     webhooks.get_channel("contracts").register_subchannel(
         "verification",
         metadata={
-            "description": "Signature verification helpers outlined for webhook consumers.",
-            "status": "planned",
+            "description": "Signature verification helpers shared by SDK/CLI implementations.",
+            "status": "beta",
         },
         payload={
             "documentation": "docs/module/developer_platform/webhooks.md#verification",

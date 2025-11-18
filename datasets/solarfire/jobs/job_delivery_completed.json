@@ -1,0 +1,48 @@
+{
+  "schema": {"id": "astroengine.webhooks.job_delivery", "version": "v1.0.0"},
+  "job_id": "JOB-REL20240512A",
+  "event": "job.completed",
+  "status": "succeeded",
+  "attempt": 1,
+  "delivery_id": "dlv_A1B2C3D4E5F6G7H8",
+  "delivered_at": "2024-05-12T12:34:56Z",
+  "result_url": "https://sandbox.api.astroengine.dev/jobs/JOB-REL20240512A/result.json",
+  "result_format": "json",
+  "result_checksum": "79b74ad72e88c6f9b2fcf3bd7f056908b7ed940654fd141b6c52f62b240b1638",
+  "result_expires_at": "2024-05-19T12:34:56Z",
+  "result_size_bytes": 24576,
+  "result_manifest_url": "https://sandbox.api.astroengine.dev/jobs/JOB-REL20240512A/manifest.json",
+  "window": {
+    "start": "2024-05-10T00:00:00Z",
+    "end": "2024-05-17T00:00:00Z",
+    "timezone": "UTC"
+  },
+  "context": {
+    "profile_id": "relationship_production",
+    "ruleset_version": "2024-05-10",
+    "requested_at": "2024-05-12T12:00:00Z",
+    "completed_at": "2024-05-12T12:30:12Z",
+    "environment": "sandbox",
+    "locale": "en-US",
+    "subjects": [
+      {"id": "IND-001", "role": "primary", "kind": "natal"},
+      {"id": "IND-002", "role": "secondary", "kind": "natal"}
+    ],
+    "channels": [
+      {"id": "relationship", "status": "delivered", "score": 84.2},
+      {"id": "vitality", "status": "pending", "score": 63.0}
+    ]
+  },
+  "provenance": {
+    "solarfire_export_hash": "ce5f53c6d8e5b53a53ad72bc15d0db7e4c1bd61bfa20bb206130cae1a0ddf7c9",
+    "solarfire_export_uri": "sf9://jobs/2024-05-12-relationship.sf",
+    "ephemeris_cache_version": "swisseph-2.10.03",
+    "ephemeris_kernel_checksum": "fdb31a3d9a899f7410e1f5b79eedde83a4bf49349d1590255df5d4ab74a74961",
+    "ephemeris_kernel_uri": "s3://astroengine-kernels/swisseph-2.10.03.tar.zst"
+  },
+  "links": {
+    "dashboard": "https://sandbox.console.astroengine.dev/jobs/JOB-REL20240512A",
+    "status": "https://sandbox.api.astroengine.dev/jobs/JOB-REL20240512A"
+  },
+  "notes": "Window derived from Solar Fire export sf9://jobs/2024-05-12-relationship.sf"
+}

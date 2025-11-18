@@ -1,0 +1,44 @@
+{
+  "schema": {"id": "astroengine.webhooks.job_delivery", "version": "v1.0.0"},
+  "job_id": "JOB-REL20240513B",
+  "event": "job.retry",
+  "status": "failed",
+  "attempt": 3,
+  "delivery_id": "dlv_H7G6F5E4D3C2B1A0",
+  "delivered_at": "2024-05-13T15:21:08Z",
+  "result_url": "https://sandbox.api.astroengine.dev/jobs/JOB-REL20240513B/result.json",
+  "result_format": "json",
+  "result_checksum": "c36dd0f5a6cd6a454c22cb5bde311b3d36a64f5d1b0d9f2347c2ae04e06da831",
+  "result_expires_at": "2024-05-20T15:21:08Z",
+  "result_size_bytes": 12048,
+  "window": {
+    "start": "2024-05-11T00:00:00Z",
+    "end": "2024-05-18T00:00:00Z",
+    "timezone": "UTC"
+  },
+  "context": {
+    "profile_id": "relationship_production",
+    "ruleset_version": "2024-05-10",
+    "requested_at": "2024-05-13T14:55:00Z",
+    "environment": "sandbox",
+    "locale": "en-US",
+    "subjects": [
+      {"id": "IND-003", "role": "primary", "kind": "natal"}
+    ],
+    "channels": [
+      {"id": "relationship", "status": "failed", "score": 0.0}
+    ]
+  },
+  "provenance": {
+    "solarfire_export_hash": "5cc7d46dfb1afe5f4bba0b3a9d5f5a9db3ff4bfe547fdf94ede742cd86bc4c15",
+    "solarfire_export_uri": "sf9://jobs/2024-05-13-relationship.sf",
+    "ephemeris_cache_version": "swisseph-2.10.03",
+    "ephemeris_kernel_checksum": "fdb31a3d9a899f7410e1f5b79eedde83a4bf49349d1590255df5d4ab74a74961",
+    "ephemeris_kernel_uri": "s3://astroengine-kernels/swisseph-2.10.03.tar.zst"
+  },
+  "links": {
+    "dashboard": "https://sandbox.console.astroengine.dev/jobs/JOB-REL20240513B",
+    "status": "https://sandbox.api.astroengine.dev/jobs/JOB-REL20240513B"
+  },
+  "notes": "Attempt failed because downstream storage rejected the manifest; retry scheduled automatically."
+}

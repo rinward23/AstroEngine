@@ -10,6 +10,7 @@
   - `schemas/natal_input_v1_ext.json`
   - `schemas/orbs_policy.json`
   - `schemas/export_manifest_v1.json`
+  - `schemas/webhooks/job_delivery.json`
   - `docs/module/providers_and_frames.md` (provider cadence expectations referenced by transit exports)
   - Sample Solar Fire exports archived under `datasets/solarfire/*.sf`
   - Swiss Ephemeris kernels staged in `datasets/swisseph_stub/` (placeholder for production eph files)
@@ -31,6 +32,7 @@ The schema registry currently exposes the following keys via `astroengine.data.s
 - `interop.schemas.json_schema.natal_input_v1_ext`
 - `interop.schemas.json_schema.shadow_period_event_v1`
 - `interop.schemas.json_schema.house_ingress_event_v1`
+- `interop.schemas.json_schema.webhook_job_delivery_v1`
 - `interop.schemas.json_data.orbs_policy`
 - `interop.schemas.json_schema.export_manifest_v1`
 
@@ -106,6 +108,23 @@ Tracks longitudinal/latitudinal samples for transiting bodies used to reconstruc
 | `bodies[*].samples[*].speed_longitude` | number | degrees/day | Derived from adjacent samples; ensure Δλ continuity across 0°/360°. |
 | `provenance.scan_window` | object | start/end ISO-8601 UTC | The requested time range. |
 | `provenance.ephemeris_checksum` | string | SHA256 | Digest of Swiss Ephemeris or Skyfield kernel bundle used. |
+
+### `webhook_job_delivery_v1`
+
+Webhook deliveries reference the asynchronous jobs API used by the developer platform. Payloads follow `schemas/webhooks/job_delivery.json` and embed explicit provenance for Solar Fire exports and Swiss Ephemeris caches.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `schema.id` | string | Constant `astroengine.webhooks.job_delivery`. |
+| `job_id` | string | Unique identifier echoed by `/webhooks/jobs/*` endpoints. |
+| `event` | string | Enumerated lifecycle marker (`job.accepted`, `job.processing`, `job.retry`, `job.completed`, `job.failed`). |
+| `status` | string | Operational state (`queued`, `running`, `succeeded`, `failed`, `cancelled`). |
+| `attempt` | integer | Retry counter (bounded to 12 attempts per policy). |
+| `result_url` | string | HTTPS URL referencing the JSON/ZIP result artefact. |
+| `window.start` / `window.end` | string | ISO-8601 timestamps summarising the scan horizon tied to the job. |
+| `context.profile_id` | string | Profile configured for the run; maps to `profiles/*.yaml`. |
+| `provenance.solarfire_export_hash` | string | SHA256 digest of the Solar Fire export archived under `datasets/solarfire/jobs/`. |
+| `provenance.ephemeris_cache_version` | string | Identifier for the Swiss Ephemeris cache (e.g., `swisseph-2.10.03`). |
 
 ### Detector payload schemas
 

@@ -11,12 +11,20 @@ from types import SimpleNamespace
 from typing import Dict, List, Mapping, Optional, Sequence
 from zoneinfo import ZoneInfo
 
+import click
 import typer
 
 from astroengine.app_api import run_sign_ingress_detector
 from astroengine.boot import configure_logging
-from astroengine.ephe import DEFAULT_INSTALL_ROOT, available_sets
 from astroengine.chinese import compute_four_pillars, compute_zi_wei_chart
+from astroengine.developer_platform.webhooks import (
+    DEFAULT_TOLERANCE_SECONDS,
+    InvalidSignatureError,
+    SignatureExpiredError,
+    WebhookSignatureError,
+    verify_signature,
+)
+from astroengine.ephe import DEFAULT_INSTALL_ROOT, available_sets
 
 from . import diagnose
 from ._compat import cli_legacy_missing_reason, try_import_cli_legacy
@@ -28,6 +36,7 @@ chinese_app = typer.Typer(help="Chinese astrology chart calculators.")
 transits_app = typer.Typer(help="Transit scanning utilities.")
 transit_app = typer.Typer(help="Transit event utilities.")
 ruleset_app = typer.Typer(help="Ruleset authoring utilities.")
+webhooks_app = typer.Typer(help="Webhook delivery utilities.")
 _EPHEMERIS_SET_LABEL = ", ".join(available_sets())
 
 
@@ -745,10 +754,61 @@ def transits_scan(
     raise typer.Exit(exit_code)
 
 
+@webhooks_app.command("verify")
+def webhooks_verify(
+    payload_file: Path = typer.Option(
+        ..., "--payload-file", help="Path to the raw webhook payload file."
+    ),
+    secret_file: Path = typer.Option(
+        ..., "--secret-file", help="File containing the webhook signing secret."
+    ),
+    signature_header: str = typer.Option(
+        ..., "--signature-header", help="Value of the X-Astro-Signature header."
+    ),
+    tolerance_seconds: int = typer.Option(
+        DEFAULT_TOLERANCE_SECONDS,
+        "--tolerance-seconds",
+        min=0,
+        help="Allowed clock skew in seconds (0 disables the check).",
+    ),
+) -> None:
+    """Verify a webhook payload using the shared HMAC helper."""
+
+    try:
+        payload = payload_file.read_bytes()
+    except OSError as exc:
+        raise click.ClickException(f"Unable to read payload: {exc}") from exc
+
+    try:
+        secret = secret_file.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        raise click.ClickException(f"Unable to read secret: {exc}") from exc
+
+    if not secret:
+        raise click.ClickException("Secret file is empty")
+
+    try:
+        verify_signature(
+            payload,
+            signature_header,
+            secret,
+            tolerance_seconds=tolerance_seconds,
+        )
+    except SignatureExpiredError as exc:
+        raise click.ClickException(f"Signature expired: {exc}") from exc
+    except InvalidSignatureError as exc:
+        raise click.ClickException(f"Signature invalid: {exc}") from exc
+    except WebhookSignatureError as exc:  # pragma: no cover - defensive catch-all
+        raise click.ClickException(f"Verification error: {exc}") from exc
+
+    typer.secho("Signature verified", fg=typer.colors.GREEN)
+
+
 app.add_typer(transits_app, name="transits")
 app.add_typer(ephe_app, name="ephe")
 app.add_typer(chinese_app, name="chinese")
 app.add_typer(transit_app, name="transit")
+app.add_typer(webhooks_app, name="webhooks")
 
 
 def _resolve_datetime(moment: str, tz_name: Optional[str]) -> datetime:

@@ -8,8 +8,8 @@
 
 | Input | Location | Notes |
 |-------|----------|-------|
-| Webhook event schema | `schemas/webhooks/job_delivery.json` (to be generated) | Defines delivery payload structure aligned with OpenAPI components. |
-| Solar Fire job datasets | `datasets/solarfire/jobs/*.json` | Provide real completed job records for regression testing. |
+| Webhook event schema | `schemas/webhooks/job_delivery.json` | Draft 2020-12 schema registered via `astroengine.data.schemas` for `/webhooks/jobs/*`. |
+| Solar Fire job datasets | `datasets/solarfire/jobs/*.json` | Recorded deliveries replayed during contract tests and CLI verification. |
 | Secrets management policy | `docs/governance/data_revision_policy.md` | Governs handling of webhook signing secrets. |
 
 ## Outputs
@@ -27,6 +27,18 @@
 - Deliveries for the same `job_id` are ordered; receivers should use `attempt` for idempotency.
 - Sandbox deliveries replay Solar Fire fixtures stored under `datasets/solarfire/jobs/` to guarantee deterministic demos.
 
+## Jobs Channel
+
+- JSON payloads follow `schemas/webhooks/job_delivery.json` and are validated at runtime via `astroengine.validation.validate_payload("webhook_job_delivery_v1", payload)`.
+- Fixtures under `datasets/solarfire/jobs/job_delivery_*.json` mirror recorded deliveries so contract tests and docs can cite concrete data sources.
+- Each payload references the originating Solar Fire export (`sf9://` URI plus SHA256 hash) and Swiss Ephemeris cache version, ensuring downstream systems can audit provenance.
+
+## Verification Channel
+
+- SDK/CLI consumers rely on `astroengine.developer_platform.webhooks.verify_signature` plus the `astro webhooks verify` helper to reproduce the `X-Astro-Signature` calculation (`expected = HMAC_SHA256(secret, f"{timestamp}.{payload}")`).
+- Failures raise typed errors (`SignatureExpiredError`, `InvalidSignatureError`) that map directly to docs and OpenAPI error codes.
+- The CLI command accepts payload/secret files and header values so operators can validate deliveries captured from observability tooling without writing custom scripts.
+
 ## Verification Helpers
 
 - Shared helper computes `expected = hmac_sha256(secret, f"{timestamp}.{payload}")` using constant-time comparison.
@@ -43,8 +55,8 @@
 
 ## Acceptance Checklist
 
-- [ ] Webhook schema aligned with OpenAPI components and committed under `schemas/`.
-- [ ] Solar Fire job fixtures indexed and referenced in docs.
-- [ ] SDK and CLI verification helpers share constant-time implementation with typed errors.
-- [ ] Retry policy documented and enforced in integration tests.
-- [ ] Governance artefacts updated with secret handling procedures.
+- [x] `schemas/webhooks/job_delivery.json` registered as `webhook_job_delivery_v1` and covered by `tests/test_webhook_job_contracts.py`.
+- [x] Solar Fire job fixtures stored under `datasets/solarfire/jobs/` and cited throughout this document and tests.
+- [x] SDK (`astroengine.developer_platform.webhooks`) and CLI (`astro webhooks verify`) helpers reuse the same constant-time verification primitives.
+- [ ] Retry policy remains documented above; integration tests to assert retry scheduling are still pending.
+- [ ] Governance artefacts (`docs/governance/data_revision_policy.md`) still require a signing-secret appendix for production rollout.
