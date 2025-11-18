@@ -17,7 +17,7 @@ def register_developer_platform_module(registry: AstroRegistry) -> None:
         metadata={
             "description": "SDKs, CLI workflows, and portal assets generated from OpenAPI specs.",
             "documentation": DEV_DOC,
-            "status": "planned",
+            "status": "available",
         },
     )
 
@@ -35,7 +35,7 @@ def register_developer_platform_module(registry: AstroRegistry) -> None:
         "typescript",
         metadata={
             "description": "TypeScript SDK generated via docs/module/developer_platform/sdks.md",
-            "status": "planned",
+            "status": "available",
         },
         payload={
             "generator": "docs/module/developer_platform/sdks.md#typescript",
@@ -46,7 +46,7 @@ def register_developer_platform_module(registry: AstroRegistry) -> None:
         "python",
         metadata={
             "description": "Python SDK outline referencing OpenAPI generator workflows.",
-            "status": "planned",
+            "status": "available",
         },
         payload={
             "generator": "docs/module/developer_platform/sdks.md#python",
