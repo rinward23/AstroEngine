@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "astro-sdk"
+version = "0.1.0"
+description = "Python AstroEngine SDK backed by versioned OpenAPI schemas."
+authors = ["AstroEngine SDK Working Group"]
+license = "AGPL-3.0-or-later"
+readme = "README.md"
+packages = [{ include = "astro_sdk" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+httpx = "^0.28.0"
+tenacity = "^8.5.0"
+pydantic = "^2.7.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.0"
+
+[tool.pytest.ini_options]
+testpaths = ["sdks/python/tests"]
+addopts = "-q"
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,142 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AstroEngine API",
+    "version": "1.0.0",
+    "description": "Reference schema used by the developer platform SDKs."
+  },
+  "servers": [
+    { "url": "https://api.astroengine.local" }
+  ],
+  "paths": {
+    "/charts": {
+      "get": {
+        "operationId": "listCharts",
+        "summary": "List generated charts",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Filter charts by the originating profile."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Charts response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChartCollection"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createChart",
+        "summary": "Create a new chart",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ChartInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Chart created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Chart" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/charts/{chartId}/transits": {
+      "get": {
+        "operationId": "listTransits",
+        "summary": "List transits for a chart",
+        "parameters": [
+          {
+            "name": "chartId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transit events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Transit" }
+                    },
+                    "next": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": ["data", "next"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Chart": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "profile_id": { "type": "string" }
+        },
+        "required": ["id", "label", "profile_id"]
+      },
+      "ChartInput": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string" },
+          "profile_id": { "type": "string" }
+        },
+        "required": ["label", "profile_id"]
+      },
+      "ChartCollection": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Chart" }
+          }
+        },
+        "required": ["data"]
+      },
+      "Transit": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "chart_id": { "type": "string" },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        },
+        "required": ["id", "chart_id", "severity"]
+      }
+    }
+  }
+}

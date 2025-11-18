@@ -1,0 +1,42 @@
+{
+  "name": "@astroengine/sdk",
+  "version": "0.1.0",
+  "description": "Typed AstroEngine API client generated from versioned OpenAPI schemas.",
+  "type": "module",
+  "main": "dist/cjs/index.cjs",
+  "module": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --splitting --out-dir dist",
+    "generate": "tsx scripts/generate.ts",
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "astroengine",
+    "sdk",
+    "openapi"
+  ],
+  "author": "AstroEngine SDK Working Group",
+  "license": "AGPL-3.0-or-later",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "undici": "^6.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "tsup": "^8.1.0",
+    "tsx": "^4.9.3",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}

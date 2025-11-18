@@ -24,11 +24,11 @@
 
 1. Pull latest schema: `curl https://api.astroengine.local/openapi.json > openapi/latest.json` and freeze to `openapi/vX.Y.json` after review.
 2. Run generators:
-   - TypeScript: `pnpm --filter sdks/typescript generate --schema ../../openapi/vX.Y.json`.
-   - Python: `poetry run python scripts/generate.py --schema ../../openapi/vX.Y.json`.
+   - TypeScript: `pnpm --filter ./sdks/typescript generate --schema ../../openapi/vX.Y.json` (executes the PNPM workspace rooted in `sdks/typescript`).
+   - Python: `poetry run python scripts/generate.py --schema ../../openapi/vX.Y.json` from within `sdks/python`.
 3. Inspect diffs for hand-polish areas (pagination helpers, streaming wrappers, typed error mapping). Any manual edits must document rationale in `sdks/<lang>/CHANGELOG.md` referencing dataset-backed acceptance evidence.
 4. Execute contract tests using Prism mock servers seeded with Solar Fire ephemeris fixtures in `generated/prism/`.
-5. Record release metadata: schema hash, Solar Fire export version, Swiss Ephemeris build identifier.
+5. Record release metadata: schema hash, Solar Fire export version, Swiss Ephemeris build identifier. The generators append the fingerprints to `sdks/typescript/CHANGELOG.md` and `sdks/python/CHANGELOG.md` automatically so the artefact provenance is immutable.
 
 ## Channel Requirements
 
@@ -54,7 +54,7 @@
 
 ## Testing & QA
 
-- Contract tests run via `pnpm test --filter sdks/typescript` and `poetry run pytest sdks/python/tests` using Prism/respx mocks seeded with Solar Fire fixtures.
+- Contract tests run via `pnpm --filter ./sdks/typescript test` and `poetry run pytest sdks/python/tests` using Prism mocks and httpx transports seeded with Solar Fire fixtures.
 - Severity, orb, and detector enumerations validated against runtime JSON under `schemas/` to prevent drift.
 - Example notebooks cross-check API responses with Solar Fire exports; stored in `sdks/python/examples/` with dataset hashes.
 
