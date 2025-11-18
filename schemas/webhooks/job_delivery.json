@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astroengine.io/schemas/webhooks/job_delivery.json",
+  "title": "AstroEngine Webhook · Job Delivery v1",
+  "description": "Delivery payload emitted for asynchronous job webhooks including provenance for Solar Fire and Swiss Ephemeris datasets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "job_id",
+    "event",
+    "status",
+    "attempt",
+    "delivery_id",
+    "delivered_at",
+    "result_url",
+    "context",
+    "provenance"
+  ],
+  "properties": {
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "const": "astroengine.webhooks.job_delivery"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^v\\d+\\.\\d+\\.\\d+$"
+        }
+      }
+    },
+    "job_id": {
+      "type": "string",
+      "pattern": "^JOB-[A-Z0-9]{6,}$"
+    },
+    "event": {
+      "type": "string",
+      "description": "Webhook event describing the delivery lifecycle stage.",
+      "enum": [
+        "job.accepted",
+        "job.processing",
+        "job.retry",
+        "job.completed",
+        "job.failed"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "succeeded", "failed", "cancelled"]
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12
+    },
+    "delivery_id": {
+      "type": "string",
+      "description": "Identifier mirrored in the X-Astro-Delivery header.",
+      "pattern": "^dlv_[A-Za-z0-9]{16,}$"
+    },
+    "delivered_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "result_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "result_format": {
+      "type": "string",
+      "enum": ["json", "zip", "ndjson", "ics"]
+    },
+    "result_checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "result_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "result_size_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "result_manifest_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": "string", "format": "date-time"},
+        "end": {"type": "string", "format": "date-time"},
+        "timezone": {"type": "string"}
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "ruleset_version",
+        "requested_at",
+        "environment"
+      ],
+      "properties": {
+        "profile_id": {"type": "string"},
+        "ruleset_version": {"type": "string"},
+        "requested_at": {"type": "string", "format": "date-time"},
+        "completed_at": {"type": "string", "format": "date-time"},
+        "environment": {"type": "string", "enum": ["sandbox", "production"]},
+        "locale": {"type": "string"},
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "role"],
+            "properties": {
+              "id": {"type": "string"},
+              "role": {"type": "string"},
+              "kind": {"type": "string"}
+            }
+          }
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "status"],
+            "properties": {
+              "id": {"type": "string"},
+              "status": {"type": "string"},
+              "score": {"type": "number"}
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "solarfire_export_hash",
+        "ephemeris_cache_version"
+      ],
+      "properties": {
+        "solarfire_export_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "solarfire_export_uri": {"type": "string", "format": "uri"},
+        "ephemeris_cache_version": {"type": "string"},
+        "ephemeris_kernel_checksum": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "ephemeris_kernel_uri": {"type": "string", "format": "uri"}
+      }
+    },
+    "links": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dashboard": {"type": "string", "format": "uri"},
+        "status": {"type": "string", "format": "uri"}
+      }
+    },
+    "notes": {"type": "string"}
+  }
+}

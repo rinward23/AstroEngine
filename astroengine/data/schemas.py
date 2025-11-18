@@ -52,6 +52,10 @@ SCHEMA_REGISTRY: dict[str, SchemaMetadata] = {
         "filename": "house_ingress_event_v1.json",
         "kind": "jsonschema",
     },
+    "webhook_job_delivery_v1": {
+        "filename": "webhooks/job_delivery.json",
+        "kind": "jsonschema",
+    },
 }
 
 
