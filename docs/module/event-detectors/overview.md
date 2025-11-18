@@ -43,8 +43,20 @@ Each leaf node stores the resolver path, event type, backing datasets, and the a
 - **Profile parity**: When toggles in `profiles/base_profile.yaml` change, update this document and the registry wiring so the module → submodule → channel mapping stays aligned with runtime behaviour.
 - **Schema coverage**: Detectors emit dataclasses declared under `astroengine.events` or module-specific payloads. Any schema additions must be registered in `docs/module/interop.md`, with validation tests referencing the appropriate documents (e.g., `schemas/shadow_period_event_v1.json`, `schemas/house_ingress_event_v1.json`).
 
-## Future work
+## Schema alignment
 
-- Author JSON schema documents for the new `ShadowPeriod` and house-ingress payloads and link them from `docs/module/interop.md`.
-- Fixed-star coverage now enumerates the FK6-derived catalogue bundled under `profiles/fixed_stars.csv`, and the example plugin
-  loads every star brighter than V = 4.5 by default.
+Two detector payload schemas are already published and consumed by downstream tooling. Keep these documents synchronized with
+the [interop registry](../interop.md) whenever detector payloads evolve:
+
+- [`shadow_period_event_v1`](../../../schemas/shadow_period_event_v1.json) summarises the `astroengine.events.ShadowPeriod`
+  dataclass emitted by the stations module. It captures the pre/post shadow timestamps, the paired retrograde/direct station
+  metadata (timestamps, Julian dates, and longitudes), and the longitudinal bounds that bookend the shadow window so calendar
+  exports can highlight the actionable range.
+- [`house_ingress_event_v1`](../../../schemas/house_ingress_event_v1.json) describes
+  `astroengine.events.IngressEvent` payloads for house transitions. The schema records the ingressed body, longitudinal
+  position, motion flags, house labels (`from_sign`, `to_sign`, `sign`), and supporting speed metrics so the runtime can drive
+  per-house severity modelling.
+
+Validation coverage for both payloads lives in `tests/test_result_schema.py`, which loads fixture payloads and asserts that they
+round-trip through the schema registry. Extend that test (or author a detector-specific test) whenever a field is added so the
+documentation, schemas, and runtime stay in lockstep.
